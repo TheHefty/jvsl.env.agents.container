@@ -54,6 +54,8 @@ const TMP_ROOT = join(import.meta.dirname, '..', '.tmp')
 // The image name is derived from the folder's basename, so the folder has to
 // be named for the image we are about to build.
 const PROJECT = 'devcfix'
+/** Written by the fixture image's own CMD, and by nothing else. */
+const MARKER = '/tmp/image-command-ran'
 const IMAGE = `${PROJECT}-dev`
 const VOLUME = `${PROJECT}-code-server-data`
 
@@ -69,11 +71,20 @@ test('a container brought up from our configuration got the machine the manifest
     // building, which is what FR-19 requires and what the spike showed is the
     // only way image metadata is resolved at all.
     const dockerfile = join(parent, 'Dockerfile')
+    //
+    // Its CMD leaves a trace, which is the regression test for the defect the
+    // story's first @manual pass found: for an image-based configuration the
+    // tooling replaces the container's command with a sleep loop unless
+    // `overrideCommand` says otherwise, and the real image's command is
+    // s6-overlay. Nothing fails when it is replaced — there is simply no
+    // nested Docker daemon, no ai-memory server and no cont-init, which is a
+    // far worse outcome than an error.
     writeFileSync(
       dockerfile,
       'FROM alpine:3.21\n' +
         'RUN adduser -D -s /bin/sh abc\n' +
-        `LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'\n`,
+        `LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'\n` +
+        `CMD ["/bin/sh","-c","touch ${MARKER}; while sleep 1000; do :; done"]\n`,
     )
     sh('docker', ['build', '-q', '-f', dockerfile, '-t', IMAGE, parent])
 
@@ -147,6 +158,11 @@ test('a container brought up from our configuration got the machine the manifest
     // Not published: code-server runs unauthenticated in the real image, which
     // was measured, so the port is opt-in and the opt-in does not exist yet.
     assert.deepEqual(host['PortBindings'], {})
+
+    // The image's command ran, rather than being replaced by the tooling's
+    // sleep loop. In the real image that command is s6-overlay; without it the
+    // container comes up with none of its services and nothing says so.
+    sh('docker', ['exec', containerId, 'test', '-f', MARKER])
   } finally {
     if (containerId !== '') {
       try { sh('docker', ['rm', '-f', containerId]) } catch { /* already gone */ }

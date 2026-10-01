@@ -24,6 +24,8 @@ export interface Configuration {
   capAdd: string[]
   securityOpt: string[]
   containerEnv: Record<string, string>
+  /** Always false. See buildConfiguration. */
+  overrideCommand: boolean
   runArgs: string[]
   [GENERATED_BY]: { extension: string }
 }
@@ -108,6 +110,22 @@ export function buildConfiguration(input: BuildInput): Configuration {
     capAdd: ['SYS_ADMIN'],
     securityOpt: ['seccomp=unconfined', 'systempaths=unconfined'],
     containerEnv: { PUID: '1000', PGID: '1000', PASSWORD: '' },
+    // **The image's own command has to run.** For an image-based configuration
+    // the tooling otherwise replaces it with `while sleep 1000; do :; done`,
+    // and this image's command is s6-overlay — which is what starts the nested
+    // rootless Docker daemon, starts the ai-memory server, applies PUID/PGID
+    // and runs every cont-init script, the ownership repair among them.
+    //
+    // Leaving it at the default fails nothing. The editor connects, the shell
+    // works, the limits are right — and there is no Docker inside the
+    // container, no long-term memory, and no repair of the state directories
+    // the previous release exists to repair. The specification says it plainly:
+    // "set to false if the default command must run for the container to
+    // function properly."
+    //
+    // Found by the story's first @manual pass, which is the reason that tag
+    // exists.
+    overrideCommand: false,
     runArgs,
     [GENERATED_BY]: { extension: extensionVersion },
   }
