@@ -1,0 +1,27 @@
+name: release-please
+
+# The default branch here is `master`, like the consuming monorepo's and unlike
+# the template's `main`. Both the trigger and release-please's target branch
+# have to name it, or the workflow never fires and the release PR would target
+# a branch that does not exist.
+on:
+  push:
+    branches:
+      - master
+
+# The default GITHUB_TOKEN covers both steps, as long as the repository has
+# "Allow GitHub Actions to create and approve pull requests" enabled
+# (Settings -> Actions -> General). Without it, opening the release PR fails.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          target-branch: master
