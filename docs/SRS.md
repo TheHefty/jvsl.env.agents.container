@@ -192,18 +192,29 @@ of a placeholder.
 
 ### Epics named but not decomposed
 
-Named so the first release does not close the door on them. None is scheduled, and none has
-stories until it is grilled.
+Named so the first release does not close the door on them. None has stories until it is grilled,
+and none starts before the epic above closes. **Two of them stopped being optional on 2026-10-01**
+— see the charter's second amendment, which is where the reasoning and the cost are recorded.
 
+- **The image stops being code-server's** — *intended*. code-server is not installed into the
+  image, it is the image: `FROM lscr.io/linuxserver/code-server`. Taking it out is replacing the
+  base, and s6-overlay, the `abc` user, `PUID`/`PGID`, `/config` as the bind-mounted home and the
+  `cont-init` mechanism all arrive from that base and are installed nowhere in the template. It
+  also gives up the fallback that kept code-server in scope originally: a browser against a
+  loopback port when the Dev Containers extension will not attach. Recommended first of the two,
+  because `setup` keeps working while the image moves under it.
+- **Absorbing stack selection** — *intended*, and no longer merely named. The image composition
+  `.code-server/setup` performs today, reachable from the editor. This epic's own requirement
+  stands regardless: that logic must be left invocable rather than only interactive. It carries a
+  cold-start problem of its own — a project with no image cannot have its stacks analysed by an
+  agent, because the agent runs inside the image — which is why it is recommended second, against
+  an image that has stopped moving.
 - **Starting a new project** — the initialization interview, conducted inside the project's own
   container as its first session.
 - **Adopting the template into an existing project** — stack detection by heuristic on the host,
   confirmed by the user, before any agent exists to ask.
 - **The agents screen** — connecting an agent once, renewing on request, and where each agent's
   credentials live.
-- **Absorbing stack selection** — the image composition that `.code-server/setup` performs today,
-  reachable from the editor. The first release must leave that logic invocable rather than only
-  interactive.
 
 ## Alternatives considered
 
@@ -253,6 +264,26 @@ What the grilling changed, against what went in:
 
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
+
+### Amendment, 2026-10-01 (third)
+
+**Two epics stopped being optional.** "Absorbing stack selection" was named here as a door left
+open and not scheduled; "the image stops being code-server's" was not named at all, because the
+charter listed removing code-server as a deliberate non-goal. The objective is now that the
+extension opens, builds, and leaves no code-server in the image. Both are recorded above as
+*intended*, with the order recommended and the reason for it, and the charter's second amendment
+carries what is being given up — the browser-against-loopback way in when the Dev Containers
+extension will not attach.
+
+Nothing in FR-1x through FR-5x changes. The epic in progress is unchanged and is a prerequisite
+rather than a competitor: an image whose base is being replaced is not a thing to attach a
+host editor to for the first time.
+
+**One requirement acquires a deadline it did not have.** FR-4x's rule for choosing extension
+identifiers falls back to *"the same identifier the `code-server` list already installs"*. That
+list is now scheduled to disappear, so the fallback half needs another anchor before the epic that
+removes code-server ships. The story is not reopened — the list exists until then — and that epic
+owns the replacement.
 
 ### Amendment, 2026-10-01 (second)
 
