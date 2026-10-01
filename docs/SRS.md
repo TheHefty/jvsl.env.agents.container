@@ -129,8 +129,14 @@ amendment at the bottom for the four decisions this group is the shape of.
 - **FR-64** — The build runs in an editor terminal rather than in the extension's output channel: it
   takes minutes, writes a great deal, and has to be readable after the fact and interruptible while
   running.
-- **FR-65** — `whiptail` stops being a prerequisite of anything. Without the editor, the manifest is
-  edited by hand and `setup` is run; the host's prerequisites become `jq` and `docker`.
+- **FR-65** — `whiptail` stops being a prerequisite of anything, and `setup` keeps an interactive
+  path that needs no dependency: with a terminal it asks with plain shell prompts, and without one it
+  reads the manifest. The host's prerequisites become `jq` and `docker`.
+- **FR-67** — The host checks `init` performed are the extension's: `jq` and `docker` present, and
+  `docker` actually usable by this user. Each names the package for this distribution's package
+  manager, because a wrong name installs the wrong thing on somebody's host and an absent one
+  installs nothing while appearing to succeed. `init`, `packages.sh` and its table are deleted; the
+  table exists once, where the only thing that reads it is.
 - **FR-66** — Each refusal names its own cause and changes nothing: no `docker` on the host, no
   manifest where one is required, a manifest that cannot be parsed, a build that fails, and a build
   the person cancelled. A cancelled build is not a failed one and does not read as one.
@@ -344,10 +350,20 @@ grilling it, and each is a requirement above rather than a note:
   reads it and builds. The host's prerequisites become `jq` and `docker`, and `whiptail` leaves the
   list rather than becoming optional.
 
-**What this gives up.** A host-only user loses the checklist entirely: selecting a stack means
-editing JSON. That is acceptable for one user with an editor, and it is the kind of thing this
-document should say out loud rather than discover later — the alternative considered was `setup`
-flags, rejected as a second way of saying what the manifest already says.
+**What this gives up, corrected.** This paragraph first said a host-only user would lose the
+checklist and select stacks by editing JSON. That was settled differently at the story gate: `setup`
+keeps an interactive path, with plain `read` prompts and no dependency, used when it has a terminal.
+So nothing is lost there — and the cost moved rather than disappeared.
+
+**The cost is two implementations of the asking**: five shell prompts in `setup` and five pickers in
+the extension. That is accepted with its eyes open, and it is narrower than it looks: neither one
+*decides* anything, both write the same manifest, and the manifest is what everything downstream
+reads. What would have been unacceptable is two implementations of the **composition**, which FR-63
+exists to prevent, and this is not that.
+
+`setup` flags were considered and rejected as a second way of saying what the manifest already says.
+`whiptail` behind a TTY check was considered and rejected because it does not retire `whiptail`,
+which was the request.
 
 ### Amendment, 2026-10-01 (fourth)
 
