@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted |
 | **Date** | 2026-10-01 |
 | **Author** | João Lima |
 
@@ -188,4 +188,27 @@ stories until it is grilled.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Accepted by João Lima on 2026-10-01, from the grilling that produced it.
+
+What the grilling changed, against what went in:
+
+- **The headline requirement stopped being a stopwatch.** The obvious reading of "the editor
+  froze" is a time budget, and it was rejected: the defect was contention, so the requirement is
+  that the editor process is never subject to the container's `cpuset` or memory limit, checkable
+  by reading a cgroup on any host. A seconds-to-editable threshold either passes everywhere or
+  fails in CI for reasons unrelated to the system.
+- **Stories are not split along the repository boundary.** Two of the five span both repositories.
+  Splitting them would have produced halves nobody can demonstrate, which is the thing a story is
+  defined against; the repository is recorded as a marker instead.
+- **One story count was reconciled at the gate.** Five stories were settled by behaviour, and a
+  later option text listed six by separating "connecting as `abc`" from isolation. Resolved to
+  five: connecting as `abc` is what makes opening mean anything, not a behaviour of its own.
+- **A bug found during the same testing was kept out of the epic.** `AI_MEMORY_DATA_DIR` and
+  `AI_MEMORY_BACKUP_DIR` not surviving the sandbox's `--clearenv` is real and unrelated; it
+  becomes its own fix in the template, reproduction first, rather than a sixth story that would
+  make the epic's sentence need another "and".
+- **The spike moved in front of the stories.** It was going to be a task inside each story that
+  needed it; three of the four questions fall out of one experiment, and the image stories cannot
+  be grilled without their answers.
+
+The sections above are as written at the gate and were not edited afterwards.
