@@ -1,0 +1,3 @@
+[submodule ".code-server"]
+	path = .code-server
+	url = https://github.com/TheHefty/jvsl.env.agents.code-server.git

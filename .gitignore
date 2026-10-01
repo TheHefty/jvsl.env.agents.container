@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.vsix
+.ai-jail
+.claude/settings.local.json
