@@ -33,6 +33,10 @@ editor out must not weaken the isolation the container exists for.
   helper or host gitconfig reaching the container, and Workspace Trust left on.
 - Deprecating `.code-server/start` and its Tauri window.
 - Declaring, and verifying at runtime, the minimum template version this extension requires.
+- **Later, in epics of their own:** composing and building the image from the editor, and taking
+  code-server out of the image altogether. Both were out of scope when this charter was accepted
+  and are not any more — see the amendment at the bottom for what changed and what it costs.
+  Neither is started until the current epic closes.
 
 **Out of scope, deliberately.** Each of these is a thing a reader might reasonably assume is
 included:
@@ -42,11 +46,13 @@ included:
 - **Editors other than Microsoft's VS Code.** VSCodium, Cursor and Windsurf cannot use the Dev
   Containers extension this one depends on, and supporting them means reimplementing the remote
   attach against a proprietary protocol.
-- **Removing code-server from the image.** It stays, as a fallback reachable when someone asks for
-  it. Only the launcher is retired.
-- **Building images.** `.code-server/setup` remains the thing that composes the Dockerfile and
-  builds; a missing image is an error this extension names, not one it fixes. Absorbing that is
-  named as a future epic in the SRS and is not scheduled.
+- **Removing code-server from the image, and building images — in *this* epic.** Both are now
+  project goals and each is its own epic; neither is out of scope any more. What stays out of scope
+  is doing either of them inside the epic that replaces the launcher. The reason is the one this
+  charter gave for the first release being a single flow: replacing `start` is a one-for-one swap,
+  and anything more makes the comparison dishonest. `.code-server/setup` remains the thing that
+  composes and builds until the epic that absorbs it ships, and a missing image stays an error this
+  extension names rather than one it fixes.
 - **The other two flows.** Starting a new project with an initialization interview, adopting the
   template into an existing project, and the agents screen are later epics. The first release does
   one thing: open a project that is already set up.
@@ -111,6 +117,12 @@ included:
   agents run inside the container, in their jail. Reversing that reopens all of them.
 - **The Dev Containers extension being discontinued or relicensed.** The delegation above stops
   being available and the scope changes shape.
+- **Replacing the image's base.** code-server is not installed into the image, it *is* the image:
+  `FROM lscr.io/linuxserver/code-server`. s6-overlay, the `abc` user, `PUID`/`PGID`, `/config` as
+  the bind-mounted home and the whole `cont-init` mechanism come from that base and are installed
+  nowhere in the template. Every isolation and ownership decision under this charter rests on that
+  convention, so changing the base reopens them — which is why taking code-server out is an epic
+  and not a task.
 
 ## Outcome
 
@@ -149,7 +161,7 @@ What the grilling changed, against what was proposed going in:
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
 
-### Amendment, 2026-10-01
+### Amendment, 2026-10-01 (first)
 
 Committing to Microsoft's build of VS Code also makes its proprietary extensions available, which
 the sandboxed editor this replaces could never use. "Standing decisions" previously called the Dev
@@ -159,3 +171,43 @@ claim that was actually doing the work — and the extensions are recorded as a 
 own. The alternative considered and rejected was declining the proprietary extensions to keep the
 original sentence true, which would have traded a working C# debugger for a property of a
 document.
+
+### Amendment, 2026-10-01 (second)
+
+**Two non-goals fell, and they were not small ones.** This charter said *"Removing code-server from
+the image. It stays, as a fallback reachable when someone asks for it"* and *"Building images.
+`.code-server/setup` remains the thing that composes the Dockerfile and builds"*. The objective is
+now that the extension does both: open, build, and leave no code-server in the image. Each is its
+own epic, neither is started until the epic in progress closes, and the sentence that kept the
+first release to one flow is unchanged — replacing `start` is a one-for-one swap, and anything more
+makes the comparison dishonest.
+
+**What is being given up, said plainly.** The reason code-server was kept was that it is a way in
+when the other way fails: if the Dev Containers extension breaks, is relicensed, or the host editor
+will not attach, a browser against an unauthenticated loopback port still reaches the workbench.
+Removing it removes that. The fallback that remains is `docker exec` and a terminal, which is not
+an editor. This was traded knowingly, not overlooked.
+
+**What is being signed up for, measured rather than estimated.** code-server is not installed into
+the image, it *is* the image. From the one line that says so, `FROM
+lscr.io/linuxserver/code-server:4.129.0`, five things arrive that the template installs nowhere:
+s6-overlay (`/etc/s6-overlay/s6-rc.d/` holds both services), the `abc` user, `PUID`/`PGID` — which
+is what `overrideCommand: false` exists to preserve — `/config` as the bind-mounted home, and the
+`cont-init` mechanism that four hooks use, two of them written during this epic. A comment in
+`core/Dockerfile.frag` records that *"LinuxServer's init rewrites abc's numeric uid"*. So the work
+is a base-image replacement, and "Replacing the image's base" is now listed above as a thing that
+would change this charter again.
+
+**Order, recommended rather than decided:** code-server out first, the build absorbed second.
+`setup` is a working shell script on the host and keeps working while the image moves under it;
+changing the builder and the thing it builds in the same breath removes the one stable reference
+point. The build epic also carries a problem the SRS already names — a project with no image cannot
+have its stacks analysed by an agent, because the agent runs inside the image — and that is easier
+to solve against a settled image than a moving one.
+
+**One thing in flight acquires an expiry.** Story 4's rule for choosing extension identifiers reads
+*"the extension published by the language's vendor when there is exactly one unambiguous candidate;
+otherwise the same identifier the `code-server` list already installs"*. The second half points at
+a list that is now scheduled to disappear. The story is not reopened for it — the list exists until
+that epic ships — but the rule needs a different anchor before it does, and the epic that removes
+code-server owns that.
