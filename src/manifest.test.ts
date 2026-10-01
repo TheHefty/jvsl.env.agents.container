@@ -17,6 +17,7 @@ interface Manifest {
   activationEvents?: unknown
   templateMinVersion?: unknown
   main?: unknown
+  scripts?: Record<string, unknown>
 }
 
 const DEV_CONTAINERS = 'ms-vscode-remote.remote-containers'
@@ -63,6 +64,17 @@ function problems(m: Manifest): string[] {
     found.push('main must point at the bundle in dist/')
   }
 
+  const prepublish = m.scripts?.['vscode:prepublish']
+  if (typeof prepublish !== 'string' || !prepublish.includes('build')) {
+    found.push(
+      'scripts["vscode:prepublish"] must run the build. vsce packages whatever dist/ happens to ' +
+        'be on disk and takes the version from this file, so without it a .vsix carries the ' +
+        "current version string and the previous bundle — a published extension whose version " +
+        'and behaviour disagree, with nothing saying so. That happened: a build reporting 0.2.1 ' +
+        'behaved as 0.2.0, and the cause was not found at the time',
+    )
+  }
+
   return found
 }
 
@@ -76,6 +88,7 @@ const good: Manifest = {
   activationEvents: ['workspaceContains:.code-server.stack.json'],
   templateMinVersion: '2.2.0',
   main: './dist/extension.js',
+  scripts: { 'vscode:prepublish': 'npm run build' },
 }
 
 test('this repository\'s own manifest holds', () => {
@@ -110,4 +123,31 @@ test('an unparseable or missing templateMinVersion is rejected', () => {
 test('a main that does not point at the bundle is rejected', () => {
   const found = problems({ ...good, main: './src/extension.ts' })
   assert.ok(found.some((p) => p.includes('main')), found.join('\n'))
+})
+
+test('packaging without building what it packages is rejected', () => {
+  // The defect this catches shipped once and was diagnosed as "reinstall and
+  // fully quit the editor", which happened to work and taught nothing. The
+  // bundle is not rebuilt by `vsce package`; only this hook rebuilds it.
+  for (const scripts of [
+    undefined,
+    {},
+    { 'vscode:prepublish': '' },
+    { 'vscode:prepublish': 'echo packaged' },
+    { prepublish: 'npm run build' },
+    { 'vscode:prepublish': 42 },
+  ]) {
+    const found = problems({ ...good, scripts: scripts as Record<string, unknown> | undefined })
+    assert.ok(
+      found.some((p) => p.includes('vscode:prepublish')),
+      JSON.stringify(scripts),
+    )
+  }
+})
+
+test('a prepublish that runs the build is accepted', () => {
+  for (const command of ['npm run build', 'npm run build --silent', 'npm run typecheck && npm run build']) {
+    const found = problems({ ...good, scripts: { 'vscode:prepublish': command } })
+    assert.deepEqual(found, [], command)
+  }
 })
