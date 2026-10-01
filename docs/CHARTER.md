@@ -83,10 +83,17 @@ included:
   by the dependencies: the extension links nothing at runtime beyond VS Code's own API.
 - **A non-free dependency, accepted knowingly.** The Dev Containers extension
   (`ms-vscode-remote.remote-containers`) is proprietary, is not on Open VSX, and is licensed for
-  use only in Microsoft's own build of VS Code. It is the single piece of this stack that is not
-  free software, and it is load-bearing: this project delegates the container lifecycle to it
-  rather than reimplementing it. The dependency is declared hard, so installing on a build that
-  cannot use it fails at install time rather than degrading in silence.
+  use only in Microsoft's own build of VS Code. It is the **load-bearing** non-free dependency:
+  this project delegates the container lifecycle to it rather than reimplementing it. The
+  dependency is declared hard, so installing on a build that cannot use it fails at install time
+  rather than degrading in silence.
+- **Proprietary editor extensions, where they are better.** Committing to Microsoft's build makes
+  its proprietary extensions usable, and some of them are what the sandboxed environment could not
+  have before — the official C# extension ships a debugger, which is the reason an Open VSX fork
+  of it exists at all. The image may name them for a stack. They carry the same licence
+  restriction as the dependency above, which this project already accepts, and they are a
+  convenience rather than load-bearing: an extension that cannot be resolved does not stop a
+  project opening.
 - **Who this is for, and what it processes.** Open-source code, published, for the maintainer and
   for anyone consuming the template. **No personal data is processed at all** — the extension runs
   entirely on the user's machine, collects nothing, and sends nothing anywhere. There is no
@@ -139,4 +146,16 @@ What the grilling changed, against what was proposed going in:
   work the first release depends on is planned in the template, under an epic in its
   `docs/PLANNING/`, without a retroactive charter or SRS for a product already at 1.8.0.
 
-The sections above are as written at the gate and were not edited afterwards.
+The sections above are as written at the gate and were not edited afterwards, except where an
+amendment below says otherwise.
+
+### Amendment, 2026-10-01
+
+Committing to Microsoft's build of VS Code also makes its proprietary extensions available, which
+the sandboxed editor this replaces could never use. "Standing decisions" previously called the Dev
+Containers extension *the single piece of this stack that is not free software*; adopting those
+extensions makes that sentence false, so it now reads *the load-bearing non-free dependency* — the
+claim that was actually doing the work — and the extensions are recorded as a decision of their
+own. The alternative considered and rejected was declining the proprietary extensions to keep the
+original sentence true, which would have traded a working C# debugger for a property of a
+document.

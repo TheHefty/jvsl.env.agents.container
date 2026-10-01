@@ -36,6 +36,9 @@ lands in.
 - **FR-17** — The editor's own process is not subject to the container's limits. This is the
   requirement the project exists for; see NFR-1.
 - **FR-18** — code-server's port is not published unless the project's manifest asks for it.
+- **FR-19** — The generated configuration references the project's prebuilt image by name and
+  never builds it. Image-declared metadata is resolved only for an image that already exists, so
+  a configuration that built instead would silently lose everything FR-4x depends on.
 
 ### Refusing what cannot be opened (FR-2x)
 
@@ -67,14 +70,21 @@ leaves the user with a window that merely does not work.
 - **FR-35** — Enforcement does not depend on a host-wide editor setting alone: anything the
   generated configuration cannot express is also refused from inside the container, so that a
   setting changed for another project does not reopen the hole here.
+- **FR-36** — Agent-socket forwarding has no configuration switch in the tooling at all, so FR-31
+  is satisfied from inside the container or it is not satisfied. This is measured, not assumed —
+  see the spike results.
 
 ### The remote editor arrives equipped (FR-4x)
 
 - **FR-41** — Opening a project gives the remote editor the extensions and settings the image
-  already associates with that project's stacks, without the project listing anything.
-- **FR-42** — That association is declared by the image, so adding a stack to the template adds its
+  declares for that project's stacks, without the project listing anything.
+- **FR-42** — That declaration lives in the image, so adding a stack to the template adds its
   extension without any change here.
 - **FR-43** — An extension that cannot be resolved does not prevent the project from opening.
+- **FR-44** — The declared list is chosen for this editor and is **not** a translation of the one
+  code-server uses. Where the official editor can run something the sandboxed one could not — a
+  proprietary debugger, say — the declaration may name it. The two lists coexist: the image keeps
+  installing its own for code-server, and only the declared one is read on this path.
 
 ### Retiring the launcher (FR-5x)
 
@@ -126,13 +136,33 @@ that requires re-grilling it.
 The epic closes when opening through the extension is the normal path and `start` says where to
 migrate. Removal in the following major is a scheduled consequence, not outstanding work.
 
-**Before the first story: a throwaway spike** (template repo). One container brought up against a
-hand-written configuration, to answer four questions the stories below are otherwise grilled
-against guesses: whether an empty `PASSWORD` disables code-server's authentication; whether the
-image metadata label is honoured on this path and which side wins the merge; whether agent sockets
-are forwarded on this path, and which keys disable each; and which extension identifiers diverge
-between the two registries. The spike is discarded; its answers are written back into this
-document.
+**The spike is done and discarded.** Its four answers, measured on 2026-10-01:
+
+1. **An empty `PASSWORD` leaves code-server unauthenticated.** On the running configuration: the
+   root redirects to the workbench and serves it, there is no password field anywhere, and
+   `/login` redirects away because there is nothing to authenticate against. FR-18 stands, and its
+   premise is now verified rather than inherited from documentation.
+2. **The image metadata label is honoured, but only for a prebuilt image.** Resolved against a
+   configuration that *builds* its image, the label is invisible — the image does not exist yet
+   when the configuration is read. Resolved against `image:`, it is read. Hence FR-19. The merge:
+   the configuration wins scalars it sets (`remoteUser`), the image fills what the configuration
+   omits (`containerUser`), environment maps merge, and editor customizations form an ordered
+   list with the image first and the configuration second, so the configuration is applied last.
+3. **Agent forwarding has no switch.** The tooling's own manifest (version 0.470.0) declares 43
+   settings and **not one of them governs ssh-agent or gpg-agent**. What exists is
+   `copyGitConfig` (defaulting to on), `gitCredentialHelperConfigLocation` (defaulting to
+   `global`), `dockerCredentialHelper` (on) and `mountWaylandSocket` (on). So the host-side half
+   of FR-3x can close the git credential paths and the Wayland socket, and cannot touch the
+   agents. Hence FR-36.
+4. **Exactly one stack extension identifier diverges** between the two registries: the C#
+   extension. The identifier the image installs today does not exist on the official registry,
+   and the official one does not exist on the other. FR-44 makes this a non-issue by not treating
+   the lists as translations of each other.
+
+**Still open, and it needs a host.** Answers 2 and 3 were measured against the reference
+implementation and the published manifest, not against the editor extension itself. What remains
+is to observe the actual behaviour once: that the label is honoured the same way, and what is
+forwarded in practice. It is a confirmation step inside story 1, not a second spike.
 
 Stories, in order. "Repo" says where the pull requests land; a story spanning both is one story,
 because it is one behaviour.
@@ -211,4 +241,22 @@ What the grilling changed, against what went in:
   needed it; three of the four questions fall out of one experiment, and the image stories cannot
   be grilled without their answers.
 
-The sections above are as written at the gate and were not edited afterwards.
+The sections above are as written at the gate and were not edited afterwards, except where an
+amendment below says otherwise.
+
+### Amendment, 2026-10-01
+
+Two changes, from the spike and from one observation that followed it.
+
+**The spike's answers replaced the spike's description**, which the section itself required. One
+of them changed a requirement rather than confirming it: image-declared metadata is resolved only
+for a prebuilt image, so FR-19 now forbids the generated configuration from building one. Another
+hardened an existing decision into the only available mechanism: there is no setting anywhere that
+disables agent forwarding, so FR-36 states that FR-31 is satisfied inside the container or not at
+all. The decision to enforce isolation from both sides was made before this was known; it turns
+out one of the two sides does not exist.
+
+**The remote extension list is its own list, not a translation** (FR-44). Committing to the
+official editor makes proprietary extensions usable that the sandboxed editor never could use, and
+the C# debugger is the concrete case. The charter was amended in the same change, because it had
+claimed the container tooling was the only non-free piece of the stack.
