@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted |
 | **Date** | 2026-09-30 |
 | **Author** | João Lima |
 | **Kind** | new |
@@ -107,4 +107,36 @@ included:
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Accepted by João Lima on 2026-10-01, after the initialization grilling that produced it.
+
+What the grilling changed, against what was proposed going in:
+
+- **The extension no longer runs `docker run`.** The proposal was for it to create the container
+  itself and have Dev Containers attach to the result. It generates a `devcontainer.json` instead
+  and delegates the whole lifecycle — create, stop, rebuild, reconnect after a window reload — to
+  Dev Containers. The attach path is the one that produced every isolation defect found in manual
+  testing, and the lifecycle is work this project would otherwise own forever.
+- **`initializeCommand` is a guard, not a generator.** Checked during the grilling: it runs after
+  the configuration has been read, and its ordering against the Docker commands is unspecified,
+  with open bugs where compose is inspected first. Anything dynamic is computed before Dev
+  Containers is handed control.
+- **The Tauri window is not kept as a fallback.** It is deprecated with a message naming the
+  migration and removed in the following major. code-server stays in the image instead, and its
+  port is not published unless the project manifest asks — an HTTP server with no authentication
+  on loopback is not a convenience.
+- **"Open an existing project" is two flows, not one.** Because agents run inside the container,
+  a project with no image cannot have one analysed by an agent. Opening is for projects that
+  already carry `.code-server/`; adopting the template into one that does not is a separate flow
+  that detects stacks by heuristic on the host.
+- **The first release is one flow.** Opening only. The initialization interview, adoption and the
+  agents screen were in the original proposal and are now later epics — replacing `start` is a
+  one-for-one swap, and anything more makes the comparison dishonest.
+- **An assumption was refuted.** `ai-memory`'s port was believed random per container, making the
+  shared `~/.claude` registration overwrite itself across projects. It is fixed at 49374
+  (`core/services/svc-ai-memory/run`), so containers do not collide. The real exposure is an agent
+  on the *host*, which the decision to run agents only inside the container removes.
+- **The planning is split across two repositories**, and only this one gets a charter. The image
+  work the first release depends on is planned in the template, under an epic in its
+  `docs/PLANNING/`, without a retroactive charter or SRS for a product already at 1.8.0.
+
+The sections above are as written at the gate and were not edited afterwards.
