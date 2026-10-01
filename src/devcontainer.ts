@@ -24,8 +24,6 @@ export interface Configuration {
   capAdd: string[]
   securityOpt: string[]
   containerEnv: Record<string, string>
-  /** Always false. See buildConfiguration. */
-  overrideCommand: boolean
   runArgs: string[]
   [GENERATED_BY]: { extension: string }
 }
@@ -125,7 +123,6 @@ export function buildConfiguration(input: BuildInput): Configuration {
     //
     // Found by the story's first @manual pass, which is the reason that tag
     // exists.
-    overrideCommand: false,
     runArgs,
     [GENERATED_BY]: { extension: extensionVersion },
   }

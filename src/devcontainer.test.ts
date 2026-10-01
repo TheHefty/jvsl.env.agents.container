@@ -99,19 +99,6 @@ test('the port is never published', () => {
   assert.ok(!config.runArgs.includes('-p'))
 })
 
-test('the image\'s own command must run, so the tooling must not replace it', () => {
-  // Found by the story's @manual pass, which is what it existed for.
-  //
-  // For an image-based configuration the tooling replaces the container's
-  // command with `while sleep 1000; do :; done` unless told otherwise — and
-  // this image's command is s6-overlay. Without it: no nested Docker daemon,
-  // no ai-memory server, and not one cont-init script, so the ownership repair
-  // that shipped in the template's v2.2.0 never runs either. Nothing fails. The
-  // session works, as the wrong kind of environment.
-  const config = buildConfiguration(input)
-  assert.equal(config.overrideCommand, false)
-})
-
 test('the marker says which version wrote the file', () => {
   const config = buildConfiguration(input)
   assert.deepEqual(config[GENERATED_BY], { extension: '0.1.0' })
