@@ -59,20 +59,30 @@ leaves the user with a window that merely does not work.
 
 ### Isolation across the boundary (FR-3x)
 
-- **FR-31** — No ssh-agent, gpg-agent or X11 socket from the host is reachable inside the
-  container.
+- **FR-31** — No ssh-agent, gpg-agent or X11 socket from the host is reachable **by an agent
+  running in the sandbox**. Amended on 2026-10-01 from "reachable inside the container", which is
+  not achievable — see the amendment in Outcome and FR-37.
 - **FR-32** — The host's git credential helper and the host's `gitconfig` do not reach the
   container. Inside it, GitHub authentication is the container's own.
 - **FR-33** — Workspace Trust remains enabled. The extension never disables it, for any project.
 - **FR-34** — `.vscode/` is not writable by an agent running inside the sandbox, so that a task
   configured to run on folder open cannot be planted from inside the jail and executed outside it.
   Widening this is an explicit, per-case grant.
-- **FR-35** — Enforcement does not depend on a host-wide editor setting alone: anything the
-  generated configuration cannot express is also refused from inside the container, so that a
-  setting changed for another project does not reopen the hole here.
-- **FR-36** — Agent-socket forwarding has no configuration switch in the tooling at all, so FR-31
-  is satisfied from inside the container or it is not satisfied. This is measured, not assumed —
-  see the spike results.
+- **FR-35** — Enforcement does not depend on a host-wide editor setting alone: what can be refused
+  from inside the container is refused there too, so that a setting changed for another project
+  does not reopen a hole here. What cannot be refused anywhere is FR-37.
+- **FR-36** — A credential is handed to an agent as a file, never as a variable. A variable passed
+  into the sandbox is re-expanded onto the sandbox launcher's own command line, and that launcher
+  runs in the container's process namespace, so the value is readable with `ps` from anywhere else
+  in the container. Measured, not assumed: a GitHub token was found that way in a running
+  environment.
+- **FR-37** — **The gpg-agent and X11 sockets the editor forwards are a recorded limitation, not a
+  requirement.** They are created inside the container by the editor's own server when it attaches,
+  after every boot hook has run, and no setting in the tooling disables either. So they cannot be
+  prevented by the image, by the generated configuration, or by anything this project controls. The
+  sandbox does keep them away from the agent, which is the threat the charter names; every other
+  process in the container — a terminal, a build, anything that build runs — can reach them. A
+  project that cannot accept that should not run a build it does not trust in this environment.
 
 ### The remote editor arrives equipped (FR-4x)
 
@@ -244,7 +254,34 @@ What the grilling changed, against what went in:
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
 
-### Amendment, 2026-10-01
+### Amendment, 2026-10-01 (second)
+
+**FR-31 asked for something that cannot be delivered, and FR-36 asserted the mechanism that would
+deliver it.** Both were written from the spike, which established that no setting in the tooling
+disables agent-socket forwarding, and concluded that the image would therefore have to refuse the
+sockets from inside. Measured in a real environment since:
+
+- `/config/.gnupg/S.gpg-agent` and `/tmp/.X11-unix/X0` exist and are sockets. **ssh-agent is not
+  forwarded** — no socket anywhere in the container — so one third of the original requirement was
+  already satisfied and nobody knew.
+- Neither appears in `/proc/mounts`. They are **not** bind-mounted at container creation: the
+  editor's server creates them inside the container when it attaches, which is after every boot
+  hook has run. A `cont-init` covering those paths covers nothing.
+
+So FR-31 is narrowed to what the sandbox actually enforces — the agent's reach, which is the threat
+the charter names — and the rest becomes FR-37, a limitation written down rather than a requirement
+nobody can meet. FR-36 is replaced by the rule that came out of the credential finding, which is a
+requirement that *can* be met and has been.
+
+Three mechanisms were considered for keeping the original FR-31 and rejected. A
+`postAttachCommand` in the image's metadata races the server that creates the sockets, and the
+ordering is undocumented — a fix that works most of the time produces the belief of coverage, which
+the rules name as worse than none. Making the target directories unwritable breaks legitimate gpg
+use and touches a directory that is normally world-writable. And leaving the requirement as written
+would have been the same kind of false assurance as the comment that claimed a forwarded token
+stayed out of `ps`.
+
+### Amendment, 2026-10-01 (first)
 
 Two changes, from the spike and from one observation that followed it.
 
