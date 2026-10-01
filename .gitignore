@@ -3,3 +3,4 @@ dist/
 *.vsix
 .ai-jail
 .claude/settings.local.json
+.tmp/
