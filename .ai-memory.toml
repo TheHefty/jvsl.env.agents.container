@@ -1,0 +1,7 @@
+# The marker is the switch: ai-memory is off in a project that does not carry
+# this file, and nothing listens. Its presence is read at boot, by the service
+# and by the hook that registers with the CLI, so the container has to be
+# restarted after it is added.
+#
+# Why this project keeps one: the reasoning is in docs/CHARTER.md, under
+# "Standing decisions".
