@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/TheHefty/jvsl.env.agents.vscode/compare/v0.2.0...v0.2.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* let the image's own command run ([ebbde9e](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/ebbde9e9b2278fb686c717e97c5c490b4d2f3c30))
+
 ## [0.2.0](https://github.com/TheHefty/jvsl.env.agents.vscode/compare/v0.1.0...v0.2.0) (2026-10-01)
 
 
