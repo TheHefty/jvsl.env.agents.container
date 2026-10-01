@@ -8,9 +8,9 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
   the import below, and it governs every session until someone says otherwise.
 - **The documentation language is English.** Every file written from here on inherits it, including
   the commit messages.
-- **Initialization is unfinished until the SRS is merged.** The charter is written
-  (`docs/CHARTER.md`); the SRS is the next link and the next gate. The `INITIALIZATION.md` import
-  below comes out when it lands.
+- **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/SRS.md`,
+  both agreed at their gates. The `INITIALIZATION.md` import is gone with it: the chain continues
+  at `.code-server/docs/agent/en/WORKFLOW.md`, one story and one task at a time.
 
 ## If the imports below did not load
 
@@ -28,7 +28,6 @@ before any story, a story's scenarios before its tasks, and a task's design befo
 chain is `.code-server/docs/agent/en/WORKFLOW.md`.
 
 @.code-server/docs/agent/en/MODES.md
-@.code-server/docs/agent/en/INITIALIZATION.md
 @docs/RULES.md
 
 ## What this repository is
@@ -43,7 +42,8 @@ The template is vendored here as a git submodule at `.code-server/`, the same wa
 monorepo vendors it, for two reasons: this project is worked on under the rules the template ships,
 and it is developed inside a container built from the template's own image.
 
-**There is no code yet.** The chain is at the charter; the SRS is next.
+**There is no code yet.** The chain is at the SRS; the first story is next, and it starts in
+the template.
 
 ## The two repositories
 
