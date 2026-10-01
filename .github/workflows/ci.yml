@@ -64,11 +64,37 @@ jobs:
           path: jvsl-env-agents-vscode.vsix
           if-no-files-found: error
 
+  integration:
+    # The scenarios this task delivers assert the **running container**, not the
+    # file we wrote. Asserting the file proves only that we wrote what we meant
+    # to, which is the tautology that misses a field whose name is wrong and
+    # which the tooling therefore ignores in silence.
+    #
+    # Two things measured here would have gone unnoticed otherwise: Docker
+    # reports `--cap-add SYS_ADMIN` back as `CAP_SYS_ADMIN`, and
+    # `systempaths=unconfined` is not recorded as a security option at all — it
+    # empties MaskedPaths and ReadonlyPaths instead, which is where its effect
+    # has to be looked for.
+    #
+    # It brings the container up with @devcontainers/cli, the reference
+    # implementation of the same specification, over an alpine carrying the
+    # metadata label — seconds, not the minutes a real project image would cost.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: a real container gets the machine the manifest asked for
+        run: npm run test:integration
+
   # The one check branch protection requires. Named so it never changes, the
   # same reason the template's does.
   ci-green:
     if: always()
-    needs: [typecheck, unit, package]
+    needs: [typecheck, unit, package, integration]
     runs-on: ubuntu-latest
     steps:
       - name: fail unless every job above succeeded

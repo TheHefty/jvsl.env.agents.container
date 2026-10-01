@@ -41,10 +41,12 @@
     "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node22 --external:vscode --outfile=dist/extension.cjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'src/*.test.ts'",
-    "test:bundle": "npm run build --silent && node --test 'tools/*.test.ts'",
-    "package": "vsce package --no-dependencies --out jvsl-env-agents-vscode.vsix"
+    "test:bundle": "npm run build --silent && node --test 'tools/bundle.test.ts' 'tools/vsix.test.ts'",
+    "package": "vsce package --no-dependencies --out jvsl-env-agents-vscode.vsix",
+    "test:integration": "node --test 'tools/devcontainer-up.test.ts'"
   },
   "devDependencies": {
+    "@devcontainers/cli": "^0.89.0",
     "@types/node": "^22.10.2",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.2.1",
