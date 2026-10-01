@@ -98,9 +98,20 @@ leaves the user with a window that merely does not work.
 
 ### Retiring the launcher (FR-5x)
 
-- **FR-51** — The existing launcher keeps working and says, on every run, that it is deprecated and
-  where to migrate.
-- **FR-52** — It is removed in the following major version, not before.
+- **FR-51** — ~~The existing launcher keeps working and says, on every run, that it is deprecated
+  and where to migrate.~~ **Superseded.** It shipped, in template `v2.3.0`, and lived one release.
+  The deprecation period it opened is closed by FR-53 rather than served.
+- **FR-52** — ~~It is removed in the following major version, not before.~~ **Superseded by
+  FR-53**, which is the same removal without the waiting.
+- **FR-53** — The launcher is deleted, and everything that exists only to build or run it goes with
+  it: the crate, the `dev` helper, the launcher's half of `init`, the Tauri libraries in the image,
+  and its two CI jobs. Template `3.0.0`.
+
+**Why the first two were written and are now struck.** A deprecation period protects people who
+depend on a thing and have not migrated yet. There is one user of this template, and he asked for
+the launcher gone rather than announced — so the period was protecting nobody and costing a
+release's worth of dead code plus a `@manual` scenario that would never be run. The amendment at the
+bottom records what that costs and what it does not.
 
 ## Non-functional requirements
 
@@ -264,6 +275,35 @@ What the grilling changed, against what went in:
 
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
+
+### Amendment, 2026-10-01 (fourth)
+
+**FR-51 and FR-52 are struck, and FR-53 replaces both.** The launcher is deleted now rather than
+announced now and deleted later.
+
+**The deprecation period was protecting nobody.** It exists to give people who depend on a thing
+time to move, and this template has one user, who asked for the launcher gone rather than announced.
+What it was costing instead: a release carrying code written to be deleted, a `@manual` scenario
+nobody would run, and a story whose entire subject was a message.
+
+**The notice did ship, and that is deliberate rather than a leftover.** Template `v2.3.0` carries
+it, because that release also carries the fix for a GitHub token readable with `ps` from anywhere in
+the container — a live security defect in the one environment using this. Holding the release to
+keep a changelog tidy would have kept the token exposed. So the notice lives exactly one version,
+for a reason that has nothing to do with deprecation.
+
+**What FR-53 takes with it, measured rather than listed from memory:** `start/` (the crate), `dev`
+(which does nothing but build and run it), the launcher's half of `init` — the display and WSLg
+check, the five Tauri library checks, and the `cargo` requirement, which was the only prerequisite
+`init` refused to install — the four Tauri `-dev` packages in the image, and the `cargo-check` and
+`title-bar` CI jobs. **`rustup` stays**: the `rust` stack depends on core's installation rather than
+its own, and `RUSTUP_HOME` is forwarded into the sandbox for that reason.
+
+**What is given up.** The host stops being able to open the environment at all without the editor
+and the Dev Containers extension. Combined with the charter's second amendment — which schedules
+code-server's removal from the image — the fallbacks go one at a time and the end state has none:
+`docker exec` and a terminal. Each step was chosen knowingly; the sum of them is worth saying out
+loud once, here, rather than discovering it on the day the editor will not attach.
 
 ### Amendment, 2026-10-01 (third)
 
