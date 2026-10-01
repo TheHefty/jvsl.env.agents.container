@@ -1,0 +1,54 @@
+{
+  "name": "jvsl-env-agents-vscode",
+  "displayName": "Dev Container Projects",
+  "description": "Opens a project built on the jvsl.env.agents.code-server template in this editor, connected to that project's own container.",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "publisher": "thehefty",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheHefty/jvsl.env.agents.vscode.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22.18"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "extensionDependencies": [
+    "ms-vscode-remote.remote-containers"
+  ],
+  "activationEvents": [
+    "workspaceContains:.code-server.stack.json"
+  ],
+  "main": "./dist/extension.cjs",
+  "templateMinVersion": "2.2.0",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jvsl.devContainer.showDetected",
+        "title": "Dev Container: Show What Was Detected"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node22 --external:vscode --outfile=dist/extension.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test 'src/*.test.ts'",
+    "test:bundle": "npm run build --silent && node --test 'tools/*.test.ts'",
+    "package": "vsce package --no-dependencies --out jvsl-env-agents-vscode.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2"
+  }
+}

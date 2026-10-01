@@ -12,8 +12,12 @@ build. Everything that must stay contained stays contained.
 **Requires Microsoft's own build of VS Code**, because it delegates the container lifecycle to the
 Dev Containers extension, which is licensed only for that build. Linux hosts only.
 
-**There is no code yet.** The project is at its charter — see [`docs/CHARTER.md`](docs/CHARTER.md)
-for what it is for, and what it deliberately will not do.
+**Early.** The extension installs and reports what it detected about a project; it does not open
+one yet. See [`docs/CHARTER.md`](docs/CHARTER.md) for what it is for and what it deliberately will
+not do, and [`docs/SRS.md`](docs/SRS.md) for the requirements and the story breakdown.
+
+Requires the template at **v2.2.0** or later, which is what `templateMinVersion` in
+`package.json` declares.
 
 ## Licence
 

@@ -1,0 +1,80 @@
+name: CI
+
+# This repository had no CI at all until the extension had code in it. The
+# rules it inherits are blunt about what that means: a pull request in a
+# repository with no CI is mergeable the moment it opens, and nothing will stop
+# a broken change.
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  typecheck:
+    # The types are the reason this is TypeScript rather than the plain
+    # JavaScript the template uses: the logic reads JSON somebody else wrote and
+    # emits JSON another tool consumes, where a field with the wrong name is
+    # silent. Nothing checks them unless this job does — `node --test` strips
+    # types rather than verifying them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  unit:
+    # Node 22 runs TypeScript directly, so these need no build step and take
+    # about a second.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  package:
+    # What ships, and what does not. An incomplete bundle throws
+    # module-not-found at activation inside the editor, as a notification naming
+    # a path and no cause — the extension looks installed and does nothing. And
+    # without a .vscodeignore the package carried the whole template submodule:
+    # 157 files around a 5 KB bundle, failing nothing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: the bundle loads, and only the bundle ships
+        run: npm run test:bundle && node --test 'tools/vsix.test.ts'
+      - name: it packages
+        run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: jvsl-env-agents-vscode.vsix
+          if-no-files-found: error
+
+  # The one check branch protection requires. Named so it never changes, the
+  # same reason the template's does.
+  ci-green:
+    if: always()
+    needs: [typecheck, unit, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: fail unless every job above succeeded
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "results: $results"
+          for r in $results; do
+            [ "$r" = "success" ] || exit 1
+          done
