@@ -1,0 +1,28 @@
+# What does NOT ship in the .vsix. Without this file the package contained 157
+# files and 334 KB around a 5 KB bundle — including the whole template
+# submodule, which is a separate product with its own releases and has no
+# business inside an editor extension.
+#
+# Everything the extension needs at runtime is the bundle; the sources are in
+# the repository, and that is where anybody debugging it should be reading them.
+# tools/vsix.test.ts holds this true.
+.code-server/**
+.github/**
+docs/**
+src/**
+tools/**
+node_modules/**
+dist/**/*.map
+
+.ai-memory.toml
+.code-server.stack.json
+.gitattributes
+.gitignore
+.gitmodules
+.release-please-manifest.json
+.vscodeignore
+release-please-config.json
+tsconfig.json
+package-lock.json
+CLAUDE.md
+*.vsix

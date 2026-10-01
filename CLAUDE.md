@@ -42,8 +42,20 @@ The template is vendored here as a git submodule at `.code-server/`, the same wa
 monorepo vendors it, for two reasons: this project is worked on under the rules the template ships,
 and it is developed inside a container built from the template's own image.
 
-**There is no code yet.** The chain is at the SRS; the first story is next, and it starts in
-the template.
+The first story's image half shipped in the template's **v2.2.0**, which this repository's
+submodule is pinned to and which `templateMinVersion` in `package.json` names as the minimum. The
+extension itself exists but opens nothing yet: it wakes up on a project built on the template,
+works out what it is looking at, and writes that into an output channel. Generating the dev
+container configuration is the next task.
+
+## Commands
+
+```bash
+npm test             # unit tests, TypeScript run directly, no build
+npm run typecheck    # the only thing that verifies the types — node --test strips them
+npm run test:bundle  # builds, then loads the bundle and checks what ships
+npm run package      # the .vsix
+```
 
 ## The two repositories
 
