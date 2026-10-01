@@ -113,6 +113,32 @@ the launcher gone rather than announced — so the period was protecting nobody 
 release's worth of dead code plus a `@manual` scenario that would never be run. The amendment at the
 bottom records what that costs and what it does not.
 
+### Composing and building the image from the editor (FR-6x)
+
+Added 2026-10-01, when absorbing stack selection stopped being an epic named for later. See the
+amendment at the bottom for the four decisions this group is the shape of.
+
+- **FR-61** — The editor asks what the image should contain, in steps, using the editor's own
+  pickers: which stacks, then a version for each stack chosen, then memory, swap and CPU count.
+  One step per question `whiptail` used to ask.
+- **FR-62** — The answers are written to `.code-server.stack.json`, which stays the only record of
+  what a project selected. The extension adds no second place where that is written down.
+- **FR-63** — The extension never composes the Dockerfile. It writes the manifest and invokes
+  `setup` non-interactively; composition stays one implementation, in the repository whose CI builds
+  an image per stack.
+- **FR-64** — The build runs in an editor terminal rather than in the extension's output channel: it
+  takes minutes, writes a great deal, and has to be readable after the fact and interruptible while
+  running.
+- **FR-65** — `whiptail` stops being a prerequisite of anything. Without the editor, the manifest is
+  edited by hand and `setup` is run; the host's prerequisites become `jq` and `docker`.
+- **FR-66** — Each refusal names its own cause and changes nothing: no `docker` on the host, no
+  manifest where one is required, a manifest that cannot be parsed, a build that fails, and a build
+  the person cancelled. A cancelled build is not a failed one and does not read as one.
+
+**FR-61 through FR-64 are not independent, and the order they ship in is fixed by FR-63:** the
+non-interactive `setup` has to exist before anything can invoke it. The stories below are in that
+order for that reason and not by preference.
+
 ## Non-functional requirements
 
 - **NFR-1 — Resource isolation.** The editor process is never subject to the container's `cpuset`
@@ -201,6 +227,31 @@ shell is `/bin/false` and no remote user is declared. Its extension half follows
 carries the image half, which is also what gives the minimum template version a real value instead
 of a placeholder.
 
+### Epic: the editor composes and builds this project's image
+
+**`whiptail` is retired and the questions it asked are asked by the editor instead.**
+
+The epic closes when selecting stacks, versions and limits happens in the editor, the build runs
+from there, and nothing on the host needs `whiptail` any more. `setup` keeps composing and building;
+what moves is the asking.
+
+**The cold-start problem this epic was expected to carry turns out not to apply.** It was named here
+as "a project with no image cannot have its stacks analysed by an agent, because the agent runs
+inside the image". That is about *detecting* what a project needs, which belongs to the adoption
+epic. This epic only *asks*, and asking happens on the host in the editor, before any container
+exists.
+
+| # | Story | Repo | Why in that order |
+|---|---|---|---|
+| 1 | the template stops asking | template | FR-63: the non-interactive `setup` has to exist before anything can invoke it |
+| 2 | the editor asks | extension | needs a manifest format to write and a `setup` to hand it to |
+| 3 | the editor builds | extension | needs both of the above |
+
+Story 1 is the only one with image builds behind it, and it is where `whiptail` actually leaves:
+`setup`, `init`, `packages.sh` and the host prerequisite list. Stories 2 and 3 are the extension's
+and are tested without an editor — the five steps are pure functions over a manifest, and the build
+is a command that composes a task.
+
 ### Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
@@ -214,12 +265,8 @@ and none starts before the epic above closes. **Two of them stopped being option
   also gives up the fallback that kept code-server in scope originally: a browser against a
   loopback port when the Dev Containers extension will not attach. Recommended first of the two,
   because `setup` keeps working while the image moves under it.
-- **Absorbing stack selection** — *intended*, and no longer merely named. The image composition
-  `.code-server/setup` performs today, reachable from the editor. This epic's own requirement
-  stands regardless: that logic must be left invocable rather than only interactive. It carries a
-  cold-start problem of its own — a project with no image cannot have its stacks analysed by an
-  agent, because the agent runs inside the image — which is why it is recommended second, against
-  an image that has stopped moving.
+- **Absorbing stack selection** — **decomposed below**, as *the editor composes and builds this
+  project's image*. It is no longer in this list.
 - **Starting a new project** — the initialization interview, conducted inside the project's own
   container as its first session.
 - **Adopting the template into an existing project** — stack detection by heuristic on the host,
@@ -275,6 +322,32 @@ What the grilling changed, against what went in:
 
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
+
+### Amendment, 2026-10-01 (fifth)
+
+**`whiptail` is being retired, which turns "absorbing stack selection" from an epic named for later
+into FR-61 through FR-66 and a decomposition.** The request was specific: a screen in the extension
+replacing the `whiptail` prompts, and `init` as a button beside it. Four decisions came out of
+grilling it, and each is a requirement above rather than a note:
+
+- **The editor's own pickers, in steps, not a webview.** One step per question `whiptail` asked, so
+  the mapping is checkable; a webview is HTML, a content security policy, message passing and a
+  theme to match, which is a project inside this project for a checklist and three numbers.
+- **The extension writes the manifest and invokes `setup`; it never composes the Dockerfile.**
+  Two implementations of one composition is the failure this template has already paid for once —
+  CI and `setup` each built the concatenation themselves, the copies drifted, and
+  `stack-build (android)` failed in CI in a way that never reproduced through `setup`.
+- **The build runs in an editor terminal.** It takes minutes and writes a great deal; an output
+  channel cannot be cancelled, and a build nobody can stop is a build somebody kills from another
+  window.
+- **Without the editor, the manifest is the interface.** It already is the only record; `setup`
+  reads it and builds. The host's prerequisites become `jq` and `docker`, and `whiptail` leaves the
+  list rather than becoming optional.
+
+**What this gives up.** A host-only user loses the checklist entirely: selecting a stack means
+editing JSON. That is acceptable for one user with an editor, and it is the kind of thing this
+document should say out loud rather than discover later — the alternative considered was `setup`
+flags, rejected as a second way of saying what the manifest already says.
 
 ### Amendment, 2026-10-01 (fourth)
 
