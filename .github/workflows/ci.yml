@@ -111,11 +111,37 @@ jobs:
       - name: the reasons came with the files
         run: bash tools/the-history-is-reachable.test.sh
 
+  guard-is-sound:
+    # The guard below decides whether every other check here is trusted, so
+    # nothing else covers its own correctness: **its failure mode is passing
+    # when it should fail**, which running it reveals nothing about. This runs
+    # the guard's own fixtures and does gate.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the guard refuses what it should refuse
+        run: bash scripts/every-test-has-a-runner.test.test.sh
+
+  nothing-was-dropped:
+    # **Expected to fail until the pipeline task lands, and deliberately not in
+    # ci-green's needs until then.** 25 of this repository's 30 test files have
+    # nothing running them: they arrived with the image's content and their jobs
+    # have not. The guard is written before those jobs rather than after so that
+    # it is seen failing for its own reason — a guard first run against a
+    # complete pipeline is green on day one and has proven nothing.
+    #
+    # The next task adds this to `needs` in the same change that makes it green.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: every test file has something that runs it
+        run: bash scripts/every-test-has-a-runner.test.sh
+
   # The one check branch protection requires. Named so it never changes, the
   # same reason the template's does.
   ci-green:
     if: always()
-    needs: [typecheck, unit, package, integration, the-move]
+    needs: [typecheck, unit, package, integration, the-move, guard-is-sound]
     runs-on: ubuntu-latest
     steps:
       - name: fail unless every job above succeeded

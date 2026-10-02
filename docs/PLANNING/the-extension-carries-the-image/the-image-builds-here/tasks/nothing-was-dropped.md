@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-image-builds-here
 epic: the-extension-carries-the-image
-pr:
+pr: 43
 ---
 
 # Task: nothing-was-dropped
@@ -127,4 +127,27 @@ nobody remembered to add is a check that does not gate.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #43. The guard is red at **25 of 30** — the number this design measured — and its own
+test is green at 6 of 6.
+
+**Its own test was red in a way worth recording.** With the guard absent, **four of the six checks
+passed for the wrong reason**: a refusal and a missing file both exit non-zero, so every
+"expect a refusal" case was satisfied by the guard not existing. The harness now asserts the guard
+is present and executable before running anything, and requires a refusal to be a refusal *in
+words* — a crash produces no output and no longer counts. That was the first run of the file telling
+me my own harness was the thing being tested.
+
+**The self-check fired for a cause the message did not name.** `scripts/every-test-has-a-runner.test.sh`
+was reported as missing from the list of tests to account for, and the reason was not exemption —
+the file was simply not committed yet, because the list comes from `git ls-files` rather than from
+the working tree. Correct behaviour, incomplete message; the message now names both causes.
+
+**Two jobs, deliberately different in weight.** `guard-is-sound` runs the fixtures and gates.
+`nothing-was-dropped` runs the guard and is **not** in `ci-green`'s needs, so `master` carries a
+visibly failing check that does not block — which is what the design said it would, and the next
+task adds it to `needs` in the same change that makes it green.
+
+**The glob's permissiveness is now observable rather than argued.** With two jobs added, the
+extraction reports 5 runner patterns and the orphan count fell from 27 to 25 — the guard and its
+own test finding their runners. The matrix case is covered by a fixture rather than by the live
+workflow, which is why it is a claim the test can make before the stack jobs exist.
