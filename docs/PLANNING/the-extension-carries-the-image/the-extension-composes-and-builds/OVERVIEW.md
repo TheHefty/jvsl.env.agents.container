@@ -58,7 +58,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-extension-composes-from-what-it-carries.md`](tasks/the-extension-composes-from-what-it-carries.md) | Draft |
+| 1 | [`tasks/the-extension-composes-from-what-it-carries.md`](tasks/the-extension-composes-from-what-it-carries.md) | Done — #52 |
 | 2 | the build runs without a submodule | not written |
 
 **Task 1 was measured and the sketch was wrong about the hard part.** It assumed the work was

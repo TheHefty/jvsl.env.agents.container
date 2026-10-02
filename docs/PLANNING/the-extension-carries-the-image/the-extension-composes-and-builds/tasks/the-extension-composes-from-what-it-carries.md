@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-extension-composes-and-builds
 epic: the-extension-carries-the-image
-pr:
+pr: 52
 ---
 
 # Task: the-extension-composes-from-what-it-carries
@@ -90,4 +90,36 @@ than a real build.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #52. 125 unit tests, 10 bundle, typecheck clean.
+
+**Three places computed a path into the project's submodule, not one.** The measurement found the
+build; wiring it found that the **questions** read the stacks from there too — so a project with no
+`.code-server/` could not even be *configured*, which this task did not know when it was written.
+All three are `carried(extensionPath, …)` now, and `SelectionView` takes the path at construction,
+because what the extension carries is not a property of the project being viewed.
+
+**The redirect was wrong, and a test regex found it by accident.** `A; B </dev/null` redirects B
+alone — so the composer, the step that would actually ask something, kept the terminal's pty on
+stdin. The whole script is grouped now and the test asserts the group rather than the last line. I
+was writing a regex for the build context and the input it printed showed the redirect in the wrong
+place.
+
+**One assertion of mine was wrong in a way worth keeping.** *"Nothing in the build names a path
+under `.code-server`"* failed — on the manifest, which is called `.code-server.stack.json`, lives
+at the workspace root, and keeps that name after the submodule is gone. **The slash is the whole
+assertion**, and forbidding the substring forbade the file the build is supposed to read.
+
+**`buildCommand` is deleted, and the typecheck did not notice its unused import.** With `setup` out
+of the build path it had no caller, and two ways to start a build is how one outlives its reason.
+Six comments still named it afterwards; a reference that goes nowhere is worse than none, because a
+reader follows it and finds the reasoning missing rather than moved.
+
+**The dev-versus-installed seam is asserted from two sides**, as the design said: `template.test.ts`
+pins the expression and `vsix.test.ts` reads the artifact for
+`core/compose-dockerfile.sh`, `core/Dockerfile.frag` and `core/versions.json`. Neither alone is the
+claim. The story's `@manual` pass is still what closes it.
+
+**And one decision this design did not anticipate needing.** An unreadable manifest means no stacks
+rather than an error: the build composes core alone, which is a working image. Refusing to build
+because a file that could not be parsed *might* have named something is worse, and the questions
+are what refuse an unreadable manifest — they refuse it rather than overwriting it.
