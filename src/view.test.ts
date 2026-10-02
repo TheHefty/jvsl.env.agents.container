@@ -79,3 +79,20 @@ test('a manifest key the extension does not own is not shown as a limit or a sta
   })
   assert.ok(!rows.some((r) => /teamNotes|publish/.test(r.label)), JSON.stringify(rows))
 })
+
+test('a failed build leaves a row, and a cancelled one says cancelled', () => {
+  // FR-66's surface. The two have to read differently or stopping a build looks
+  // like breaking one — and there is no notification, so this row is the only
+  // place either is said.
+  const failed = viewItems({ ...configured, lastBuild: 'failed' })
+  assert.deepEqual(failed.at(-1), { kind: 'build', label: 'last build', detail: 'failed' })
+
+  const cancelled = viewItems({ ...configured, lastBuild: 'cancelled' })
+  assert.equal(cancelled.at(-1)?.detail, 'cancelled')
+})
+
+test('no build in this session leaves no row', () => {
+  // Rather than "last build: never", which is a row that is always there and
+  // says nothing on the first open.
+  assert.ok(!viewItems(configured).some((r) => r.kind === 'build'), 'a build row appeared')
+})
