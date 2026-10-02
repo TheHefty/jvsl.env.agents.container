@@ -18,17 +18,24 @@ host editor to the same container by hand was measured as the fix.
 This project exists to make that arrangement the normal one: the editor on the host, outside the
 container's CPU and memory limits, and everything that must stay contained still contained — the
 agents in their jail, the toolchains, the nested daemon. The deliverable is a VS Code extension
-that stands up the container and connects the host editor to it, replacing the Tauri launcher the
-template ships today. The constraint that makes it a project rather than a shortcut: moving the
-editor out must not weaken the isolation the container exists for.
+that stands up the container and connects the host editor to it. The constraint that makes it a
+project rather than a shortcut: moving the editor out must not weaken the isolation the container
+exists for.
+
+**The deliverable has grown twice since this was written**, both times recorded in an amendment
+below. It replaced the Tauri launcher the template shipped — that launcher is deleted. And as of the
+third amendment it carries the image content itself: a project no longer consumes a template, it
+installs this extension.
 
 ## In scope / out of scope
 
 **In scope.**
 
-- Opening a project that already carries `.code-server/`: generating its dev container
-  configuration from `.code-server.stack.json` and the host's actual capabilities, standing the
-  container up, and connecting the host editor to it as `abc` in `/config/workspace`.
+- Opening a project that is already set up: generating its dev container configuration from
+  `.code-server.stack.json` and the host's actual capabilities, standing the container up, and
+  connecting the host editor to it as `abc` in `/config/workspace`. **Said as "a project that
+  already carries `.code-server/`" until the third amendment**, which is being specific about a
+  submodule that is going away; what the flow actually needs is the manifest.
 - Enforcing isolation across that boundary — no ssh-agent, gpg-agent, X11, host git credential
   helper or host gitconfig reaching the container, and Workspace Trust left on.
 - Deprecating `.code-server/start` and its Tauri window.
@@ -57,8 +64,9 @@ included:
   template into an existing project, and the agents screen are later epics. The first release does
   one thing: open a project that is already set up.
 - **Agents other than Claude Code**, and any change to where agent credentials live.
-- **Changes to the container image.** Those are the template's, in its own repository, under its
-  own epic. This project depends on them and does not contain them.
+- ~~**Changes to the container image.** Those are the template's, in its own repository, under its
+  own epic. This project depends on them and does not contain them.~~ **Struck by the third
+  amendment.** This project contains them.
 - **Publishing to a marketplace**, and **telemetry of any kind**.
 
 ## Stakeholders
@@ -117,12 +125,14 @@ included:
   agents run inside the container, in their jail. Reversing that reopens all of them.
 - **The Dev Containers extension being discontinued or relicensed.** The delegation above stops
   being available and the scope changes shape.
-- **Replacing the image's base.** code-server is not installed into the image, it *is* the image:
-  `FROM lscr.io/linuxserver/code-server`. s6-overlay, the `abc` user, `PUID`/`PGID`, `/config` as
-  the bind-mounted home and the whole `cont-init` mechanism come from that base and are installed
-  nowhere in the template. Every isolation and ownership decision under this charter rests on that
-  convention, so changing the base reopens them — which is why taking code-server out is an epic
-  and not a task.
+- **Replacing the image's base again.** This fired once already: the base was
+  `FROM lscr.io/linuxserver/code-server` and is now
+  `ghcr.io/linuxserver/baseimage-debian:trixie`, pinned by digest. What made it a charter-level
+  change is unchanged and is what this clause now guards — s6-overlay, the `abc` user,
+  `PUID`/`PGID`, `/config` as the bind-mounted home and the whole `cont-init` mechanism arrive from
+  the base and are installed nowhere. Every isolation and ownership decision here rests on those
+  five. Leaving the LinuxServer family reopens all of them, and the swap that already happened
+  stayed inside it for exactly that reason.
 
 ## Outcome
 
@@ -171,6 +181,91 @@ claim that was actually doing the work — and the extensions are recorded as a 
 own. The alternative considered and rejected was declining the proprietary extensions to keep the
 original sentence true, which would have traded a working C# debugger for a property of a
 document.
+
+### Amendment, 2026-10-02 (third)
+
+**The template stops being something a project consumes, and this extension becomes the whole
+delivery.** Decided by João Lima on 2026-10-02, in these words: *"eu não quero mais o template e o
+code-server eu quero que a extensão inicalize tudo pra mim."*
+
+What that means concretely. The extension carries `core/` and `stacks/` in its own bundle, composes
+the Dockerfile itself, and builds it. A project gets no `.code-server/` submodule, no `setup`, and
+no second repository to bump. **"Changes to the container image — those are the template's, in its
+own repository. This project depends on them and does not contain them"** is struck from the
+non-goals: this project now contains them. So is the SRS's rejected alternative *"One repository for
+the extension and the image"*, whose stated reason — the image has CI that builds images and this
+does not — **does not disappear, it becomes work.** The extension's repository has to grow the image
+builds, the per-stack `image.test.sh` runs, and the guards, and its release train gates on them from
+then on.
+
+**What this costs, so that nobody discovers it later.** Four thousand six hundred and twenty-nine
+lines of shell become this project's to own — `core/` is 3417 across 34 files, `stacks/` 1212 across
+39 — plus 1066 lines of guards that exist because each of them caught something. Changing one
+stack's offered version becomes an extension release rather than a submodule bump. And a rule
+corrected in the normative documents reaches a project by extension update *and a rebuild*, where
+today it reaches by bumping a pointer; whether that is better is genuinely arguable, and it is
+chosen because a pointer every project has to remember to bump is the thing that was not happening.
+
+**FR-74 is deleted, and it merged today.** The minimum template version — read from
+`version.txt`, compared with `isAtLeast`, refusing to open below `5.0.0` — exists to catch a project
+whose submodule is behind the extension. When the extension *is* the template there is no second
+version to disagree with, so the requirement, the three refusal messages and the version-reading
+machinery all go. Recorded plainly because the work shipped hours before this amendment, and a
+requirement quietly left in place after its reason went is how a check outlives what it checked.
+
+**The process documents travel in the image, and not by absolute import.** They must keep arriving
+with the environment rather than as copies a project maintains — that property is the reason the
+submodule arrangement existed and it is not being given up. The obvious mechanism is an absolute
+`@/opt/.../MODES.md` in a project's `CLAUDE.md`, and it was rejected on a measurement. Claude Code's
+documentation is explicit that absolute paths are allowed, and equally explicit about what an import
+resolving outside the working directory is:
+
+> The first time Claude Code encounters external imports in a project, it shows an approval dialog
+> listing the files. **If you decline, the imports stay disabled and the dialog doesn't appear
+> again.**
+
+One decline leaves an agent permanently working with no modes, no rules and no gates, and nothing
+ever says so again — a worse version of the silent-import failure this charter's own project
+documents as unacceptable. A symlink does not escape it; a target outside the working directory gets
+the same treatment, and **no setting pre-approves the dialog**, so an extension cannot clear it on
+the user's behalf.
+
+**The documentation names the escape, and it is the mechanism.** *"To load shared rules without that
+approval, keep them in `~/.claude/rules/`, where they apply to every project on your machine."* In
+the container `~` is `/config` and the image already sets `CLAUDE_CONFIG_DIR=/config/.claude`, so
+both readings give the same path and there is nothing to get wrong. The documents live at
+`/config/.claude/rules/`, **outside the workspace, which is where they were asked to be**, and they
+load with no import and no dialog. Nothing in a project's `CLAUDE.md` points at them.
+
+Two consequences, each a decision rather than a detail. `/config/.claude` is bind-mounted from the
+host's own `~/.claude`, so a hook writing there would write into the user's personal configuration
+and reach every project on that machine — the generated configuration therefore mounts a volume
+over `/config/.claude/rules` alone. And everything in `rules/` is resident in every session, while
+today `WORKFLOW.md` is linked rather than imported and a consuming monorepo deliberately does not
+import `INITIALIZATION.md` at 13.4 KiB. So the hook populates `rules/` with what must govern every
+turn and leaves the rest at a readable path for linking. **What lands there is derived state, not a
+copy** — rewritten on every boot like the generated Dockerfile already is, and never edited in
+place.
+
+**`CLAUDE.md` and `AGENTS.md` ship in the bundle and are written into the project**, which is what
+makes a project need nothing but this extension. They are written **when absent and never over
+somebody's work**: both are tracked in git and carry a project's own standing answers — this
+extension's own is one, and the reference monorepo's is 20 KiB of them — so copying over them is
+destructive in a way the generated configuration is not. The pattern is already in this codebase,
+in `devcontainer.ts`: *anything else, including a file that cannot be parsed, is somebody's work,
+and the open refuses rather than overwriting it.*
+
+**What does not change.** Pair Programming Mode, English, MIT, the Dev Containers extension as the
+load-bearing non-free dependency, and every isolation constraint: no ssh-agent, gpg-agent, X11, host
+git credential helper or host gitconfig crossing into the container, Workspace Trust left on, and
+the agent unable to write what runs outside its jail. This amendment changes who delivers the image,
+not what the image is allowed to do.
+
+**And the base-replacement clause below has already fired.** "Replacing the image's base" is listed
+as a thing that would change this charter, in the present tense, describing a base that is no longer
+there: template `v5.0.0` moved it to `ghcr.io/linuxserver/baseimage-debian:trixie`. The clause was
+right that it reopened every ownership decision — that is what the epic was — and it is rewritten
+below as what it now guards rather than as a prediction.
 
 ### Amendment, 2026-10-01 (second)
 
