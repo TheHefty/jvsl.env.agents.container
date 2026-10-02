@@ -222,6 +222,25 @@ nothing else: no submodule, no `setup`, no second repository to bump.
 - **FR-87** — What the image contains is verified by image builds in **this** repository: a build
   per stack, each stack's own in-image assertions, and the guards. A requirement about an image that
   no CI builds is a claim, not a requirement.
+- **FR-88** — The extension chooses the folder. A project is opened by picking its directory from
+  the extension, not by the directory having been opened first, and the extension activates with no
+  folder open.
+- **FR-89** — A project whose image does not exist is **built**, not refused. This reverses FR-23,
+  which was right while building was another repository's job.
+- **FR-90** — A new project is scaffolded into a directory the user chooses: the manifest, the
+  instruction files of FR-83, and `.ai-memory.toml` when asked for. The questions are the ones
+  FR-61 already asks, plus `ai-memory` and the location.
+- **FR-91** — Scaffolding initialises git and commits once, **and only into a directory that is
+  empty or not already a repository.** Anything else is somebody's work: it refuses and names what
+  it found. The same rule as FR-83, for the same reason.
+- **FR-92** — A panel offers both entries with no folder open, and offers nothing it cannot do. An
+  entry present before its capability exists is worse than an absent one.
+
+**The two flows are one flow with a prefix.** Creating a project is scaffolding followed by opening
+it, and after FR-90 writes the manifest there is nothing left that is specific to creation. This is
+worth stating as a requirement-level fact rather than an implementation note, because two flows that
+look similar and are implemented twice diverge — which is the reason the launcher was deleted
+rather than kept as a fallback.
 
 **FR-84 is the one with a measured rejection behind it, and the measurement is why it reads as it
 does.** The obvious mechanism is an absolute `@/opt/.../MODES.md`. Claude Code classifies an import
@@ -363,10 +382,47 @@ it as the place that content is authored and CI-verified while this one vendors 
 — rejected because it preserves exactly the two release trains and the pointer-to-bump that this
 epic exists to remove.
 
+**The flow this epic delivers**, as described by João Lima on 2026-10-02. A panel with two entries,
+and the second is the whole of the first after its scaffolding step:
+
+| | |
+|---|---|
+| **New project** | ask the stacks and versions, whether to use `ai-memory`, and where the project goes → write the scaffolding and initialise git → compose, build, and reopen the host editor in the container |
+| **Open project** | choose the folder → a manifest there means compose and build for it → no manifest means the same stack panel the new-project flow uses |
+
+**It merges three epics that were named separately** — *starting a new project*, *adopting the
+template into an existing project*, and this one — and the charter's non-goal *"the other two
+flows… are later epics"* falls with it. *The agents screen* stays out.
+
+**And it deletes the hardest part of adoption.** That epic was described here as "stack detection by
+heuristic on the host, confirmed by the user". The flow asks instead: no manifest means the stack
+panel, the same one a new project sees. There is no heuristic to be wrong, and nothing to confirm.
+
+**Three things the flow needs that no requirement covered.**
+
+`remote-containers.reopenInContainer` — already what this extension invokes — **takes no folder and
+acts on the current window.** So the new-project flow is two-phase by construction: scaffold, then
+`vscode.openFolder`, which restarts the extension host and discards everything in memory, then hand
+over on activation in the new folder. The handoff has to survive that reload and must not be written
+into the project, which is what extension-scoped state is for. **The compensation is that the flows
+converge**: once the scaffolding exists, creating *is* opening, and there is one path rather than
+two.
+
+**The extension stops being scoped to a project.** It activates today on
+`workspaceContains:.code-server.stack.json`; a panel offering to create a project has to exist with
+no folder open at all, which means `onStartupFinished` and loading in every window on that host.
+Accepted, with activation doing the least it can — register the view and nothing else. The cost is
+startup weight in unrelated windows, not wrong behaviour.
+
+**FR-23 is reversed.** It refuses a project whose image does not exist, naming the command that
+builds it. The flow builds it. That was correct while building was somebody else's job and is not
+once FR-81 moves composition here.
+
 **The order is fixed by what cannot be verified until the CI exists.** FR-87 comes first: moving
 4629 lines of shell into a repository that cannot build an image means every later story lands
-unverified, and "it worked in the other repo" is not a result. The documents story comes last,
-because it is the only one whose acceptance needs a running container.
+unverified, and "it worked in the other repo" is not a result. The panel comes after the
+capabilities it offers exist, because a button for a thing that is not built yet is a worse state
+than no button.
 
 | # | Story | Why in that order |
 |---|---|---|
@@ -375,6 +431,9 @@ because it is the only one whose acceptance needs a running container.
 | 3 | the extension composes and builds | FR-81 — needs the content to compose from |
 | 4 | a project needs nothing but the extension | FR-83 — the files it writes, and refusing to overwrite |
 | 5 | the documents arrive with the image | FR-84, FR-85, FR-86 — the only story needing a container to accept |
+| 6 | opening a project the extension chose | FR-88, FR-89 — folder selection, build-on-open, and the convergence of the two flows |
+| 7 | creating a project from nothing | FR-90, FR-91 — scaffolding, git, and the handoff across the reload |
+| 8 | the panel | FR-92 — last, because it is the entry to everything above |
 
 **Story 1 is where the template repository stops being the authority** and is the one to grill
 hardest: it is a CI move, and a CI move that silently drops a job leaves a guard that reports
@@ -466,8 +525,18 @@ the reasoning and the costs are there and are not repeated. What this document c
 | FR-23 | "The extension does not build images" had been struck in the fifth amendment and left in the text |
 | FR-63 | **reversed** — composition moves here, with the CI that builds an image per stack |
 | FR-65 | `setup`'s interactive path outlived its only caller |
-| new | **FR-81 – FR-87**, and the epic *the extension carries the image* |
+| FR-23 | **reversed too** — the flow builds a missing image instead of refusing it |
+| new | **FR-81 – FR-92**, and the epic *the extension carries the image* |
 | alternative | *"One repository for the extension and the image"* — **reversed**, accepting both of its costs |
+| non-goal | *"the other two flows… are later epics"* — **falls**; the flow merges them in |
+
+**The flow was given after the first draft of this amendment and reshaped it.** Three epics become
+one — new project, adoption, and this — and adoption loses its hardest part: it was to detect stacks
+by heuristic and have the user confirm, and the flow simply asks the question a new project is asked
+when no manifest is found. Nothing to detect wrongly. Two costs arrive with it: the extension
+activates with no folder open, so it loads in every window on the host, and the new-project flow is
+two-phase because `reopenInContainer` takes no folder and `vscode.openFolder` restarts the extension
+host. Both are recorded with the epic.
 
 **`jvsl.env.agents.code-server` is absorbed and archived**, decided by João Lima on 2026-10-02. The
 archive happens after a green image build here, never before. The alternative — keeping it as where
