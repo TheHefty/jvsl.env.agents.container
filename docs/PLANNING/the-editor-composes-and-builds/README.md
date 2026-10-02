@@ -2,7 +2,7 @@
 
 **`whiptail` is retired and the questions it asked are asked by the editor instead.**
 
-Owned by this repository's [`SRS.md`](../../SRS.md) — **FR-61** through **FR-67**, with the decisions
+Owned by this repository's [`srs/`](../../srs/) — **FR-61** through **FR-67**, with the decisions
 they are the shape of in its fifth amendment.
 
 Story 1 — *the template stops asking* — is the template's and lives in

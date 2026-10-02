@@ -2,7 +2,7 @@
 
 **The image carries no editor, and nothing in it exists for one.**
 
-Owned by this repository's [`SRS.md`](../../SRS.md) — **FR-71** through **FR-74**, with the decisions
+Owned by this repository's [`srs/`](../../srs/) — **FR-71** through **FR-74**, with the decisions
 they are the shape of in its sixth amendment.
 
 Stories 1, 2 and 4 are the template's and live in
