@@ -25,7 +25,8 @@
     "ms-vscode-remote.remote-containers"
   ],
   "activationEvents": [
-    "workspaceContains:.code-server.stack.json"
+    "workspaceContains:.code-server.stack.json",
+    "workspaceContains:.code-server/setup"
   ],
   "main": "./dist/extension.cjs",
   "templateMinVersion": "2.2.0",
@@ -34,6 +35,10 @@
       {
         "command": "jvsl.devContainer.showDetected",
         "title": "Dev Container: Show What Was Detected"
+      },
+      {
+        "command": "jvsl.devContainer.configure",
+        "title": "Dev Container: Configure Stacks and Limits"
       }
     ]
   },
