@@ -16,12 +16,12 @@ second version to keep in step: the extension composes and builds from what it b
 |---|---|---|
 | 1 | [`the-image-builds-here`](the-image-builds-here/) | **Done** |
 | 2 | [`the-bundle-carries-the-images-content`](the-bundle-carries-the-images-content/) | Draft |
-| 3 | the extension composes and builds | not written |
-| 4 | a project needs nothing but the extension | not written |
-| 5 | the documents arrive with the image | not written |
-| 6 | opening a project the extension chose | not written |
-| 7 | creating a project from nothing | not written |
-| 8 | the panel | not written |
+| 3 | [`the-extension-composes-and-builds`](the-extension-composes-and-builds/) | Draft |
+| 4 | [`a-project-needs-nothing-but-the-extension`](a-project-needs-nothing-but-the-extension/) | Draft |
+| 5 | [`the-documents-arrive-with-the-image`](the-documents-arrive-with-the-image/) | Draft |
+| 6 | [`opening-a-project-the-extension-chose`](opening-a-project-the-extension-chose/) | Draft |
+| 7 | [`creating-a-project-from-nothing`](creating-a-project-from-nothing/) | Draft |
+| 8 | [`the-panel`](the-panel/) | Draft |
 
 **The order is fixed by what cannot be verified until the CI exists**, not by preference. Moving
 4629 lines of shell into a repository that cannot build an image leaves every later story
