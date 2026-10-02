@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** — one `@manual` pass owed |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -92,4 +92,11 @@ Written after this gate, not before.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+**Done in #50.** The package carries 63 files where it carried 6. One `@manual` pass is owed: that
+an *installed* extension has the files where the code looks for them.
+
+**That pass may be cheaper than it looked.** Story 3's measurement found the seam is closed by a
+decision taken two stories ago for a different reason — `core/` and `stacks/` merged at their
+original paths rather than under a prefix, so `join(extensionPath, 'core')` is the same expression
+in a checkout and in an installation. It is still owed, because that is an argument and the pass is
+an observation.
