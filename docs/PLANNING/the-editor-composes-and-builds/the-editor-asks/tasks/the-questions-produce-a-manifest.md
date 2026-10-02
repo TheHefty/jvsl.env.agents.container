@@ -143,6 +143,12 @@ and push went ahead anyway, because they were separate commands rather than chai
 the Outcome is here. It is the second time today that acting on what I remembered about a branch rather
 than checking cost a correction.
 
+**One scenario was not satisfied when this shipped, and the gap was found by reading the story's own
+criteria back.** *"Confirming with nothing changed still builds"* was in the feature file from the
+start, and this command wrote the manifest and told the reader to run `setup` by hand. The reason was
+ordering rather than oversight — the build did not exist yet, it is story 3's — but the command was
+merged describing itself as complete. Fixed in #28, once there was something to call.
+
 **What is not covered, and is the story's `@manual`:** which picker appears in which order, and whether
 the prompts read clearly. A mock of `showQuickPick` would assert that a pure function was called with
 what it returned.
