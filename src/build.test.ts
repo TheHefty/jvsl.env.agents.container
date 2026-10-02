@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  buildCommand,
   buildOutcome,
+  composeAndBuildCommand,
   composeCommand,
   detectManager,
   hostProblems,
@@ -17,23 +17,6 @@ import {
  * None of this needs an editor. What a mock of `createTerminal` would assert is
  * that it was handed what `buildCommand` returned, which is a test of the mock.
  */
-
-test('the command is the script, with standard input redirected', () => {
-  // `createTerminal` gives its process a pty, and a pty is what `setup` uses to
-  // decide whether to ask. Without the redirect the build stops on questions the
-  // editor has already answered.
-  const cmd = buildCommand('/home/me/p/.code-server/setup')
-  assert.equal(cmd.shellPath, '/bin/sh')
-  assert.deepEqual(cmd.shellArgs, ['-c', 'exec "$0" </dev/null', '/home/me/p/.code-server/setup'])
-})
-
-test('a path with a space in it is still the path', () => {
-  // The reason the path is an argument rather than part of the command string:
-  // nothing has to be quoted, so nothing can be quoted wrong.
-  const cmd = buildCommand('/home/me/my project/.code-server/setup')
-  assert.equal(cmd.shellArgs.at(-1), '/home/me/my project/.code-server/setup')
-  assert.ok(!cmd.shellArgs[1]?.includes('my project'), cmd.shellArgs[1])
-})
 
 test('an exit code of zero is a build that worked', () => {
   assert.equal(buildOutcome(0), 'ok')
@@ -150,4 +133,30 @@ test('nothing in the build names a path inside a .code-server/ submodule', () =>
   const c = composeCommand('/ext', '/work/my-project', ['java'])
   const everything = [c.script, c.manifest, c.context, c.image, ...c.stacks].join(' ')
   assert.ok(!everything.includes('.code-server/'), everything)
+})
+
+test('the shell command composes and builds, reading nothing from the project but its manifest', () => {
+  const c = composeCommand('/ext', '/work/my-project', ['java'])
+  const { shellArgs } = composeAndBuildCommand(c, '/tmp/out.Dockerfile')
+  const script = shellArgs[shellArgs.length - 1] ?? ''
+  assert.match(script, /STACK_MANIFEST=/)
+  assert.ok(script.includes('/ext/core/compose-dockerfile.sh'), script)
+  assert.ok(script.includes('docker build'), script)
+  // The context, which is the part most easily got wrong.
+  assert.match(script, /docker build -f \S+ -t \S+ '\/ext'/)
+  // And the redirect covers the composer too, not just the last command:
+  // `A; B </dev/null` redirects B alone, which would leave the composer with
+  // the terminal's pty on stdin and a question nobody can see.
+  assert.match(script, /^\{[\s\S]*\} <\/dev\/null$/)
+})
+
+test('a path with a space in it does not become a quoting problem', () => {
+  // The reason buildCommand passes the script as $0 rather than inside the
+  // command string. Composing now means a command string again, so the
+  // quoting has to be deliberate rather than inherited.
+  const c = composeCommand('/my ext', '/work/my project', ['java'])
+  const { shellArgs } = composeAndBuildCommand(c, '/tmp/out file.Dockerfile')
+  const script = shellArgs[shellArgs.length - 1] ?? ''
+  assert.ok(script.includes("'/my ext/core/compose-dockerfile.sh'"), script)
+  assert.ok(script.includes("'/work/my project/.code-server.stack.json'"), script)
 })

@@ -25,24 +25,6 @@ export interface HostProblem {
 }
 
 /**
- * The command the terminal runs.
- *
- * **`/bin/sh` is in the path for exactly one reason: the redirect.**
- * `createTerminal` gives its process a pty, and a pty is what `setup` uses to
- * decide whether to ask — so without `</dev/null` the build would stop on
- * questions the editor has already answered, and `createTerminal` exposes no way
- * to set standard input.
- *
- * This is not what `sendText` was rejected for. Nothing is typed into a shell
- * somebody can edit, the exit code is observable, and **the script's path arrives
- * as `$0` rather than inside the command string** — so a directory with a space
- * in it is not a quoting problem.
- */
-export function buildCommand(setupPath: string): { shellPath: string; shellArgs: string[] } {
-  return { shellPath: '/bin/sh', shellArgs: ['-c', 'exec "$0" </dev/null', setupPath] }
-}
-
-/**
  * What a closed terminal means.
  *
  * **No exit code is a cancellation, not a failure.** A terminal closed mid-build
@@ -181,4 +163,39 @@ export function composeCommand(
     context: extensionPath,
     image: `${basename}-dev`,
   }
+}
+
+/** Single-quote for `sh`, which is what makes a path with a space survive. */
+function quote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`
+}
+
+/**
+ * Compose, then build, in one terminal.
+ *
+ * **The quoting is deliberate here and it was inherited before.**
+ * `buildCommand` passes the script as `$0` precisely so a directory with a
+ * space in it is not a quoting problem; composing needs a command string
+ * again, which gives that problem back. Every path is quoted, and the test
+ * beside this one uses paths with spaces rather than trusting the reading.
+ *
+ * `</dev/null` stays for the reason `buildCommand` gives: `createTerminal`
+ * provides a pty, and a pty is what a script uses to decide whether to ask.
+ * Nothing here asks, and a composer that paused for an answer would hang a
+ * terminal with no prompt visible.
+ */
+export function composeAndBuildCommand(
+  c: Compose,
+  dockerfileOut: string,
+): { shellPath: string; shellArgs: string[] } {
+  const script = [
+    'set -e',
+    `STACK_MANIFEST=${quote(c.manifest)} ${quote(c.script)} ${c.stacks.map(quote).join(' ')} > ${quote(dockerfileOut)}`,
+    `docker build -f ${quote(dockerfileOut)} -t ${quote(c.image)} ${quote(c.context)}`,
+  ].join('\n')
+  // **The braces matter.** `A; B </dev/null` redirects B alone, so the
+  // composer — the step that would actually ask something — would still have
+  // the terminal's pty on stdin. A test regex noticed this by accident; the
+  // group is what makes the redirect apply to both.
+  return { shellPath: '/bin/sh', shellArgs: ['-c', `{\n${script}\n} </dev/null`] }
 }
