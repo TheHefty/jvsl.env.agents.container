@@ -121,9 +121,19 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-content-arrives-with-its-history.md`](tasks/the-content-arrives-with-its-history.md) | Done — #41 |
-| 2 | the pipeline arrives and builds | not written |
-| 3 | nothing was dropped | not written |
-| 4 | the fast path | not written |
+| 2 | [`tasks/nothing-was-dropped.md`](tasks/nothing-was-dropped.md) | Draft |
+| 3 | the pipeline arrives, builds, and stays fast | not written |
+
+**The order changed at task 2, and the story's own prose is why.** The table first put the guard
+third and the pipeline second; the prose beside it already said the guard is *"written before the
+jobs are moved… which makes the move's own completeness the thing that turns the test green"*. A
+guard written after the jobs is green on its first run and has never been seen failing for its own
+reason.
+
+**And task 4 collapsed into task 3.** "The fast path" cannot be a separate change: this
+repository's `ci-green` fails on a skipped job, so the moment image jobs are gated on what changed,
+every documentation-only pull request goes red. Gating, `ci-green.sh` and the jobs are one change
+or none.
 
 ## Outcome
 
