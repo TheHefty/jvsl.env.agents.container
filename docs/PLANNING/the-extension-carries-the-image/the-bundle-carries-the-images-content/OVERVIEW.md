@@ -88,7 +88,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| — | — | — |
+| 1 | [`tasks/the-package-carries-them-and-says-so.md`](tasks/the-package-carries-them-and-says-so.md) | Draft |
 
 ## Outcome
 
