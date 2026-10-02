@@ -188,6 +188,12 @@ will not attach, a browser against an unauthenticated loopback port still reache
 Removing it removes that. The fallback that remains is `docker exec` and a terminal, which is not
 an editor. This was traded knowingly, not overlooked.
 
+> **Corrected on 2026-10-02 by the SRS's sixth amendment.** The paragraph below is right that those
+> five things come from the base and are installed nowhere in the template, and it misleads by
+> omission: LinuxServer publishes the base *without* an editor, and the code-server image is built
+> on it. So the work is a changed `FROM` plus removing what the template does for code-server — not
+> a reimplementation of five mechanisms. The estimate was the expensive reading of a true sentence.
+
 **What is being signed up for, measured rather than estimated.** code-server is not installed into
 the image, it *is* the image. From the one line that says so, `FROM
 lscr.io/linuxserver/code-server:4.129.0`, five things arrive that the template installs nowhere:
