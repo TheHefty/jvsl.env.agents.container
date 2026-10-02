@@ -40,7 +40,24 @@
         "command": "jvsl.devContainer.configure",
         "title": "Dev Container: Configure Stacks and Limits"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "jvsl.devContainer.view",
+          "name": "Dev Container"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "jvsl.devContainer.configure",
+          "when": "view == jvsl.devContainer.view",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
