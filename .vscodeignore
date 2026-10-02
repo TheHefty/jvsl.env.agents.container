@@ -8,18 +8,21 @@
 # tools/vsix.test.ts holds this true.
 .code-server/**
 
-# The image's content, merged in by the story that gives this repository its
-# own image builds. **It does not ship yet.** Story 2 is where `core/` and
-# `stacks/` deliberately start travelling in the package, minus their own
-# `*.test.sh`, and until then shipping them is 4629 lines nothing reads.
+# The image's content travels in the package: the extension composes a
+# project's Dockerfile from it, so a project needs nothing but the extension
+# installed. 57 files, 132 KB.
 #
-# `scripts/` never ships at all: thirteen CI guards have no business inside an
-# editor extension. Merging these in took the package from 6 files to 108
-# without failing anything, because the tests beside this file named what must
-# not ship rather than what may — tools/vsix.test.ts now asserts the allowed
-# list instead.
-core/**
-stacks/**
+# **Only the tests are excluded, and there is no negation here on purpose.**
+# Excluding the directories and re-admitting them with `!core/cont-init/**`
+# was tried and shipped `40-ai-memory.test.sh`: later patterns win, so a
+# negation re-admits everything under its path including what an earlier line
+# removed. Naming only what must not ship leaves no ordering to get wrong —
+# and a stack added to `stacks/` travels without anybody editing this file.
+#
+# `scripts/` never ships at all: CI's guards have no business inside an editor
+# extension.
+core/**/*.test.sh
+stacks/**/*.test.sh
 scripts/**
 
 # Agent skills for working *on* this repository, not for anyone using the
