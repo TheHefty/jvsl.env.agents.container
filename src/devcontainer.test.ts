@@ -40,7 +40,7 @@ test('what the specification expresses natively is not hidden in runArgs', () =>
   const config = buildConfiguration(input)
   assert.deepEqual(config.capAdd, ['SYS_ADMIN'])
   assert.deepEqual(config.securityOpt, ['seccomp=unconfined', 'systempaths=unconfined'])
-  assert.deepEqual(config.containerEnv, { PUID: '1000', PGID: '1000', PASSWORD: '' })
+  assert.deepEqual(config.containerEnv, { PUID: '1000', PGID: '1000' })
   assert.equal(config.workspaceFolder, '/config/workspace')
   assert.ok(config.workspaceMount.includes('/home/me/code/myrepo'))
   assert.ok(config.workspaceMount.includes('target=/config/workspace'))
@@ -138,4 +138,22 @@ test('a file we wrote is recognised, and anything else is not', () => {
   assert.equal(isOurs('{"image":"myrepo-dev"}'), false, 'someone else wrote this')
   assert.equal(isOurs('{'), false, 'unparseable is not ours')
   assert.equal(isOurs(''), false)
+})
+
+test('no password is declared, because nothing in the image reads one', () => {
+  // `PASSWORD: ''` existed so code-server would not demand one. Template 5.0.0
+  // removed the editor; the variable is nobody's.
+  const config = buildConfiguration(input)
+  assert.ok(!('PASSWORD' in config.containerEnv), JSON.stringify(config.containerEnv))
+})
+
+test('the user and group ids are still declared, because they are the base image\'s', () => {
+  // Three environment variables lived in one object and two of them are
+  // obscure, which is how PUID/PGID would leave with PASSWORD. Without them the
+  // base's init-adduser applies nothing and the first bind-mounted write lands
+  // as uid 911 — read as a host permissions problem rather than as a missing
+  // variable. This assertion exists for that, not for coverage.
+  const config = buildConfiguration(input)
+  assert.equal(config.containerEnv.PUID, '1000')
+  assert.equal(config.containerEnv.PGID, '1000')
 })

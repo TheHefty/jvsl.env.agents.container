@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-image-stops-being-code-servers/the-configuration-declares-no-editors-variable
 epic: the-image-stops-being-code-servers
-pr:
+pr: 33
 depends-on: []
 ---
 
@@ -141,3 +141,39 @@ only in prose. What is possible, and is not this task, is narrower: a check that
 *below* the template version the extension's own tests build against, if those ever pin one. Recorded
 here rather than invented, because a guard that cannot see the thing it guards is worse than the
 absence of one — which is the lesson two guards in the template already carry.
+
+## Outcome
+
+Implemented in #33. 119 unit tests and 5 bundle tests, typecheck clean. Red first: six failures
+across three files before any implementation.
+
+**This design shipped without an `## Outcome` section**, which every other task document has, and
+the script that went to fill it failed its own assertion rather than appending to the wrong place.
+Noted because the assertion is the only reason it was caught — the alternative was a commit message
+describing a document update that had not happened.
+
+**The minimum is passed in rather than declared in `open.ts`.** The design said `OpenContext` gains
+the *version*; writing it showed the *minimum* has to come the same way. A constant in `open.ts`
+would have been a second place to keep in step with `package.json` — which is the exact defect this
+task exists for. `extension.ts` already read it for the diagnostics, so it is the only reader and
+`decideOpen` stays pure.
+
+**One of my own messages failed one of my own assertions, and the assertion was right.** The refusal
+for an absent `version.txt` read "…the submodule was never initialised rather than that the template
+is out of date", and the test forbids `/out of date|too old/i` there. Naming the words in order to
+deny them still puts them in front of somebody skimming. It now says what bumping would accomplish
+instead: "without the submodule there is no template at all, so bumping a pointer would move
+nothing."
+
+**Two tests outside this task changed.** `devcontainer.test.ts`'s "what the specification expresses
+natively is not hidden in runArgs" asserted the whole `containerEnv` object by value, so removing
+`PASSWORD` broke it — the assertion working. And `tools/devcontainer-up.test.ts` needed both new
+fields, supplied rather than read because its fixture is not a project with a submodule.
+
+**The three messages were read as a person receives them**, not only matched by regex. The
+below-minimum one names what is lost — "the image declares no extensions for the editor to install
+and the agent's sandbox does not hold `.vscode` read-only, so opening would succeed and deliver less
+than it looks like" — because "too old" tells somebody nothing about what ignoring it costs.
+
+**The debt stands exactly as written.** Nothing checks that `5.0.0` is the right minimum, and
+nothing can without spanning two repositories.

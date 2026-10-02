@@ -14,7 +14,7 @@ find their place, and two stacks stop depending on Ubuntu.
 
 | # | Story | Status |
 |---|---|---|
-| 3 | [`the-configuration-declares-no-editors-variable`](the-configuration-declares-no-editors-variable/) | Draft |
+| 3 | [`the-configuration-declares-no-editors-variable`](the-configuration-declares-no-editors-variable/) | **Done** |
 
 **It is last, and nothing is blocked on it.** An image that ignores `PASSWORD` makes it a dead
 variable rather than a fault, so this can land after the base swap without anything waiting.

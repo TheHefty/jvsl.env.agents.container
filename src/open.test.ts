@@ -14,6 +14,8 @@ const base: OpenContext = {
   runningContainers: [],
   reopenCommandAvailable: true,
   gitignore: '.devcontainer/devcontainer.json\n',
+  templateVersion: '5.0.0',
+  templateMinVersion: '5.0.0',
 }
 
 const refusal = (c: Partial<OpenContext>): string => {
@@ -141,4 +143,54 @@ test('no gitignore at all is mentioned too', () => {
   const d = decideOpen({ ...base, gitignore: null })
   assert.equal(d.action, 'open')
   if (d.action === 'open') assert.ok(d.notes.some((n) => /gitignore/i.test(n)))
+})
+
+/**
+ * The template version has three states and they have three different fixes.
+ * `diagnostics.ts` wrote down two of them — "an unreadable template version is
+ * not an old one" — and reading the helpers showed a third: the file can be
+ * present and not be a version at all.
+ */
+test('a template below the minimum is refused, naming both numbers', () => {
+  const cause = refusal({ templateVersion: '2.2.0' })
+  assert.match(cause, /2\.2\.0/)
+  assert.match(cause, /5\.0\.0/)
+  assert.match(cause, /submodule/i)
+})
+
+test('a template version that is not there sends nobody to bump a submodule', () => {
+  // An absent version.txt means the submodule was never initialised. Telling
+  // somebody to bump it is telling them to move a pointer that does not exist.
+  const cause = refusal({ templateVersion: null })
+  assert.match(cause, /--init/)
+  assert.doesNotMatch(cause, /out of date|too old/i)
+})
+
+test('a template version that is not a version is its own refusal', () => {
+  // Present, readable, and nonsense. Neither "bump it" nor "initialise it" is
+  // the fix; looking at the file is.
+  const cause = refusal({ templateVersion: 'latest' })
+  assert.match(cause, /latest/)
+  assert.doesNotMatch(cause, /--init/)
+  assert.doesNotMatch(cause, /out of date|too old/i)
+})
+
+test('exactly the minimum is not refused for its version', () => {
+  // The off-by-one in the direction that locks everybody out of everything.
+  const d = decideOpen({ ...base, templateVersion: '5.0.0' })
+  assert.equal(d.action, 'open')
+})
+
+test('the version is checked before anything about what is running', () => {
+  // A too-old template is the wrong arrangement; a running container is a
+  // transient condition. Both present, the version is what the reader is told.
+  const cause = refusal({ templateVersion: '2.2.0', runningContainers: ['myrepo-app'] })
+  assert.match(cause, /2\.2\.0/)
+})
+
+test('but the missing reopen command still comes first', () => {
+  // Without the handover nothing works at all, and the version is beside the
+  // point.
+  const cause = refusal({ templateVersion: '2.2.0', reopenCommandAvailable: false })
+  assert.match(cause, /Dev Containers/)
 })

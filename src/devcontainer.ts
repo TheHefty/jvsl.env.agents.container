@@ -109,7 +109,12 @@ export function buildConfiguration(input: BuildInput): Configuration {
     ],
     capAdd: ['SYS_ADMIN'],
     securityOpt: ['seccomp=unconfined', 'systempaths=unconfined'],
-    containerEnv: { PUID: '1000', PGID: '1000', PASSWORD: '' },
+    // **PUID and PGID only.** `PASSWORD: ''` lived here so that code-server
+    // would not demand a password, and template 5.0.0 removed the editor from
+    // the image. These two are the base image's `init-adduser`, which is what
+    // makes a bind-mounted write land as the person rather than as uid 911 —
+    // they look like the same kind of obscure variable and are not.
+    containerEnv: { PUID: '1000', PGID: '1000' },
     // **The image's own command has to run.** For an image-based configuration
     // the tooling otherwise replaces it with `while sleep 1000; do :; done`,
     // and this image's command is s6-overlay — which is what starts the nested
