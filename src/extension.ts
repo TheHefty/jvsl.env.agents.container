@@ -5,6 +5,14 @@ import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import * as vscode from 'vscode'
 
+import {
+  buildCommand,
+  buildOutcome,
+  detectManager,
+  hostProblems,
+  type DockerState,
+  type HostChecks,
+} from './build.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext } from './open.ts'
@@ -22,6 +30,9 @@ const CHANNEL_NAME = 'Dev Container Projects'
 const SHOW_DETECTED = 'jvsl.devContainer.showDetected'
 const OPEN = 'jvsl.devContainer.open'
 const CONFIGURE = 'jvsl.devContainer.configure'
+const BUILD = 'jvsl.devContainer.build'
+/** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
+const DOCKER_CHECK_MS = 2000
 const MANIFEST = '.code-server.stack.json'
 const VIEW = 'jvsl.devContainer.view'
 
@@ -52,6 +63,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     for (const line of lines) channel.appendLine(line)
   }
 
+  // Declared before the commands that close over it: the closure would resolve
+  // either way, but a reader should not have to know that to be sure.
+  const view = new SelectionView()
+
   context.subscriptions.push(
     vscode.commands.registerCommand(SHOW_DETECTED, async () => {
       write(await describe(context))
@@ -61,9 +76,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write)),
+    vscode.commands.registerCommand(BUILD, () => build(write, view)),
   )
 
-  const view = new SelectionView()
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW, view),
     // External edits count: the manifest is a file a person may change by hand,
@@ -92,15 +107,22 @@ function watchManifest(onChange: () => void): vscode.Disposable {
 class SelectionView implements vscode.TreeDataProvider<Row> {
   private readonly changed = new vscode.EventEmitter<void>()
   readonly onDidChangeTreeData = this.changed.event
+  private lastBuild: 'ok' | 'failed' | 'cancelled' | undefined
 
   refresh(): void {
     this.changed.fire()
   }
 
+  /** Session-scoped on purpose: what the last build did is not a project's state. */
+  recordBuild(outcome: 'ok' | 'failed' | 'cancelled'): void {
+    this.lastBuild = outcome
+    this.refresh()
+  }
+
   getChildren(): Row[] {
     const folder = vscode.workspace.workspaceFolders?.[0]
     if (!folder) return []
-    return viewItems(readViewState(folder.uri.fsPath))
+    return viewItems({ ...readViewState(folder.uri.fsPath), lastBuild: this.lastBuild })
   }
 
   getTreeItem(row: Row): vscode.TreeItem {
@@ -238,6 +260,104 @@ async function configure(write: (lines: string[]) => void): Promise<void> {
   void vscode.window.showInformationMessage(
     `${MANIFEST} written. Run .code-server/setup to rebuild the image.`,
   )
+}
+
+/**
+ * Builds the image, in a terminal whose process is `setup` itself.
+ *
+ * **Not a shell with a command typed into it.** `sendText` leaves the command as
+ * editable text, gives no exit code, and makes a path with a space in it a
+ * quoting problem. What is here instead is the script as the terminal's process,
+ * with `/bin/sh` present for the single purpose of redirecting standard input —
+ * see `buildCommand`, which is where that reasoning lives.
+ */
+async function build(write: (lines: string[]) => void, view: SelectionView): Promise<void> {
+  const folder = vscode.workspace.workspaceFolders?.[0]
+  if (!folder) {
+    void vscode.window.showErrorMessage('Open a project folder first.')
+    return
+  }
+  const setupPath = join(folder.uri.fsPath, '.code-server', 'setup')
+
+  const checks = await hostChecks()
+  const problems = hostProblems(checks)
+  for (const problem of problems) {
+    write([`build: ${problem.blocking ? 'refused' : 'warning'}: ${problem.message}`])
+  }
+  const blocker = problems.find((p) => p.blocking)
+  if (blocker) {
+    void vscode.window.showErrorMessage(blocker.message)
+    return
+  }
+
+  const { shellPath, shellArgs } = buildCommand(setupPath)
+  const terminal = vscode.window.createTerminal({
+    name: 'Dev Container: build',
+    shellPath,
+    shellArgs,
+  })
+  terminal.show()
+  write([`build: started in a terminal, ${setupPath}`])
+
+  const listener = vscode.window.onDidCloseTerminal((closed) => {
+    if (closed !== terminal) return
+    listener.dispose()
+    const outcome = buildOutcome(closed.exitStatus?.code)
+    write([`build: ${outcome}`])
+    view.recordBuild(outcome)
+    // No notification on failure: the terminal holds the whole error, which is
+    // where the cause is, and a popup saying "the build failed" has to be
+    // dismissed before the useful text can be read.
+    if (outcome === 'ok') {
+      void vscode.window.showInformationMessage('The image was built.')
+    }
+  })
+}
+
+/**
+ * What the host has, bounded.
+ *
+ * **An answer that does not arrive in time is `unknown`, not bad.** `docker info`
+ * hangs when the daemon is unreachable rather than failing, and this runs on
+ * activation as well as before a build — an activation that waits for it is a
+ * window opening slowly with nothing saying why.
+ */
+async function hostChecks(): Promise<HostChecks> {
+  const onPath = async (command: string): Promise<boolean> => {
+    try {
+      await run('command', ['-v', command], { shell: '/bin/sh' })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const [jq, dockerPresent, apt, dnf, pacman] = await Promise.all([
+    onPath('jq'),
+    onPath('docker'),
+    onPath('apt-get'),
+    onPath('dnf'),
+    onPath('pacman'),
+  ])
+
+  let docker: DockerState = 'absent'
+  if (dockerPresent) {
+    docker = 'unknown'
+    try {
+      await Promise.race([
+        run('docker', ['info']),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), DOCKER_CHECK_MS)),
+      ])
+      docker = 'ok'
+    } catch (error) {
+      docker = (error as Error).message === 'timeout' ? 'unknown' : 'unusable'
+    }
+  }
+
+  const exists = (command: string): boolean =>
+    command === 'apt-get' ? apt : command === 'dnf' ? dnf : command === 'pacman' ? pacman : false
+
+  return { jq, docker, manager: detectManager(exists) }
 }
 
 /** An input box whose undefined means escape, which the caller treats as abandon. */

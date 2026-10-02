@@ -11,10 +11,12 @@ export interface ViewState {
   stacksAvailable: readonly string[]
   /** The parsed manifest, or null when there is none. */
   manifest: Record<string, unknown> | null
+  /** What the last build in this session did, if there was one. */
+  lastBuild?: 'ok' | 'failed' | 'cancelled'
 }
 
 export interface Row {
-  kind: 'stack' | 'limit' | 'note' | 'empty' | 'uninitialised'
+  kind: 'stack' | 'limit' | 'note' | 'empty' | 'uninitialised' | 'build'
   label: string
   detail: string
 }
@@ -74,6 +76,15 @@ export function viewItems(state: ViewState): Row[] {
     if (value !== undefined && value !== null) {
       rows.push({ kind: 'limit', label: key, detail: String(value) })
     }
+  }
+
+  // **A failed build leaves its state here rather than in a notification.** The
+  // terminal holds the whole error, which is where the cause is; a popup saying
+  // "the build failed" repeats what the screen says and has to be dismissed
+  // before the useful text can be read. And a cancelled build says cancelled:
+  // reporting it as a failure makes "I stopped it" look like "it broke".
+  if (state.lastBuild) {
+    rows.push({ kind: 'build', label: 'last build', detail: state.lastBuild })
   }
 
   return rows

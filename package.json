@@ -39,6 +39,10 @@
       {
         "command": "jvsl.devContainer.configure",
         "title": "Dev Container: Configure Stacks and Limits"
+      },
+      {
+        "command": "jvsl.devContainer.build",
+        "title": "Dev Container: Build the Image"
       }
     ],
     "views": {
@@ -53,6 +57,11 @@
       "view/title": [
         {
           "command": "jvsl.devContainer.configure",
+          "when": "view == jvsl.devContainer.view",
+          "group": "navigation"
+        },
+        {
+          "command": "jvsl.devContainer.build",
           "when": "view == jvsl.devContainer.view",
           "group": "navigation"
         }
