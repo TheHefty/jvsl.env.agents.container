@@ -58,14 +58,17 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | the extension composes from what it carries | not written |
+| 1 | [`tasks/the-extension-composes-from-what-it-carries.md`](tasks/the-extension-composes-from-what-it-carries.md) | Draft |
 | 2 | the build runs without a submodule | not written |
 
-**Provisional, and said so rather than implied.** These two task names are a sketch from the FRs
-and from what `build.ts` does today, not a decomposition from measurement. Every story in this epic
-so far changed shape when its tasks were measured: story 1 reordered its tasks and absorbed a
-fourth, and story 2's design changed mechanism after a probe. These will be rewritten against what
-stories 1 and 2 actually left behind.
+**Task 1 was measured and the sketch was wrong about the hard part.** It assumed the work was
+swapping one path for another. There is not one `extensionPath` or `extensionUri` anywhere in
+`src/`: every path is workspace-relative, and the only access to extension-owned data is
+`context.extension?.packageJSON`, which is metadata rather than a file. The task introduces the
+concept, and that is most of it.
+
+**And the risk this story named turned out to be closed already**, by a decision taken two stories
+ago for another reason — see the task. Task 2 stays a sketch.
 
 ## Outcome
 
