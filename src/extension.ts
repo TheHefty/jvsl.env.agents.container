@@ -314,7 +314,7 @@ async function configure(
  * editable text, gives no exit code, and makes a path with a space in it a
  * quoting problem. What is here instead is the script as the terminal's process,
  * with `/bin/sh` present for the single purpose of redirecting standard input —
- * see `buildCommand`, which is where that reasoning lives.
+ * see `composeAndBuildCommand`, which is where that reasoning lives.
  */
 async function build(
   write: (lines: string[]) => void,

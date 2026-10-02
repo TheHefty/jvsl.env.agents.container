@@ -15,7 +15,8 @@ import {
  * What building is, as the parts of it that can be wrong.
  *
  * None of this needs an editor. What a mock of `createTerminal` would assert is
- * that it was handed what `buildCommand` returned, which is a test of the mock.
+ * that it was handed what `composeAndBuildCommand` returned, which is a test of
+ * the mock.
  */
 
 test('an exit code of zero is a build that worked', () => {
@@ -151,9 +152,9 @@ test('the shell command composes and builds, reading nothing from the project bu
 })
 
 test('a path with a space in it does not become a quoting problem', () => {
-  // The reason buildCommand passes the script as $0 rather than inside the
-  // command string. Composing now means a command string again, so the
-  // quoting has to be deliberate rather than inherited.
+  // The function this replaced passed the script as $0 rather than inside the
+  // command string, so a space was never a quoting problem. Composing means a
+  // command string again, so the quoting is deliberate rather than inherited.
   const c = composeCommand('/my ext', '/work/my project', ['java'])
   const { shellArgs } = composeAndBuildCommand(c, '/tmp/out file.Dockerfile')
   const script = shellArgs[shellArgs.length - 1] ?? ''

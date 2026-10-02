@@ -3,7 +3,7 @@ import { carried } from './template.ts'
  * What building is, as functions over what the host looks like.
  *
  * **The editor's API is a shell over these.** `createTerminal` is handed what
- * `buildCommand` returns and `onDidCloseTerminal` is handed to `buildOutcome`;
+ * `composeAndBuildCommand` returns and `onDidCloseTerminal` is handed to `buildOutcome`;
  * nothing in here knows about the editor, which is why all of it is tested
  * without one.
  */
@@ -174,13 +174,14 @@ function quote(s: string): string {
  * Compose, then build, in one terminal.
  *
  * **The quoting is deliberate here and it was inherited before.**
- * `buildCommand` passes the script as `$0` precisely so a directory with a
- * space in it is not a quoting problem; composing needs a command string
- * again, which gives that problem back. Every path is quoted, and the test
+ * The function this replaced passed the script as `$0` precisely so a
+ * directory with a space in it was not a quoting problem; composing needs a
+ * command string again, which gives that problem back. Every path is quoted, and the test
  * beside this one uses paths with spaces rather than trusting the reading.
  *
- * `</dev/null` stays for the reason `buildCommand` gives: `createTerminal`
- * provides a pty, and a pty is what a script uses to decide whether to ask.
+ * `</dev/null` stays for the reason the old single-command version had it:
+ * `createTerminal` provides a pty, and a pty is what a script uses to decide
+ * whether to ask.
  * Nothing here asks, and a composer that paused for an answer would hang a
  * terminal with no prompt visible.
  */
