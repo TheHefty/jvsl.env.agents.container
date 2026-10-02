@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+  limitDefaults,
   missingDependencies,
+  orderedVersions,
   nextManifest,
   stacksAvailable,
   versionsOf,
@@ -122,4 +124,51 @@ test('limits is replaced rather than merged', () => {
 test('a stack the manifest does not mention takes the lowest version listed', () => {
   const dir = fixture({ java: { versions: ['17', '21'] } })
   assert.equal(versionsOf(dir, 'java')[0], '17')
+})
+
+test('the recorded version is offered first', () => {
+  // The scenario this was missing a test for: "each question defaults to what the
+  // manifest already says". Without the default every rerun retypes everything,
+  // which is how a tool stops being rerun.
+  assert.deepEqual(orderedVersions(['17', '21'], '21'), ['21', '17'])
+  assert.deepEqual(orderedVersions(['17', '21'], '17'), ['17', '21'])
+})
+
+test('with nothing recorded the list is the file\'s order, so the lowest is first', () => {
+  // The same default `setup` uses for a stack the manifest does not mention. Both
+  // doors agree because both read the file in order.
+  assert.deepEqual(orderedVersions(['17', '21']), ['17', '21'])
+})
+
+test('a recorded version the stack no longer offers is still offered first', () => {
+  // A project pinned to something since dropped sees what it has rather than
+  // silently moving. `setup` refuses it, which is the louder half of the same
+  // answer; here it is visible and the choice stays the person's.
+  assert.deepEqual(orderedVersions(['21'], '17'), ['17', '21'])
+})
+
+test('the memory default is 6g, which is what setup uses', () => {
+  // These two numbers live in two repositories and have to agree. Until this
+  // function they were a literal in the editor's wiring and a literal in a shell
+  // script.
+  assert.deepEqual(limitDefaults(null), { memory: '6g', memorySwap: '', cpus: '' })
+  assert.deepEqual(limitDefaults({}), { memory: '6g', memorySwap: '', cpus: '' })
+})
+
+test('the manifest\'s own limits are the defaults when it has them', () => {
+  assert.deepEqual(limitDefaults({ limits: { memory: '8g', memorySwap: '10g', cpus: 6 } }), {
+    memory: '8g',
+    memorySwap: '10g',
+    cpus: '6',
+  })
+})
+
+test('an absent swap or cpus is empty rather than invented', () => {
+  // Empty is what both sides read as "derive it": the client derives swap from
+  // memory and cpus from the host. A number here would pin what should float.
+  assert.deepEqual(limitDefaults({ limits: { memory: '8g' } }), {
+    memory: '8g',
+    memorySwap: '',
+    cpus: '',
+  })
 })

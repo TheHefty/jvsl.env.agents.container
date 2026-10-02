@@ -136,3 +136,42 @@ export function nextManifest(
   next.limits = limits
   return next
 }
+
+/**
+ * The versions to offer, with the recorded one first.
+ *
+ * **The default is what makes a rerun bearable.** Without it every rerun retypes
+ * everything, which is how a tool stops being rerun — the same reasoning `setup`
+ * records for keeping its own prompts' defaults, and the same behaviour its
+ * `read` loop has.
+ *
+ * A recorded version the stack no longer offers is still offered first, so a
+ * project pinned to something that has since been dropped sees what it has
+ * rather than silently moving. Choosing it is then the person's problem and a
+ * visible one; `setup` refuses it, which is the louder half of the same answer.
+ */
+export function orderedVersions(versions: readonly string[], recorded?: string): string[] {
+  if (!recorded) return [...versions]
+  return [recorded, ...versions.filter((v) => v !== recorded)]
+}
+
+/**
+ * The limits to offer, from the manifest or from the defaults.
+ *
+ * **These two numbers have to agree with `setup`'s**, and until this function
+ * existed they were a literal in the editor's wiring and a literal in a shell
+ * script, in two repositories. `6g` is the memory default in both; swap and cpus
+ * are empty, which both sides read as "derive it".
+ */
+export function limitDefaults(manifest: Record<string, unknown> | null): {
+  memory: string
+  memorySwap: string
+  cpus: string
+} {
+  const limits = (manifest?.limits ?? {}) as Record<string, unknown>
+  return {
+    memory: typeof limits.memory === 'string' ? limits.memory : '6g',
+    memorySwap: typeof limits.memorySwap === 'string' ? limits.memorySwap : '',
+    cpus: limits.cpus === undefined || limits.cpus === null ? '' : String(limits.cpus),
+  }
+}

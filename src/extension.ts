@@ -18,8 +18,10 @@ import { hostFacts } from './host.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
+  limitDefaults,
   missingDependencies,
   nextManifest,
+  orderedVersions,
   stacksAvailable,
   versionsOf,
   type Answers,
@@ -222,22 +224,24 @@ async function configure(write: (lines: string[]) => void, view: SelectionView):
 
   const stacks: Record<string, string> = {}
   for (const stack of picked) {
-    const versions = versionsOf(stacksDir, stack)
     const recorded = typeof current[stack] === 'string' ? (current[stack] as string) : undefined
-    const ordered = recorded ? [recorded, ...versions.filter((v) => v !== recorded)] : versions
-    const version = await vscode.window.showQuickPick(ordered, {
-      title: `Which version of ${stack}?`,
-    })
+    const version = await vscode.window.showQuickPick(
+      orderedVersions(versionsOf(stacksDir, stack), recorded),
+      { title: `Which version of ${stack}?` },
+    )
     if (version === undefined) return
     stacks[stack] = version
   }
 
-  const limitsNow = (current.limits ?? {}) as Record<string, unknown>
-  const memory = await ask('Memory the container may use', String(limitsNow.memory ?? '6g'))
+  // The defaults are a function rather than literals here: the memory default and
+  // "the lowest version listed" have to agree with `setup`'s, and they were a
+  // literal in this file and a literal in a shell script in another repository.
+  const defaults = limitDefaults(current)
+  const memory = await ask('Memory the container may use', defaults.memory)
   if (memory === undefined) return
-  const swap = await ask('Memory plus swap, empty to derive memory + 2g', String(limitsNow.memorySwap ?? ''))
+  const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap)
   if (swap === undefined) return
-  const cpus = await ask("Cores to pin, empty for half the host's", String(limitsNow.cpus ?? ''))
+  const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
   if (cpus === undefined) return
 
   const answers: Answers = {
