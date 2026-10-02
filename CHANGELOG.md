@@ -15,9 +15,7 @@
 ### Bug Fixes
 
 * confirming the questions builds, as the story asked from the start ([0d1f6f1](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/0d1f6f1d0bfb3e20de405fefe3c1ed1457ce21aa))
-* packaging builds what it packages ([6c5e5d5](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/6c5e5d5943b327bc490ac3951ef89b22344fd1fe))
 * packaging builds what it packages ([22f6a43](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/22f6a43ea327af7d626983be54e5079385f34a0a))
-* the release PR gets a CI run, so it can be merged at all ([f10d73b](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/f10d73b7b2efc1ce69f57af8031bfe122f4fcf7d))
 * the release PR gets a CI run, so it can be merged at all ([1e8b2db](https://github.com/TheHefty/jvsl.env.agents.vscode/commit/1e8b2db513aca6cc8dd8e235416273d853acc9d2))
 
 ## [0.2.1](https://github.com/TheHefty/jvsl.env.agents.vscode/compare/v0.2.0...v0.2.1) (2026-10-01)
