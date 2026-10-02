@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-image-builds-here
 epic: the-extension-carries-the-image
-pr:
+pr: 41
 ---
 
 # Task: the-content-arrives-with-its-history
@@ -119,4 +119,42 @@ has to decide between one merged workflow and a renamed second check.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #41. 86 files — `core/` 34, `stacks/` 39, `scripts/` 13 — and 8 assertions across
+three new tests, red before the merge and green after. 119 unit tests, 6 bundle, 4 vsix, typecheck
+clean.
+
+**A tree hash replaced the verification this design proposed, and is stronger.** The design said
+"identical paths **and** identical blob hashes". A git tree hash is content-addressed over the whole
+subtree — names, modes and every blob, recursively — so three hash comparisons subsume both, need no
+network, and keep working after the other repository is archived. The expected hashes *are* the
+content rather than a description of it.
+
+**The merge reached 98 paths outside the three directories** and all of them were resolved back to
+ours: 9 restored, 89 removed because they existed only on the template's side. Seven were add/add
+conflicts. `docs/agent/` is among the 89 — it belongs to story 5, and bringing it now would put the
+normative documents in two repositories at once.
+
+**A fourth failure scenario existed and this design did not name it.** Merging 86 files into the
+repository root took the `.vsix` from 6 files to **108** — the whole of `core/` and `stacks/` plus
+all thirteen CI guards — and every test passed, because the three assertions beside the packaging
+test name what must *not* ship. **A list of exclusions cannot see a directory nobody thought of.**
+The fix is an allowlist assertion: everything packaged has to be something the test was told to
+expect, so a new directory at the root fails it by existing. Red at 102 unexpected files, green at
+6. The scenario belonged in this design and was not there.
+
+**And that new assertion found a leak that predates this task.** `.claude/` and `.agents/` — sixteen
+agent skill files — were being packaged. They are never tracked, so a CI package from
+`actions/checkout` never saw them and the published `v0.3.0` is clean; what differed was
+`npm run package` on a developer's machine. The same class of defect as the earlier fix "packaging
+builds what it packages", found by a test written for something else.
+
+**Two untracked files blocked the merge and were strays from another repository.** `SECURITY.md`
+naming `jvsl.monorepo.agents.template`, and `version.txt` reading `1.8.0` — the monorepo's version,
+where this extension is at `0.3.0`. Preserved outside the repository rather than deleted, and the
+merge was resolved so the template's versions of both do not arrive either: a `version.txt` reading
+`5.0.0` in a repository versioned `0.3.0` is worse than none.
+
+**The three tests got their CI job in the same change.** Writing three tests about not dropping CI
+jobs and leaving them with no job would have been the joke answering itself. `fetch-depth: 0` is
+load-bearing — all three walk history and a shallow clone has none, so they would fail for the
+wrong reason.

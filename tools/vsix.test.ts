@@ -36,3 +36,36 @@ test('sources and build configuration do not ship', () => {
 test('the bundle does ship, because nothing works without it', () => {
   assert.ok(packagedFiles().includes('dist/extension.cjs'), 'the bundle is missing')
 })
+
+/**
+ * The three tests above name what must not ship. **A list of exclusions cannot
+ * see a directory nobody thought of**, which is not hypothetical: merging the
+ * image's content in took the package from 6 files to 108 — the whole of
+ * `core/` and `stacks/`, and all thirteen CI guard scripts — and all three
+ * passed, because none of them was about `core/`.
+ *
+ * So this one is the other way round: everything in the package must be
+ * something this test was told to expect. A new directory at the repository
+ * root fails it by existing, which is the point.
+ *
+ * `core/` and `stacks/` are expected to join this list in story 2, when the
+ * extension actually composes from them. `scripts/` never does — those are CI
+ * guards and have no business inside an editor extension.
+ */
+test('nothing ships that this test was not told to expect', () => {
+  const allowed = [
+    /^package\.json$/,
+    /^README\.md$/,
+    /^LICENSE$/,
+    /^CHANGELOG\.md$/,
+    /^AGENTS\.md$/,
+    /^dist\/extension\.cjs$/,
+  ]
+  const unexpected = packagedFiles().filter((f) => !allowed.some((p) => p.test(f)))
+  assert.deepEqual(
+    unexpected,
+    [],
+    `${unexpected.length} file(s) ship that nothing asked to ship. Either add them to the ` +
+      `allowed list above with a reason, or exclude them in .vscodeignore:\n${unexpected.join('\n')}`,
+  )
+})
