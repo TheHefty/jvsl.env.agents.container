@@ -177,3 +177,12 @@ than it looks like" — because "too old" tells somebody nothing about what igno
 
 **The debt stands exactly as written.** Nothing checks that `5.0.0` is the right minimum, and
 nothing can without spanning two repositories.
+
+**And it is already superseded.** The SRS's seventh amendment, the same day, strikes **FR-22** — the
+minimum-template-version requirement this task delivers — because the extension stops consuming a
+template and there is no second version left to disagree with. What this task built is therefore
+scheduled for deletion: `isAtLeast`, `readTemplateVersion`, the two `OpenContext` fields, the three
+refusals and their tests. The task's other half, FR-74 and the `PASSWORD` removal, stands. Recorded
+here rather than only in the amendment so that whoever deletes the code finds the reason beside the
+code's own justification, and does not have to reconstruct why something tested this carefully is
+being thrown away.

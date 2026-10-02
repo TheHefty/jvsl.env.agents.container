@@ -206,9 +206,13 @@ corrected in the normative documents reaches a project by extension update *and 
 today it reaches by bumping a pointer; whether that is better is genuinely arguable, and it is
 chosen because a pointer every project has to remember to bump is the thing that was not happening.
 
-**FR-74 is deleted, and it merged today.** The minimum template version — read from
+**FR-21 and FR-22 are deleted, and FR-22 merged today.** The minimum template version — read from
 `version.txt`, compared with `isAtLeast`, refusing to open below `5.0.0` — exists to catch a project
-whose submodule is behind the extension. When the extension *is* the template there is no second
+whose submodule is behind the extension, and FR-21 refuses a submodule that was never initialised.
+**This paragraph said "FR-74" when it was accepted**, which is the requirement that the generated
+configuration declares no variable only code-server read — that one stands and shipped. Corrected
+here rather than left, because a wrong requirement number in an accepted charter is a wrong
+instruction to whoever acts on it. When the extension *is* the template there is no second
 version to disagree with, so the requirement, the three refusal messages and the version-reading
 machinery all go. Recorded plainly because the work shipped hours before this amendment, and a
 requirement quietly left in place after its reason went is how a check outlives what it checked.

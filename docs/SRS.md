@@ -19,8 +19,9 @@ lands in.
 
 ### Opening a project (FR-1x)
 
-- **FR-11** — Opening a project that carries `.code-server/` connects the host's editor to that
-  project's container, with the workspace at `/config/workspace`.
+- **FR-11** — Opening a project that carries a manifest connects the host's editor to that
+  project's container, with the workspace at `/config/workspace`. **Read "carries `.code-server/`"
+  until the seventh amendment**, which named a submodule rather than the thing the flow needs.
 - **FR-12** — The session inside the container runs as `abc`, never as `root`, from the first
   connection onward. No state directory the editor creates (`/config/.vscode-server`,
   `/config/.gnupg`) is left owned by another user.
@@ -35,7 +36,10 @@ lands in.
   is regenerated on every open and is not version-controlled.
 - **FR-17** — The editor's own process is not subject to the container's limits. This is the
   requirement the project exists for; see NFR-1.
-- **FR-18** — code-server's port is not published unless the project's manifest asks for it.
+- ~~**FR-18** — code-server's port is not published unless the project's manifest asks for it.~~
+  **Satisfied absolutely and struck.** FR-71 took the editor out of the image, so there is no port
+  to publish and no manifest key that could ask for one. A requirement about restraint became a
+  requirement about nothing.
 - **FR-19** — The generated configuration references the project's prebuilt image by name and
   never builds it. Image-declared metadata is resolved only for an image that already exists, so
   a configuration that built instead would silently lose everything FR-4x depends on.
@@ -45,13 +49,17 @@ lands in.
 Each refusal below names what failed, what was expected, and what to do about it. None of them
 leaves the user with a window that merely does not work.
 
-- **FR-21** — A project whose `.code-server/` submodule is not initialized is refused, naming the
-  command that initializes it. This is the failure the template's own `CLAUDE.md` describes as
-  silent; it must not be silent here.
-- **FR-22** — A project whose template version is below the minimum this extension requires is
-  refused, naming the version found, the version needed, and how to bump.
+- ~~**FR-21** — A project whose `.code-server/` submodule is not initialized is refused, naming the
+  command that initializes it.~~ **Struck by the seventh amendment: there is no submodule.** The
+  failure it guarded was real and is simply gone — nothing can be uninitialized that is not
+  vendored.
+- ~~**FR-22** — A project whose template version is below the minimum this extension requires is
+  refused, naming the version found, the version needed, and how to bump.~~ **Struck by the seventh
+  amendment: there is no second version to disagree with.** This shipped — `version.txt`,
+  `isAtLeast`, three refusal messages — hours before the charter amendment that removes its reason.
 - **FR-23** — A project whose image does not exist is refused, naming the image and the command
-  that builds it. The extension does not build images.
+  that builds it. ~~The extension does not build images.~~ **That last sentence was struck by the
+  fifth amendment** and stayed in the text; FR-64 is the extension running the build.
 - **FR-24** — A host where the container runtime is not reachable is refused, saying so, rather
   than failing somewhere later with a message about something else.
 - **FR-25** — Installing on an editor build that cannot use the container tooling fails at install
@@ -123,15 +131,19 @@ amendment at the bottom for the four decisions this group is the shape of.
   One step per question `whiptail` used to ask.
 - **FR-62** — The answers are written to `.code-server.stack.json`, which stays the only record of
   what a project selected. The extension adds no second place where that is written down.
-- **FR-63** — The extension never composes the Dockerfile. It writes the manifest and invokes
+- ~~**FR-63** — The extension never composes the Dockerfile. It writes the manifest and invokes
   `setup` non-interactively; composition stays one implementation, in the repository whose CI builds
-  an image per stack.
+  an image per stack.~~ **Reversed by the seventh amendment.** Composition is still one
+  implementation and still sits beside the CI that builds an image per stack — both moved here. See
+  FR-81.
 - **FR-64** — The build runs in an editor terminal rather than in the extension's output channel: it
   takes minutes, writes a great deal, and has to be readable after the fact and interruptible while
   running.
 - **FR-65** — `whiptail` stops being a prerequisite of anything, and `setup` keeps an interactive
   path that needs no dependency: with a terminal it asks with plain shell prompts, and without one it
-  reads the manifest. The host's prerequisites become `jq` and `docker`.
+  reads the manifest. The host's prerequisites become `jq` and `docker`. **Shipped in template
+  `v4.0.0`, and `setup` itself is deleted by FR-81** — the interactive path it kept outlived its
+  only remaining caller.
 - **FR-67** — The host checks `init` performed are the extension's: `jq` and `docker` present, and
   `docker` actually usable by this user. Each names the package for this distribution's package
   manager, because a wrong name installs the wrong thing on somebody's host and an absent one
@@ -141,9 +153,10 @@ amendment at the bottom for the four decisions this group is the shape of.
   manifest where one is required, a manifest that cannot be parsed, a build that fails, and a build
   the person cancelled. A cancelled build is not a failed one and does not read as one.
 
-**FR-61 through FR-64 are not independent, and the order they ship in is fixed by FR-63:** the
-non-interactive `setup` has to exist before anything can invoke it. The stories below are in that
-order for that reason and not by preference.
+**FR-61 through FR-64 are not independent, and the order they ship in was fixed by FR-63:** the
+non-interactive `setup` had to exist before anything could invoke it. All four shipped in that
+order. With FR-63 reversed, the ordering constraint it imposed is spent — FR-81 removes the thing
+that had to exist first.
 
 ### The image stops being code-server's (FR-7x)
 
@@ -161,11 +174,84 @@ the same ones `docker-code-server` is itself built on, which is
 `ghcr.io/linuxserver/baseimage-ubuntu:noble`. So FR-71 is a changed `FROM` rather than a
 reimplementation of five mechanisms, and the charter's second amendment overstated it.
 
-**All sixty-five `apt` packages the image installs exist in Debian trixie under the same names** —
-thirty in core and thirty-five across the stacks, each checked against `packages.debian.org/trixie`.
-The distro change was accepted expecting "~30 package names to re-check"; the measurement says
-zero rename. Existing under the same name is not the same as behaving identically, and the image
-builds are what would say otherwise.
+**That measurement was wrong, and the method was the reason.** It read HTTP 200 from
+`packages.debian.org/trixie/<pkg>` as presence; that page answers 200 whether or not the package is
+in the suite. Re-measured against `api.ftp-master.debian.org/madison`, which answers with versions
+or with nothing: **67 packages, 61 in trixie, 6 from third-party feeds** — thirty in core and
+thirty-seven across the stacks, four of the stack names templated and truncated at the hyphen by the
+first extraction. **One rename:** `docker-compose-v2` is Ubuntu's name, and on trixie there is no
+Python v1, so `docker-compose` *is* v2.
+
+**Three capabilities were lost, which no package count would have shown.** `openjdk-17-jdk`,
+`gcc-11` and `g++-11` are absent from trixie, so java offers 21 and 25 and cpp offers 12, 13 and 14;
+a project pinned to either has to provide it itself. And `dotnet` hardcoded
+`config/ubuntu/24.04`, which installed on Debian without complaint — the dependency this epic exists
+to remove, surviving the epic because the guard was narrower than its own scenario.
+
+**What actually found all of it was the image builds**, as this document predicted in the sentence
+that followed the wrong number: existing under the same name is not the same as behaving
+identically. The one that cost the most was not a package at all — `baseimage-debian` ends by
+deleting `/usr/share/man` and `baseimage-ubuntu` does not, so every JDK's post-install failed
+creating a manual-page alternative.
+
+### The extension carries the image (FR-8x)
+
+Added 2026-10-02 by the charter's third amendment. A project installs this extension and needs
+nothing else: no submodule, no `setup`, no second repository to bump.
+
+- **FR-81** — The extension carries `core/` and `stacks/` in its own bundle, composes the Dockerfile
+  from them, and builds it. `setup` and `core/compose-dockerfile.sh` are deleted; composition stays
+  **one** implementation, which is what FR-63 was protecting, and it moves here together with the CI
+  that builds an image per stack.
+- **FR-82** — No project carries a `.code-server/` submodule, and nothing activates on one. What
+  marks a project as this extension's is its manifest.
+- **FR-83** — `CLAUDE.md` and `AGENTS.md` ship in the bundle and are written into the project **when
+  absent**. A file already there that this extension did not write is somebody's work: the open
+  refuses and names it rather than overwriting. Both are tracked in git and carry a project's own
+  standing answers, which the generated configuration never did.
+- **FR-84** — The normative documents are delivered by the image, never as a copy a project
+  maintains. They are written to `/config/.claude/rules/` on every boot, outside the workspace,
+  where they load as user-level rules — **no import, and no approval dialog.** A project's
+  `CLAUDE.md` does not point at them.
+- **FR-85** — `/config/.claude/rules/` is a mount of its own. `/config/.claude` is bind-mounted from
+  the host's personal configuration, and writing the documents there would put one project's rules
+  into every project on that machine.
+- **FR-86** — Only what must govern every turn is written to `rules/`. Everything else in
+  `docs/agent/` stays at a readable path in the image: `rules/` is resident in every session, and a
+  13.4 KiB document describing a moment that never happens is a cost paid on every turn.
+- **FR-87** — What the image contains is verified by image builds in **this** repository: a build
+  per stack, each stack's own in-image assertions, and the guards. A requirement about an image that
+  no CI builds is a claim, not a requirement.
+- **FR-88** — The extension chooses the folder. A project is opened by picking its directory from
+  the extension, not by the directory having been opened first, and the extension activates with no
+  folder open.
+- **FR-89** — A project whose image does not exist is **built**, not refused. This reverses FR-23,
+  which was right while building was another repository's job.
+- **FR-90** — A new project is scaffolded into a directory the user chooses: the manifest, the
+  instruction files of FR-83, and `.ai-memory.toml` when asked for. The questions are the ones
+  FR-61 already asks, plus `ai-memory` and the location.
+- **FR-91** — Scaffolding initialises git and commits once, **and only into a directory that is
+  empty or not already a repository.** Anything else is somebody's work: it refuses and names what
+  it found. The same rule as FR-83, for the same reason.
+- **FR-92** — A panel offers both entries with no folder open, and offers nothing it cannot do. An
+  entry present before its capability exists is worse than an absent one.
+
+**The two flows are one flow with a prefix.** Creating a project is scaffolding followed by opening
+it, and after FR-90 writes the manifest there is nothing left that is specific to creation. This is
+worth stating as a requirement-level fact rather than an implementation note, because two flows that
+look similar and are implemented twice diverge — which is the reason the launcher was deleted
+rather than kept as a fallback.
+
+**FR-84 is the one with a measured rejection behind it, and the measurement is why it reads as it
+does.** The obvious mechanism is an absolute `@/opt/.../MODES.md`. Claude Code classifies an import
+resolving outside the working directory as *external*, shows an approval dialog once, and — in its
+own words — *"if you decline, the imports stay disabled and the dialog doesn't appear again"*. One
+click leaves an agent permanently with no modes, no rules and no gates, and nothing ever says so
+again. A symlink to a target outside the working directory gets the same treatment, and **no setting
+pre-approves the dialog**, so this extension cannot clear it on the user's behalf. The documentation
+names the escape it uses instead: *"To load shared rules without that approval, keep them in
+`~/.claude/rules/`"*. In the container `~` is `/config` and the image already sets
+`CLAUDE_CONFIG_DIR=/config/.claude`, so both readings resolve to the same path.
 
 ## Non-functional requirements
 
@@ -280,19 +366,90 @@ Story 1 is the only one with image builds behind it, and it is where `whiptail` 
 and are tested without an editor — the five steps are pure functions over a manifest, and the build
 is a command that composes a task.
 
+### Epic: the extension carries the image
+
+**A project installs an extension. There is no template to consume.**
+
+The epic closes when a project has no `.code-server/` submodule, no `setup` on its host and no
+second version to keep in step — the extension composes and builds from what it bundles, writes
+`CLAUDE.md` and `AGENTS.md` when they are absent, and the image delivers the normative documents to
+`/config/.claude/rules/` where they load without an import.
+
+**`jvsl.env.agents.code-server` is absorbed and archived.** Decided by João Lima on 2026-10-02. Its
+`core/`, `stacks/`, `scripts/` and `docs/agent/` move into this repository with their CI; the repo
+is archived once the move is verified by a green build here, not before. The alternative was keeping
+it as the place that content is authored and CI-verified while this one vendors it at release time
+— rejected because it preserves exactly the two release trains and the pointer-to-bump that this
+epic exists to remove.
+
+**The flow this epic delivers**, as described by João Lima on 2026-10-02. A panel with two entries,
+and the second is the whole of the first after its scaffolding step:
+
+| | |
+|---|---|
+| **New project** | ask the stacks and versions, whether to use `ai-memory`, and where the project goes → write the scaffolding and initialise git → compose, build, and reopen the host editor in the container |
+| **Open project** | choose the folder → a manifest there means compose and build for it → no manifest means the same stack panel the new-project flow uses |
+
+**It merges three epics that were named separately** — *starting a new project*, *adopting the
+template into an existing project*, and this one — and the charter's non-goal *"the other two
+flows… are later epics"* falls with it. *The agents screen* stays out.
+
+**And it deletes the hardest part of adoption.** That epic was described here as "stack detection by
+heuristic on the host, confirmed by the user". The flow asks instead: no manifest means the stack
+panel, the same one a new project sees. There is no heuristic to be wrong, and nothing to confirm.
+
+**Three things the flow needs that no requirement covered.**
+
+`remote-containers.reopenInContainer` — already what this extension invokes — **takes no folder and
+acts on the current window.** So the new-project flow is two-phase by construction: scaffold, then
+`vscode.openFolder`, which restarts the extension host and discards everything in memory, then hand
+over on activation in the new folder. The handoff has to survive that reload and must not be written
+into the project, which is what extension-scoped state is for. **The compensation is that the flows
+converge**: once the scaffolding exists, creating *is* opening, and there is one path rather than
+two.
+
+**The extension stops being scoped to a project.** It activates today on
+`workspaceContains:.code-server.stack.json`; a panel offering to create a project has to exist with
+no folder open at all, which means `onStartupFinished` and loading in every window on that host.
+Accepted, with activation doing the least it can — register the view and nothing else. The cost is
+startup weight in unrelated windows, not wrong behaviour.
+
+**FR-23 is reversed.** It refuses a project whose image does not exist, naming the command that
+builds it. The flow builds it. That was correct while building was somebody else's job and is not
+once FR-81 moves composition here.
+
+**The order is fixed by what cannot be verified until the CI exists.** FR-87 comes first: moving
+4629 lines of shell into a repository that cannot build an image means every later story lands
+unverified, and "it worked in the other repo" is not a result. The panel comes after the
+capabilities it offers exist, because a button for a thing that is not built yet is a worse state
+than no button.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the image builds here | FR-87 — nothing below is verifiable until it does |
+| 2 | the bundle carries the image's content | FR-81, FR-82 — needs the builds to prove the move changed nothing |
+| 3 | the extension composes and builds | FR-81 — needs the content to compose from |
+| 4 | a project needs nothing but the extension | FR-83 — the files it writes, and refusing to overwrite |
+| 5 | the documents arrive with the image | FR-84, FR-85, FR-86 — the only story needing a container to accept |
+| 6 | opening a project the extension chose | FR-88, FR-89 — folder selection, build-on-open, and the convergence of the two flows |
+| 7 | creating a project from nothing | FR-90, FR-91 — scaffolding, git, and the handoff across the reload |
+| 8 | the panel | FR-92 — last, because it is the entry to everything above |
+
+**Story 1 is where the template repository stops being the authority** and is the one to grill
+hardest: it is a CI move, and a CI move that silently drops a job leaves a guard that reports
+nothing. Each of the thirteen guards and each stack's in-image assertions has to be observed running
+here, by name, before the archive.
+
 ### Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
 and none starts before the epic above closes. **Two of them stopped being optional on 2026-10-01**
 — see the charter's second amendment, which is where the reasoning and the cost are recorded.
 
-- **The image stops being code-server's** — *intended*. code-server is not installed into the
-  image, it is the image: `FROM lscr.io/linuxserver/code-server`. Taking it out is replacing the
-  base, and s6-overlay, the `abc` user, `PUID`/`PGID`, `/config` as the bind-mounted home and the
-  `cont-init` mechanism all arrive from that base and are installed nowhere in the template. It
-  also gives up the fallback that kept code-server in scope originally: a browser against a
-  loopback port when the Dev Containers extension will not attach. Recommended first of the two,
-  because `setup` keeps working while the image moves under it.
+- **The image stops being code-server's** — **decomposed and shipped** in template `v4.0.0` and
+  `v5.0.0`. It is no longer in this list. The fallback it gave up — a browser against a loopback
+  port when the Dev Containers extension will not attach — is gone as predicted, and was not
+  needed.
 - **Absorbing stack selection** — **decomposed below**, as *the editor composes and builds this
   project's image*. It is no longer in this list.
 - **Starting a new project** — the initialization interview, conducted inside the project's own
@@ -314,9 +471,13 @@ and none starts before the epic above closes. **Two of them stopped being option
 - **Keeping the existing launcher as a permanent fallback.** Rejected: two implementations of the
   same decisions about CPU affinity and devices, diverging silently. code-server stays in the
   image as the fallback instead, and the launcher goes.
-- **One repository for the extension and the image.** Rejected: the image has CI that builds
+- ~~**One repository for the extension and the image.** Rejected: the image has CI that builds
   images and this does not, and merging them would put the extension's code in a repository whose
-  release train is about something else.
+  release train is about something else.~~ **Reversed by the seventh amendment**, which accepts
+  both costs rather than disputing them: this repository grows the image builds, and its release
+  train does gate on them from then on. What changed is the weight of the other side — two release
+  trains and a pointer every project has to remember to bump turned out to cost more than one slow
+  pipeline.
 - **An agent on the host for the flows where no container exists yet.** Rejected: it would ship
   "an unsandboxed agent on the host" as a feature of a project whose purpose is to keep isolation
   intact while moving the editor out.
@@ -351,6 +512,52 @@ What the grilling changed, against what went in:
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
 
+### Amendment, 2026-10-02 (seventh)
+
+**The template stops being something a project consumes.** Follows the charter's third amendment;
+the reasoning and the costs are there and are not repeated. What this document changes:
+
+| | |
+|---|---|
+| FR-11 | said "carries `.code-server/`" — names a submodule, not what the flow needs |
+| FR-18 | **struck, satisfied absolutely** — FR-71 removed the editor, so there is no port to publish |
+| FR-21, FR-22 | **struck** — no submodule to be uninitialized, no second version to disagree with |
+| FR-23 | "The extension does not build images" had been struck in the fifth amendment and left in the text |
+| FR-63 | **reversed** — composition moves here, with the CI that builds an image per stack |
+| FR-65 | `setup`'s interactive path outlived its only caller |
+| FR-23 | **reversed too** — the flow builds a missing image instead of refusing it |
+| new | **FR-81 – FR-92**, and the epic *the extension carries the image* |
+| alternative | *"One repository for the extension and the image"* — **reversed**, accepting both of its costs |
+| non-goal | *"the other two flows… are later epics"* — **falls**; the flow merges them in |
+
+**The flow was given after the first draft of this amendment and reshaped it.** Three epics become
+one — new project, adoption, and this — and adoption loses its hardest part: it was to detect stacks
+by heuristic and have the user confirm, and the flow simply asks the question a new project is asked
+when no manifest is found. Nothing to detect wrongly. Two costs arrive with it: the extension
+activates with no folder open, so it loads in every window on the host, and the new-project flow is
+two-phase because `reopenInContainer` takes no folder and `vscode.openFolder` restarts the extension
+host. Both are recorded with the epic.
+
+**`jvsl.env.agents.code-server` is absorbed and archived**, decided by João Lima on 2026-10-02. The
+archive happens after a green image build here, never before. The alternative — keeping it as where
+that content is authored while this repository vendors it at release — was rejected for preserving
+the two release trains the epic exists to remove.
+
+**A correction I owe this document.** The charter's third amendment says *"FR-74 is deleted"*. FR-74
+is "the generated configuration declares no variable that only code-server read", which stands and
+shipped. The requirement that dies with the minimum template version is **FR-22**, and FR-21 goes
+with it. I wrote the wrong number into an accepted charter and it merged; the charter is corrected in
+the same change as this.
+
+**And a measurement in this document was false in two places.** It said all sixty-five `apt`
+packages exist in trixie under the same names, zero renames, from reading
+`packages.debian.org/trixie/<pkg>` — a page that answers 200 whether or not the package is in the
+suite. Re-measured with `api.ftp-master.debian.org/madison`: **67 packages, 61 in trixie, 6 from
+third-party feeds, one rename**, and three versions no longer offered — `openjdk-17-jdk`, `gcc-11`
+and `g++-11` are absent, so java offers 21 and 25 and cpp offers 12, 13 and 14. The template's own
+documents were corrected when it was found; this one was not, and a requirements document carrying
+a false measurement is worse than one carrying none, because the number looks checked.
+
 ### Amendment, 2026-10-02 (sixth)
 
 **FR-7x, and a correction to what the charter said this would cost.** The charter's second amendment
@@ -372,9 +579,12 @@ was worth measuring before writing requirements shaped by the wrong cost.
 
 **`baseimage-debian:trixie` rather than the `baseimage-ubuntu:noble` the image is on today.** The
 cheaper choice was the same base, which changes nothing but the editor's absence; Debian trixie was
-chosen for what it brings, accepting a re-check of the `apt` names. **Measured afterwards: all
-sixty-five exist in trixie under the same names, zero renames.** The risk accepted turned out not to
-be there, which is an argument for measuring rather than for having chosen differently.
+chosen for what it brings, accepting a re-check of the `apt` names. **Measured afterwards, twice:
+the first measurement said sixty-five names and zero renames and was wrong** — it read a page that
+answers 200 regardless. The real figures are 67 packages, 61 in trixie, 6 from third-party feeds,
+one rename, and three versions no longer offered. The risk accepted was real after all, and the
+lesson is about the method rather than the choice: a source that cannot say "no" cannot be used to
+establish presence.
 
 **FR-73 is the one that is not mechanical.** Seven settings are seeded today for code-server to read.
 The repository's own comments classify two of them: `window.menuBarVisibility: classic` exists
