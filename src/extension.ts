@@ -8,6 +8,7 @@ import * as vscode from 'vscode'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext } from './open.ts'
+import { viewItems, type Row, type ViewState } from './view.ts'
 import {
   missingDependencies,
   nextManifest,
@@ -22,6 +23,7 @@ const SHOW_DETECTED = 'jvsl.devContainer.showDetected'
 const OPEN = 'jvsl.devContainer.open'
 const CONFIGURE = 'jvsl.devContainer.configure'
 const MANIFEST = '.code-server.stack.json'
+const VIEW = 'jvsl.devContainer.view'
 
 const run = promisify(execFile)
 
@@ -61,8 +63,75 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(CONFIGURE, () => configure(write)),
   )
 
+  const view = new SelectionView()
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(VIEW, view),
+    // External edits count: the manifest is a file a person may change by hand,
+    // and a view that only updates when this extension writes it would be
+    // confidently wrong rather than merely stale.
+    watchManifest(() => view.refresh()),
+  )
+
   write(await describe(context))
   await prepare(context, channel, write, { handOver: false })
+}
+
+function watchManifest(onChange: () => void): vscode.Disposable {
+  const watcher = vscode.workspace.createFileSystemWatcher(`**/${MANIFEST}`)
+  watcher.onDidChange(onChange)
+  watcher.onDidCreate(onChange)
+  watcher.onDidDelete(onChange)
+  return watcher
+}
+
+/**
+ * The sidebar view. **Every decision it makes is in `viewItems`**, which is a
+ * function over what is on disk and is tested without an editor; this reads the
+ * disk and turns rows into `TreeItem`s.
+ */
+class SelectionView implements vscode.TreeDataProvider<Row> {
+  private readonly changed = new vscode.EventEmitter<void>()
+  readonly onDidChangeTreeData = this.changed.event
+
+  refresh(): void {
+    this.changed.fire()
+  }
+
+  getChildren(): Row[] {
+    const folder = vscode.workspace.workspaceFolders?.[0]
+    if (!folder) return []
+    return viewItems(readViewState(folder.uri.fsPath))
+  }
+
+  getTreeItem(row: Row): vscode.TreeItem {
+    const item = new vscode.TreeItem(row.label, vscode.TreeItemCollapsibleState.None)
+    item.description = row.detail
+    if (row.kind === 'empty' || row.kind === 'uninitialised') {
+      item.tooltip = row.detail
+      if (row.kind === 'empty') {
+        item.command = { command: CONFIGURE, title: 'Configure' }
+      }
+    }
+    return item
+  }
+}
+
+function readViewState(root: string): ViewState {
+  let manifest: Record<string, unknown> | null = null
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      manifest = parsed as Record<string, unknown>
+    }
+  } catch {
+    // Absent or unreadable both mean "nothing to show from it". The questions
+    // refuse an unreadable one rather than overwriting it; the view does not
+    // need to repeat that refusal to stay honest about what it can see.
+  }
+  return {
+    stacksAvailable: stacksAvailable(join(root, '.code-server', 'stacks')),
+    manifest,
+  }
 }
 
 /**

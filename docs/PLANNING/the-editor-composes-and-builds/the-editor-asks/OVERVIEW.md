@@ -82,7 +82,7 @@ Written after this gate, not before.
 | Order | Task | Repo | Status |
 |---|---|---|---|
 | 1 | [`tasks/the-questions-produce-a-manifest.md`](tasks/the-questions-produce-a-manifest.md) | extension | Done — #25 |
-| 2 | `tasks/the-view-shows-what-is-selected.md` | extension | not yet written |
+| 2 | [`tasks/the-view-shows-what-is-selected.md`](tasks/the-view-shows-what-is-selected.md) | extension | Done — #26 |
 
 Two slices. The first is useful without the second, because a contributed command is reachable from
 the palette — and everything in it is a pure function, testable with no editor at all.
