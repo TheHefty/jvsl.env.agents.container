@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-image-builds-here
 epic: the-extension-carries-the-image
-pr:
+pr: 45
 ---
 
 # Task: the-pipeline-arrives-builds-and-stays-fast
@@ -145,4 +145,43 @@ are answered above rather than left.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #45. **25 jobs, all green on the first full run**, in 7 minutes. `nothing-was-dropped`
+reports every test file has a runner — 28 files, 32 runner patterns — and is in `ci-green`'s needs.
+
+**The first failure scenario was checked rather than assumed, and did not occur.** A job that arrives
+hollow passes and proves nothing, and no guard here can see that, so the run was read job by job for
+assertion counts:
+
+| | | | |
+|---|---|---|---|
+| `ci-scripts` 69 | `jail-wrappers` 43 | `compose-versions` 37 | `devcontainer-metadata` 19 |
+| `cpp` 17 | `md-size` 16 | `ai-memory` 15 | `editor-leftovers` 14 |
+| `core-booted` 13 | `git-credential-helper` 12 | `the-move` 10 | `state-ownership` 10 |
+| `php-keyring` 8 | `php` 8 | `python` 8 | `guard-is-sound` 7 |
+
+**`core-build` was missing from that count and was not hollow.** It reports in prose rather than in
+`ok` lines — *"core-ci declares remoteUser abc, declares no containerUser, gives abc a usable login
+shell, installs none of the launcher's libraries, and still has a rust toolchain"* — so the pattern
+missed it. Recorded because the absence looked exactly like the scenario and was resolved by
+reading, not by re-running.
+
+**`declared-extensions` was SKIPPED and `ci-green` was green**, which is the dangerous half of this
+change observed working rather than argued: the inline loop it replaced would have failed there.
+
+**Two things fixed themselves, which is what floors are for.** `ci-green.test.sh` went from 11 passed
+1 failed to 13 passed 0 — its failure was *"parsed only 8 jobs out of ci.yml"*, and the jobs arriving
+resolved it. The guard went from 25 orphans to zero.
+
+**Three adaptations the design did not anticipate**, each because this repository is shaped
+differently from the template:
+
+- `bash-syntax` prunes `node_modules/`, `.code-server/` and `dist/`. The template had none of them
+  to walk into.
+- `no-launcher.test.sh` excludes `.code-server/`. It assumes one product per tree, and
+  `git ls-files --others` reaches into the submodule — finding the launcher in **that product's**
+  planning documents and in **its own copy of the guard**. Its existing exclusions are anchored at
+  the root, so `^docs/PLANNING/` never matched `.code-server/docs/PLANNING/`.
+- And it now drops comment lines, for the reason the file already gives elsewhere: a grep cannot
+  tell a recollection from an instruction. `src/limits.ts` says it was ported from
+  `start/src/main.rs`. **Verified rather than assumed** — a probe with a non-comment reference was
+  still caught, then removed.

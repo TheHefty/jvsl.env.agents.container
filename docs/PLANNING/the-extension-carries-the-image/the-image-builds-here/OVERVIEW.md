@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -122,7 +122,7 @@ Written after this gate, not before.
 |---|---|---|
 | 1 | [`tasks/the-content-arrives-with-its-history.md`](tasks/the-content-arrives-with-its-history.md) | Done — #41 |
 | 2 | [`tasks/nothing-was-dropped.md`](tasks/nothing-was-dropped.md) | Done — #43 |
-| 3 | [`tasks/the-pipeline-arrives-builds-and-stays-fast.md`](tasks/the-pipeline-arrives-builds-and-stays-fast.md) | Draft |
+| 3 | [`tasks/the-pipeline-arrives-builds-and-stays-fast.md`](tasks/the-pipeline-arrives-builds-and-stays-fast.md) | Done — #45 |
 
 **The order changed at task 2, and the story's own prose is why.** The table first put the guard
 third and the pipeline second; the prose beside it already said the guard is *"written before the

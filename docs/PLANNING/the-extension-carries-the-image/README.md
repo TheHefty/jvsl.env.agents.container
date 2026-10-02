@@ -14,7 +14,7 @@ second version to keep in step: the extension composes and builds from what it b
 
 | # | Story | Status |
 |---|---|---|
-| 1 | [`the-image-builds-here`](the-image-builds-here/) | Draft |
+| 1 | [`the-image-builds-here`](the-image-builds-here/) | **Done** |
 | 2 | the bundle carries the image's content | not written |
 | 3 | the extension composes and builds | not written |
 | 4 | a project needs nothing but the extension | not written |
@@ -41,8 +41,9 @@ project, adopting the template into an existing project, and this. *The agents s
 |---|---|
 | shell this repository takes ownership of | 4629 lines — `core/` 3417 in 34 files, `stacks/` 1212 in 39 |
 | guards it takes ownership of | 1066 lines in 13 files, each existing because it caught something |
-| CI time on a change that touches the image | **6 minutes**, measured on run `37030096331`; slowest job `stack-build (ruby)` at 4 |
-| CI time today, for comparison | under a minute |
+| CI time on a change that touches the image | **7 minutes**, measured here on run `37051487802` — the estimate from the template's own run was 6 |
+| CI time before story 1 | under a minute |
+| jobs | 5 → **25** |
 
 **The six minutes is the number to hold onto, and it is smaller than it was guessed to be.** An
 earlier estimate in this chain said twelve image builds would make the pipeline heavy; the builds
