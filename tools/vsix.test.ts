@@ -1,6 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 /**
  * What ships, and more to the point what does not.
@@ -158,14 +161,25 @@ test('a file that is executable in the repository is executable in the package',
     .filter((f): f is string => f !== undefined && !isTest(f))
   assert.ok(executables.length > 0, 'no executable files to check; this would pass vacuously')
 
+  // **It builds the artifact it inspects**, rather than reading one that
+  // happens to be on disk. The first version read
+  // `jvsl-env-agents-vscode.vsix` from the working directory and passed
+  // locally for the wrong reason — a stale package left over from an earlier
+  // run. Had `.vscodeignore` changed without a repackage, it would have
+  // asserted about the old one and said nothing. In CI it failed loudly
+  // instead, because this test runs before the packaging step, and the loud
+  // failure is the better of the two outcomes.
+  const out = join(mkdtempSync(join(tmpdir(), 'vsix-')), 'probe.vsix')
+  execFileSync('npx', ['--no-install', 'vsce', 'package', '--no-dependencies', '--out', out], {
+    cwd: new URL('..', import.meta.url).pathname,
+    stdio: 'ignore',
+  })
+
   // `unzip -Z` rather than a library: no dependency to add, and no branch that
   // skips the check when something is unavailable. A test that returns early
   // when its tool is missing is a test that reports success for having done
   // nothing, which is the failure this file exists to catch in the package.
-  const listing = execFileSync('unzip', ['-Z', 'jvsl-env-agents-vscode.vsix'], {
-    encoding: 'utf8',
-    cwd: new URL('..', import.meta.url).pathname,
-  })
+  const listing = execFileSync('unzip', ['-Z', out], { encoding: 'utf8' })
   const executableInZip = new Set(
     listing
       .split('\n')
