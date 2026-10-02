@@ -90,11 +90,32 @@ jobs:
       - name: a real container gets the machine the manifest asked for
         run: npm run test:integration
 
+  the-move:
+    # The image's content arrived by merge rather than by copy, and these three
+    # assert the properties that made that worth doing. They are about this
+    # repository's own git history, which is unusual for a test and is the only
+    # place those properties are visible.
+    #
+    # `fetch-depth: 0` is load-bearing: all three walk history, and the default
+    # shallow clone has none to walk — they would fail for the wrong reason,
+    # which is worse than failing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: the merge changed nothing outside core, stacks and scripts
+        run: bash tools/the-merge-touched-nothing-else.test.sh
+      - name: the three trees are the template's at v5.0.0
+        run: bash tools/the-trees-match-the-template.test.sh
+      - name: the reasons came with the files
+        run: bash tools/the-history-is-reachable.test.sh
+
   # The one check branch protection requires. Named so it never changes, the
   # same reason the template's does.
   ci-green:
     if: always()
-    needs: [typecheck, unit, package, integration]
+    needs: [typecheck, unit, package, integration, the-move]
     runs-on: ubuntu-latest
     steps:
       - name: fail unless every job above succeeded

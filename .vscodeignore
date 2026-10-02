@@ -7,6 +7,31 @@
 # the repository, and that is where anybody debugging it should be reading them.
 # tools/vsix.test.ts holds this true.
 .code-server/**
+
+# The image's content, merged in by the story that gives this repository its
+# own image builds. **It does not ship yet.** Story 2 is where `core/` and
+# `stacks/` deliberately start travelling in the package, minus their own
+# `*.test.sh`, and until then shipping them is 4629 lines nothing reads.
+#
+# `scripts/` never ships at all: thirteen CI guards have no business inside an
+# editor extension. Merging these in took the package from 6 files to 108
+# without failing anything, because the tests beside this file named what must
+# not ship rather than what may — tools/vsix.test.ts now asserts the allowed
+# list instead.
+core/**
+stacks/**
+scripts/**
+
+# Agent skills for working *on* this repository, not for anyone using the
+# extension. Never tracked in git, so a CI package built from actions/checkout
+# never saw them and the published .vsix is clean — but `npm run package` on a
+# developer's machine did ship all sixteen, which makes local packaging differ
+# from the pipeline's. That exact class of defect cost this repository a
+# misdiagnosis once already, in the fix titled "packaging builds what it
+# packages".
+.claude/**
+.agents/**
+
 .github/**
 docs/**
 src/**
