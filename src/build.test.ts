@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   buildCommand,
   buildOutcome,
+  composeCommand,
   detectManager,
   hostProblems,
   packageFor,
@@ -111,4 +112,42 @@ test('with no known package manager the tool is still named', () => {
   const [problem] = hostProblems({ jq: false, docker: 'ok', manager: null })
   assert.match(problem?.message ?? '', /jq/)
   assert.equal(problem?.blocking, true)
+})
+
+test('the compose command invokes the carried script, with the project manifest', () => {
+  const c = composeCommand('/ext', '/work/my-project', ['java', 'python'])
+  assert.equal(c.script, '/ext/core/compose-dockerfile.sh')
+  assert.deepEqual(c.stacks, ['java', 'python'])
+  assert.equal(c.manifest, '/work/my-project/.code-server.stack.json')
+})
+
+test('the build context is the extension, not the workspace', () => {
+  // The composed Dockerfile has `COPY core/…` and `COPY stacks/…`, relative to
+  // the context. A context of the workspace builds nothing — or worse, builds
+  // whatever a project happens to have at those paths.
+  const c = composeCommand('/ext', '/work/my-project', [])
+  assert.equal(c.context, '/ext')
+})
+
+test('the image is named the way the generated configuration references it', () => {
+  // devcontainer.ts writes `image: <basename>-dev`. A build that tags anything
+  // else produces an image the configuration does not point at, and the open
+  // fails naming a missing image that was just built.
+  const c = composeCommand('/ext', '/work/my-project', [])
+  assert.equal(c.image, 'my-project-dev')
+})
+
+test('nothing in the build names a path inside a .code-server/ submodule', () => {
+  // Every project built on the template still has one, carrying whatever
+  // version it last bumped to. A fallback would make what runs depend on
+  // which project it is.
+  //
+  // The slash is the whole assertion. `.code-server.stack.json` is the
+  // manifest's own name, at the workspace root, and it keeps that name after
+  // the submodule is gone — the first version of this test forbade the
+  // substring and failed on the manifest, which is the thing the build is
+  // supposed to read.
+  const c = composeCommand('/ext', '/work/my-project', ['java'])
+  const everything = [c.script, c.manifest, c.context, c.image, ...c.stacks].join(' ')
+  assert.ok(!everything.includes('.code-server/'), everything)
 })

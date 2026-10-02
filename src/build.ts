@@ -1,3 +1,4 @@
+import { carried } from './template.ts'
 /**
  * What building is, as functions over what the host looks like.
  *
@@ -135,4 +136,49 @@ export function hostProblems(checks: HostChecks): HostProblem[] {
   }
 
   return problems
+}
+
+/** What composing and building a project's image takes. */
+export interface Compose {
+  /** The carried composer — never a project's own copy. */
+  script: string
+  /** Stacks, in the order the manifest lists them. */
+  stacks: string[]
+  /** `STACK_MANIFEST`: which version of each stack this project asked for. */
+  manifest: string
+  /** `docker build`'s context, which is where `core/` and `stacks/` are. */
+  context: string
+  image: string
+}
+
+/**
+ * The invocation, which must match the one CI makes rather than merely call the
+ * same file.
+ *
+ * `core/compose-dockerfile.sh` was extracted from `setup` for exactly this
+ * reason, and its own header records what happened when two callers each built
+ * the concatenation themselves: the copies drifted, CI's ignored
+ * `requires.json`, and `stack-build (android)` built core+android with no JDK
+ * and died on a Java-based tool — a CI-only failure that never reproduced
+ * through `setup`.
+ *
+ * So shelling out is the decision, and these fields are the parts of the
+ * invocation that can still differ while calling the same script. The context
+ * is the one most easily got wrong: the composed Dockerfile has `COPY core/…`
+ * and `COPY stacks/…` relative to it, so a context of the project's workspace
+ * builds nothing — or builds whatever that project happens to have there.
+ */
+export function composeCommand(
+  extensionPath: string,
+  workspace: string,
+  stacks: string[],
+): Compose {
+  const basename = workspace.replace(/\/+$/, '').split('/').pop() ?? 'project'
+  return {
+    script: carried(extensionPath, 'core', 'compose-dockerfile.sh'),
+    stacks,
+    manifest: `${workspace}/.code-server.stack.json`,
+    context: extensionPath,
+    image: `${basename}-dev`,
+  }
 }

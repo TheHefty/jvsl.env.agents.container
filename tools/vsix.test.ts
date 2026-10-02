@@ -195,3 +195,26 @@ test('a file that is executable in the repository is executable in the package',
     `these lose their executable bit in the package:\n${lost.join('\n')}`,
   )
 })
+
+/**
+ * The other half of `carried()`.
+ *
+ * `src/template.test.ts` pins the expression; this reads the artifact. Neither
+ * alone is the claim, because the claim is about two different filesystems:
+ * a checkout, where `extensionPath` is the repository root, and an
+ * installation, where it is wherever the editor extracted `extension/` to.
+ *
+ * The package is the only place the second one is visible from here, and even
+ * then only by the `extension/` prefix the editor strips. The story's
+ * `@manual` pass is what closes the rest.
+ */
+test('the package holds the composer where carried() looks for it', () => {
+  const files = packagedFiles()
+  for (const needed of ['core/compose-dockerfile.sh', 'core/Dockerfile.frag', 'core/versions.json']) {
+    assert.ok(
+      files.includes(needed),
+      `${needed} is not in the package; carried() would resolve to a path that does not exist ` +
+        `in an installed extension, and every test that computes it would still pass`,
+    )
+  }
+})
