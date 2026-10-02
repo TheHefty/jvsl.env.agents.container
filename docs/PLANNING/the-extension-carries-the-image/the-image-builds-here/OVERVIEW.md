@@ -120,7 +120,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-content-arrives-with-its-history.md`](tasks/the-content-arrives-with-its-history.md) | Draft |
+| 1 | [`tasks/the-content-arrives-with-its-history.md`](tasks/the-content-arrives-with-its-history.md) | Done — #41 |
 | 2 | the pipeline arrives and builds | not written |
 | 3 | nothing was dropped | not written |
 | 4 | the fast path | not written |
