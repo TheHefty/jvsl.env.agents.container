@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** — extension `v0.3.0`. Three `@manual` passes owed |
 | **Epic** | `the-editor-composes-and-builds` |
 | **Date** | 2026-10-02 |
 
@@ -97,7 +97,7 @@ Written after this gate, not before.
 
 | Order | Task | Repo | Status |
 |---|---|---|---|
-| — | — | — | — |
+| 1 | [`tasks/the-build-runs-in-a-terminal.md`](tasks/the-build-runs-in-a-terminal.md) | extension | Done — #27 |
 
 **The template half comes second, and not for tidiness.** Deleting `init` before the extension ships
 its checks leaves releases in which neither side names a cause — which is the reason story 1 did not

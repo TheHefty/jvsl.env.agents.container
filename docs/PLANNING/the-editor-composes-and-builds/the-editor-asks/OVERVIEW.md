@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** — extension `v0.3.0`. Two `@manual` passes owed |
 | **Epic** | `the-editor-composes-and-builds` |
 | **Date** | 2026-10-02 |
 
@@ -83,6 +83,11 @@ Written after this gate, not before.
 |---|---|---|---|
 | 1 | [`tasks/the-questions-produce-a-manifest.md`](tasks/the-questions-produce-a-manifest.md) | extension | Done — #25 |
 | 2 | [`tasks/the-view-shows-what-is-selected.md`](tasks/the-view-shows-what-is-selected.md) | extension | Done — #26 |
+
+Two fixes land under task 1 rather than as tasks of their own: #28, because confirming the questions
+did not build — the story asked for it from the start and the task shipped describing itself as
+complete — and #29, which made the defaults a tested function instead of a literal kept in step by
+hand in two repositories.
 
 Two slices. The first is useful without the second, because a contributed command is reachable from
 the palette — and everything in it is a pure function, testable with no editor at all.
