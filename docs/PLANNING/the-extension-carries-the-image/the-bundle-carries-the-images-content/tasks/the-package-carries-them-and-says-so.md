@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-bundle-carries-the-images-content
 epic: the-extension-carries-the-image
-pr:
+pr: 50
 ---
 
 # Task: the-package-carries-them-and-says-so
@@ -100,4 +100,25 @@ None.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #50. The package goes from 6 files to **63**. Red first at **57 of 57 missing**,
+which was this task's whole content stated as a number. 119 unit, 9 bundle, typecheck clean.
+
+**The executable-bit test nearly shipped as a vacuous pass, and that is the finding worth keeping.**
+Its first version imported `adm-zip` and returned early when the dependency was absent — reporting
+success for having done nothing, which is **the exact failure this file exists to catch in the
+package**. It uses `unzip -Z` now, with no branch that skips anything. Probed afterwards: 8
+executable entries in the zip, matching the 8 non-test executables git tracks, so the assertion is
+doing work rather than passing over an empty set.
+
+**The third failure scenario was checked rather than reasoned about.** `core/image.test.sh` at the
+top level and `core/cont-init/30-editor-leftovers.test.sh` nested are both excluded by
+`core/**/*.test.sh`, and the whole package was grepped for `.test.sh` and `scripts/` afterwards:
+nothing.
+
+**The second scenario was designed out rather than tested for.** Both assertions call one
+`isTest()`. There is no deadlock to detect because there is nowhere for them to disagree.
+
+**One thing the design said and the implementation confirms:** completeness reads `git ls-files`
+rather than a list written in the test, so a stack added to `stacks/` travels without anybody
+editing this file — the same property `discover-stacks` gives the other side of the boundary. The
+floor (`required.length > 50`) is what stops that reading from passing vacuously if the tree moves.
