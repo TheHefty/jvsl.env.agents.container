@@ -227,10 +227,33 @@ resolving outside the working directory is:
 One decline leaves an agent permanently working with no modes, no rules and no gates, and nothing
 ever says so again — a worse version of the silent-import failure this charter's own project
 documents as unacceptable. A symlink does not escape it; a target outside the working directory gets
-the same treatment. So the image carries the documents at a fixed path and a `cont-init` hook
-rewrites them, on every boot, into a gitignored path inside the workspace. The import stays
-workspace-relative and no dialog is involved. **That is derived state, not a copy** — regenerated
-like the generated Dockerfile already is, and never edited in place.
+the same treatment, and **no setting pre-approves the dialog**, so an extension cannot clear it on
+the user's behalf.
+
+**The documentation names the escape, and it is the mechanism.** *"To load shared rules without that
+approval, keep them in `~/.claude/rules/`, where they apply to every project on your machine."* In
+the container `~` is `/config` and the image already sets `CLAUDE_CONFIG_DIR=/config/.claude`, so
+both readings give the same path and there is nothing to get wrong. The documents live at
+`/config/.claude/rules/`, **outside the workspace, which is where they were asked to be**, and they
+load with no import and no dialog. Nothing in a project's `CLAUDE.md` points at them.
+
+Two consequences, each a decision rather than a detail. `/config/.claude` is bind-mounted from the
+host's own `~/.claude`, so a hook writing there would write into the user's personal configuration
+and reach every project on that machine — the generated configuration therefore mounts a volume
+over `/config/.claude/rules` alone. And everything in `rules/` is resident in every session, while
+today `WORKFLOW.md` is linked rather than imported and a consuming monorepo deliberately does not
+import `INITIALIZATION.md` at 13.4 KiB. So the hook populates `rules/` with what must govern every
+turn and leaves the rest at a readable path for linking. **What lands there is derived state, not a
+copy** — rewritten on every boot like the generated Dockerfile already is, and never edited in
+place.
+
+**`CLAUDE.md` and `AGENTS.md` ship in the bundle and are written into the project**, which is what
+makes a project need nothing but this extension. They are written **when absent and never over
+somebody's work**: both are tracked in git and carry a project's own standing answers — this
+extension's own is one, and the reference monorepo's is 20 KiB of them — so copying over them is
+destructive in a way the generated configuration is not. The pattern is already in this codebase,
+in `devcontainer.ts`: *anything else, including a file that cannot be parsed, is somebody's work,
+and the open refuses rather than overwriting it.*
 
 **What does not change.** Pair Programming Mode, English, MIT, the Dev Containers extension as the
 load-bearing non-free dependency, and every isolation constraint: no ssh-agent, gpg-agent, X11, host
