@@ -8,8 +8,10 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
   the import below, and it governs every session until someone says otherwise.
 - **The documentation language is English.** Every file written from here on inherits it, including
   the commit messages.
-- **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/SRS.md`,
-  both agreed at their gates. The `INITIALIZATION.md` import is gone with it: the chain continues
+- **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/srs/` — one
+  file per section, indexed at `docs/srs/README.md`, split on 2026-10-02 when the single file
+  reached 99.3% of the 50 KiB limit. `docs/SRS.md` is a one-line pointer, not a copy. Both agreed
+  at their gates. The `INITIALIZATION.md` import is gone with it: the chain continues
   at `.code-server/docs/agent/en/WORKFLOW.md`, one story and one task at a time.
 
 ## If the imports below did not load
