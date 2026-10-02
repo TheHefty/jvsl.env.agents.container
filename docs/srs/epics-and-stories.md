@@ -162,9 +162,11 @@ and none starts before the epic above closes. **Two of them stopped being option
   needed.
 - **Absorbing stack selection** — **decomposed below**, as *the editor composes and builds this
   project's image*. It is no longer in this list.
-- **Starting a new project** — the initialization interview, conducted inside the project's own
-  container as its first session.
-- **Adopting the template into an existing project** — stack detection by heuristic on the host,
-  confirmed by the user, before any agent exists to ask.
-- **The agents screen** — connecting an agent once, renewing on request, and where each agent's
+- **Starting a new project** — **merged into the epic above** by the flow of 2026-10-02, as
+  *creating a project from nothing*. It is no longer in this list.
+- **Adopting the template into an existing project** — **merged into the epic above**, as the
+  no-manifest branch of *opening a project the extension chose*. The heuristic detection it was
+  specified around is deleted rather than built: the flow asks the question a new project answers.
+- **The agents screen** — **decomposed, and not grilled**; see
+  `docs/PLANNING/the-agents-screen/`. Connecting an agent once, renewing on request, and where each agent's
   credentials live.
