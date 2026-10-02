@@ -15,7 +15,7 @@ second version to keep in step: the extension composes and builds from what it b
 | # | Story | Status |
 |---|---|---|
 | 1 | [`the-image-builds-here`](the-image-builds-here/) | **Done** |
-| 2 | the bundle carries the image's content | not written |
+| 2 | [`the-bundle-carries-the-images-content`](the-bundle-carries-the-images-content/) | Draft |
 | 3 | the extension composes and builds | not written |
 | 4 | a project needs nothing but the extension | not written |
 | 5 | the documents arrive with the image | not written |
