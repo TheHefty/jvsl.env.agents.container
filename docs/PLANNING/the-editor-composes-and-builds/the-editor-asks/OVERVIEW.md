@@ -81,7 +81,7 @@ Written after this gate, not before.
 
 | Order | Task | Repo | Status |
 |---|---|---|---|
-| 1 | [`tasks/the-questions-produce-a-manifest.md`](tasks/the-questions-produce-a-manifest.md) | extension | Draft |
+| 1 | [`tasks/the-questions-produce-a-manifest.md`](tasks/the-questions-produce-a-manifest.md) | extension | Done — #25 |
 | 2 | `tasks/the-view-shows-what-is-selected.md` | extension | not yet written |
 
 Two slices. The first is useful without the second, because a contributed command is reachable from

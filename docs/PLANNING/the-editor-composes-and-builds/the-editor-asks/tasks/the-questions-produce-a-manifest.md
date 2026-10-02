@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-editor-composes-and-builds/the-editor-asks
 epic: the-editor-composes-and-builds
-pr:
+pr: 25
 depends-on: []
 ---
 
@@ -112,4 +112,37 @@ None.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #25. `src/questions.ts` with nine tests, a `Dev Container: Configure Stacks and Limits`
+command, and the activation event the story called for. 79 tests in all, up from 69.
+
+**The activation change was refused by this repository's own manifest guard, and the guard was half
+right.** Its rule was categorical — *no activation event names a path inside the submodule* — with a
+reason that is still true: `.code-server/` exists and is empty after a clone without `--recursive`, so
+an event naming anything inside it never fires, in exactly the case a project most needs to be told
+something.
+
+But the invariant that carries that reason is narrower: **at least one event has to fire without the
+submodule**, not *none may name it*. The manifest at the root covers a project that has run `setup`;
+`.code-server/setup` covers one that has not; neither alone covers both. The rule is now "not only
+submodule paths", the negative fixture that had only a submodule path still fails it, and a new fixture
+asserts the pair this repository actually ships.
+
+That was worth more than the three lines it cost. A guard stated more broadly than its reason refuses a
+correct change, and the temptation then is to weaken it to whatever lets the change through — which is
+how the reason gets lost. The reason is in the test, in full, next to the narrower rule.
+
+**Two tests were watched failing against deliberately wrong implementations:** `nextManifest` rebuilt
+from the answers alone drops a project's own keys, and `stacksAvailable` reading a hardcoded list makes
+a stack added to the template invisible. Those are failure scenarios 1 and 2; the third — a cancelled
+run writing what was answered so far — is prevented by structure rather than asserted, because every
+`undefined` from a picker returns before anything is written.
+
+**A process slip worth recording:** the branch for this was cut from `master` before the design merged,
+so the first attempt at writing this section failed on a file that did not exist on it — and the commit
+and push went ahead anyway, because they were separate commands rather than chained to it. Rebased, and
+the Outcome is here. It is the second time today that acting on what I remembered about a branch rather
+than checking cost a correction.
+
+**What is not covered, and is the story's `@manual`:** which picker appears in which order, and whether
+the prompts read clearly. A mock of `showQuickPick` would assert that a pure function was called with
+what it returned.

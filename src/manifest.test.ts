@@ -48,11 +48,26 @@ function problems(m: Manifest): string[] {
         'never fires — in exactly the case a project has to be refused',
     )
   }
-  for (const event of events) {
-    if (typeof event === 'string' && event.includes('.code-server/')) {
-      found.push(`activation event "${event}" names a path inside the submodule, which is empty ` +
-        'when the submodule is not initialised')
-    }
+  // **The rule is "not only submodule paths", not "no submodule paths",** and it
+  // was the second of those until an event naming `.code-server/setup` was added
+  // for a real reason: a project that has never run `setup` has no manifest, so
+  // the manifest event does not fire, and the thing whose purpose is to produce a
+  // manifest would never start.
+  //
+  // What has to stay true is that **something** activates without the submodule
+  // being checked out, because that is the case a project most needs to be told
+  // about — `.code-server/` exists and is empty after a clone without
+  // `--recursive`, and an event naming anything inside it never fires. So this
+  // asserts at least one event outside it rather than none inside.
+  const outside = events.filter(
+    (event) => typeof event === 'string' && !event.includes('.code-server/'),
+  )
+  if (outside.length === 0) {
+    found.push(
+      'every activation event names a path inside the submodule, which is empty when the ' +
+        'submodule is not initialised — so nothing would activate in exactly the case a project ' +
+        'has to be refused',
+    )
   }
 
   if (typeof m.templateMinVersion !== 'string' || parseVersion(m.templateMinVersion) === null) {
@@ -107,10 +122,24 @@ test('a soft dependency on the container tooling is rejected', () => {
   assert.ok(found.some((p) => p.includes('extensionDependencies')), found.join('\n'))
 })
 
-test('activating on a path inside the submodule is rejected', () => {
+test('activating only on paths inside the submodule is rejected', () => {
   const found = problems({ ...good, activationEvents: ['workspaceContains:.code-server/version.txt'] })
   assert.ok(found.some((p) => p.includes('.code-server.stack.json')), found.join('\n'))
   assert.ok(found.some((p) => p.includes('inside the submodule')), found.join('\n'))
+})
+
+test('a submodule path alongside one outside it is accepted', () => {
+  // The shape this repository actually ships: the manifest at the root, which
+  // fires for a project that has one, plus `.code-server/setup`, which fires for
+  // a project that has never run it. Neither alone covers both.
+  const found = problems({
+    ...good,
+    activationEvents: [
+      'workspaceContains:.code-server.stack.json',
+      'workspaceContains:.code-server/setup',
+    ],
+  })
+  assert.deepEqual(found, [])
 })
 
 test('an unparseable or missing templateMinVersion is rejected', () => {
