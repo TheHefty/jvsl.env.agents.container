@@ -145,6 +145,28 @@ amendment at the bottom for the four decisions this group is the shape of.
 non-interactive `setup` has to exist before anything can invoke it. The stories below are in that
 order for that reason and not by preference.
 
+### The image stops being code-server's (FR-7x)
+
+- **FR-71** — The image is built on a base that carries s6-overlay, the `abc` user, `PUID`/`PGID`,
+  `/config` as that user's home and the `cont-init` mechanism, and carries no editor.
+- **FR-72** — Nothing in the image exists for code-server: not its extension installs, not its
+  settings seeding, not its unauthenticated HTTP server, not `PASSWORD`.
+- **FR-73** — A setting reaches the host editor only if it exists because of something the image
+  declares. Anything else is the person's own editor configuration and is not written by a project.
+- **FR-74** — The generated configuration declares no variable that only code-server read.
+
+**This is a base-image replacement and the cost was measured before the requirements were written.**
+`ghcr.io/linuxserver/baseimage-debian:trixie` publishes the conventions the template depends on —
+the same ones `docker-code-server` is itself built on, which is
+`ghcr.io/linuxserver/baseimage-ubuntu:noble`. So FR-71 is a changed `FROM` rather than a
+reimplementation of five mechanisms, and the charter's second amendment overstated it.
+
+**All sixty-five `apt` packages the image installs exist in Debian trixie under the same names** —
+thirty in core and thirty-five across the stacks, each checked against `packages.debian.org/trixie`.
+The distro change was accepted expecting "~30 package names to re-check"; the measurement says
+zero rename. Existing under the same name is not the same as behaving identically, and the image
+builds are what would say otherwise.
+
 ## Non-functional requirements
 
 - **NFR-1 — Resource isolation.** The editor process is never subject to the container's `cpuset`
@@ -328,6 +350,45 @@ What the grilling changed, against what went in:
 
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
+
+### Amendment, 2026-10-02 (sixth)
+
+**FR-7x, and a correction to what the charter said this would cost.** The charter's second amendment
+listed five things that "arrive from that base and are installed nowhere in the template" —
+s6-overlay, the `abc` user, `PUID`/`PGID`, `/config`, `cont-init` — and left the reader to conclude
+that removing code-server meant reimplementing them. **It does not.** LinuxServer publishes the base
+without an editor, and the code-server image is itself built on it:
+
+```
+docker-code-server/Dockerfile:  FROM ghcr.io/linuxserver/baseimage-ubuntu:noble
+baseimage-ubuntu:noble:         s6-overlay 3.2.1.0
+                                useradd -u 911 -U -d /config -s /bin/false abc
+                                init-adduser       ← applies PUID/PGID
+                                init-custom-files  ← the custom-cont-init.d hook
+```
+
+So the epic is a changed `FROM` plus the removal of what the template does *for* code-server. That
+was worth measuring before writing requirements shaped by the wrong cost.
+
+**`baseimage-debian:trixie` rather than the `baseimage-ubuntu:noble` the image is on today.** The
+cheaper choice was the same base, which changes nothing but the editor's absence; Debian trixie was
+chosen for what it brings, accepting a re-check of the `apt` names. **Measured afterwards: all
+sixty-five exist in trixie under the same names, zero renames.** The risk accepted turned out not to
+be there, which is an argument for measuring rather than for having chosen differently.
+
+**FR-73 is the one that is not mechanical.** Seven settings are seeded today for code-server to read.
+The repository's own comments classify two of them: `window.menuBarVisibility: classic` exists
+because "the web build shows a hamburger by default", and `chat.disableAIFeatures` had its key
+"verified against the VS Code build this image actually ships (1.129.0 via code-server 4.129.0)" —
+the host editor is 1.140.0. The other five are preference or an unmeasured workaround.
+
+The rule chosen is narrower than "keep what is useful": **a setting reaches the label only if it
+exists because of something the label installs.** `workbench.iconTheme` qualifies — without it the
+`file-icons` extension the image declares is installed and does nothing. The decision was to keep
+what still makes sense, measured item by item, and the open question underneath it is not a
+preference at all: **several of these may be application-scoped in VS Code and therefore not
+settable from a container at any price.** That is measured in the epic's first story, before
+anything is moved.
 
 ### Amendment, 2026-10-01 (fifth)
 
