@@ -149,6 +149,18 @@ start, and this command wrote the manifest and told the reader to run `setup` by
 ordering rather than oversight — the build did not exist yet, it is story 3's — but the command was
 merged describing itself as complete. Fixed in #28, once there was something to call.
 
+**A second scenario had no test, found by auditing the feature file against the suite rather than by
+reading the code.** *"Each question defaults to what the manifest already says"* was implemented in
+the editor's wiring — the version list reordered inline, the limits read with `?? '6g'` — and nothing
+asserted it. Worse than uncovered: **the memory default and "the lowest version listed" have to agree
+with `setup`'s**, and they were a literal in this file and a literal in a shell script in another
+repository. They are `orderedVersions` and `limitDefaults` now, with six tests, three of which were
+watched failing. #29.
+
+The audit is worth repeating on the other feature files. Ten of story 2's eleven non-`@manual`
+scenarios did have a test; the two that did not were both wiring, which is the shape this way of
+testing does not see.
+
 **What is not covered, and is the story's `@manual`:** which picker appears in which order, and whether
 the prompts read clearly. A mock of `showQuickPick` would assert that a pure function was called with
 what it returned.
