@@ -16,7 +16,7 @@ here stand on.
 | # | Story | Status |
 |---|---|---|
 | 2 | [`the-editor-asks`](the-editor-asks/) | Draft |
-| 3 | the editor builds | not yet grilled |
+| 3 | [`the-editor-builds`](the-editor-builds/) | Draft |
 
 **The order is fixed by what each needs**, not by preference: story 2 needs a manifest format to
 write and a `setup` to hand it to; story 3 needs story 2's answers to exist before there is anything
