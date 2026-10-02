@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
-    vscode.commands.registerCommand(CONFIGURE, () => configure(write)),
+    vscode.commands.registerCommand(CONFIGURE, () => configure(write, view)),
     vscode.commands.registerCommand(BUILD, () => build(write, view)),
   )
 
@@ -166,7 +166,7 @@ function readViewState(root: string): ViewState {
  * writes nothing: a half-answered manifest is worse than none, because `setup`
  * would read it and build something nobody chose, successfully.
  */
-async function configure(write: (lines: string[]) => void): Promise<void> {
+async function configure(write: (lines: string[]) => void, view: SelectionView): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0]
   if (!folder) {
     void vscode.window.showErrorMessage('Open a project folder first.')
@@ -255,11 +255,18 @@ async function configure(write: (lines: string[]) => void): Promise<void> {
     `configure: wrote ${MANIFEST}`,
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
     `  stacks after:  ${picked.join(' ') || '(none)'}`,
-    '  the image is not rebuilt by this command; run .code-server/setup',
   ])
-  void vscode.window.showInformationMessage(
-    `${MANIFEST} written. Run .code-server/setup to rebuild the image.`,
-  )
+
+  // **Confirming builds, even when nothing changed.** `docker build` against an
+  // unchanged manifest is a cache hit, and "I answered the questions and nothing
+  // happened" is worse than a few seconds. Detecting no change and stopping
+  // would also hide the case where somebody wants a rebuild *because* the
+  // manifest did not change, which is what a submodule bump looks like.
+  //
+  // This command wrote the manifest and told the reader to run `setup` by hand
+  // until the build existed. The story's scenario asked for a build from the
+  // start; what was missing was something to call.
+  await build(write, view)
 }
 
 /**
