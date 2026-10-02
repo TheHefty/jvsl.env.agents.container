@@ -58,6 +58,23 @@ fi
 # --- what must be absent.
 #
 # Each pattern is checked separately so a failure names which one, and the
+# **`.code-server/` is excluded, and that exclusion is this repository's
+# rather than the template's.** The guard assumes one product per tree; here
+# `git ls-files --others` reaches into a submodule that is a separate product,
+# and found the launcher in that product's own planning documents and in its own
+# copy of this very file. The exclusions below are anchored at the repository
+# root, so `^docs/PLANNING/` never matched `.code-server/docs/PLANNING/`.
+# The line becomes inert when the submodule goes, in the story that brings
+# `docs/agent/` here.
+#
+# **Comment lines are excluded, for the reason this file already gives
+# elsewhere: a grep cannot tell a recollection from an instruction.**
+# `src/limits.ts` and its test both carry "Ported from `start/src/main.rs`,
+# which is the behaviour being replaced" — which is the record of the
+# replacement having happened, not the launcher coming back. What matters is
+# what runs. `docs/srs/` joins the documentation exclusions for the same reason
+# `docs/PLANNING/` is there; the template had no `docs/srs/`.
+#
 # planning documents are excluded: they are the record of the launcher having
 # existed and of it being removed, and erasing that is not the point.
 # **No exclusions are left, and there were two.** Each was owned by a named task
@@ -83,7 +100,10 @@ check_absent() {
     local what="$1" pattern="$2" only="${3:-}" hits
     hits="$(grep -rnE "$pattern" -- "${tracked[@]}" 2>/dev/null \
         | { [ -n "$only" ] && grep -E "$only" || cat; } \
+        | grep -v '^\.code-server/' \
         | grep -v '^docs/PLANNING/' \
+        | grep -v '^docs/srs/' \
+        | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|\*|#)' \
         | grep -v '^CHANGELOG.md:' \
         | grep -v '^docs/agent/' \
         | grep -v "^scripts/$(basename "${BASH_SOURCE[0]}"):" || true)"

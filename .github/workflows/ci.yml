@@ -1,16 +1,408 @@
 name: CI
 
-# This repository had no CI at all until the extension had code in it. The
-# rules it inherits are blunt about what that means: a pull request in a
-# repository with no CI is mergeable the moment it opens, and nothing will stop
-# a broken change.
+# **Two pipelines became one here.** The extension's five jobs and the image's
+# sixteen share a single `ci-green`, because branch protection matches a required
+# check by name across every workflow in the repository: two files each defining
+# `ci-green` leaves the required check ambiguous in exactly the way a required
+# check must not be. Renaming one would have needed somebody to add a second
+# required check in the repository's settings, and a required check nobody
+# remembered to add is a check that does not gate.
+#
+# Three of the template's jobs did not come, because the tests they run did not:
+# `host-packages` (packages.test.sh), `setup-manifest` (setup.test.sh) and
+# `agent-docs` (docs/agent/check-parity.test.sh). They arrive with their
+# subjects.
+#
+# `pull_request` carries no branch filter, deliberately. The template's does,
+# and that is why a pull request stacked on another one there receives no CI at
+# all and sits BLOCKED: retargeting fires no event.
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
 
 jobs:
+
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      scope: ${{ steps.scope.outputs.scope }}
+      extensions: ${{ steps.scope.outputs.extensions }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        name: documentation only, or everything
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request) base='${{ github.event.pull_request.base.sha }}' ;;
+            push)         base='${{ github.event.before }}' ;;
+            *)            base='' ;;
+          esac
+          # No usable base: an event this does not know, or the all-zero sha a
+          # branch's first push carries. An undetermined scope is a reason to
+          # build, not a reason to skip.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "no usable base ref for event ${{ github.event_name }}: scope is full"
+            echo "scope=full" >> "$GITHUB_OUTPUT"
+            echo "extensions=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! paths="$(git diff --name-only "$base" HEAD)"; then
+            echo "git diff against $base failed: scope is full"
+            echo "scope=full" >> "$GITHUB_OUTPUT"
+            echo "extensions=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed paths:"
+          printf '%s\n' "$paths" | sed 's/^/  /'
+          scope="$(printf '%s\n' "$paths" | bash scripts/changed-scope.sh)"
+          echo "scope: $scope"
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          # A second, narrower question: does this change touch a file that
+          # declares extension identifiers? The registry check talks to the
+          # Marketplace, so it runs on those pull requests and on no others.
+          extensions="$(printf '%s\n' "$paths" | bash scripts/declares-extensions.sh)"
+          echo "declares extensions: $extensions"
+          echo "extensions=$extensions" >> "$GITHUB_OUTPUT"
+
+  # The two scripts the gate above and `ci-green` below are made of. Never
+  # gated: they are seconds, and they are what makes the gating trustworthy.
+
+  ci-scripts:
+    # Two steps that ran here in the template are absent: the normative
+    # documents' citation check and the whiptail guard. Their subjects did not
+    # arrive — `docs/agent/` comes with story 5, and `setup`/`init`/`packages.sh`
+    # with the story that deletes them — and both tests were removed here rather
+    # than exempted inside themselves, so the story that brings the subject
+    # brings the test back. An exemption list inside a guard is the thing that
+    # rots.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the scope decision can be wrong in both directions
+        run: bash scripts/changed-scope.test.sh
+      - name: ci-green can still fail
+        run: bash scripts/ci-green.test.sh
+      - name: nothing builds or runs the launcher
+        run: bash scripts/no-launcher.test.sh
+      - name: the registry check runs on the changes that need it
+        run: bash scripts/declares-extensions.test.sh
+      - name: no stack hardcodes one distribution's package source
+        run: bash scripts/no-ubuntu-only-sources.test.sh
+
+  bash-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n on all shell scripts
+        run: |
+          # Pruned, which the template did not need to do: this repository has
+          # node_modules/ and a .code-server/ submodule, and `bash -n` over
+          # vendored JavaScript dependencies and a separate product pinned at an
+          # old tag checks nothing anybody here can fix.
+          find . \( -path ./node_modules -o -path ./.code-server -o -path ./dist \) -prune -o \
+            -type f \( -name '*.sh' -o -name 'setup' -o -name 'init' -o -name 'dev' \
+              -o -name 'run' \) -print0 \
+            | xargs -0 -n1 bash -n
+
+  git-credential-helper:
+    # Git inside the container must ask the container's own GitHub CLI, and
+    # nothing belonging to the person at the keyboard: a helper inherited from
+    # the host does not fail, it makes a `push` authenticate as somebody else.
+    #
+    # The requirement was already satisfied when it was first measured — and by
+    # accident, because somebody had run `gh auth setup-git` in a container once
+    # and nothing in this image had configured anything. This job is what turns
+    # that into a fact somebody would notice stopping.
+    #
+    # Two of its assertions are worth knowing about. The hook must be **silent**
+    # when there is nothing to do, which is the only observable proof that a
+    # healthy boot did no work. And it must configure an absolute path that is
+    # executable, because a value that merely looks right makes every push fail
+    # naming the remote rather than this.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: git asks the container's own CLI, and says when it changed that
+        run: bash core/cont-init/15-git-credential-helper.test.sh
+
+  state-ownership:
+    # The hook that gives the editor's and gpg's state directories back to 'abc'
+    # after a connection left them owned by somebody else. /config is a named
+    # volume, so that damage outlives every rebuild and this is the only thing
+    # that reaches it.
+    #
+    # Two of its properties are easy to break silently. It must pass the owner
+    # by *name*: LinuxServer's init rewrites abc's number at runtime, so chowning
+    # to 1000 hands the files to whoever that is afterwards. And it must do
+    # nothing, in silence, when there is nothing to repair — the silence is the
+    # only observable proof that no recursive chown ran over thousands of
+    # extension files on a healthy boot.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the repair is made by name, once, and says so
+        run: bash core/cont-init/10-state-ownership.test.sh
+
+  editor-leftovers:
+    # The only script in the template that deletes data a person did not ask to
+    # have deleted, on the one volume that survives every rebuild. What this job
+    # guards is its refusals: an unrecognised directory kept, a symlink not
+    # followed, silence when there is nothing to do.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: it removes what it recognises and refuses what it does not
+        run: bash core/cont-init/30-editor-leftovers.test.sh
+
+  ai-memory:
+    # The boot hook must preserve ai-memory opt-in and register every supported
+    # first-party client. A missing Codex registration is silent until a new
+    # session starts without memory, so the hook is exercised directly. The
+    # service beside it owns the other silent failure: a server that refuses to
+    # start, restarted forever by s6 until its own explanation has scrolled away.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: opted-in projects receive ai-memory client wiring
+        run: bash core/cont-init/40-ai-memory.test.sh
+      - name: a server that will not start says so once instead of looping
+        run: bash core/services/svc-ai-memory/run.test.sh
+
+  jail-wrappers:
+    # The flags core/bin/claude.sh and core/bin/codex.sh hand ai-jail. Every one
+    # of them fails quietly when it is wrong: a variable the sandbox never
+    # receives does not error, it produces a tool inside the jail that behaves as
+    # if it were misconfigured, and the message it prints blames something else.
+    # DOCKER_HOST cost one round of that and RUSTUP_HOME cost another. With two
+    # agents sharing one list there is a third way to be wrong — for the list to
+    # stop being one list — and that is what most of this job is.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the sandbox is handed what it cannot inherit
+        run: bash core/bin/jail-wrappers.test.sh
+      # And nothing it should not be. A variable passed into the sandbox ends up
+      # on the launcher's own command line, where `ps` reads it from anywhere
+      # else in the container — so the set of names allowed to cross is a
+      # decision, and this is where it is enforced rather than remembered.
+      - name: only names that have been decided about cross as variables
+        run: bash core/bin/jail-env-allowlist.test.sh
+
+  compose-versions:
+    # core's pinned versions moved out of the middle of a RUN line and into
+    # core/versions.json. What this guards is the seam: a placeholder no key
+    # fills must stop the compose by name, not reach `docker build` as literal
+    # text and fail there as an npm error about a version that does not exist.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: core's pins reach the Dockerfile
+        run: bash core/compose-dockerfile.test.sh
+
+  php-keyring:
+    # The php stack installs from a third-party archive and is the only one that
+    # does, so it is the only one carrying a signing key. What this guards is
+    # drift between the three places that key lives — the file, the fingerprint
+    # written into the fragment, and the fragment still being wired to use it.
+    # Deliberately offline: verifying against the live PPA would put every run
+    # back at the mercy of the Launchpad outage the pin exists to survive.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the pinned key is the one the archive is signed with
+        run: bash stacks/php/keyring.test.sh
+
+  devcontainer-metadata:
+    # The image has to tell a dev container client which user to connect as:
+    # left to itself a client uses the image's USER, which is root here because
+    # s6-overlay needs it, and the first connection then writes root-owned
+    # state into a volume that survives every rebuild. Observed by hand before
+    # it was a requirement.
+    #
+    # Static, so it costs a second and catches two things where they are cheap:
+    # a second fragment declaring the same label (a later LABEL replaces rather
+    # than merges, so one stack would silently lose remoteUser), and a
+    # containerUser field, which would stop the container booting at all.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: exactly one fragment declares the label, and it declares the right thing
+        run: bash core/check-devcontainer-metadata.sh
+      - name: the check can actually fail
+        run: bash core/check-devcontainer-metadata.test.sh
+
+  md-size:
+    # A Markdown file past 50 KiB stops being read and starts being skimmed,
+    # which is worse than being short: it still looks authoritative. Nothing
+    # noticed docs/OVERVIEW.md growing to 86 KiB over a year of releases, because
+    # the rule shipped from here while the tool to enforce it did not.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no tracked Markdown over the limit
+        run: bash scripts/check-md-size.sh
+      - name: the size check can actually fail
+        run: bash scripts/check-md-size.test.sh
+
+  core-build:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build core only
+        # Composed rather than built straight from the fragment, which is how
+        # this ran until core gained {{NAME_VERSION}} placeholders of its own.
+        # Building the raw fragment now fails on the literal `{{CODEX_VERSION}}`
+        # — and would have, silently, for anyone who copied this line.
+        run: |
+          core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
+          docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
+
+      # A successful build proves the RUN steps ran. It does not prove the
+      # image declares the user a client should connect as, or that that user
+      # has a shell worth opening — the same gap stacks/<stack>/image.test.sh
+      # exists for, which core had no equivalent of until now.
+      #
+      # Unlike the per-stack tests this runs on the runner rather than inside
+      # the image, because a container cannot read its own image's labels.
+      - name: image checks for core
+        run: bash core/image.test.sh core-ci
+
+  core-booted:
+    # What the image is after it has started, which core-build cannot see: its
+    # image check runs with --entrypoint and so bypasses s6-overlay entirely.
+    # LinuxServer's init rewrites 'abc' at runtime — that is why /etc/subuid is
+    # keyed by name — so a build-time change to that user could be undone on
+    # every boot with every other job still green.
+    #
+    # Its own job rather than another step in core-build, so that a red says
+    # which half broke: "the build did not do it" and "the runtime undid it"
+    # are fixed in different places. The cost is a second core build, paid
+    # deliberately; sharing the image between jobs would mean exporting a
+    # multi-gigabyte tarball through the artifact store, which is not obviously
+    # cheaper and is certainly less legible.
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Before the build, because it costs a second and the build costs minutes
+      # — and because it is the part that was wrong the first time this job ran.
+      # The base image announces every custom-init script by filename on every
+      # boot, so a check for "the hook said nothing" cannot be written against
+      # the filename; it failed on a boot where the hook had printed nothing.
+      - name: the log matchers say what they mean
+        run: bash core/booted.matchers.test.sh
+      # The harness itself, against a stand-in image that emulates only the boot
+      # contract it depends on. It exists because the real image cannot be built
+      # everywhere, so without it every mistake in the harness costs a full round
+      # trip through this job — two did, and both were in the harness rather than
+      # in what it was testing.
+      - name: the harness works, against a stand-in
+        run: |
+          docker build -q -f core/booted.test.fixture/Dockerfile -t booted-fixture .
+          bash core/booted.test.sh booted-fixture
+      - name: docker build core only
+        run: |
+          core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
+          docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
+      - name: the user survives the boot, and ownership is repaired once
+        run: bash core/booted.test.sh core-ci
+
+  discover-stacks:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.list.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          echo "stacks=$(ls stacks | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+
+  stack-build:
+    # Gated explicitly rather than relying on its dependency being skipped.
+    # `discover-stacks` produces this job's matrix, and a skipped dependency
+    # leaving an empty `fromJSON` input is a shape I am not willing to guess at
+    # on the one check branch protection requires. Its own condition cannot be
+    # wrong about it.
+    needs: [changes, discover-stacks]
+    if: needs.changes.outputs.scope != 'docs-only'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ fromJson(needs.discover-stacks.outputs.stacks) }}
+    steps:
+      - uses: actions/checkout@v4
+      # Composed through the same script `setup` uses, so CI builds a stack
+      # the way the product actually builds it — including pulling in any
+      # requires.json dependency. This step used to concatenate core + the
+      # one stack by hand and skip dependencies, which is why the android
+      # job built without a JDK and failed on the Java-based `avdmanager`.
+      - name: docker build core + ${{ matrix.stack }} (lowest listed version)
+        run: |
+          core/compose-dockerfile.sh "${{ matrix.stack }}" > /tmp/Dockerfile
+          docker build -f /tmp/Dockerfile -t "stack-ci-${{ matrix.stack }}" .
+
+      # A successful `docker build` proves apt-get ran. It does not prove the
+      # stack delivered what it exists to deliver — a header on the include
+      # path, a tool on PATH — and for some of those the difference only shows
+      # up much later, on someone else's machine, as a capability that silently
+      # is not there. So a stack may carry an image.test.sh, run here against
+      # the image just built. Optional by design: no stack is required to have
+      # one, and the step is a no-op where the file is absent.
+      #
+      # --entrypoint is needed because the base image's entrypoint is the s6
+      # init, which would start the whole service tree instead of running the
+      # script. --network none because an image test asserts what is IN the
+      # image; anything it had to fetch would be testing something else.
+      - name: image checks for ${{ matrix.stack }}, if it has any
+        run: |
+          test="stacks/${{ matrix.stack }}/image.test.sh"
+          if [ ! -f "$test" ]; then
+            echo "no $test — nothing to check inside the image"
+            exit 0
+          fi
+          docker run --rm --network none \
+            --entrypoint /bin/bash \
+            -v "$PWD/stacks/${{ matrix.stack }}:/image-test:ro" \
+            "stack-ci-${{ matrix.stack }}" /image-test/image.test.sh
+
+  # Every declared extension identifier exists where the editor installs from.
+  #
+  # **Gated, because it talks to the Marketplace.** It runs only on a change
+  # that touches a declaration, so merging a Markdown fix never depends on an
+  # external service being up. A job on every pull request was considered and
+  # rejected at the story's gate for exactly that reason; what changed is that
+  # the scope machinery to gate it now exists.
+  #
+  # **It exists because the failure is silent.** Measured: an identifier that is
+  # well formed and absent produces nothing at all — the container comes up, the
+  # editor attaches, the extension is not installed, and nothing says so. A
+  # malformed one is caught by the editor's own schema; a well-formed absent one
+  # is caught by nothing.
+
+  declared-extensions:
+    needs: changes
+    if: needs.changes.outputs.extensions == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: every declared identifier exists in the registry
+        run: bash scripts/declared-extensions.test.sh
+
+  # The one check branch protection requires, and the only reason this job exists.
+  # stack-build's job names come from a matrix built by `ls stacks`, so they change
+  # whenever a stack is added or removed: naming them individually would leave a
+  # required check that stops reporting (blocking every merge) and would not cover a
+  # newly added stack. This name never changes and stands for all of them.
+
   typecheck:
     # The types are the reason this is TypeScript rather than the plain
     # JavaScript the template uses: the logic reads JSON somebody else wrote and
@@ -123,14 +515,10 @@ jobs:
         run: bash scripts/every-test-has-a-runner.test.test.sh
 
   nothing-was-dropped:
-    # **Expected to fail until the pipeline task lands, and deliberately not in
-    # ci-green's needs until then.** 25 of this repository's 30 test files have
-    # nothing running them: they arrived with the image's content and their jobs
-    # have not. The guard is written before those jobs rather than after so that
-    # it is seen failing for its own reason — a guard first run against a
-    # complete pipeline is green on day one and has proven nothing.
-    #
-    # The next task adds this to `needs` in the same change that makes it green.
+    # It was red at 25 of 30 for one task, on purpose, so that it would be seen
+    # failing for its own reason — a guard first run against a complete pipeline
+    # is green on day one and has proven nothing. This is the change that makes
+    # it green and puts it in ci-green's needs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -139,15 +527,23 @@ jobs:
 
   # The one check branch protection requires. Named so it never changes, the
   # same reason the template's does.
+
+  # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [typecheck, unit, package, integration, the-move, guard-is-sound]
+    needs: [changes, ci-scripts, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
-      - name: fail unless every job above succeeded
-        run: |
-          results='${{ join(needs.*.result, ' ') }}'
-          echo "results: $results"
-          for r in $results; do
-            [ "$r" = "success" ] || exit 1
-          done
+      - uses: actions/checkout@v4
+      - name: fail unless every job above succeeded or was deliberately skipped
+        # `skipped` is green now, which is what lets a documentation-only change
+        # go without building images — and it is the dangerous half of this
+        # change, so the decision is a script with a test behind it rather than
+        # six lines of YAML that cannot be seen failing. The inline loop this
+        # replaces required every result to be `success`, so the first gated
+        # documentation-only pull request would have gone red.
+        #
+        # `changes` is in the list for a reason of its own: if the job deciding
+        # the scope fails, every gated job reports `skipped`, and this would
+        # otherwise call that green.
+        run: bash scripts/ci-green.sh ${{ join(needs.*.result, ' ') }}
