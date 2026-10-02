@@ -43,3 +43,27 @@ export function readTemplateVersion(projectRoot: string): string | null {
     return null
   }
 }
+
+/**
+ * Whether `found` is at least `minimum`, both as `major.minor.patch`.
+ *
+ * **It exists because this file had no ordering at all**, and the number it
+ * orders is what decides whether a project opens. The two implementations a
+ * reader reaches for first are both wrong on versions this project will
+ * actually have: a string compare puts `4.9.0` before `5.0.0` by luck and
+ * `10.0.0` before `9.0.0` by rule, and a numeric compare of the major alone
+ * misses `5.0.10` against `5.0.9`.
+ *
+ * **Anything unparseable is never at least anything**, including the minimum.
+ * That follows `parseVersion` returning null rather than a zeroed version, for
+ * the reason written beside it: a zeroed one compares as older and hides the
+ * difference between "old" and "unreadable", which have different fixes.
+ */
+export function isAtLeast(found: string, minimum: string): boolean {
+  const a = parseVersion(found)
+  const b = parseVersion(minimum)
+  if (a === null || b === null) return false
+  if (a.major !== b.major) return a.major > b.major
+  if (a.minor !== b.minor) return a.minor > b.minor
+  return a.patch >= b.patch
+}

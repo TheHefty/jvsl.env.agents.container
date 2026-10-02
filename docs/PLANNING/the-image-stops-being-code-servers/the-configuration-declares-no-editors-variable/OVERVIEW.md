@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** |
 | **Epic** | `the-image-stops-being-code-servers` |
 | **Date** | 2026-10-02 |
 
@@ -79,7 +79,7 @@ decision rather than performing one.
 
 | Order | Task | Repo | Status |
 |---|---|---|---|
-| 1 | [`tasks/the-minimum-template-version-is-true-and-enforced.md`](tasks/the-minimum-template-version-is-true-and-enforced.md) | extension | Draft |
+| 1 | [`tasks/the-minimum-template-version-is-true-and-enforced.md`](tasks/the-minimum-template-version-is-true-and-enforced.md) | extension | Done — #33 |
 
 One task. The variable and the version are the same change: both are statements about which template
 this extension works against, and splitting them would ship a configuration that stopped declaring

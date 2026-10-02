@@ -454,6 +454,12 @@ async function gather(
     runningContainers: await runningContainers(write),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
+    templateVersion: readTemplateVersion(root),
+    // From package.json, which is the only place this number lives. A constant
+    // in open.ts would be a second one to keep in step — and the defect this
+    // requirement exists for is that this number was wrong for three releases
+    // while nothing read it at all.
+    templateMinVersion: templateMinVersion(context),
   }
 }
 

@@ -29,7 +29,7 @@
     "workspaceContains:.code-server/setup"
   ],
   "main": "./dist/extension.cjs",
-  "templateMinVersion": "2.2.0",
+  "templateMinVersion": "5.0.0",
   "contributes": {
     "commands": [
       {
