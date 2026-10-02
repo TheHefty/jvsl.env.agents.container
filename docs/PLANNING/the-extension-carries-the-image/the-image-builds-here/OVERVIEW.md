@@ -84,12 +84,15 @@ changed and the message is where *why* belongs — and these files are unusually
 digest pin, the `mkdir -p /usr/share/man/man1`, the sury key, the four deleted Tauri libraries, each
 with its reason in a commit rather than in a comment.
 
-Recommended: bring the history, by fetching the other repository as a remote and merging its tree
-under a subdirectory, so `git log --follow` keeps working. The cost is that this repository's history
-becomes dual-rooted and `git log` shows two projects' commits interleaved. The alternative —
-copy, and leave the archived repository as the place to read why — costs nothing today and costs the
-reasons on the first day somebody asks why a digest is pinned and the answer is in a repository
-nobody opens any more.
+Recommended: bring the history. **Decided on 2026-10-02: bring it.** The cost is that this
+repository's history becomes dual-rooted and `git log` shows two projects' commits interleaved.
+
+**And the subdirectory this recommendation assumed turns out not to be needed**, which makes the
+mechanism cheaper than proposed: `core/`, `stacks/` and `scripts/` have zero files here, so the
+three names are free and the paths never change. Task 1 merges with `--allow-unrelated-histories`
+and nothing is rewritten — original SHAs, and `git log core/Dockerfile.frag` with no `--follow`
+and no rename detection. See the task for why `subtree` and `filter-repo` were both rejected on
+that measurement.
 
 ## Out of scope
 
@@ -117,7 +120,10 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| — | — | — |
+| 1 | [`tasks/the-content-arrives-with-its-history.md`](tasks/the-content-arrives-with-its-history.md) | Draft |
+| 2 | the pipeline arrives and builds | not written |
+| 3 | nothing was dropped | not written |
+| 4 | the fast path | not written |
 
 ## Outcome
 
