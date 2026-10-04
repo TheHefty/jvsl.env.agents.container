@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-documents-arrive-with-the-image
 epic: the-extension-carries-the-image
-pr:
+pr: 62
 ---
 
 # Task: the-image-carries-them-and-a-hook-writes-them
@@ -92,4 +92,36 @@ seen failing.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #62, **and this outcome is three tasks late.** The work merged and I went straight to
+the next design without writing it or leaving `Draft` — which is how a story came to say Done with
+two of its three tasks marked. Recorded here because the gap is the kind that makes a planning
+document stop being worth reading.
+
+All twenty-seven documents travel at `/opt/jvsl/docs/agent`, the hook writes two to
+`/config/.claude/rules/`, and the configuration mounts that directory as a `tmpfs`. Nine assertions
+on the hook, and the ratio is the point: four lines of copying, nine of refusal.
+
+**The charter said "volume" and this shipped a `tmpfs`.** The design proposed the change and said it
+was recorded rather than substituted; the charter's own line is corrected in the same change as this
+outcome, because a gate document describing a mechanism that was not built is worse than one that
+never mentioned it. FR-85 needed nothing — it says *"a mount of its own"*, which is the property that
+mattered and not the instrument.
+
+**The refusal is checked against `/proc/mounts` by the hook rather than trusted from the
+configuration.** A declaration in a file the hook never reads is not a guarantee the hook holds, and
+what it is refusing is writing one project's rules into every project on somebody's machine.
+
+**Three mistakes of mine on the way, all caught, two by CI.**
+
+I wrote a `note` helper into `core/image.test.sh` that does not exist in that file — it has `fail`
+and one summary line. Caught by reading the file's idiom rather than by running it.
+
+The `agent-rules` job was not in `ci-green`'s needs, because my edit targeted a string that only
+exists after the previous PR merged and Python's `replace` returns quietly when it does not match.
+`ci-green.test.sh` caught it. **Then I read it back with the same wrong pattern** —
+`needs: \[(changes[^\]]*)\]` matches the *first* such line, which is `stack-build`'s, so I inserted
+the job there, verified my own regex found it, and the test still failed. **Reading back with the
+pattern that wrote it verifies nothing.**
+
+And `COPY docs/agent` named a directory that did not exist on a branch cut before the PR that brought
+it: `"/docs/agent": not found`, on every stack. The rebase fixed it.

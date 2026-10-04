@@ -243,8 +243,12 @@ load with no import and no dialog. Nothing in a project's `CLAUDE.md` points at 
 
 Two consequences, each a decision rather than a detail. `/config/.claude` is bind-mounted from the
 host's own `~/.claude`, so a hook writing there would write into the user's personal configuration
-and reach every project on that machine — the generated configuration therefore mounts a volume
-over `/config/.claude/rules` alone. And everything in `rules/` is resident in every session, while
+and reach every project on that machine — the generated configuration therefore mounts
+`/config/.claude/rules` alone. **This said "a volume" when it was accepted and shipped as a
+`tmpfs`**, decided in that task's design and corrected here rather than left: the hook rewrites the
+directory on every boot, so nothing in it ever needs to survive one, and a volume that survives
+every rebuild is where a document from a retired image sits until somebody wonders why a rule they
+deleted still applies. And everything in `rules/` is resident in every session, while
 today `WORKFLOW.md` is linked rather than imported and a consuming monorepo deliberately does not
 import `INITIALIZATION.md` at 13.4 KiB. So the hook populates `rules/` with what must govern every
 turn and leaves the rest at a readable path for linking. **What lands there is derived state, not a
