@@ -16,6 +16,7 @@ interface Manifest {
   extensionDependencies?: unknown
   activationEvents?: unknown
   engines?: unknown
+  contributes?: unknown
   main?: unknown
   scripts?: Record<string, unknown>
 }
@@ -214,8 +215,13 @@ test('the folder picker is contributed, and declares no onCommand event for itse
   // above — a contributed command activates the extension on its own from
   // VS Code 1.74. An explicit onCommand event would work too and would hide
   // that the engines floor is what this rests on.
-  const commands = Array.isArray(real.contributes?.commands) ? real.contributes.commands : []
-  const ids = commands.map((c: { command?: unknown }) => c.command)
+  const contributes = typeof real.contributes === 'object' && real.contributes !== null
+    ? (real.contributes as Record<string, unknown>)
+    : {}
+  const commands = Array.isArray(contributes['commands']) ? contributes['commands'] : []
+  const ids = commands.map((c: unknown) =>
+    typeof c === 'object' && c !== null ? (c as Record<string, unknown>)['command'] : undefined,
+  )
   assert.ok(ids.includes('jvsl.devContainer.open'), JSON.stringify(ids))
   const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
   assert.deepEqual(events.filter((e: unknown) => String(e).startsWith('onCommand:')), [])
