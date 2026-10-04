@@ -67,8 +67,8 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-documents-move-here-with-their-parity-check.md`](tasks/the-documents-move-here-with-their-parity-check.md) | Draft |
-| 2 | [`tasks/the-image-carries-them-and-a-hook-writes-them.md`](tasks/the-image-carries-them-and-a-hook-writes-them.md) | Draft |
-| 3 | the submodule goes | not written |
+| 2 | [`tasks/the-image-carries-them-and-a-hook-writes-them.md`](tasks/the-image-carries-them-and-a-hook-writes-them.md) | Done — #62 |
+| 3 | [`tasks/the-submodule-goes.md`](tasks/the-submodule-goes.md) | Draft |
 
 **Provisional.** Task 3 in particular depends on what stories 3 and 4 leave reading the submodule,
 which is not knowable yet: `CLAUDE.md:32` imports `MODES.md` from it today and `build.ts` invokes
