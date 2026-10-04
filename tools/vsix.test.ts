@@ -83,7 +83,9 @@ test('nothing ships that this test was not told to expect', () => {
     /^README\.md$/,
     /^LICENSE$/,
     /^CHANGELOG\.md$/,
-    /^AGENTS\.md$/,
+    // The assets a project receives. Required by the assertion below rather
+    // than merely allowed here, which is the distinction AGENTS.md taught.
+    /^assets\/project\//,
     /^dist\/extension\.cjs$/,
     // The image's content. The extension composes a project's Dockerfile from
     // these, which is what lets a project need nothing but the extension
@@ -217,4 +219,27 @@ test('the package holds the composer where carried() looks for it', () => {
         `in an installed extension, and every test that computes it would still pass`,
     )
   }
+})
+
+/**
+ * The assets a project gets, **required rather than permitted.**
+ *
+ * `AGENTS.md` taught this distinction the hard way. It sat untracked at this
+ * repository's root, shipped in a local package because `vsce` packages the
+ * working directory, and was absent from every CI build — and both states were
+ * green, because the allowlist permits it and the completeness assertion covers
+ * only `core/` and `stacks/`. A file that is in one person's package and nobody
+ * else's is the shape of defect this file exists to catch.
+ */
+test('the project assets ship, and this repository\'s own instructions do not', () => {
+  const files = packagedFiles()
+  for (const asset of ['assets/project/CLAUDE.md', 'assets/project/AGENTS.md']) {
+    assert.ok(files.includes(asset), `${asset} must ship: it is what a project gets`)
+  }
+  // The root CLAUDE.md is *this project's* own, importing MODES.md and
+  // docs/RULES.md from paths that exist in no other tree. Shipping it would
+  // hand a project two imports that resolve to nothing — and an import that
+  // resolves to nothing says nothing.
+  const mine = files.filter((f) => f === 'CLAUDE.md' || f === 'AGENTS.md')
+  assert.deepEqual(mine, [], `this repository's own instructions must not ship:\n${mine.join('\n')}`)
 })

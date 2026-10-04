@@ -21,6 +21,15 @@
 #
 # `scripts/` never ships at all: CI's guards have no business inside an editor
 # extension.
+# This repository's own CLAUDE.md and AGENTS.md are its instructions, not a
+# project's: the first imports MODES.md and docs/RULES.md from paths that exist
+# in no other tree, and an import resolving to nothing says nothing. What a
+# project receives is assets/project/, which tools/vsix.test.ts *requires*
+# rather than permits — AGENTS.md shipped in one person's package and nobody
+# else's for exactly as long as it was only permitted.
+CLAUDE.md
+AGENTS.md
+
 core/**/*.test.sh
 stacks/**/*.test.sh
 scripts/**
