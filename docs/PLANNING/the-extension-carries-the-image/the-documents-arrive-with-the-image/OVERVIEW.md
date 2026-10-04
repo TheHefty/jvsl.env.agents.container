@@ -67,7 +67,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-documents-move-here-with-their-parity-check.md`](tasks/the-documents-move-here-with-their-parity-check.md) | Draft |
-| 2 | the image carries them and a hook writes them | not written |
+| 2 | [`tasks/the-image-carries-them-and-a-hook-writes-them.md`](tasks/the-image-carries-them-and-a-hook-writes-them.md) | Draft |
 | 3 | the submodule goes | not written |
 
 **Provisional.** Task 3 in particular depends on what stories 3 and 4 leave reading the submodule,
