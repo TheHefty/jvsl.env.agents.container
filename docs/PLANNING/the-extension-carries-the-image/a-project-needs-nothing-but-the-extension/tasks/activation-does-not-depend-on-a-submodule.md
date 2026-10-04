@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/a-project-needs-nothing-but-the-extension
 epic: the-extension-carries-the-image
-pr:
+pr: 58
 ---
 
 # Task: activation-does-not-depend-on-a-submodule
@@ -92,4 +92,23 @@ next person deletes it.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #58. 123 unit tests, typecheck clean.
+
+**The rule inverted and two of its own tests had asserted the opposite.** *"Activating only on paths
+inside the submodule is rejected"* and *"a submodule path alongside one outside it is accepted"* were
+both correct when written, for a reason the second one spelled out. They now reject the same input,
+and the second says so in its own body rather than quietly reversing — a test whose meaning flipped
+without saying it did is worse than one that was deleted.
+
+**Scenario 4 has no honest behavioural test, and the structural one is what it got.** *"A project
+with the old submodule still opens"* cannot be tested by passing a submodule flag and asserting the
+decision is identical: `decideOpen`'s context has no such field, so that test would be asserting its
+own fixture. What it asserts instead is that **there is nothing to vary** — no key in the context
+names a template or a submodule — with `nothing-reads-the-submodule.test.sh` holding the other half,
+that nothing populates one. Neither alone is the claim.
+
+**And the engines floor is now a manifest rule.** It is the only path an unconfigured project has to
+the configure command, and it is a platform behaviour rather than anything this repository controls.
+A dependency bump that lowered it would remove that path with no error — the symptom is "the command
+does nothing", which reads as a broken extension rather than as a manifest asking for too little.
+Its negative fixture covers `^1.73.0`, `1.60.0`, the empty string and an absent `engines` entirely.

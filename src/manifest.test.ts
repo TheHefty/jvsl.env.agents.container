@@ -15,6 +15,7 @@ interface Manifest {
   extensionKind?: unknown
   extensionDependencies?: unknown
   activationEvents?: unknown
+  engines?: unknown
   main?: unknown
   scripts?: Record<string, unknown>
 }
@@ -47,25 +48,50 @@ function problems(m: Manifest): string[] {
         'never fires — in exactly the case a project has to be refused',
     )
   }
-  // **The rule is "not only submodule paths", not "no submodule paths",** and it
-  // was the second of those until an event naming `.code-server/setup` was added
-  // for a real reason: a project that has never run `setup` has no manifest, so
-  // the manifest event does not fire, and the thing whose purpose is to produce a
-  // manifest would never start.
+  // **The rule inverted, and the version this comment used to argue for is
+  // gone.** It read "not only submodule paths, not none" and explained why an
+  // event naming `.code-server/setup` had been added: a project that has never
+  // been configured has no manifest, so the manifest event does not fire, and
+  // the thing whose purpose is to produce a manifest would never start.
   //
-  // What has to stay true is that **something** activates without the submodule
-  // being checked out, because that is the case a project most needs to be told
-  // about — `.code-server/` exists and is empty after a clone without
-  // `--recursive`, and an event naming anything inside it never fires. So this
-  // asserts at least one event outside it rather than none inside.
-  const outside = events.filter(
-    (event) => typeof event === 'string' && !event.includes('.code-server/'),
+  // That event went with FR-22, and **the reasoning survived the thing it
+  // justified** — which is a dangling reference: a reader follows it looking for
+  // an event and finds none. What actually holds now was checked rather than
+  // reasoned about: since VS Code 1.74.0 a command in `contributes.commands`
+  // activates the extension with no `onCommand` event at all, so an
+  // unconfigured project reaches the configure command from the palette. The
+  // extension simply no longer wakes up on its own there, and until a manifest
+  // exists it has nothing to do on its own.
+  //
+  // So the rule is **none**, not "not only".
+  const inside = events.filter(
+    (event) => typeof event === 'string' && event.includes('.code-server/'),
   )
-  if (outside.length === 0) {
+  if (inside.length > 0) {
     found.push(
-      'every activation event names a path inside the submodule, which is empty when the ' +
-        'submodule is not initialised — so nothing would activate in exactly the case a project ' +
-        'has to be refused',
+      'an activation event names a path inside .code-server/: ' +
+        `${inside.join(', ')}. A project is not required to have a submodule, and one that ` +
+        'still does carries whatever version it last bumped to — so nothing may wake up on it',
+    )
+  }
+
+  // **The floor everything above rests on.** Implicit command activation is a
+  // platform behaviour with a version floor, and it is the only path an
+  // unconfigured project has. A bump that lowered this would remove it
+  // silently: the symptom is "the command does nothing", which reads as a
+  // broken extension rather than as a manifest that asks for too little.
+  const engines = typeof m.engines === 'object' && m.engines !== null
+    ? (m.engines as Record<string, unknown>)
+    : {}
+  const vscodeEngine = typeof engines['vscode'] === 'string' ? engines['vscode'] : ''
+  const floor = /^\^?(\d+)\.(\d+)/.exec(vscodeEngine)
+  const major = floor ? Number(floor[1]) : 0
+  const minor = floor ? Number(floor[2]) : 0
+  if (major < 1 || (major === 1 && minor < 74)) {
+    found.push(
+      `engines.vscode is ${vscodeEngine || '(absent)'}, below 1.74 — the version from which a ` +
+        'contributed command activates the extension without an onCommand event. Below it, a ' +
+        'project with no manifest has no way to reach the configure command at all',
     )
   }
 
@@ -95,6 +121,7 @@ const good: Manifest = {
   extensionKind: ['ui'],
   extensionDependencies: [DEV_CONTAINERS],
   activationEvents: ['workspaceContains:.code-server.stack.json'],
+  engines: { vscode: '^1.90.0' },
   main: './dist/extension.js',
   scripts: { 'vscode:prepublish': 'npm run build' },
 }
@@ -115,16 +142,22 @@ test('a soft dependency on the container tooling is rejected', () => {
   assert.ok(found.some((p) => p.includes('extensionDependencies')), found.join('\n'))
 })
 
-test('activating only on paths inside the submodule is rejected', () => {
+test('an event naming a path inside the submodule is rejected', () => {
+  // It used to be rejected only when it was the *only* event. A project is not
+  // required to have a submodule at all now, and one that still does carries
+  // whatever version it last bumped to, so nothing may wake up on it.
   const found = problems({ ...good, activationEvents: ['workspaceContains:.code-server/version.txt'] })
   assert.ok(found.some((p) => p.includes('.code-server.stack.json')), found.join('\n'))
-  assert.ok(found.some((p) => p.includes('inside the submodule')), found.join('\n'))
+  assert.ok(found.some((p) => p.includes('inside .code-server/')), found.join('\n'))
 })
 
-test('a submodule path alongside one outside it is accepted', () => {
-  // The shape this repository actually ships: the manifest at the root, which
-  // fires for a project that has one, plus `.code-server/setup`, which fires for
-  // a project that has never run it. Neither alone covers both.
+test('a submodule path alongside one outside it is rejected too', () => {
+  // **This test asserted the opposite until today, and the reason it gave was
+  // sound when it was written:** the manifest event fires for a project that has
+  // one, and `.code-server/setup` fired for a project that had never run it, and
+  // neither alone covered both. What replaced the second is not another event —
+  // it is that a contributed command activates the extension on its own from
+  // VS Code 1.74, which the floor below asserts.
   const found = problems({
     ...good,
     activationEvents: [
@@ -132,7 +165,16 @@ test('a submodule path alongside one outside it is accepted', () => {
       'workspaceContains:.code-server/setup',
     ],
   })
-  assert.deepEqual(found, [])
+  assert.ok(found.some((p) => p.includes('inside .code-server/')), found.join('\n'))
+})
+
+test('an engines floor below 1.74 is rejected', () => {
+  // The only path an unconfigured project has. Below this a bump would remove
+  // it silently, and the symptom is "the command does nothing".
+  for (const v of ['^1.73.0', '1.60.0', '', undefined]) {
+    const found = problems({ ...good, engines: v === undefined ? undefined : { vscode: v } })
+    assert.ok(found.some((p) => p.includes('1.74')), JSON.stringify(v) + ': ' + found.join('\n'))
+  }
 })
 
 test('a main that does not point at the bundle is rejected', () => {

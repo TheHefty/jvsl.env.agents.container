@@ -157,3 +157,17 @@ test('a project with no .code-server/ opens', () => {
   const decision = decideOpen({ ...base })
   assert.notEqual(decision.action, 'refuse')
 })
+
+test('the decision has no field a submodule could fill', () => {
+  // Scenario 4 of this story — "a project with the old submodule still opens" —
+  // and the honest form of it. `decideOpen` is a pure function over its context,
+  // so the claim is not that varying a submodule changes nothing: it is that
+  // **there is nothing to vary.** A test that passed a submodule flag and
+  // asserted the decision was identical would be asserting its own fixture.
+  //
+  // scripts/nothing-reads-the-submodule.test.sh holds the other half, that
+  // nothing populates such a field in the first place. Together they are the
+  // claim; neither alone is.
+  const keys = Object.keys(base).join(' ')
+  assert.ok(!/template|submodule|codeServer/i.test(keys), keys)
+})

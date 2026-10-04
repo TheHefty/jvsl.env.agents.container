@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -55,8 +55,8 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-instruction-files-are-assets-not-this-repos-own.md`](tasks/the-instruction-files-are-assets-not-this-repos-own.md) | Draft |
-| 2 | [`tasks/activation-does-not-depend-on-a-submodule.md`](tasks/activation-does-not-depend-on-a-submodule.md) | Draft |
+| 1 | [`tasks/the-instruction-files-are-assets-not-this-repos-own.md`](tasks/the-instruction-files-are-assets-not-this-repos-own.md) | Done — #56 |
+| 2 | [`tasks/activation-does-not-depend-on-a-submodule.md`](tasks/activation-does-not-depend-on-a-submodule.md) | Done — #58 |
 
 **Provisional**, for the reason given in story 3's table: these are sketched from the FRs rather
 than decomposed from measurement.
