@@ -1,15 +1,15 @@
 {
-  "name": "jvsl-env-agents-container",
-  "displayName": "Agent Containers",
+  "name": "jvsl-env-agents-vscode",
+  "displayName": "Dev Container Projects",
   "description": "Builds a project's dev container image and opens it in this editor, carrying the image's content so a project needs nothing else installed.",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "type": "module",
   "license": "MIT",
   "publisher": "thehefty",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/TheHefty/jvsl.env.agents.container.git"
+    "url": "https://github.com/TheHefty/jvsl.env.agents.vscode.git"
   },
   "engines": {
     "vscode": "^1.90.0",
@@ -31,40 +31,40 @@
   "contributes": {
     "commands": [
       {
-        "command": "jvsl.agentContainer.open",
-        "title": "Agent Container: Open a Project\u2026"
+        "command": "jvsl.devContainer.open",
+        "title": "Dev Container: Open a Project…"
       },
       {
-        "command": "jvsl.agentContainer.showDetected",
-        "title": "Agent Container: Show What Was Detected"
+        "command": "jvsl.devContainer.showDetected",
+        "title": "Dev Container: Show What Was Detected"
       },
       {
-        "command": "jvsl.agentContainer.configure",
-        "title": "Agent Container: Configure Stacks and Limits"
+        "command": "jvsl.devContainer.configure",
+        "title": "Dev Container: Configure Stacks and Limits"
       },
       {
-        "command": "jvsl.agentContainer.build",
-        "title": "Agent Container: Build the Image"
+        "command": "jvsl.devContainer.build",
+        "title": "Dev Container: Build the Image"
       }
     ],
     "views": {
       "explorer": [
         {
-          "id": "jvsl.agentContainer.view",
-          "name": "Agent Container"
+          "id": "jvsl.devContainer.view",
+          "name": "Dev Container"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "jvsl.agentContainer.configure",
-          "when": "view == jvsl.agentContainer.view",
+          "command": "jvsl.devContainer.configure",
+          "when": "view == jvsl.devContainer.view",
           "group": "navigation"
         },
         {
-          "command": "jvsl.agentContainer.build",
-          "when": "view == jvsl.agentContainer.view",
+          "command": "jvsl.devContainer.build",
+          "when": "view == jvsl.devContainer.view",
           "group": "navigation"
         }
       ]
@@ -76,7 +76,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test 'src/*.test.ts'",
     "test:bundle": "npm run build --silent && node --test 'tools/bundle.test.ts' 'tools/vsix.test.ts'",
-    "package": "vsce package --no-dependencies --out jvsl-env-agents-container.vsix",
+    "package": "vsce package --no-dependencies --out jvsl-env-agents-vscode.vsix",
     "test:integration": "node --test 'tools/devcontainer-up.test.ts'"
   },
   "devDependencies": {
