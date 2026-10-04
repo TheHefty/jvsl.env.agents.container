@@ -27,6 +27,7 @@ import {
   versionsOf,
   type Answers,
 } from './questions.ts'
+import { instructionWrites } from './instructions.ts'
 import { carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
@@ -471,6 +472,26 @@ async function prepare(
       : [],
     ...decision.notes.map((n) => `note: ${n}`),
   ])
+
+  // **After the configuration and never before it.** These are tracked files in
+  // somebody's repository; the configuration is gitignored and disposable. If
+  // writing the configuration failed, this function has already returned, and
+  // leaving a project with new instruction files and no way to open it would be
+  // the worst of the three outcomes.
+  for (const w of instructionWrites(root, carried(context.extensionPath, 'assets', 'project'))) {
+    if (w.action === 'keep') {
+      write([`${w.name}: kept — ${w.because ?? 'unchanged'}`])
+      continue
+    }
+    try {
+      writeFileSync(join(root, w.name), w.contents ?? '', 'utf8')
+      write([`wrote ${w.name}`])
+    } catch (error) {
+      // Not fatal. A project that cannot take its instruction files can still
+      // be opened, and saying so is more use than refusing the open over it.
+      write([`${w.name}: could not be written: ${String(error)}`])
+    }
+  }
 
   // Shown because the tooling's own notification cannot say any of it, and the
   // alternative is a project that opens with limits nobody asked for.
