@@ -7,6 +7,7 @@ import * as vscode from 'vscode'
 
 import {
   composeAndBuildCommand,
+  handsOver,
   composeCommand,
   buildOutcome,
   detectManager,
@@ -15,9 +16,10 @@ import {
   type HostChecks,
 } from './build.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
+import { projectNames } from './devcontainer.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
-import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext } from './open.ts'
+import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
   limitDefaults,
@@ -364,35 +366,14 @@ async function build(
     return
   }
 
-  const stacks = Object.keys(readManifestStacks(folder.uri.fsPath))
-  const compose = composeCommand(extensionPath, folder.uri.fsPath, stacks)
-  const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
-  const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
-  const terminal = vscode.window.createTerminal({
-    name: 'Dev Container: build',
-    shellPath,
-    shellArgs,
-  })
-  terminal.show()
-  write([
-    `build: composing from ${compose.script}`,
-    `build: ${stacks.length} stack(s): ${stacks.join(', ') || '(none)'}`,
-    `build: image ${compose.image}, context ${compose.context}`,
-  ])
-
-  const listener = vscode.window.onDidCloseTerminal((closed) => {
-    if (closed !== terminal) return
-    listener.dispose()
-    const outcome = buildOutcome(closed.exitStatus?.code)
-    write([`build: ${outcome}`])
-    view.recordBuild(outcome)
-    // No notification on failure: the terminal holds the whole error, which is
-    // where the cause is, and a popup saying "the build failed" has to be
-    // dismissed before the useful text can be read.
-    if (outcome === 'ok') {
-      void vscode.window.showInformationMessage('The image was built.')
-    }
-  })
+  const outcome = await buildInTerminal(folder.uri.fsPath, extensionPath, write)
+  view.recordBuild(outcome)
+  // No notification on failure: the terminal holds the whole error, which is
+  // where the cause is, and a popup saying "the build failed" has to be
+  // dismissed before the useful text can be read.
+  if (outcome === 'ok') {
+    void vscode.window.showInformationMessage('The image was built.')
+  }
 }
 
 /**
@@ -524,7 +505,23 @@ async function prepare(
     void vscode.window.showWarningMessage(note)
   }
 
-  if (options.handOver) {
+  if (decision.action === 'build') {
+    write([`open: ${decision.cause}`])
+    const outcome = await buildInTerminal(root, context.extensionPath, write)
+    write([`open: build ${outcome}`])
+    if (!handsOver(outcome)) {
+      // Said rather than left silent: a terminal that closed is not obviously
+      // a decision the extension noticed.
+      void vscode.window.showWarningMessage(
+        outcome === 'cancelled'
+          ? 'The build was stopped, so the project was not opened.'
+          : 'The build failed, so the project was not opened. Its output is in the terminal.',
+      )
+      return
+    }
+  }
+
+  if (options.handOver || decision.action === 'build') {
     await vscode.commands.executeCommand(REOPEN_COMMAND)
   }
 }
@@ -544,6 +541,7 @@ async function gather(
     runningContainers: await runningContainers(write),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
+    image: await imageState(projectNames(root).image, write),
   }
 }
 
@@ -553,6 +551,40 @@ async function gather(
  * refusal, and guessing it here would duplicate that message badly. It is
  * written to the channel so the next failure is not a surprise.
  */
+/**
+ * Whether the project's image is there, and **`unknown` when that cannot be
+ * told apart from the daemon not answering.**
+ *
+ * `docker image inspect` exits non-zero for a missing image and for an
+ * unreachable daemon alike, and the two must not be collapsed: FR-24 already
+ * refuses an unreachable daemon, and reading it as a missing image would start
+ * a build that takes minutes and then fails for a third reason.
+ *
+ * The distinction is made by asking a second question. `docker version
+ * --format {{.Server.Version}}` answers only when there is a daemon, so a
+ * failed inspect plus a working version is **absent**, and a failed inspect
+ * plus a failed version is **unknown**. One extra process, on the path where
+ * something is already wrong.
+ */
+async function imageState(
+  image: string,
+  write: (lines: string[]) => void,
+): Promise<ImageState> {
+  try {
+    await run('docker', ['image', 'inspect', image])
+    return 'present'
+  } catch {
+    try {
+      await run('docker', ['version', '--format', '{{.Server.Version}}'])
+      write([`image ${image}: not present`])
+      return 'absent'
+    } catch (error) {
+      write([`image ${image}: could not be determined — ${String(error)}`])
+      return 'unknown'
+    }
+  }
+}
+
 async function runningContainers(write: (lines: string[]) => void): Promise<string[]> {
   try {
     const { stdout } = await run('docker', ['ps', '--format', '{{.Names}}'])
@@ -663,4 +695,49 @@ async function pick(
     vscode.Uri.file(decision.folder),
     { forceNewWindow: decision.newWindow },
   )
+}
+
+/**
+ * Runs the build in a terminal and resolves with what it did.
+ *
+ * **Extracted rather than duplicated**, because the open now needs the same
+ * thing: a project whose image is absent builds it and then attaches, and that
+ * chain must read the outcome the same way the explicit build command does.
+ * Two readings of one terminal's exit code is two ways to decide whether
+ * somebody's project opens.
+ *
+ * The promise resolves when that terminal closes and never rejects: a closed
+ * terminal with no exit code is a cancellation, which `buildOutcome` already
+ * calls by name.
+ */
+async function buildInTerminal(
+  root: string,
+  extensionPath: string,
+  write: (lines: string[]) => void,
+): Promise<'ok' | 'failed' | 'cancelled'> {
+  const stacks = Object.keys(readManifestStacks(root))
+  const compose = composeCommand(extensionPath, root, stacks)
+  const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
+  const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
+  const terminal = vscode.window.createTerminal({
+    name: 'Dev Container: build',
+    shellPath,
+    shellArgs,
+  })
+  terminal.show()
+  write([
+    `build: composing from ${compose.script}`,
+    `build: ${stacks.length} stack(s): ${stacks.join(', ') || '(none)'}`,
+    `build: image ${compose.image}, context ${compose.context}`,
+  ])
+
+  return await new Promise((resolve) => {
+    const listener = vscode.window.onDidCloseTerminal((closed) => {
+      if (closed !== terminal) return
+      listener.dispose()
+      const outcome = buildOutcome(closed.exitStatus?.code)
+      write([`build: ${outcome}`])
+      resolve(outcome)
+    })
+  })
 }

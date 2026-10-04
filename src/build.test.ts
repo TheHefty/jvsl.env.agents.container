@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   buildOutcome,
   composeAndBuildCommand,
+  handsOver,
   composeCommand,
   detectManager,
   hostProblems,
@@ -160,4 +161,15 @@ test('a path with a space in it does not become a quoting problem', () => {
   const script = shellArgs[shellArgs.length - 1] ?? ''
   assert.ok(script.includes("'/my ext/core/compose-dockerfile.sh'"), script)
   assert.ok(script.includes("'/work/my project/.code-server.stack.json'"), script)
+})
+
+test('the handover is reachable from a successful build and from nothing else', () => {
+  // Two opposite bad outcomes. Refusing to hand over after a good build strands
+  // somebody with a built image and a window that never attached; handing over
+  // after a cancelled one attaches them to a half-built image they asked to
+  // stop. buildOutcome already tells the three apart — this is the assertion
+  // that the chain does not lose it.
+  assert.equal(handsOver(buildOutcome(0)), true)
+  assert.equal(handsOver(buildOutcome(1)), false)
+  assert.equal(handsOver(buildOutcome(undefined)), false)
 })
