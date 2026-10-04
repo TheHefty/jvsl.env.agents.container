@@ -11,6 +11,8 @@ export const CONFIG_PATH = '.devcontainer/devcontainer.json'
  * decision can be tested without a host, a container runtime or an editor.
  * `null` means "not there", which for most of these is the normal case.
  */
+export type ImageState = 'present' | 'absent' | 'unknown'
+
 export interface OpenContext {
   projectRoot: string
   homeDir: string
@@ -20,6 +22,16 @@ export interface OpenContext {
   existingConfig: string | null
   runningContainers: string[]
   reopenCommandAvailable: boolean
+  /**
+   * Whether this project's image is there — and **`unknown` is not `absent`.**
+   *
+   * `docker image inspect` fails when the daemon is unreachable as well as when
+   * the image is missing, and FR-24 already refuses an unreachable daemon.
+   * Reading one as the other turns a host problem into a seven-minute build
+   * nobody asked for, which then fails for a third reason. "Cannot tell" is not
+   * a reason to build.
+   */
+  image: ImageState
   gitignore: string | null
   /**
    * `.code-server/version.txt`'s contents, or null when it could not be read.
@@ -55,6 +67,22 @@ export type Decision =
       ensureHostDirs: string[]
     }
   | { action: 'refuse'; cause: string; notes: string[] }
+  /**
+   * The configuration is written and then the image is built, and only a
+   * successful build hands over.
+   *
+   * **It carries the whole `open` payload** rather than being a separate
+   * answer, because the configuration has to be on disk before the handover
+   * whatever the build does — and because a decision that said only "build"
+   * would make the caller ask twice and get two answers from one state.
+   */
+  | {
+      action: 'build'
+      cause: string
+      configuration: Configuration
+      notes: string[]
+      ensureHostDirs: string[]
+    }
 
 /**
  * Whether to open, and what to say either way. Pure: it writes nothing and
@@ -130,8 +158,27 @@ export function decideOpen(context: OpenContext): Decision {
     )
   }
 
-  return {
-    action: 'open',
+  // **After every refusal and before the handover.** There is no point spending
+  // seven minutes on a build and then declining to overwrite somebody's
+  // hand-written configuration, so this is last of the things that can change
+  // the answer.
+  //
+  // `unknown` is refused rather than built: `docker image inspect` fails when
+  // the daemon is unreachable as well as when the image is absent, and reading
+  // one as the other turns a host problem into a build that fails for a third
+  // reason.
+  if (context.image === 'unknown') {
+    return {
+      action: 'refuse',
+      notes,
+      cause:
+        `whether ${names.image} exists could not be determined — the docker daemon did not ` +
+        `answer. Nothing was written. This is not the same as the image being missing, and ` +
+        `guessing would start something that takes minutes and then fails for another reason.`,
+    }
+  }
+
+  const payload = {
     notes,
     ensureHostDirs: [`${context.homeDir}/.claude`],
     configuration: buildConfiguration({
@@ -142,6 +189,19 @@ export function decideOpen(context: OpenContext): Decision {
       facts: context.facts,
     }),
   }
+
+  if (context.image === 'absent') {
+    return {
+      action: 'build',
+      ...payload,
+      cause:
+        `${names.image} does not exist yet, so it is built before the editor attaches. The ` +
+        `build runs in a terminal and takes minutes; closing that terminal stops it, and a ` +
+        `build that was stopped does not open the project.`,
+    }
+  }
+
+  return { action: 'open', ...payload }
 }
 
 /**

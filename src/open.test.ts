@@ -13,6 +13,7 @@ const base: OpenContext = {
   existingConfig: null,
   runningContainers: [],
   reopenCommandAvailable: true,
+  image: 'present' as const,
   gitignore: '.devcontainer/devcontainer.json\n',
 }
 
@@ -170,4 +171,36 @@ test('the decision has no field a submodule could fill', () => {
   // claim; neither alone is.
   const keys = Object.keys(base).join(' ')
   assert.ok(!/template|submodule|codeServer/i.test(keys), keys)
+})
+
+test('an absent image decides to build it, naming it', () => {
+  // FR-89. Nothing in this extension noticed a missing image before: what a
+  // project got was the Dev Containers extension failing on its own, with a
+  // message about a missing image rather than about what to do.
+  const d = decideOpen({ ...base, image: 'absent' })
+  assert.equal(d.action, 'build')
+  assert.match(d.cause ?? '', /myrepo-dev/)
+})
+
+test('a present image opens as before', () => {
+  const d = decideOpen({ ...base, image: 'present' })
+  assert.equal(d.action, 'open')
+})
+
+test('an image it cannot ask about is refused, not built', () => {
+  // `docker image inspect` fails when the daemon is unreachable as well as
+  // when the image is missing, and FR-24 already refuses an unreachable
+  // daemon. Confusing the two turns a host problem into a seven-minute build
+  // nobody asked for, which then fails for a third reason.
+  const d = decideOpen({ ...base, image: 'unknown' })
+  assert.equal(d.action, 'refuse')
+  assert.match(d.cause ?? '', /daemon|docker/i)
+  assert.doesNotMatch(d.cause ?? '', /build/i)
+})
+
+test('a refusal comes before a build, because building would not help', () => {
+  // A hand-written configuration is refused whatever the image is: there is no
+  // point spending seven minutes to then decline to overwrite somebody's file.
+  const d = decideOpen({ ...base, image: 'absent', existingConfig: '{"name":"theirs"}' })
+  assert.equal(d.action, 'refuse')
 })

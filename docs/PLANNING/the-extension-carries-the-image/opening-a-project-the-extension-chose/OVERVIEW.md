@@ -52,7 +52,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Done — #66 |
-| 2 | [`tasks/a-missing-image-is-built-rather-than-refused.md`](tasks/a-missing-image-is-built-rather-than-refused.md) | Draft |
+| 2 | [`tasks/a-missing-image-is-built-rather-than-refused.md`](tasks/a-missing-image-is-built-rather-than-refused.md) | Done — #69 |
 | 3 | [`tasks/no-manifest-means-the-questions.md`](tasks/no-manifest-means-the-questions.md) | Done — #71 |
 
 **Task 1 was "the extension activates without a folder" and the measurement moved it.** A

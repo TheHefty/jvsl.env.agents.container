@@ -200,3 +200,20 @@ export function composeAndBuildCommand(
   // group is what makes the redirect apply to both.
   return { shellPath: '/bin/sh', shellArgs: ['-c', `{\n${script}\n} </dev/null`] }
 }
+
+/**
+ * Whether a finished build opens the project.
+ *
+ * **One line, and it exists so the two opposite mistakes are impossible to make
+ * separately.** Refusing to hand over after a good build strands somebody with
+ * a built image and a window that never attached. Handing over after a
+ * cancelled one attaches them to a half-built image they asked to stop — and a
+ * cancelled build is somebody deciding not to open the project, not a failure
+ * to report.
+ *
+ * Expressed as a function over the outcome rather than as an `if` at the call
+ * site, because the call site is the part no test can reach.
+ */
+export function handsOver(outcome: 'ok' | 'failed' | 'cancelled'): boolean {
+  return outcome === 'ok'
+}

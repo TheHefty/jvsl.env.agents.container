@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/opening-a-project-the-extension-chose
 epic: the-extension-carries-the-image
-pr:
+pr: 69
 ---
 
 # Task: a-missing-image-is-built-rather-than-refused
@@ -78,4 +78,30 @@ after a cancelled one attaches them to nothing.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #69. 136 unit tests, 11 bundle, typecheck clean.
+
+**Telling `absent` from `unknown` cost one extra process, and the design did not say how.** It named
+the distinction as the first failure scenario and left the mechanism open. `docker image inspect`
+exits non-zero for both, so a failed inspect asks a second question —
+`docker version --format {{.Server.Version}}`, which answers only when there is a daemon. Failed
+inspect plus working version is **absent**; both failing is **unknown**. One extra process, and only
+on the path where something is already wrong.
+
+**Two tests passed for the wrong reason before the implementation**, which is worth recording
+because a red suite of four looked like four meaningful failures. *"A present image opens as before"*
+and *"a refusal comes before a build"* were green against a context that ignored the field entirely.
+Only two of the four were real red.
+
+**The build decision carries the whole `open` payload.** The design did not settle this and the
+alternative is worse: a decision that said only "build" would make the caller ask twice and get two
+answers from one state, and the configuration has to be on disk before the handover whatever the
+build does.
+
+**`handsOver` is one line and the design is why it exists at all.** Its two failure scenarios are
+opposite halves of one mistake, so the decision is a function over the outcome rather than an `if`
+at the call site — the call site being the part no test can reach.
+
+**And `buildInTerminal` was extracted rather than duplicated**, which was not in the design. The open
+needs exactly what the build command already did, and two readings of one terminal's exit code would
+be two ways to decide whether somebody's project opens. Extracting it left `build()` four lines
+shorter and its notification behaviour unchanged.
