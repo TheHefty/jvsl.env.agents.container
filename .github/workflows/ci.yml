@@ -89,10 +89,27 @@ jobs:
         run: bash scripts/no-launcher.test.sh
       - name: the registry check runs on the changes that need it
         run: bash scripts/declares-extensions.test.sh
+      - name: the normative documents cite files that exist
+        run: bash scripts/agent-docs-cite-real-files.test.sh
       - name: no stack hardcodes one distribution's package source
         run: bash scripts/no-ubuntu-only-sources.test.sh
       - name: nothing in the extension reads a project's submodule
         run: bash scripts/nothing-reads-the-submodule.test.sh
+
+  agent-docs:
+    # The two language folders are checked against each other because a rule
+    # corrected in one and not the other leaves two different sets of rules with
+    # one name, and which a project reads is decided by its own configuration.
+    #
+    # It did not come with the rest of the pipeline because its subject had not:
+    # `docs/agent/` arrives in the story that gives the documents a delivery
+    # mechanism, and a job for a directory that is not here would have been a
+    # guard reporting nothing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the two languages agree on files, headings and links
+        run: bash docs/agent/check-parity.test.sh
 
   bash-syntax:
     runs-on: ubuntu-latest
@@ -533,7 +550,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-documents-arrive-with-the-image
 epic: the-extension-carries-the-image
-pr:
+pr: 60
 ---
 
 # Task: the-documents-move-here-with-their-parity-check
@@ -79,4 +79,39 @@ rather than this task's; what this task owes is to not leave two live origins wi
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #60. 27 files, two CI jobs, 26 jobs in all with no orphans.
+
+**Three predictions in this design were wrong, and the measurements are the useful part.**
+
+**The history does not follow the paths.** This design said no second merge was needed because story
+1 had already brought the template's whole history — true of the objects, **false of the paths**.
+`git log docs/agent/en/RULES.md` shows **one** commit: checking files out of a merge's second parent
+in a *later* commit does not connect them to the history they came from. What made `core/` work is
+that it came **through** the merge. The fourteen commits are reachable as
+`git log 58a8e42^2 -- docs/agent/`, and `docs/agent/README.md` says so, because a reader would
+otherwise conclude the history was lost. **This is story 1's own third failure scenario — "the
+history arrives and is not reachable from the paths" — reached from the other side.**
+
+**The guard passed instead of going red, and my first explanation of why was unfair to it.** I read
+the `grep '/'` in its extraction as a guard narrower than its purpose. It is not: its scope is cited
+*paths*, which its comment states, and `packages.test.sh` with no directory is not one.
+
+**But the documents did cite a file that is absent here** — four places across two languages.
+`MODES.md` and `RULES.md` named `packages.test.sh` as the shape to copy, and FR-81 made it
+unnecessary rather than moving it. Corrected to files that exist and have jobs, parity holding. A
+change to normative documents, so `feat` rather than `docs`.
+
+**And the move exposed stale premises rather than stale citations.** These documents describe a
+project that consumes a template through a submodule — `.code-server/` paths, bump a pointer, rerun
+`setup`, which repository's CI a test runs in. Under this epic a project installs an extension and
+has no submodule. Correcting that is more than a move should do quietly; it is named in
+`docs/agent/README.md` as this epic's work.
+
+**One promise is withdrawn out loud.** `no-whiptail.test.sh` does not come back: its subject will
+never exist, because FR-81 removed it rather than relocating it.
+
+**And a mistake of my own, in the mechanics rather than the content.** The implementation commit
+landed on local `master` because a `git checkout -b` failed silently in a chain whose `echo` reported
+success regardless. Nothing reached the remote — `origin/master` was untouched — and it was moved to
+a branch and rebased. **The fourth time in this epic that I acted on git state I had not verified**,
+and the first where the guard was my own `&&` chain rather than a test.
