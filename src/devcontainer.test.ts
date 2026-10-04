@@ -157,3 +157,16 @@ test('the user and group ids are still declared, because they are the base image
   assert.equal(config.containerEnv.PUID, '1000')
   assert.equal(config.containerEnv.PGID, '1000')
 })
+
+test('the rules directory is a tmpfs of its own, not part of the host bind', () => {
+  const c = buildConfiguration(input).mounts
+  const rules = c.filter((m) => m.includes('/config/.claude/rules'))
+  assert.equal(rules.length, 1, c.join('\n'))
+  // A volume would survive every rebuild, which is where a document from a
+  // retired image sits until somebody wonders why a rule they deleted applies.
+  assert.match(rules[0] ?? '', /type=tmpfs/)
+  // And it must come after the bind it sits inside, or the bind wins.
+  const bind = c.findIndex((m) => m.includes('target=/config/.claude,'))
+  const inner = c.findIndex((m) => m.includes('/config/.claude/rules'))
+  assert.ok(bind < inner, `the bind must be declared before the mount inside it:\n${c.join('\n')}`)
+})

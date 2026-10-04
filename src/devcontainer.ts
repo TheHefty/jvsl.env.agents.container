@@ -106,6 +106,19 @@ export function buildConfiguration(input: BuildInput): Configuration {
     mounts: [
       `source=${names.volume},target=/config,type=volume`,
       `source=${homeDir}/.claude,target=/config/.claude,type=bind`,
+      // **A tmpfs over `rules/` alone, and the mount is what makes the write
+      // safe.** The line above binds this machine's own ~/.claude, so a boot
+      // hook writing the normative documents to `.claude/rules/` without this
+      // would put one project's rules into every project on the machine — and
+      // the first symptom is a rule nobody set being in force somewhere
+      // unrelated.
+      //
+      // A tmpfs rather than a volume, because the hook rewrites it on every
+      // boot: nothing in it ever needs to survive one, and a volume that
+      // survives every rebuild is where a document from a retired image sits
+      // until somebody wonders why a rule they deleted still applies. The
+      // charter said volume; this is the measurement that changed it.
+      `target=/config/.claude/rules,type=tmpfs`,
     ],
     capAdd: ['SYS_ADMIN'],
     securityOpt: ['seccomp=unconfined', 'systempaths=unconfined'],
