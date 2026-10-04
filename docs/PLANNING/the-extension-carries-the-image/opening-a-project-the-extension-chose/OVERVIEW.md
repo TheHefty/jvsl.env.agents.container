@@ -51,12 +51,15 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | the extension activates without a folder | not written |
-| 2 | a chosen folder is built and opened | not written |
+| 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Draft |
+| 2 | a missing image is built rather than refused | not written |
 | 3 | no manifest means the questions | not written |
 
-**Provisional**, and more so than the earlier stories': the shape of these depends on what stories
-3 and 4 leave behind, and on how `decideOpen` survives having no workspace folder to decide about.
+**Task 1 was "the extension activates without a folder" and the measurement moved it.** A
+contributed command is in the palette with no folder open, and invoking it activates the extension
+implicitly — which story 4 turned into a manifest rule with a negative fixture on the `engines`
+floor. So `onStartupFinished`, and the cost the SRS accepted with it, belongs to **story 8**: it buys
+nothing until something must exist before anybody asks for it, which is the panel.
 
 ## Outcome
 
