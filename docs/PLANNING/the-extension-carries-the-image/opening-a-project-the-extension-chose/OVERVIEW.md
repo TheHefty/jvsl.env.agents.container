@@ -52,7 +52,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Done — #66 |
-| 2 | a missing image is built rather than refused | not written |
+| 2 | [`tasks/a-missing-image-is-built-rather-than-refused.md`](tasks/a-missing-image-is-built-rather-than-refused.md) | Draft |
 | 3 | no manifest means the questions | not written |
 
 **Task 1 was "the extension activates without a folder" and the measurement moved it.** A
