@@ -25,11 +25,9 @@
     "ms-vscode-remote.remote-containers"
   ],
   "activationEvents": [
-    "workspaceContains:.code-server.stack.json",
-    "workspaceContains:.code-server/setup"
+    "workspaceContains:.code-server.stack.json"
   ],
   "main": "./dist/extension.cjs",
-  "templateMinVersion": "5.0.0",
   "contributes": {
     "commands": [
       {

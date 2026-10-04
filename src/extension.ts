@@ -27,7 +27,7 @@ import {
   versionsOf,
   type Answers,
 } from './questions.ts'
-import { readTemplateVersion, carried } from './template.ts'
+import { carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
 const SHOW_DETECTED = 'jvsl.devContainer.showDetected'
@@ -215,8 +215,8 @@ async function configure(
   if (available.length === 0) {
     // The case that reads as a broken extension rather than a missing checkout.
     void vscode.window.showErrorMessage(
-      'No stacks found in .code-server/stacks. If the submodule is not checked out yet, run: ' +
-        'git submodule update --init',
+      'No stacks are available. The extension carries them, so an empty list means this ' +
+        'installation is incomplete rather than this project being unconfigured — reinstall it.',
     )
     write(['configure: refused, no stacks under ' + stacksDir])
     return
@@ -498,12 +498,6 @@ async function gather(
     runningContainers: await runningContainers(write),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
-    templateVersion: readTemplateVersion(root),
-    // From package.json, which is the only place this number lives. A constant
-    // in open.ts would be a second one to keep in step — and the defect this
-    // requirement exists for is that this number was wrong for three releases
-    // while nothing read it at all.
-    templateMinVersion: templateMinVersion(context),
   }
 }
 
@@ -529,8 +523,6 @@ async function describe(context: vscode.ExtensionContext): Promise<string[]> {
   return [
     `project: ${root}`,
     ...formatDetected({
-      templateVersion: readTemplateVersion(root),
-      templateMinVersion: templateMinVersion(context),
       facts: hostFacts(),
       // Undefined exactly when the extension host is local. Reported rather
       // than assumed: from the remote host every number above describes the

@@ -15,7 +15,6 @@ interface Manifest {
   extensionKind?: unknown
   extensionDependencies?: unknown
   activationEvents?: unknown
-  templateMinVersion?: unknown
   main?: unknown
   scripts?: Record<string, unknown>
 }
@@ -70,11 +69,6 @@ function problems(m: Manifest): string[] {
     )
   }
 
-  if (typeof m.templateMinVersion !== 'string' || parseVersion(m.templateMinVersion) === null) {
-    found.push('templateMinVersion must be present and parseable, so a tool can answer which ' +
-      'template this needs without executing the bundle')
-  }
-
   if (typeof m.main !== 'string' || !m.main.includes('dist/')) {
     found.push('main must point at the bundle in dist/')
   }
@@ -101,7 +95,6 @@ const good: Manifest = {
   extensionKind: ['ui'],
   extensionDependencies: [DEV_CONTAINERS],
   activationEvents: ['workspaceContains:.code-server.stack.json'],
-  templateMinVersion: '2.2.0',
   main: './dist/extension.js',
   scripts: { 'vscode:prepublish': 'npm run build' },
 }
@@ -140,13 +133,6 @@ test('a submodule path alongside one outside it is accepted', () => {
     ],
   })
   assert.deepEqual(found, [])
-})
-
-test('an unparseable or missing templateMinVersion is rejected', () => {
-  for (const v of [undefined, '', 'latest', '2.2', 2]) {
-    const found = problems({ ...good, templateMinVersion: v })
-    assert.ok(found.some((p) => p.includes('templateMinVersion')), JSON.stringify(v))
-  }
 })
 
 test('a main that does not point at the bundle is rejected', () => {

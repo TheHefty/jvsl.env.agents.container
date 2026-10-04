@@ -28,7 +28,6 @@ export interface OpenContext {
    * unparseable are different refusals with different fixes, and a parsed
    * version cannot tell them apart.
    */
-  templateVersion: string | null
   /**
    * The minimum this extension works against, from `package.json`.
    *
@@ -37,7 +36,6 @@ export interface OpenContext {
    * exactly the defect this requirement exists to fix: that number was wrong
    * for three releases and nothing read it.
    */
-  templateMinVersion: string
 }
 
 export type Decision =
@@ -85,54 +83,6 @@ export function decideOpen(context: OpenContext): Decision {
         `which version it is. Nothing was written.`,
     }
   }
-
-  // The template version, before anything about what happens to be running: a
-  // template below the minimum is the wrong arrangement, and a running
-  // container is a transient condition.
-  //
-  // **Three states, three fixes.** `diagnostics.ts` wrote down two of them —
-  // "an unreadable template version is not an old one. Saying 'too old' for a
-  // file that could not be read sends the reader to bump a submodule that is
-  // missing entirely" — and the helpers have a third: the file can be there and
-  // not be a version. Telling somebody to bump, to initialise, or to look at
-  // the file are three different instructions and only one of them is right
-  // each time.
-  if (context.templateVersion === null) {
-    return {
-      action: 'refuse',
-      notes,
-      cause:
-        `\`.code-server/version.txt\` could not be read, which almost always means the submodule ` +
-        `was never initialised — \`git submodule update --init\`. Nothing was written. ` +
-        `This extension needs template ${context.templateMinVersion} or newer, and without the ` +
-        `submodule there is no template at all, so bumping a pointer would move nothing.`,
-    }
-  }
-
-  if (parseVersion(context.templateVersion) === null) {
-    return {
-      action: 'refuse',
-      notes,
-      cause:
-        `\`.code-server/version.txt\` holds \`${context.templateVersion}\`, which is not a ` +
-        `\`major.minor.patch\` version. The submodule is there and that file is not what it should ` +
-        `be, so neither bumping nor initialising is the fix — look at the file. Nothing was written.`,
-    }
-  }
-
-  if (!isAtLeast(context.templateVersion, context.templateMinVersion)) {
-    return {
-      action: 'refuse',
-      notes,
-      cause:
-        `the template at \`.code-server\` is ${context.templateVersion} and this extension needs ` +
-        `${context.templateMinVersion} or newer. Below that the image declares no extensions for the editor to ` +
-        `install and the agent's sandbox does not hold \`.vscode\` read-only, so opening would ` +
-        `succeed and deliver less than it looks like — bump the submodule to a tag of at least ` +
-        `${context.templateMinVersion} and rerun \`.code-server/setup\`. Nothing was written.`,
-    }
-  }
-
   if (context.runningContainers.includes(names.launcherContainer)) {
     return {
       action: 'refuse',
@@ -167,7 +117,7 @@ export function decideOpen(context: OpenContext): Decision {
       `the project manifest \`.code-server.stack.json\` could not be read, so the default limits ` +
         `are being used ` +
         `(${limits.memory} memory, half the host's cores). Fix the file, or run ` +
-        `\`.code-server/setup\` to rewrite it.`,
+        `the \`Dev Container: Configure Stacks and Limits\` command to rewrite it.`,
     )
   }
 

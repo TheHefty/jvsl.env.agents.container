@@ -28,21 +28,6 @@ export function parseVersion(raw: string): Version | null {
   }
 }
 
-/**
- * The template version a project is pinned to, or null when it cannot be read.
- *
- * Absent is the normal case and not an error: a clone without `--recursive`
- * leaves `.code-server/` existing and empty, which is exactly why activation
- * keys off the manifest at the project root instead of anything in here.
- */
-export function readTemplateVersion(projectRoot: string): string | null {
-  try {
-    const raw = readFileSync(join(projectRoot, '.code-server', 'version.txt'), 'utf8').trim()
-    return raw === '' ? null : raw
-  } catch {
-    return null
-  }
-}
 
 /**
  * Whether `found` is at least `minimum`, both as `major.minor.patch`.
