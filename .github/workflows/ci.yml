@@ -176,6 +176,19 @@ jobs:
       - name: it removes what it recognises and refuses what it does not
         run: bash core/cont-init/30-editor-leftovers.test.sh
 
+  agent-rules:
+    # The hook is four lines of copying; what this asserts is the refusal. It
+    # refuses to write when its target is not a mount of its own — because
+    # without that mount the target is a path inside the bind from the person's
+    # own ~/.claude, and one project's rules would appear in every project on
+    # their machine. A declaration in the generated configuration is not a
+    # guarantee the hook holds.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: it refuses to write into somebody's own home directory
+        run: bash core/cont-init/50-agent-rules.test.sh
+
   ai-memory:
     # The boot hook must preserve ai-memory opt-in and register every supported
     # first-party client. A missing Codex registration is silent until a new
@@ -550,7 +563,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

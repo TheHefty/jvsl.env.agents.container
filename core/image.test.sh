@@ -136,6 +136,16 @@ permissions problem rather than as a missing base feature"
 [ "$(field editor)" = "absent" ] || fail "code-server is still on PATH in this image, which is the \
 one thing the release that changed this base claims to have removed"
 
+# **The documents have to be in the image, because the boot hook copies from it
+# rather than from anywhere a project can reach.** A hook that refuses because
+# its source is absent says the image is incomplete — which is true, and this is
+# what stops that being discovered at somebody's first boot.
+docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
+    'ls /opt/jvsl/docs/agent/en 2>/dev/null | wc -l' || echo 0)"
+[ "$docs_present" -ge 12 ] || fail "the image carries $docs_present file(s) under \
+/opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
+from there and would refuse, saying the image is incomplete — which it would be"
+
 echo "image.test: $IMAGE declares remoteUser $USER_NAME, declares no containerUser, gives \
 $USER_NAME a usable login shell ($shell), installs none of the launcher's libraries, and still \
-has a rust toolchain ($toolchain)."
+has a rust toolchain ($toolchain), and carries $docs_present normative documents."

@@ -421,6 +421,24 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-ai-memory/run \
 COPY core/cont-init/40-ai-memory.sh /custom-cont-init.d/40-ai-memory.sh
 RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 
+# 6. The normative documents, and the hook that puts two of them where the agent
+# loads them from.
+#
+# **They travel in the image rather than in a project.** A project used to vendor
+# the template as a submodule and import them from inside it; a project now
+# installs an extension, and what the extension carries is baked here. A rule
+# corrected upstream reaches a project when it rebuilds rather than when somebody
+# remembers to copy it, which is the property the submodule arrangement had and
+# the only one worth keeping from it.
+#
+# All twenty-seven are carried. The hook writes two to `~/.claude/rules/`, which
+# load with no import at all; the rest stay here to be read when they are the
+# subject, INITIALIZATION.md above all — 13.7 KB about a moment that happens
+# once, which has no business resident in every session.
+COPY docs/agent /opt/jvsl/docs/agent
+COPY core/cont-init/50-agent-rules.sh /custom-cont-init.d/50-agent-rules.sh
+RUN chmod +x /custom-cont-init.d/50-agent-rules.sh
+
 # The image stays as root: LinuxServer's s6-overlay needs to start as root
 # so it can then apply PUID/PGID and drop privileges to user 'abc'.
 # Stack fragments (stacks/*/Dockerfile.frag) are concatenated after this
