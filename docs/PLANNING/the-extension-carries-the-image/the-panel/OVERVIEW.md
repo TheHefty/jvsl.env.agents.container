@@ -40,7 +40,7 @@ whether loading in every window costs anything they notice.
 
 ## Out of scope
 
-- **A view of the project's state.** `jvsl.devContainer.showDetected` already exists for that and
+- **A view of the project's state.** `jvsl.agentContainer.showDetected` already exists for that and
   belongs to a project that is open.
 - **The agents screen** — a separate epic.
 

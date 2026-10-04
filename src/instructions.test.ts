@@ -47,7 +47,7 @@ test('the marker survives an editor that reformats, and is invisible when render
   assert.ok(MARKER.startsWith('<!--'), MARKER)
   assert.ok(isGenerated(`${MARKER}\n# anything\n`))
   // Leading whitespace and a reflowed comment still count.
-  assert.ok(isGenerated(`  <!--  jvsl.env.agents.vscode: generated.\n  more -->\n# x\n`))
+  assert.ok(isGenerated(`  <!--  jvsl.env.agents.container: generated.\n  more -->\n# x\n`))
 })
 
 test('the assets this extension ships are recognised as its own', () => {

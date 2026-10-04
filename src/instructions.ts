@@ -16,10 +16,10 @@ import { join } from 'node:path'
  * recognising a file this extension itself wrote — which would make the next
  * upgrade refuse to replace its own output.
  */
-export const MARKER = '<!-- jvsl.env.agents.vscode: generated.'
+export const MARKER = '<!-- jvsl.env.agents.container: generated.'
 
 export function isGenerated(contents: string): boolean {
-  return contents.trimStart().startsWith('<!--') && contents.includes('jvsl.env.agents.vscode: generated.')
+  return contents.trimStart().startsWith('<!--') && contents.includes('jvsl.env.agents.container: generated.')
 }
 
 export interface InstructionWrite {

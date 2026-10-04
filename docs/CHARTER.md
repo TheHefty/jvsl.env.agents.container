@@ -1,4 +1,4 @@
-# Project Charter: jvsl.env.agents.vscode
+# Project Charter: jvsl.env.agents.container
 
 | | |
 |---|---|

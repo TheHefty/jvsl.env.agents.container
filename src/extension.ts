@@ -33,15 +33,15 @@ import { decidePick } from './pick.ts'
 import { carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
-const SHOW_DETECTED = 'jvsl.devContainer.showDetected'
-const OPEN = 'jvsl.devContainer.open'
-const CONFIGURE = 'jvsl.devContainer.configure'
-const BUILD = 'jvsl.devContainer.build'
+const SHOW_DETECTED = 'jvsl.agentContainer.showDetected'
+const OPEN = 'jvsl.agentContainer.open'
+const CONFIGURE = 'jvsl.agentContainer.configure'
+const BUILD = 'jvsl.agentContainer.build'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
 const DOCKER_CHECK_MS = 2000
 const MANIFEST = '.code-server.stack.json'
-const PICK = 'jvsl.devContainer.open'
-const VIEW = 'jvsl.devContainer.view'
+const PICK = 'jvsl.agentContainer.open'
+const VIEW = 'jvsl.agentContainer.view'
 
 const run = promisify(execFile)
 
