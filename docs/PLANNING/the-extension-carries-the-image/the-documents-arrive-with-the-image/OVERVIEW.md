@@ -66,7 +66,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | the documents move here, with check-parity | not written |
+| 1 | [`tasks/the-documents-move-here-with-their-parity-check.md`](tasks/the-documents-move-here-with-their-parity-check.md) | Draft |
 | 2 | the image carries them and a hook writes them | not written |
 | 3 | the submodule goes | not written |
 
