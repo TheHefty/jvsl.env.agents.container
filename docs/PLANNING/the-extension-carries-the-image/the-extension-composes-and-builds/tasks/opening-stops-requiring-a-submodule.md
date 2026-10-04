@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-extension-composes-and-builds
 epic: the-extension-carries-the-image
-pr:
+pr: 54
 ---
 
 # Task: opening-stops-requiring-a-submodule
@@ -93,4 +93,31 @@ its unverifiability can say where it went.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #54. 115 unit tests, 10 bundle, typecheck clean, and the guard green at 3 of 3.
+
+**The guard had a hole, and the first version of it would not have caught the thing it was written
+for.** It looked for `.code-server/` — with the slash — and that misses
+`join(projectRoot, '.code-server', 'version.txt')`, where the slash never appears. **That is exactly
+how the deleted code did it.** A check for the slash alone would have gone green the moment the
+string literals went, leaving the segment form free to come back. It matches both shapes now, and
+`'.code-server'` as a whole quoted segment does not match `'.code-server.stack.json'` — the
+manifest, which must stay readable. That distinction had already been got wrong once, in an
+assertion written for the compose command, which is why it was checked rather than assumed.
+
+**The deletion reached further than the design listed.** `src/manifest.test.ts` asserted
+`templateMinVersion` must be present and parseable, so the field could not go without it;
+`diagnostics.test.ts` had two tests that existed only for the version; and the integration fixture
+carried both context fields. Eleven files in all.
+
+**Two mistakes of mine on the way, both caught, both the same shape.** A regex on `package.json`
+removed the activation event and left a trailing comma, breaking the file — JSON was the wrong thing
+to edit that way. And a slice taken between two anchors came back empty because the checks were in
+the opposite order from what I assumed; the script's own assertion stopped it before it wrote
+anything, which is the only reason it cost nothing.
+
+**`SECURITY.md` is in this repository's working tree again, untracked, and the allowlist caught it a
+second time.** 1792 bytes, naming `jvsl.monorepo.agents.template` — the monorepo's file, not this
+one's. **I cannot say what put it back and will not guess.** It is moved out of the repository
+again. A correction is owed on the earlier claim that the first pair was *preserved in the
+scratchpad*: that directory belonged to a previous session and is gone. The content was not lost
+only because the file was still here.

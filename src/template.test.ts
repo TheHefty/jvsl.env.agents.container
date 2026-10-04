@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import {isAtLeast, parseVersion, readTemplateVersion, carried} from './template.ts'
+import {isAtLeast, parseVersion, carried} from './template.ts'
 
 test('a version is parsed into something comparable', () => {
   assert.deepEqual(parseVersion('2.2.0'), { major: 2, minor: 2, patch: 0 })
@@ -25,30 +25,6 @@ test('anything that is not a version parses to nothing rather than to zero', () 
   }
 })
 
-test('the template version is read from the submodule', () => {
-  const root = mkdtempSync(join(tmpdir(), 'tpl-'))
-  mkdirSync(join(root, '.code-server'))
-  writeFileSync(join(root, '.code-server', 'version.txt'), '2.2.0\n')
-  assert.equal(readTemplateVersion(root), '2.2.0')
-})
-
-test('an uninitialized submodule reads as absent, not as an error', () => {
-  // A fresh clone without --recursive leaves .code-server/ existing and empty.
-  // Verified by hand; it is also why activation keys off the root manifest.
-  const root = mkdtempSync(join(tmpdir(), 'tpl-'))
-  mkdirSync(join(root, '.code-server'))
-  assert.equal(readTemplateVersion(root), null)
-})
-
-test('no submodule directory at all reads as absent too', () => {
-  const root = mkdtempSync(join(tmpdir(), 'tpl-'))
-  assert.equal(readTemplateVersion(root), null)
-})
-
-/**
- * Ordering is where an off-by-one is invisible, so the four versions that break
- * the two naive implementations are named rather than left to a generic case.
- */
 test('a version at or above the minimum is accepted', () => {
   assert.equal(isAtLeast('5.0.0', '5.0.0'), true, 'exactly the minimum')
   assert.equal(isAtLeast('5.0.1', '5.0.0'), true)

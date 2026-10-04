@@ -1,8 +1,6 @@
 import type { HostFacts } from './host.ts'
 
 export interface Detected {
-  templateVersion: string | null
-  templateMinVersion: string
   facts: HostFacts
   runningOnHost: boolean
 }
@@ -22,7 +20,7 @@ export interface Detected {
  * missing entirely.
  */
 export function formatDetected(detected: Detected): string[] {
-  const { templateVersion, templateMinVersion, facts, runningOnHost } = detected
+  const { facts, runningOnHost } = detected
   const lines: string[] = []
 
   lines.push(
@@ -31,14 +29,6 @@ export function formatDetected(detected: Detected): string[] {
       : 'NOT running on the host. Every number below describes the container rather than the ' +
           'machine, so any limit computed from them would be wrong without failing. Check that ' +
           'the extension is installed with extensionKind "ui".',
-  )
-
-  lines.push(
-    templateVersion === null
-      ? `template version: could not be read. .code-server/version.txt is not there — the ` +
-          `submodule is probably not initialised (git submodule update --init). This is not the ` +
-          `same as an out-of-date template; minimum required is ${templateMinVersion}`
-      : `template version: ${templateVersion} (minimum required: ${templateMinVersion})`,
   )
 
   lines.push(`host CPUs: ${facts.cpuCount}`)

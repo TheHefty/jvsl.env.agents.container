@@ -106,8 +106,6 @@ test('a container brought up from our configuration got the machine the manifest
       // supplied rather than read. It is the minimum, because what this test
       // exercises is the container the configuration produces and not the
       // refusals around it — those are open.test.ts's.
-      templateVersion: '5.0.0',
-      templateMinVersion: '5.0.0',
       gitignore: '.devcontainer/\n',
     })
     assert.equal(decision.action, 'open')
