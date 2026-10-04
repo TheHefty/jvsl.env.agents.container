@@ -46,11 +46,20 @@ pass=$((pass + 1))
 
 # A string that must be present. If this stops matching, the search mechanism
 # is broken rather than the repository being clean.
-if grep -rlF --include='*' 'code-server' -- "${tracked[@]}" >/dev/null 2>&1; then
+#
+# **It was `code-server` until the submodule went.** Eighty files still carry
+# that word, all of them history — the Dockerfile's comments about the base it
+# used to have, the planning documents, this file's own name for what it
+# guards. A canary whose presence is accidental is one a tidy-up removes, and
+# then this reports a broken mechanism when nothing is broken. `jvsl` is in the
+# package name, in every command the extension contributes, and in the marker
+# the instruction assets carry: it cannot leave while this is the repository it
+# is.
+if grep -rlF --include='*' 'jvsl' -- "${tracked[@]}" >/dev/null 2>&1; then
     echo "ok      the search mechanism finds a string that is really there"
     pass=$((pass + 1))
 else
-    echo "NOT OK  the search found no mention of 'code-server' anywhere, which cannot be true; \
+    echo "NOT OK  the search found no mention of 'jvsl' anywhere, which cannot be true; \
 the mechanism is broken and the assertions below prove nothing" >&2
     exit 1
 fi
@@ -58,15 +67,6 @@ fi
 # --- what must be absent.
 #
 # Each pattern is checked separately so a failure names which one, and the
-# **`.code-server/` is excluded, and that exclusion is this repository's
-# rather than the template's.** The guard assumes one product per tree; here
-# `git ls-files --others` reaches into a submodule that is a separate product,
-# and found the launcher in that product's own planning documents and in its own
-# copy of this very file. The exclusions below are anchored at the repository
-# root, so `^docs/PLANNING/` never matched `.code-server/docs/PLANNING/`.
-# The line becomes inert when the submodule goes, in the story that brings
-# `docs/agent/` here.
-#
 # **Comment lines are excluded, for the reason this file already gives
 # elsewhere: a grep cannot tell a recollection from an instruction.**
 # `src/limits.ts` and its test both carry "Ported from `start/src/main.rs`,
@@ -100,7 +100,6 @@ check_absent() {
     local what="$1" pattern="$2" only="${3:-}" hits
     hits="$(grep -rnE "$pattern" -- "${tracked[@]}" 2>/dev/null \
         | { [ -n "$only" ] && grep -E "$only" || cat; } \
-        | grep -v '^\.code-server/' \
         | grep -v '^docs/PLANNING/' \
         | grep -v '^docs/srs/' \
         | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|\*|#)' \

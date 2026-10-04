@@ -1,7 +1,7 @@
 {
   "name": "jvsl-env-agents-vscode",
   "displayName": "Dev Container Projects",
-  "description": "Opens a project built on the jvsl.env.agents.code-server template in this editor, connected to that project's own container.",
+  "description": "Builds a project's dev container image and opens it in this editor, carrying the image's content so a project needs nothing else installed.",
   "version": "0.3.0",
   "type": "module",
   "license": "MIT",

@@ -6,7 +6,6 @@
 # Everything the extension needs at runtime is the bundle; the sources are in
 # the repository, and that is where anybody debugging it should be reading them.
 # tools/vsix.test.ts holds this true.
-.code-server/**
 
 # The image's content travels in the package: the extension composes a
 # project's Dockerfile from it, so a project needs nothing but the extension
