@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/a-project-needs-nothing-but-the-extension
 epic: the-extension-carries-the-image
-pr:
+pr: 56
 ---
 
 # Task: the-instruction-files-are-assets-not-this-repos-own
@@ -97,4 +97,28 @@ nothing at all, and saying where the rules come from in prose instead.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #56. 121 unit tests, 10 bundle, typecheck clean.
+
+**The marker needed a decision the design named but did not settle, and the round trip is what
+caught it.** Recognition is by the comment's *opening phrase*, not by the whole string: a reflowing
+editor rewraps the comment, and an exact match would then stop recognising a file this extension
+itself wrote — so the next upgrade would refuse to replace its own output. One of the tests reads the
+shipped assets back and asserts they are recognised, which is the only form of that check that
+cannot drift from the files it is about.
+
+**Two cases the design did not list, both decided in the code with the reason beside them.** An
+installation whose `assets/project/` is missing writes nothing and says the *extension* is
+incomplete rather than the project unconfigured — an empty instruction file is worse than an absent
+one, because an agent reads it. And a write that fails is **not fatal**: a project that cannot take
+its instruction files can still be opened, and saying so is more use than refusing the open over it.
+
+**The order is load-bearing.** The instruction files are written *after* the configuration and never
+before. These are tracked files in somebody's repository; the configuration is gitignored and
+disposable. If the configuration failed, `prepare` has already returned — and a project left with
+new instruction files and no way to open it is the worst of the three outcomes.
+
+**And the asset imports nothing at all.** The design had recorded this as an open question for story
+5; it is answered here. An `@path` resolving outside the project is external, and declining its
+dialog once disables it permanently with nothing said — so the asset says in prose where the rules
+come from, and keeps the gates in its own body, because those have to survive everything else not
+arriving.
