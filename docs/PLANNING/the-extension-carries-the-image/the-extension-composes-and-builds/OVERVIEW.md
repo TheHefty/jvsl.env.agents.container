@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -59,7 +59,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-extension-composes-from-what-it-carries.md`](tasks/the-extension-composes-from-what-it-carries.md) | Done — #52 |
-| 2 | [`tasks/opening-stops-requiring-a-submodule.md`](tasks/opening-stops-requiring-a-submodule.md) | Draft |
+| 2 | [`tasks/opening-stops-requiring-a-submodule.md`](tasks/opening-stops-requiring-a-submodule.md) | Done — #54 |
 
 **Task 1 was measured and the sketch was wrong about the hard part.** It assumed the work was
 swapping one path for another. There is not one `extensionPath` or `extensionUri` anywhere in
