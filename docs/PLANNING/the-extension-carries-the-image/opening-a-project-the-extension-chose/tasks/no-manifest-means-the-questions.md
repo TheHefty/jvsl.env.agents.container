@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/opening-a-project-the-extension-chose
 epic: the-extension-carries-the-image
-pr:
+pr: 71
 ---
 
 # Task: no-manifest-means-the-questions
@@ -82,4 +82,20 @@ writes into the wrong repository everywhere else.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #71. 134 unit tests, 11 bundle, typecheck clean.
+
+**There were eight cancellation points, not the five the design implied.** Every `return` in
+`configure` had to carry `{ wrote: false }` — the five questions, plus the no-stacks refusal, the
+unreadable-manifest refusal, and the missing-dependency refusal. The design counted the questions and
+not the refusals, and a caller cannot tell one kind of early exit from another.
+
+**Two decisions the design did not name.** The `configure` variant carries `newWindow` too, because a
+window with somebody's work in it is still theirs after five questions. And `configure` does **not**
+build when a root was passed: the caller is driving a longer sequence and will build the folder it
+chose, so building here would be seven minutes on a cache hit nobody is watching.
+
+**And the task found a defect in the previous one, which CI had already caught.** `git add -- src`
+staged the source for #69 and left the integration fixture's matching edit uncommitted in the working
+tree — where it followed me into this branch and broke typecheck here too. #69 was at
+`typecheck=FAILURE` for exactly that. **Staging by directory is what hid it**; `git status` would have
+said so, and reading it is now the step rather than an afterthought.

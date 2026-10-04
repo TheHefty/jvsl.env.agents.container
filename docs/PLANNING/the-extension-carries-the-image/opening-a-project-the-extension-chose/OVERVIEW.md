@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** — one `@manual` pass owed |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -53,7 +53,7 @@ Written after this gate, not before.
 |---|---|---|
 | 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Done — #66 |
 | 2 | [`tasks/a-missing-image-is-built-rather-than-refused.md`](tasks/a-missing-image-is-built-rather-than-refused.md) | Draft |
-| 3 | [`tasks/no-manifest-means-the-questions.md`](tasks/no-manifest-means-the-questions.md) | Draft |
+| 3 | [`tasks/no-manifest-means-the-questions.md`](tasks/no-manifest-means-the-questions.md) | Done — #71 |
 
 **Task 1 was "the extension activates without a folder" and the measurement moved it.** A
 contributed command is in the palette with no folder open, and invoking it activates the extension

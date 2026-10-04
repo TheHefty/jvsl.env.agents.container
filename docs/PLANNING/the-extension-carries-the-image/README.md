@@ -19,7 +19,7 @@ second version to keep in step: the extension composes and builds from what it b
 | 3 | [`the-extension-composes-and-builds`](the-extension-composes-and-builds/) | **Done** |
 | 4 | [`a-project-needs-nothing-but-the-extension`](a-project-needs-nothing-but-the-extension/) | **Done** |
 | 5 | [`the-documents-arrive-with-the-image`](the-documents-arrive-with-the-image/) | **Done** — two `@manual` passes owed |
-| 6 | [`opening-a-project-the-extension-chose`](opening-a-project-the-extension-chose/) | Draft |
+| 6 | [`opening-a-project-the-extension-chose`](opening-a-project-the-extension-chose/) | **Done** — one `@manual` pass owed |
 | 7 | [`creating-a-project-from-nothing`](creating-a-project-from-nothing/) | Draft |
 | 8 | [`the-panel`](the-panel/) | Draft |
 
