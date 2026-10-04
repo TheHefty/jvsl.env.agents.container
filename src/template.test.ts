@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { isAtLeast, parseVersion, readTemplateVersion } from './template.ts'
+import {isAtLeast, parseVersion, readTemplateVersion, carried} from './template.ts'
 
 test('a version is parsed into something comparable', () => {
   assert.deepEqual(parseVersion('2.2.0'), { major: 2, minor: 2, patch: 0 })
@@ -81,4 +81,21 @@ test('an unparseable version is never at least anything', () => {
     assert.equal(isAtLeast(bad, '5.0.0'), false, bad)
   }
   assert.equal(isAtLeast('5.0.0', 'nonsense'), false, 'a nonsense minimum refuses too')
+})
+
+test('carried() resolves under the extension, never under the workspace', () => {
+  const got = carried('/home/me/.vscode/extensions/jvsl-0.3.0', 'core', 'compose-dockerfile.sh')
+  assert.equal(got, '/home/me/.vscode/extensions/jvsl-0.3.0/core/compose-dockerfile.sh')
+})
+
+test('carried() is the same expression in a checkout and in an installation', () => {
+  // True by a coincidence of two decisions and nothing holds it true on
+  // purpose: story 1 merged core/ and stacks/ at their original paths rather
+  // than under a prefix, so the repository root and an installation directory
+  // have the same shape. The package assertion in tools/vsix.test.ts is the
+  // half of this that reads the artifact; this half pins the expression.
+  const inCheckout = carried('/src/jvsl.env.agents.vscode', 'core')
+  const installed = carried('/home/me/.vscode/extensions/jvsl-0.3.0', 'core')
+  assert.equal(inCheckout.slice('/src/jvsl.env.agents.vscode'.length), '/core')
+  assert.equal(installed.slice('/home/me/.vscode/extensions/jvsl-0.3.0'.length), '/core')
 })

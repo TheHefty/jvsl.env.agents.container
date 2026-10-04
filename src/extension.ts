@@ -1,12 +1,13 @@
 import { execFile } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import * as vscode from 'vscode'
 
 import {
-  buildCommand,
+  composeAndBuildCommand,
+  composeCommand,
   buildOutcome,
   detectManager,
   hostProblems,
@@ -26,7 +27,7 @@ import {
   versionsOf,
   type Answers,
 } from './questions.ts'
-import { readTemplateVersion } from './template.ts'
+import { readTemplateVersion, carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
 const SHOW_DETECTED = 'jvsl.devContainer.showDetected'
@@ -67,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Declared before the commands that close over it: the closure would resolve
   // either way, but a reader should not have to know that to be sure.
-  const view = new SelectionView()
+  const view = new SelectionView(context.extensionPath)
 
   context.subscriptions.push(
     vscode.commands.registerCommand(SHOW_DETECTED, async () => {
@@ -77,8 +78,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
-    vscode.commands.registerCommand(CONFIGURE, () => configure(write, view)),
-    vscode.commands.registerCommand(BUILD, () => build(write, view)),
+    vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
+    vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
   )
 
   context.subscriptions.push(
@@ -107,6 +108,9 @@ function watchManifest(onChange: () => void): vscode.Disposable {
  * disk and turns rows into `TreeItem`s.
  */
 class SelectionView implements vscode.TreeDataProvider<Row> {
+  /** What the extension carries is not a property of the project being viewed. */
+  constructor(private readonly extensionPath: string) {}
+
   private readonly changed = new vscode.EventEmitter<void>()
   readonly onDidChangeTreeData = this.changed.event
   private lastBuild: 'ok' | 'failed' | 'cancelled' | undefined
@@ -124,7 +128,10 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
   getChildren(): Row[] {
     const folder = vscode.workspace.workspaceFolders?.[0]
     if (!folder) return []
-    return viewItems({ ...readViewState(folder.uri.fsPath), lastBuild: this.lastBuild })
+    return viewItems({
+      ...readViewState(folder.uri.fsPath, this.extensionPath),
+      lastBuild: this.lastBuild,
+    })
   }
 
   getTreeItem(row: Row): vscode.TreeItem {
@@ -140,7 +147,27 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
   }
 }
 
-function readViewState(root: string): ViewState {
+/**
+ * The stacks a project asked for, from its manifest.
+ *
+ * An unreadable manifest means no stacks rather than an error: the build
+ * composes core alone, which is a working image, and the alternative is
+ * refusing to build because a file this function could not parse might have
+ * named something. The questions are what refuse an unreadable manifest, and
+ * they refuse it rather than overwriting it.
+ */
+function readManifestStacks(root: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
+    if (typeof parsed !== 'object' || parsed === null) return {}
+    const stacks = (parsed as Record<string, unknown>)['stacks']
+    return typeof stacks === 'object' && stacks !== null ? (stacks as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function readViewState(root: string, extensionPath: string): ViewState {
   let manifest: Record<string, unknown> | null = null
   try {
     const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
@@ -153,7 +180,7 @@ function readViewState(root: string): ViewState {
     // need to repeat that refusal to stay honest about what it can see.
   }
   return {
-    stacksAvailable: stacksAvailable(join(root, '.code-server', 'stacks')),
+    stacksAvailable: stacksAvailable(carried(extensionPath, 'stacks')),
     manifest,
   }
 }
@@ -168,14 +195,21 @@ function readViewState(root: string): ViewState {
  * writes nothing: a half-answered manifest is worse than none, because `setup`
  * would read it and build something nobody chose, successfully.
  */
-async function configure(write: (lines: string[]) => void, view: SelectionView): Promise<void> {
+async function configure(
+  write: (lines: string[]) => void,
+  view: SelectionView,
+  extensionPath: string,
+): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0]
   if (!folder) {
     void vscode.window.showErrorMessage('Open a project folder first.')
     return
   }
   const root = folder.uri.fsPath
-  const stacksDir = join(root, '.code-server', 'stacks')
+  // What the extension carries, not what the project has. A project is not
+  // supposed to have a `.code-server/` at all, and one that still does carries
+  // whatever version it last bumped to.
+  const stacksDir = carried(extensionPath, 'stacks')
 
   const available = stacksAvailable(stacksDir)
   if (available.length === 0) {
@@ -270,7 +304,7 @@ async function configure(write: (lines: string[]) => void, view: SelectionView):
   // This command wrote the manifest and told the reader to run `setup` by hand
   // until the build existed. The story's scenario asked for a build from the
   // start; what was missing was something to call.
-  await build(write, view)
+  await build(write, view, extensionPath)
 }
 
 /**
@@ -280,15 +314,18 @@ async function configure(write: (lines: string[]) => void, view: SelectionView):
  * editable text, gives no exit code, and makes a path with a space in it a
  * quoting problem. What is here instead is the script as the terminal's process,
  * with `/bin/sh` present for the single purpose of redirecting standard input —
- * see `buildCommand`, which is where that reasoning lives.
+ * see `composeAndBuildCommand`, which is where that reasoning lives.
  */
-async function build(write: (lines: string[]) => void, view: SelectionView): Promise<void> {
+async function build(
+  write: (lines: string[]) => void,
+  view: SelectionView,
+  extensionPath: string,
+): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0]
   if (!folder) {
     void vscode.window.showErrorMessage('Open a project folder first.')
     return
   }
-  const setupPath = join(folder.uri.fsPath, '.code-server', 'setup')
 
   const checks = await hostChecks()
   const problems = hostProblems(checks)
@@ -301,14 +338,21 @@ async function build(write: (lines: string[]) => void, view: SelectionView): Pro
     return
   }
 
-  const { shellPath, shellArgs } = buildCommand(setupPath)
+  const stacks = Object.keys(readManifestStacks(folder.uri.fsPath))
+  const compose = composeCommand(extensionPath, folder.uri.fsPath, stacks)
+  const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
+  const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
   const terminal = vscode.window.createTerminal({
     name: 'Dev Container: build',
     shellPath,
     shellArgs,
   })
   terminal.show()
-  write([`build: started in a terminal, ${setupPath}`])
+  write([
+    `build: composing from ${compose.script}`,
+    `build: ${stacks.length} stack(s): ${stacks.join(', ') || '(none)'}`,
+    `build: image ${compose.image}, context ${compose.context}`,
+  ])
 
   const listener = vscode.window.onDidCloseTerminal((closed) => {
     if (closed !== terminal) return
