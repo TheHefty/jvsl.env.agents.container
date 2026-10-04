@@ -2,7 +2,7 @@
 status: Done
 story: the-extension-carries-the-image/the-documents-arrive-with-the-image
 epic: the-extension-carries-the-image
-pr: 61
+pr: 60
 ---
 
 # Task: the-documents-move-here-with-their-parity-check
@@ -79,7 +79,7 @@ rather than this task's; what this task owes is to not leave two live origins wi
 
 ## Outcome
 
-Implemented in #61. 27 files, two CI jobs, 26 jobs in all with no orphans.
+Implemented in #60. 27 files, two CI jobs, 26 jobs in all with no orphans.
 
 **Three predictions in this design were wrong, and the measurements are the useful part.**
 
