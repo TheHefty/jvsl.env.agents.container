@@ -56,7 +56,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-instruction-files-are-assets-not-this-repos-own.md`](tasks/the-instruction-files-are-assets-not-this-repos-own.md) | Draft |
-| 2 | activation does not depend on a submodule | not written |
+| 2 | [`tasks/activation-does-not-depend-on-a-submodule.md`](tasks/activation-does-not-depend-on-a-submodule.md) | Draft |
 
 **Provisional**, for the reason given in story 3's table: these are sketched from the FRs rather
 than decomposed from measurement.
