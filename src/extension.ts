@@ -14,6 +14,7 @@ import {
   type DockerState,
   type HostChecks,
 } from './build.ts'
+import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext } from './open.ts'
@@ -81,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
-    vscode.commands.registerCommand(PICK, () => pick(write)),
+    vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
   )
@@ -199,17 +200,32 @@ function readViewState(root: string, extensionPath: string): ViewState {
  * writes nothing: a half-answered manifest is worse than none, because `setup`
  * would read it and build something nobody chose, successfully.
  */
+/**
+ * **The root is a parameter, and that is the whole reason this task existed.**
+ * It read `vscode.workspace.workspaceFolders` and refused with "Open a project
+ * folder first" — which is exactly what somebody choosing a folder is trying to
+ * do. Asking about the workspace instead of the folder that was chosen would
+ * rewrite `.code-server.stack.json` in a repository nobody asked about, and
+ * that file is tracked and is the only record of what a project selected.
+ *
+ * `undefined` keeps the old behaviour for the command invoked with a project
+ * already open, which is the only caller that should read the workspace.
+ */
 async function configure(
   write: (lines: string[]) => void,
   view: SelectionView,
   extensionPath: string,
-): Promise<void> {
-  const folder = vscode.workspace.workspaceFolders?.[0]
-  if (!folder) {
-    void vscode.window.showErrorMessage('Open a project folder first.')
-    return
+  forRoot?: string,
+): Promise<ConfigureResult> {
+  let root = forRoot
+  if (root === undefined) {
+    const folder = vscode.workspace.workspaceFolders?.[0]
+    if (!folder) {
+      void vscode.window.showErrorMessage('Open a project folder first.')
+      return { wrote: false, root: '(none)', stacks: [] }
+    }
+    root = folder.uri.fsPath
   }
-  const root = folder.uri.fsPath
   // What the extension carries, not what the project has. A project is not
   // supposed to have a `.code-server/` at all, and one that still does carries
   // whatever version it last bumped to.
@@ -223,7 +239,7 @@ async function configure(
         'installation is incomplete rather than this project being unconfigured — reinstall it.',
     )
     write(['configure: refused, no stacks under ' + stacksDir])
-    return
+    return { wrote: false, root, stacks: [] }
   }
 
   const manifestPath = join(root, MANIFEST)
@@ -240,7 +256,7 @@ async function configure(
       void vscode.window.showErrorMessage(
         `${MANIFEST} cannot be read, and rewriting it would lose whatever it holds. Fix it first.`,
       )
-      return
+      return { wrote: false, root, stacks: [] }
     }
   }
 
@@ -250,14 +266,14 @@ async function configure(
     title: 'Which stacks does this project need?',
     placeHolder: 'Nothing selected builds the core image alone',
   })
-  if (picked === undefined) return
+  if (picked === undefined) return { wrote: false, root, stacks: [] }
 
   const [missing] = missingDependencies(picked, stacksDir)
   if (missing) {
     void vscode.window.showErrorMessage(
       `Stack '${missing.stack}' requires '${missing.needs}' — select it too.`,
     )
-    return
+    return { wrote: false, root, stacks: [] }
   }
 
   const stacks: Record<string, string> = {}
@@ -267,7 +283,7 @@ async function configure(
       orderedVersions(versionsOf(stacksDir, stack), recorded),
       { title: `Which version of ${stack}?` },
     )
-    if (version === undefined) return
+    if (version === undefined) return { wrote: false, root, stacks: [] }
     stacks[stack] = version
   }
 
@@ -276,11 +292,11 @@ async function configure(
   // literal in this file and a literal in a shell script in another repository.
   const defaults = limitDefaults(current)
   const memory = await ask('Memory the container may use', defaults.memory)
-  if (memory === undefined) return
+  if (memory === undefined) return { wrote: false, root, stacks: [] }
   const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap)
-  if (swap === undefined) return
+  if (swap === undefined) return { wrote: false, root, stacks: [] }
   const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
-  if (cpus === undefined) return
+  if (cpus === undefined) return { wrote: false, root, stacks: [] }
 
   const answers: Answers = {
     stacks,
@@ -308,7 +324,13 @@ async function configure(
   // This command wrote the manifest and told the reader to run `setup` by hand
   // until the build existed. The story's scenario asked for a build from the
   // start; what was missing was something to call.
-  await build(write, view, extensionPath)
+  //
+  // **Not awaited when somebody else asked**, because a caller that passed a
+  // root is driving a longer sequence and will build the folder it chose —
+  // building twice is seven minutes spent on a cache hit nobody is watching.
+  if (forRoot === undefined) await build(write, view, extensionPath)
+
+  return { wrote: true, root, stacks: picked }
 }
 
 /**
@@ -591,7 +613,11 @@ function extensionVersion(context: vscode.ExtensionContext): string {
  * is asking, reading one file, and doing what came back — and the one thing it
  * must not do is decide anything.
  */
-async function pick(write: (lines: string[]) => void): Promise<void> {
+async function pick(
+  write: (lines: string[]) => void,
+  view: SelectionView,
+  extensionPath: string,
+): Promise<void> {
   const picked = await vscode.window.showOpenDialog({
     canSelectFiles: false,
     canSelectFolders: true,
@@ -616,6 +642,19 @@ async function pick(write: (lines: string[]) => void): Promise<void> {
     write([`open: refused — ${decision.because}`])
     void vscode.window.showWarningMessage(decision.because)
     return
+  }
+
+  if (decision.action === 'configure') {
+    write([`open: ${decision.because}`])
+    const outcome = configureOutcome(await configure(write, view, extensionPath, decision.folder))
+    write([`open: ${outcome.message}`])
+    if (!outcome.proceed) {
+      void vscode.window.showInformationMessage(outcome.message)
+      return
+    }
+    // **Falls through to opening the folder it just configured.** The third
+    // failure scenario is the one where nothing fails: asking five questions,
+    // writing the file, and then appearing to forget.
   }
 
   write([`open: ${decision.folder}${decision.newWindow ? ' in a new window' : ''}`])

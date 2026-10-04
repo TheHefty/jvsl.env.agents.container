@@ -23,6 +23,14 @@ export interface Pick {
 export type PickDecision =
   | { action: 'nothing'; because?: string }
   | { action: 'open'; folder: string; newWindow: boolean; because?: string }
+  /**
+   * Ask the five questions about this folder, then carry on.
+   *
+   * **This was a refusal until the questions could be asked about a folder that
+   * is not open.** `configure` read the workspace and told somebody to open a
+   * project first, which is exactly what they were trying to do.
+   */
+  | { action: 'configure'; folder: string; newWindow: boolean; because: string }
   | { action: 'refuse'; because: string }
 
 /** Trailing slashes: a dialog and a workspace folder disagree about them. */
@@ -42,11 +50,16 @@ export function decidePick(pick: Pick): PickDecision {
 
   if (!pick.hasManifest) {
     return {
-      action: 'refuse',
+      action: 'configure',
+      folder: pick.chosen,
+      // The same rule as opening: a window with a folder in it is somebody's
+      // work, and configuring first does not change that.
+      newWindow: pick.currentFolder !== undefined,
       because:
-        `${pick.chosen} has no \`.code-server.stack.json\`, so there is nothing yet that says ` +
-        `which stacks its image should contain. Run \`Dev Container: Configure Stacks and ` +
-        `Limits\` in it first — answering those questions is what writes that file.`,
+        `${pick.chosen} has no \`.code-server.stack.json\` yet, so the questions that write one ` +
+        `are asked about it now. The folder is named here because the questions themselves do ` +
+        `not show a path, and answering them for the wrong project would rewrite a file that is ` +
+        `the only record of what that project selected.`,
     }
   }
 

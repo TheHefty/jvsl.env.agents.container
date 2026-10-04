@@ -43,13 +43,16 @@ test('a trailing slash is the same folder', () => {
   assert.equal(d.action, 'nothing')
 })
 
-test('a folder with no manifest says what it found rather than appearing to work', () => {
-  // The task that asks the questions is not written yet. A picker that accepts
-  // anything and then does nothing is worse than one that refuses, because the
-  // person believes it started.
+test('a folder with no manifest is asked about rather than refused', () => {
+  // **This asserted a refusal until the task that replaced it.** Refusing was
+  // the right temporary answer while nothing could ask the questions about a
+  // folder that is not open; `configure` takes a root now.
   const d = decidePick({ ...base, hasManifest: false })
-  assert.equal(d.action, 'refuse')
-  assert.match(d.because ?? '', /\.code-server\.stack\.json/)
+  assert.equal(d.action, 'configure')
+  assert.equal(d.folder, '/work/a-project')
+  // The folder is named, so the output channel says which project is being
+  // asked about — the questions themselves do not show a path.
+  assert.match(d.because ?? '', /a-project/)
   // And it must not read as a defect in the extension.
   assert.doesNotMatch(d.because ?? '', /error|failed|broken/i)
 })
