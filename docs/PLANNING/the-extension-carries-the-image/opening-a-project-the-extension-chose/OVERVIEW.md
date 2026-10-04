@@ -51,7 +51,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Draft |
+| 1 | [`tasks/a-command-picks-a-folder-and-opens-it.md`](tasks/a-command-picks-a-folder-and-opens-it.md) | Done — #66 |
 | 2 | a missing image is built rather than refused | not written |
 | 3 | no manifest means the questions | not written |
 

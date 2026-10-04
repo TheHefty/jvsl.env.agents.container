@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/opening-a-project-the-extension-chose
 epic: the-extension-carries-the-image
-pr:
+pr: 66
 ---
 
 # Task: a-command-picks-a-folder-and-opens-it
@@ -80,4 +80,25 @@ uses, and the reason this repository can test anything about opening at all.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #66. 131 unit tests, 11 bundle, typecheck clean.
+
+**One limitation is named in the code rather than papered over.**
+`vscode.workspace.workspaceFolders` is *this* window's; nothing exposes what other windows have
+open. So "already open" means "open here", and choosing a folder another window has **will** open a
+second one onto it. The design's second failure scenario asked for more than the API can give, and
+the alternative was pretending the check is stronger than it is.
+
+**Trailing slashes are normalised, and that was not in the design.** A dialog and a workspace folder
+disagree about them often enough that without it, re-choosing the folder already open opens a second
+window onto it — the exact thing the scenario was about, defeated by a character.
+
+**The refusal's message is asserted not to read as a defect.** `error`, `failed` and `broken` are
+forbidden in it. A folder with no manifest is a folder nobody has configured yet, and a message that
+sounds like a crash sends somebody looking for a bug in the extension.
+
+**And a mistake of mine that CI would have caught.** The commit adding the manifest assertion used
+`real.contributes?.commands` where `Manifest` declares no such field, so typecheck failed — **and I
+pushed it anyway**, because the verification sat in an `&&` chain whose failure did not stop the
+`;`-separated commit and push after it. Fixed in the next commit. **Fifth time in this epic that an
+`&&` chain reported nothing while the work carried on**, and the first where what it let through was
+a broken build rather than a no-op edit.
