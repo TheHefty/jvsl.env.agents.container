@@ -40,9 +40,14 @@ leaves the user with a window that merely does not work.
   refused, naming the version found, the version needed, and how to bump.~~ **Struck by the seventh
   amendment: there is no second version to disagree with.** This shipped — `version.txt`,
   `isAtLeast`, three refusal messages — hours before the charter amendment that removes its reason.
-- **FR-23** — A project whose image does not exist is refused, naming the image and the command
-  that builds it. ~~The extension does not build images.~~ **That last sentence was struck by the
-  fifth amendment** and stayed in the text; FR-64 is the extension running the build.
+- ~~**FR-23** — A project whose image does not exist is refused, naming the image and the command
+  that builds it.~~ **Never implemented, and struck on 2026-10-04 rather than reversed.** Measured
+  while writing FR-89's task: `decideOpen` refuses on four things — the reopen command, the
+  launcher's container, a hand-written configuration, and a `.gitignore` that does not ignore the
+  generated file — and **none of them is about an image**. Nothing in `src/` ever inspected one.
+  What a project got instead was the Dev Containers extension failing on its own, with a message
+  about a missing image rather than about what to do, which is the gap this requirement was written
+  to close. FR-89 does not reverse it; FR-89 is the first thing to act on a missing image at all.
 - **FR-24** — A host where the container runtime is not reachable is refused, saying so, rather
   than failing somewhere later with a message about something else.
 - **FR-25** — Installing on an editor build that cannot use the container tooling fails at install
@@ -208,8 +213,10 @@ nothing else: no submodule, no `setup`, no second repository to bump.
 - **FR-88** — The extension chooses the folder. A project is opened by picking its directory from
   the extension, not by the directory having been opened first, and the extension activates with no
   folder open.
-- **FR-89** — A project whose image does not exist is **built**, not refused. This reverses FR-23,
-  which was right while building was another repository's job.
+- **FR-89** — A project whose image does not exist is **built**, not refused. **Said to reverse
+  FR-23 and does not**: that requirement was never implemented, and a reader looking in a diff for a
+  refusal being removed would find nothing. This is the first thing in this extension to notice a
+  missing image.
 - **FR-90** — A new project is scaffolded into a directory the user chooses: the manifest, the
   instruction files of FR-83, and `.ai-memory.toml` when asked for. The questions are the ones
   FR-61 already asks, plus `ai-memory` and the location.
