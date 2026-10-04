@@ -28,6 +28,7 @@
 # else's for exactly as long as it was only permitted.
 CLAUDE.md
 AGENTS.md
+SECURITY.md
 
 core/**/*.test.sh
 stacks/**/*.test.sh
