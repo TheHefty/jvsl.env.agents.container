@@ -102,6 +102,7 @@ test('a container brought up from our configuration got the machine the manifest
       existingConfig: null,
       runningContainers: [],
       reopenCommandAvailable: true,
+  image: 'present' as const,
       // This fixture is not a real project with a submodule, so the version is
       // supplied rather than read. It is the minimum, because what this test
       // exercises is the container the configuration produces and not the
