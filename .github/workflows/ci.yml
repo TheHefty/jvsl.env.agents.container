@@ -486,7 +486,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: vsix
-          path: jvsl-env-agents-vscode.vsix
+          path: jvsl-env-agents-container.vsix
           if-no-files-found: error
 
   integration:

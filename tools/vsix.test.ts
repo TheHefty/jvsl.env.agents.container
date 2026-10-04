@@ -165,7 +165,7 @@ test('a file that is executable in the repository is executable in the package',
 
   // **It builds the artifact it inspects**, rather than reading one that
   // happens to be on disk. The first version read
-  // `jvsl-env-agents-vscode.vsix` from the working directory and passed
+  // `jvsl-env-agents-container.vsix` from the working directory and passed
   // locally for the wrong reason — a stale package left over from an earlier
   // run. Had `.vscodeignore` changed without a repackage, it would have
   // asserted about the old one and said nothing. In CI it failed loudly

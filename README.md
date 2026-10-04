@@ -1,4 +1,4 @@
-# jvsl.env.agents.vscode
+# jvsl.env.agents.container
 
 A VS Code extension that runs on the host and connects your editor to a project's dev container —
 replacing the Tauri launcher that the

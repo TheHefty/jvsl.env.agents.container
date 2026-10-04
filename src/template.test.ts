@@ -70,8 +70,8 @@ test('carried() is the same expression in a checkout and in an installation', ()
   // than under a prefix, so the repository root and an installation directory
   // have the same shape. The package assertion in tools/vsix.test.ts is the
   // half of this that reads the artifact; this half pins the expression.
-  const inCheckout = carried('/src/jvsl.env.agents.vscode', 'core')
+  const inCheckout = carried('/src/jvsl.env.agents.container', 'core')
   const installed = carried('/home/me/.vscode/extensions/jvsl-0.3.0', 'core')
-  assert.equal(inCheckout.slice('/src/jvsl.env.agents.vscode'.length), '/core')
+  assert.equal(inCheckout.slice('/src/jvsl.env.agents.container'.length), '/core')
   assert.equal(installed.slice('/home/me/.vscode/extensions/jvsl-0.3.0'.length), '/core')
 })

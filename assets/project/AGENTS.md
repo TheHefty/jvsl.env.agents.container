@@ -1,4 +1,4 @@
-<!-- jvsl.env.agents.vscode: generated. Delete this line and this file is yours; the extension will
+<!-- jvsl.env.agents.container: generated. Delete this line and this file is yours; the extension will
      not touch it again. Keep it and a newer extension may replace the file wholesale. -->
 
 # AGENTS.md
