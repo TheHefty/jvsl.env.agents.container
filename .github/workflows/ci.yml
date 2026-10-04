@@ -117,11 +117,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: bash -n on all shell scripts
         run: |
-          # Pruned, which the template did not need to do: this repository has
-          # node_modules/ and a .code-server/ submodule, and `bash -n` over
-          # vendored JavaScript dependencies and a separate product pinned at an
-          # old tag checks nothing anybody here can fix.
-          find . \( -path ./node_modules -o -path ./.code-server -o -path ./dist \) -prune -o \
+          # Pruned: `bash -n` over vendored JavaScript dependencies checks
+          # nothing anybody here can fix. `.code-server` was pruned here too
+          # while a submodule of a separate product sat at that path; it is gone,
+          # and an exclusion for something absent is indistinguishable from one
+          # that works.
+          find . \( -path ./node_modules -o -path ./dist \) -prune -o \
             -type f \( -name '*.sh' -o -name 'setup' -o -name 'init' -o -name 'dev' \
               -o -name 'run' \) -print0 \
             | xargs -0 -n1 bash -n

@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-documents-arrive-with-the-image
 epic: the-extension-carries-the-image
-pr:
+pr: 64
 ---
 
 # Task: the-submodule-goes
@@ -72,4 +72,37 @@ test is better than one that reads plausibly.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #64. `git submodule status` is empty. 124 unit tests, typecheck clean, every guard
+green.
+
+**This design missed the most important dependency.** It counted six references in `CLAUDE.md` and
+did not list `docs/RULES.md:7`, which imported `@../.code-server/docs/agent/en/RULES.md` — **the
+rules themselves**. Removing the submodule without noticing would have left this project with the
+import line visible and nothing behind it, which is the exact silent failure the whole arrangement
+exists to prevent. It is not repointed at `docs/agent/en/RULES.md`: it is removed, and the file says
+where the rules are in prose, because an import is only safe when it resolves inside the working
+directory and this one is one directory up.
+
+**And the third failure scenario did not happen, for a reason that is better than my prediction.**
+I expected `agent-docs-cite-real-files.test.sh` to go red on `.code-server/scripts/check-md-size.sh`
+and force a stale passage to be corrected. It strips that prefix before resolving — with a comment
+saying the check's first version reported exactly this as missing, and that it was a false positive
+about a citation that is correct for its reader. **So nothing forces those passages**, and the stale
+premises recorded in `docs/agent/README.md` stay recorded. The hope that a test would do the work was
+mine, not the design's.
+
+**`CLAUDE.md` was rewritten rather than edited.** Six references was the measurement; what the file
+actually needed was more — it still said the extension *"opens nothing yet"*, that generating the
+dev container configuration was *"the next task"*, and named `templateMinVersion` as the declared
+minimum after that field was deleted. It had been describing a state five stories old.
+
+**Three exclusions went inert and went with the submodule**, because an exclusion for something
+absent is indistinguishable from one that works: `.vscodeignore`'s entry, the `bash-syntax` prune,
+and `no-launcher.test.sh`'s `^.code-server/` filter.
+
+**And a fourth thing went that nothing asked about.** That guard's floor used `code-server` as the
+string that proves its search works. Eighty files still carry the word — all of them history, in
+comments about the base the image used to have. **A canary whose presence is accidental is one a
+tidy-up removes**, and then the guard reports a broken mechanism when nothing is broken. It is `jvsl`
+now: in the package name, in every contributed command, and in the marker the instruction assets
+carry.

@@ -1,10 +1,14 @@
 # Rules
 
-The inherited rules, shipped by the template and updated by bumping it. They are not edited here:
-a rule that needs changing is changed in `.code-server/docs/agent/`, where changing it reaches
-every project that bumps rather than only this one.
+**The ground rules are not imported here, and not copied here either.** They are at
+`docs/agent/en/RULES.md`, this repository carries them, and the image this extension builds
+delivers them to a project at `~/.claude/rules/` — where they load with no import at all.
 
-@../.code-server/docs/agent/en/RULES.md
+Nothing in this file pulls them in, deliberately. An `@path` that resolves outside the working
+directory is classified as an *external import*, and declining its approval dialog once disables
+those imports permanently with nothing said afterwards. This file used to import
+`@../.code-server/docs/agent/en/RULES.md` from a submodule; that submodule is gone, and the import
+went with it rather than being repointed.
 
 ---
 

@@ -4,51 +4,50 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Standing answers
 
-- **The mode is Pair Programming Mode.** The agent drives, the user navigates. It is described in
-  the import below, and it governs every session until someone says otherwise.
+- **The mode is Pair Programming Mode.** The agent drives, the user navigates. It governs every
+  session until someone says otherwise.
 - **The documentation language is English.** Every file written from here on inherits it, including
   the commit messages.
 - **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/srs/` — one
-  file per section, indexed at `docs/srs/README.md`, split on 2026-10-02 when the single file
-  reached 99.3% of the 50 KiB limit. `docs/SRS.md` is a one-line pointer, not a copy. Both agreed
-  at their gates. The `INITIALIZATION.md` import is gone with it: the chain continues
-  at `.code-server/docs/agent/en/WORKFLOW.md`, one story and one task at a time.
+  file per section, indexed at `docs/srs/README.md`. Both agreed at their gates. The chain
+  continues at `docs/agent/en/WORKFLOW.md`, one story and one task at a time.
 
-## If the imports below did not load
+## The rules are not imported, and that is the decision rather than an omission
 
-The normative documents — the modes and the rules — ship from the template and are pulled in by the
-`@path` lines below. They live inside the `.code-server/` submodule, which is **empty until
-`git submodule update --init`**, and an import that resolves to nothing **resolves to nothing
-silently: no error, no warning**. The one cue left is that the `@` line stays visible with no
-content behind it.
+**This repository carries the normative documents at `docs/agent/`**, in two languages, and ships
+them inside the image it builds. A project gets them at `~/.claude/rules/`, written by a boot hook,
+where they load with no import.
 
-So: if you cannot see the pairing modes or the ground rules in your context, **stop and say so**
-rather than proceeding. An agent working without them is not working under a lighter process, it is
-working with no mode, no rules and no gates, and nothing failed to tell anybody. Four gates in
-particular exist and are not optional — the charter agreed with the user before the SRS, the SRS
-before any story, a story's scenarios before its tasks, and a task's design before its code. The
-chain is `.code-server/docs/agent/en/WORKFLOW.md`.
+Nothing here pulls them in with `@path`. An import resolving outside the working directory is an
+*external import*; declining its approval dialog once disables those imports permanently with
+nothing said afterwards — leaving an agent with no modes, no rules and no gates and no way to tell.
+**This file used to import them from a `.code-server/` submodule, and that submodule is gone.**
 
-@.code-server/docs/agent/en/MODES.md
-@docs/RULES.md
+So read `docs/agent/en/MODES.md` and `docs/agent/en/RULES.md` when you need them. They are in this
+tree; nothing is empty until initialised any more.
+
+## The gates, which are in this file on purpose
+
+Written here rather than anywhere that could fail to load:
+
+**Charter, then SRS, then epic, then story with its scenarios, then task with its design, then
+code.** Each is agreed with the user before the next is written. A design settled after the code
+exists is a justification, and scenarios written after the implementation describe what was built
+rather than what was wanted.
 
 ## What this repository is
 
 A VS Code extension that runs on the **host** and connects the host's editor to a project's dev
-container, replacing the Tauri launcher (`.code-server/start`) that the
-[`jvsl.env.agents.code-server`](https://github.com/TheHefty/jvsl.env.agents.code-server) template
-ships today. Why, and what it deliberately does not do, is `docs/CHARTER.md` — read it before
-anything else.
+container — and, since the epic `the-extension-carries-the-image`, **the thing that carries the
+image too.** `core/` and `stacks/` are here, travel in the `.vsix`, and the extension composes a
+project's Dockerfile from them and builds it.
 
-The template is vendored here as a git submodule at `.code-server/`, the same way a consuming
-monorepo vendors it, for two reasons: this project is worked on under the rules the template ships,
-and it is developed inside a container built from the template's own image.
+**A project installs this extension and needs nothing else.** No template to vendor, no submodule,
+no `setup` on the host. That replaced the arrangement where
+[`jvsl.env.agents.code-server`](https://github.com/TheHefty/jvsl.env.agents.code-server) was
+vendored into every project; what remains of that repository is its history, merged into this one.
 
-The first story's image half shipped in the template's **v2.2.0**, which this repository's
-submodule is pinned to and which `templateMinVersion` in `package.json` names as the minimum. The
-extension itself exists but opens nothing yet: it wakes up on a project built on the template,
-works out what it is looking at, and writes that into an output channel. Generating the dev
-container configuration is the next task.
+Why, and what this deliberately does not do, is `docs/CHARTER.md` — read it before anything else.
 
 ## Commands
 
@@ -59,21 +58,23 @@ npm run test:bundle  # builds, then loads the bundle and checks what ships
 npm run package      # the .vsix
 ```
 
-## The two repositories
+Shell tests are `*.test.sh` beside what they exercise, each with a job in
+`.github/workflows/ci.yml`. **`scripts/every-test-has-a-runner.test.sh` fails if one has no job** —
+a test nothing runs reports nothing rather than failing, which is indistinguishable from passing.
 
-Half of what the first release needs is a change to the **image**, not to this extension — the
-`abc` user's shell, a `devcontainer.metadata` label, idempotent `cont-init` ownership fixes, a
-read-only `.vscode/` in the ai-jail profile. Those are the template's, and they are planned and
-merged there, under its own epic in its own `docs/PLANNING/`. They are verified by the template's
-CI, which is the only one that builds images.
+## What CI does here, and why it takes seven minutes
 
-This repository plans and builds the extension, declares the minimum template version it needs, and
-verifies that version at runtime. A change that belongs in the image does not get made here.
+Twenty-six jobs: the extension's typecheck, unit, package and integration, plus an image build per
+stack with each stack's own in-image assertions, plus the guards. A change touching only Markdown
+skips the image half and finishes in under a minute — `scripts/changed-scope.sh` decides, and
+`scripts/ci-green.sh` is what lets a skipped job count as green.
 
-## Development
+## Two things that are easy to get wrong here
 
-The extension runs on the host; this repository's working tree is a bind mount, so the same folder
-is open on both sides at once. The loop is two windows: one attached to the container, where the
-agent edits inside the jail, and one plain host window over the same folder, where `F5` opens the
-Extension Development Host. Packaging a `.vsix` is for acceptance before a release, not for
-iteration.
+- **`core/` and `stacks/` are at the repository root on purpose.** `join(extensionPath, 'core')` is
+  the same expression in a checkout and in an installed extension only because the names were kept
+  rather than moved under a prefix. `src/template.test.ts` pins the expression and
+  `tools/vsix.test.ts` reads the artifact; neither alone is the claim.
+- **What ships in the `.vsix` is an allowlist, not a blocklist.** A list of exclusions cannot see a
+  directory nobody thought of: merging the image's content in once took the package from 6 files to
+  108 with every test passing.
