@@ -31,6 +31,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "jvsl.devContainer.open",
+        "title": "Dev Container: Open a Project\u2026"
+      },
+      {
         "command": "jvsl.devContainer.showDetected",
         "title": "Dev Container: Show What Was Detected"
       },

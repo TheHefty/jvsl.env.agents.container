@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -28,6 +28,7 @@ import {
   type Answers,
 } from './questions.ts'
 import { instructionWrites } from './instructions.ts'
+import { decidePick } from './pick.ts'
 import { carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
@@ -38,6 +39,7 @@ const BUILD = 'jvsl.devContainer.build'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
 const DOCKER_CHECK_MS = 2000
 const MANIFEST = '.code-server.stack.json'
+const PICK = 'jvsl.devContainer.open'
 const VIEW = 'jvsl.devContainer.view'
 
 const run = promisify(execFile)
@@ -79,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
+    vscode.commands.registerCommand(PICK, () => pick(write)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
   )
@@ -578,4 +581,47 @@ function templateMinVersion(context: vscode.ExtensionContext): string {
 function extensionVersion(context: vscode.ExtensionContext): string {
   const declared = packageJSON(context)['version']
   return typeof declared === 'string' ? declared : '0.0.0'
+}
+
+/**
+ * The folder picker, and the thin half of it.
+ *
+ * **Everything decidable is in `decidePick`**, because `showOpenDialog` and
+ * `vscode.openFolder` cannot be exercised without an editor. What is left here
+ * is asking, reading one file, and doing what came back — and the one thing it
+ * must not do is decide anything.
+ */
+async function pick(write: (lines: string[]) => void): Promise<void> {
+  const picked = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: 'Open as Dev Container Project',
+  })
+  const chosen = picked?.[0]?.fsPath
+  const decision = decidePick({
+    chosen,
+    currentFolder: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+    hasManifest: chosen !== undefined && existsSync(join(chosen, MANIFEST)),
+  })
+
+  if (decision.action === 'nothing') {
+    if (decision.because !== undefined) {
+      write([`open: ${decision.because}`])
+      void vscode.window.showInformationMessage(decision.because)
+    }
+    return
+  }
+  if (decision.action === 'refuse') {
+    write([`open: refused — ${decision.because}`])
+    void vscode.window.showWarningMessage(decision.because)
+    return
+  }
+
+  write([`open: ${decision.folder}${decision.newWindow ? ' in a new window' : ''}`])
+  await vscode.commands.executeCommand(
+    'vscode.openFolder',
+    vscode.Uri.file(decision.folder),
+    { forceNewWindow: decision.newWindow },
+  )
 }

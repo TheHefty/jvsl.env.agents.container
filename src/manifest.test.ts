@@ -208,3 +208,15 @@ test('a prepublish that runs the build is accepted', () => {
     assert.deepEqual(found, [], command)
   }
 })
+
+test('the folder picker is contributed, and declares no onCommand event for itself', () => {
+  // Its reachability with no folder open is the implicit activation asserted
+  // above — a contributed command activates the extension on its own from
+  // VS Code 1.74. An explicit onCommand event would work too and would hide
+  // that the engines floor is what this rests on.
+  const commands = Array.isArray(real.contributes?.commands) ? real.contributes.commands : []
+  const ids = commands.map((c: { command?: unknown }) => c.command)
+  assert.ok(ids.includes('jvsl.devContainer.open'), JSON.stringify(ids))
+  const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
+  assert.deepEqual(events.filter((e: unknown) => String(e).startsWith('onCommand:')), [])
+})
