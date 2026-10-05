@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/creating-a-project-from-nothing
 epic: the-extension-carries-the-image
-pr:
+pr: 77
 ---
 
 # Task: the-questions-gain-a-location-and-ai-memory
@@ -82,4 +82,26 @@ exists to refuse.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #77. 149 unit tests, typecheck clean.
+
+**The red state for the two fields was in typecheck, not in the test run**, because `node --test`
+strips types. A test naming a field that does not exist passes until `npm run typecheck` says
+otherwise — which is why that command exists separately, and which is worth knowing as the shape
+red-first takes in this repository.
+
+**One case the design did not name: a dotfile counts.** A directory holding only `.git` is a
+repository, and it is the one that most looks empty. `readdirSync` sees it; a check written with a
+glob would not.
+
+**And what was found is named rather than counted.** "3 entries" tells somebody nothing about
+whether they chose the wrong directory or the right one twice, so the refusal lists up to three by
+name. A path that is a *file* gets a different sentence from one that is occupied, because the fix
+is different: one needs another path, the other needs an empty one.
+
+The refusal is asserted not to read as a defect — `error`, `failed`, `broken` and `invalid` are
+forbidden in it. A directory somebody is using is not a fault.
+
+**The marker's content was the design's second scenario and it grew while being written.** It
+carries what ai-memory costs and that deleting the file switches it off, as well as what it switches
+on. The next reader of that file is somebody deciding whether to keep it, and a zero-byte flag tells
+them nothing.
