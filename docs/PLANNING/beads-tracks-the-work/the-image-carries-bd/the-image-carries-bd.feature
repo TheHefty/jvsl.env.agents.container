@@ -45,14 +45,21 @@ Feature: The image carries bd
     Then the tracker is initialised
     And booting again leaves what is in it alone
 
-  Scenario: What the tracker holds is versioned with the project
-    # FR-116, and the reversal that made this story worth rewriting. The work
-    # items' content lives here now, so it has to travel with the clone and
-    # reach a pull request like everything else does.
+  Scenario: What the tracker holds travels with the project
+    # FR-116. The requirement in the operator's words: change machine, or clone
+    # the repository again, and carry on from where you left off. So the content
+    # has to be in the repository — and outside .beads/, which is the tool's own
+    # directory and which bd init teaches git to ignore.
     Given a project that opted in
     When work is recorded in the tracker
-    Then it is in a file the project tracks in git
-    And that file is text a person can read
+    Then it is exported to a file the project tracks in git
+    And that file is outside the tracker's own directory
+
+  Scenario: A fresh clone carries on from where it left off
+    # The whole of the requirement, at the level a person experiences it.
+    Given a project whose tracker was exported and committed
+    When it is cloned somewhere else and the tracker is initialised
+    Then the work that was recorded is there
 
   Scenario: The tracker survives a rebuild
     # The lesson the state-directory debt left: a claim about a path under
@@ -64,21 +71,26 @@ Feature: The image carries bd
     Then the work recorded before is still there
 
   Scenario: The sandbox can reach the tracker
+    # No grant is asked for. The tracker is inside the workspace, which the
+    # sandbox already maps read-write — FR-103 asked for a map and a variable
+    # and was struck once that became true by another route.
     Given a project that opted in
     When the agent's sandbox is built
     Then the agent can read and write the tracker
+    And nothing was granted beyond the workspace it already had
 
   @manual
-  Scenario: An agent in the sandbox reaches the same tracker as the person
-    # **The one that cannot be automated, and the reason it matters has not
-    # changed with the reversal.** A missing grant fails. A missing BEADS_DIR
-    # *succeeds* — bd resolves a different directory and reports success about
-    # the wrong database, which is what ai-memory does today: without
-    # AI_MEMORY_DATA_DIR it resolves /config/.local/share/ai-memory while the
-    # server its boot hook started serves /config/ai-memory.
+  Scenario: An agent in the sandbox sees the same work as the person
+    # **What it watches changed when FR-103 was struck.** It used to watch for a
+    # missing BEADS_DIR succeeding about the wrong database — a real failure
+    # mode, measured on ai-memory, and one that needs a variable to be missing.
+    # There is no variable now: the tracker is in the workspace and bd finds it
+    # by walking up from the working directory.
     #
-    # No test outside a real sandbox can tell "the right tracker" from "a
-    # tracker". This is observed once, by a person, in a container.
+    # What remains is the claim underneath, which no test outside a real sandbox
+    # can make: that walking up from *the agent's* working directory arrives at
+    # the same database. ai-jail synthesizes /config, and whether the walk lands
+    # where a person's does is observed once, in a container.
     Given a project that opted in, with work recorded in its tracker
     When an agent inside the sandbox lists the work
     Then it sees what was recorded
