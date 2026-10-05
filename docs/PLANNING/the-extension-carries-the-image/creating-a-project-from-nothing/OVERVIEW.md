@@ -56,7 +56,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-questions-gain-a-location-and-ai-memory.md`](tasks/the-questions-gain-a-location-and-ai-memory.md) | Done — #77 |
-| 2 | scaffolding, and refusing somebody's work | not written |
+| 2 | [`tasks/scaffolding-and-refusing-somebodys-work.md`](tasks/scaffolding-and-refusing-somebodys-work.md) | Draft |
 | 3 | the handoff across the reload | not written |
 
 **Provisional**, and the third most of all: how a handoff is persisted and read back depends on
