@@ -1,3 +1,4 @@
+import { MANIFEST } from './stack-manifest.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -103,7 +104,7 @@ test('the compose command invokes the carried script, with the project manifest'
   const c = composeCommand('/ext', '/work/my-project', ['java', 'python'])
   assert.equal(c.script, '/ext/core/compose-dockerfile.sh')
   assert.deepEqual(c.stacks, ['java', 'python'])
-  assert.equal(c.manifest, '/work/my-project/.code-server.stack.json')
+  assert.equal(c.manifest, `/work/my-project/${MANIFEST}`)
 })
 
 test('the build context is the extension, not the workspace', () => {
@@ -127,7 +128,7 @@ test('nothing in the build names a path inside a .code-server/ submodule', () =>
   // version it last bumped to. A fallback would make what runs depend on
   // which project it is.
   //
-  // The slash is the whole assertion. `.code-server.stack.json` is the
+  // The slash is the whole assertion. The manifest's name is the
   // manifest's own name, at the workspace root, and it keeps that name after
   // the submodule is gone — the first version of this test forbade the
   // substring and failed on the manifest, which is the thing the build is
@@ -160,7 +161,7 @@ test('a path with a space in it does not become a quoting problem', () => {
   const { shellArgs } = composeAndBuildCommand(c, '/tmp/out file.Dockerfile')
   const script = shellArgs[shellArgs.length - 1] ?? ''
   assert.ok(script.includes("'/my ext/core/compose-dockerfile.sh'"), script)
-  assert.ok(script.includes("'/work/my project/.code-server.stack.json'"), script)
+  assert.ok(script.includes(`'/work/my project/${MANIFEST}'`), script)
 })
 
 test('the handover is reachable from a successful build and from nothing else', () => {

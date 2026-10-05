@@ -57,7 +57,7 @@ What this reaches beyond the file it edits. Tick what applies and say how:
 
 - [ ] The template submodule — needs a release and a pointer bump before any project sees it
 - [ ] The image — needs `.code-server/setup`; nothing changes in a running environment until then
-- [ ] The stack manifest (`.code-server.stack.json`)
+- [ ] The stack manifest (`.agent-container.stack.json`)
 - [ ] The agent's sandbox map, or where a capability is decided
 - [ ] A dependency fetched at build time — with its pin and digest
 - [ ] The release/versioning discipline

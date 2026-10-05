@@ -74,6 +74,25 @@ nothing can report it — because nothing runs." >&2
 fi
 echo "ok      package.json activates on exactly that name"
 
+# **The legacy name is the same claim, and the one nobody would notice losing.**
+# FR-111: a project carrying the old name has to be seen, or nothing can tell it
+# anything — an activation event that matches nothing does not fail, it simply
+# never runs. Removed in 2.0.0, and until then its absence is a defect rather
+# than a tidy-up.
+legacy="$(grep -oE "export const LEGACY_MANIFEST = '[^']+'" "$DEF_FILE" | head -1 | sed -E "s/.*'([^']+)'.*/\1/")"
+if [ -n "$legacy" ]; then
+    if ! jq -e --arg e "workspaceContains:$legacy" '.activationEvents | index($e)' package.json >/dev/null 2>&1; then
+        echo "manifest-name-is-defined-once: FAIL: $DEF_FILE still carries LEGACY_MANIFEST \
+'$legacy', but package.json declares no \"workspaceContains:$legacy\". A project that still has \
+the old manifest never wakes the extension, and nothing reports it — because nothing runs. Remove \
+the constant too, or declare the event." >&2
+        exit 1
+    fi
+    echo "ok      and on the legacy name, which is what adopts an older project"
+else
+    echo "ok      no legacy name is carried any more"
+fi
+
 # Everywhere else must go through the constant.
 hits="$(grep -nF "$name" -- "${sources[@]}" \
     | grep -v "^$DEF_FILE:" \
@@ -88,4 +107,4 @@ fi
 echo "ok      no other source file spells the name out"
 
 echo
-echo "manifest-name-is-defined-once.test: 5 passed, 0 failed."
+echo "manifest-name-is-defined-once.test: 6 passed, 0 failed."

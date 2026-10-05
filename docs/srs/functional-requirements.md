@@ -117,7 +117,8 @@ amendment at the bottom for the four decisions this group is the shape of.
 - **FR-61** — The editor asks what the image should contain, in steps, using the editor's own
   pickers: which stacks, then a version for each stack chosen, then memory, swap and CPU count.
   One step per question `whiptail` used to ask.
-- **FR-62** — The answers are written to `.code-server.stack.json`, which stays the only record of
+- **FR-62** — The answers are written to the project manifest — `.code-server.stack.json` when
+  this was written, `.agent-container.stack.json` since FR-110 — which stays the only record of
   what a project selected. The extension adds no second place where that is written down.
 - ~~**FR-63** — The extension never composes the Dockerfile. It writes the manifest and invokes
   `setup` non-interactively; composition stays one implementation, in the repository whose CI builds

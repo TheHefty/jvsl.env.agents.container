@@ -1,3 +1,4 @@
+import { MANIFEST } from './stack-manifest.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
@@ -23,7 +24,7 @@ test('the plan is a list, so it can be written in full or reported in full', () 
   assert.ok(Array.isArray(plan.writes))
   assert.deepEqual(
     plan.writes.map((w) => w.path).sort(),
-    ['.code-server.stack.json', '.gitignore', 'AGENTS.md', 'CLAUDE.md'],
+    [MANIFEST, '.gitignore', 'AGENTS.md', 'CLAUDE.md'].sort(),
   )
 })
 
@@ -41,7 +42,7 @@ test('the manifest it writes is the shape nextManifest produces', () => {
   // So a project created here and one configured later agree about what a
   // manifest looks like, rather than the creation flow inventing a second shape.
   const plan = scaffoldPlan(base)
-  const manifest = plan.writes.find((w) => w.path === '.code-server.stack.json')
+  const manifest = plan.writes.find((w) => w.path === MANIFEST)
   const parsed: unknown = JSON.parse(manifest?.contents ?? '{}')
   assert.deepEqual(parsed, { java: '21', limits: { memory: '6g' } })
 })
@@ -74,7 +75,7 @@ test('a directory that gained a file since the question is refused before anythi
   const plan = scaffoldPlan({ ...base, root })
   assert.equal(plan.writes.length, 0)
   assert.match(plan.refused ?? '', /appeared\.txt/)
-  assert.ok(!existsSync(join(root, '.code-server.stack.json')))
+  assert.ok(!existsSync(join(root, MANIFEST)))
 })
 
 test('an unconfigured git identity yields no commit and a reason, not an invented author', () => {
