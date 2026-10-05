@@ -16,6 +16,9 @@ import {
   type HostChecks,
 } from './build.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
+import { decideCreate, type Applied } from './create.ts'
+import { aiMemoryMarker, checkLocation } from './location.ts'
+import { scaffoldPlan } from './scaffold.ts'
 import { projectNames } from './devcontainer.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
@@ -43,6 +46,7 @@ const BUILD = 'jvsl.agentContainer.build'
 const DOCKER_CHECK_MS = 2000
 const MANIFEST = '.code-server.stack.json'
 const PICK = 'jvsl.agentContainer.open'
+const CREATE = 'jvsl.agentContainer.create'
 const VIEW = 'jvsl.agentContainer.view'
 
 const run = promisify(execFile)
@@ -84,6 +88,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
+    vscode.commands.registerCommand(CREATE, () => create(write, context.extensionPath)),
     vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
@@ -263,51 +268,9 @@ async function configure(
   }
 
   const selectedNow = available.filter((name) => name in current)
-  const picked = await vscode.window.showQuickPick(available, {
-    canPickMany: true,
-    title: 'Which stacks does this project need?',
-    placeHolder: 'Nothing selected builds the core image alone',
-  })
-  if (picked === undefined) return { wrote: false, root, stacks: [] }
-
-  const [missing] = missingDependencies(picked, stacksDir)
-  if (missing) {
-    void vscode.window.showErrorMessage(
-      `Stack '${missing.stack}' requires '${missing.needs}' — select it too.`,
-    )
-    return { wrote: false, root, stacks: [] }
-  }
-
-  const stacks: Record<string, string> = {}
-  for (const stack of picked) {
-    const recorded = typeof current[stack] === 'string' ? (current[stack] as string) : undefined
-    const version = await vscode.window.showQuickPick(
-      orderedVersions(versionsOf(stacksDir, stack), recorded),
-      { title: `Which version of ${stack}?` },
-    )
-    if (version === undefined) return { wrote: false, root, stacks: [] }
-    stacks[stack] = version
-  }
-
-  // The defaults are a function rather than literals here: the memory default and
-  // "the lowest version listed" have to agree with `setup`'s, and they were a
-  // literal in this file and a literal in a shell script in another repository.
-  const defaults = limitDefaults(current)
-  const memory = await ask('Memory the container may use', defaults.memory)
-  if (memory === undefined) return { wrote: false, root, stacks: [] }
-  const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap)
-  if (swap === undefined) return { wrote: false, root, stacks: [] }
-  const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
-  if (cpus === undefined) return { wrote: false, root, stacks: [] }
-
-  const answers: Answers = {
-    stacks,
-    limits: {
-      memory,
-      ...(swap ? { memorySwap: swap } : {}),
-      ...(cpus ? { cpus: Number(cpus) } : {}),
-    },
-  }
+  const answers = await askAnswers(stacksDir, available, current)
+  if (answers === undefined) return { wrote: false, root, stacks: [] }
+  const picked = Object.keys(answers.stacks)
 
   const next = nextManifest(current, answers, available)
   writeFileSync(manifestPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
@@ -740,4 +703,161 @@ async function buildInTerminal(
       resolve(outcome)
     })
   })
+}
+
+/**
+ * Creating a project: ask, write, commit, open.
+ *
+ * **It decides nothing.** The location's usability is `checkLocation`, what goes
+ * in the directory is `scaffoldPlan`, and whether the folder opens is
+ * `decideCreate` — because `showOpenDialog`, `openFolder` and `git` cannot be
+ * exercised in a test and everything around them can.
+ *
+ * The handoff into the container is not here either: a scaffolded project has a
+ * manifest and no image, so activation in the new window builds it and attaches.
+ */
+async function create(write: (lines: string[]) => void, extensionPath: string): Promise<void> {
+  // **Location first**, because it is the only answer that can be refused
+  // outright — asking the stacks first means answering six questions before
+  // being told the directory will not do.
+  const picked = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: 'Create the Project Here',
+    title: 'An empty directory, or one that does not exist yet',
+  })
+  const root = picked?.[0]?.fsPath
+  if (root === undefined) return
+
+  const location = checkLocation(root)
+  if (!location.usable) {
+    write([`create: refused — ${location.because ?? 'the location will not do'}`])
+    void vscode.window.showWarningMessage(location.because ?? 'That location will not do.')
+    return
+  }
+
+  // **The answers, without the write.** `configure` asks and writes in one pass,
+  // which is right when the manifest is the only thing changing and wrong here:
+  // it would write the manifest into the directory and then `scaffoldPlan`'s
+  // empty check would refuse what it had just created.
+  const stacksDir = carried(extensionPath, 'stacks')
+  const asked = await askAnswers(stacksDir, stacksAvailable(stacksDir), {})
+  if (asked === undefined) {
+    write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
+    return
+  }
+  const answers = { ...asked, location: root, aiMemory: await askAiMemory() }
+  const plan = scaffoldPlan({ root, assetsDir: carried(extensionPath, 'assets', 'project'), answers })
+  const applied = plan.refused === undefined ? apply(root, plan.writes, write) : undefined
+  const decision = decideCreate({ plan, applied })
+
+  write([`create: ${decision.message}`])
+  if (!decision.open) {
+    void vscode.window.showWarningMessage(decision.message)
+    return
+  }
+  // Shown rather than only written, because "the files are there and the
+  // history is empty" is otherwise found at somebody's next `git log`.
+  if (!plan.commit) void vscode.window.showInformationMessage(decision.message)
+
+  await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), {
+    forceNewWindow: vscode.workspace.workspaceFolders !== undefined,
+  })
+}
+
+/** Applies a plan, reporting both halves rather than throwing on the first failure. */
+function apply(root: string, writes: { path: string; contents: string }[],
+               write: (lines: string[]) => void): Applied {
+  const written: string[] = []
+  const failed: string[] = []
+  for (const w of writes) {
+    try {
+      const target = join(root, w.path)
+      mkdirSync(dirname(target), { recursive: true })
+      writeFileSync(target, w.contents, 'utf8')
+      written.push(w.path)
+    } catch (error) {
+      write([`create: could not write ${w.path}: ${String(error)}`])
+      failed.push(w.path)
+    }
+  }
+  return { written, failed }
+}
+
+async function askAiMemory(): Promise<boolean> {
+  const answer = await vscode.window.showQuickPick(['No', 'Yes'], {
+    title: 'Should this project record what the agent was told?',
+    placeHolder: 'ai-memory: off unless asked for. Captured to disk, on this machine, per project.',
+  })
+  return answer === 'Yes'
+}
+
+/**
+ * The five questions, without writing anything.
+ *
+ * **Extracted because creating a project needs the answers and not the write.**
+ * `configure` asked and wrote in one pass, which is right when the manifest is
+ * the only thing being changed — and wrong for creation, where the manifest is
+ * one of five files a plan writes together. Calling `configure` from the create
+ * flow would have written the manifest into a directory that then failed
+ * `scaffoldPlan`'s empty check, and written it a second time from fabricated
+ * answers.
+ *
+ * `undefined` is a cancellation at any step. Nothing partial is returned,
+ * because nothing partial is useful: a manifest missing a version is not a
+ * manifest.
+ */
+async function askAnswers(
+  stacksDir: string,
+  available: string[],
+  current: Record<string, unknown>,
+): Promise<Answers | undefined> {
+  const picked = await vscode.window.showQuickPick(available, {
+    canPickMany: true,
+    title: 'Which stacks does this project need?',
+    placeHolder: 'Nothing selected builds the core image alone',
+  })
+  if (picked === undefined) return undefined
+
+  const [missing] = missingDependencies(picked, stacksDir)
+  if (missing) {
+    void vscode.window.showErrorMessage(
+      `Stack '${missing.stack}' requires '${missing.needs}' — select it too.`,
+    )
+    return undefined
+  }
+
+  const stacks: Record<string, string> = {}
+  for (const stack of picked) {
+    const recorded = typeof current[stack] === 'string' ? (current[stack] as string) : undefined
+    const version = await vscode.window.showQuickPick(
+      orderedVersions(versionsOf(stacksDir, stack), recorded),
+      { title: `Which version of ${stack}?` },
+    )
+    if (version === undefined) return undefined
+    stacks[stack] = version
+  }
+
+  // The defaults are a function rather than literals here: the memory default and
+  // "the lowest version listed" have to agree with `setup`'s, and they were a
+  // literal in this file and a literal in a shell script in another repository.
+  const defaults = limitDefaults(current)
+  const memory = await ask('Memory the container may use', defaults.memory)
+  if (memory === undefined) return undefined
+  const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap)
+  if (swap === undefined) return undefined
+  const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
+  if (cpus === undefined) return undefined
+
+  const answers: Answers = {
+    stacks,
+    limits: {
+      memory,
+      ...(swap ? { memorySwap: swap } : {}),
+      ...(cpus ? { cpus: Number(cpus) } : {}),
+    },
+  }
+
+  return answers
 }
