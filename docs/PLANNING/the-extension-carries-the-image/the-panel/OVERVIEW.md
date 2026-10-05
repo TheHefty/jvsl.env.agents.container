@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | **Done** — two `@manual` passes owed |
 | **Epic** | `the-extension-carries-the-image` |
 | **Date** | 2026-10-02 |
 
@@ -50,7 +50,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-panel-is-there-with-no-folder-open.md`](tasks/the-panel-is-there-with-no-folder-open.md) | Draft |
+| 1 | [`tasks/the-panel-is-there-with-no-folder-open.md`](tasks/the-panel-is-there-with-no-folder-open.md) | Done — #83 |
 
 **This table was deliberately empty until stories 3 through 7 shipped**, because writing tasks for
 the panel earlier would have invented failure scenarios for code whose shape they decided — what the
