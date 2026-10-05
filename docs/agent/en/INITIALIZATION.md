@@ -175,7 +175,7 @@ Once the seven questions are settled, proceed under the chosen mode into the cha
 terms for a sustaining one — then the SRS, then the stories. Along the way,
 update the files that belong to the project — `README.md`, `CLAUDE.md`, `docs/OVERVIEW.md`, the
 project's own rules below the import line in `docs/RULES.md`, and the stack selection in
-`.code-server.stack.json` at the repo's root — to reflect the answers. The inherited documents
+`.agent-container.stack.json` at the repo's root — to reflect the answers. The inherited documents
 under `.code-server/docs/agent/` are not edited: a rule that needs changing is changed in the
 template and arrives back through a bump.
 

@@ -17,7 +17,7 @@ Everything below this line belongs to this repository.
 ## The generated dev container configuration
 
 - **`.devcontainer/devcontainer.json` is generated and gitignored.** The source of truth is
-  `.code-server.stack.json` in the project being opened, plus what the host actually has. It is
+  `.agent-container.stack.json` in the project being opened, plus what the host actually has. It is
   regenerated on every open and **never hand-edited** — an edit there is lost without warning, the
   same contract `.code-server/Dockerfile` already has.
 - **It cannot be versioned, and that is not a preference.** `--cpuset-cpus` is derived from the

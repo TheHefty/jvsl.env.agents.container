@@ -180,7 +180,7 @@ Uma vez que as sete perguntas estão resolvidas, prossiga no modo escolhido para
 projeto novo, os termos do engajamento para um de sustentação — depois a SRS, depois as estórias.
 Pelo caminho, atualize os arquivos que pertencem ao projeto — `README.md`, `CLAUDE.md`,
 `docs/OVERVIEW.md`, as regras próprias do projeto abaixo da linha de import no `docs/RULES.md`, e a
-seleção de stacks em `.code-server.stack.json` na raiz do repo — para refletir as respostas. Os
+seleção de stacks em `.agent-container.stack.json` na raiz do repo — para refletir as respostas. Os
 documentos herdados sob `.code-server/docs/agent/` não são editados: uma regra que precisa mudar é
 mudada no template e volta por um bump.
 

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -22,7 +22,7 @@ import { scaffoldPlan } from './scaffold.ts'
 import { projectNames } from './devcontainer.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
-import { MANIFEST } from './stack-manifest.ts'
+import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
@@ -119,15 +119,80 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return
   }
 
+  // **Before `prepare`, and that is the whole of "resolved once".** Adoption
+  // renames the file, so every read after this point finds one name on disk and
+  // no other code in this extension learns that two ever existed.
+  const root = workspaceRoot()
+  if (root !== undefined) await adoptManifest(root, write)
+
   await prepare(context, channel, write, { handOver: false })
 }
 
+/**
+ * Which manifest this project has, settled once, by renaming an older one.
+ *
+ * **The order is not negotiable and it is the task's first failure scenario.**
+ * Write the new file, read it back, compare it against what was parsed, and only
+ * then unlink. A half-completed rename can leave a project with *neither* name —
+ * and the extension does not wake for such a project, so the damage and the
+ * inability to report it would arrive together.
+ *
+ * The decision itself is `resolveManifest`, which is pure and tested without a
+ * filesystem. Everything dangerous is here.
+ */
+async function adoptManifest(root: string, write: (lines: string[]) => void): Promise<void> {
+  const currentPath = join(root, MANIFEST)
+  const legacyPath = join(root, LEGACY_MANIFEST)
+  const resolution = resolveManifest({
+    current: readOrNull(currentPath),
+    legacy: readOrNull(legacyPath),
+  })
+
+  if (resolution.action === 'none' || resolution.action === 'use-current') return
+
+  if (resolution.action === 'keep-both' || resolution.action === 'leave-unreadable') {
+    write([`manifest: ${resolution.note}`])
+    void vscode.window.showWarningMessage(resolution.note)
+    return
+  }
+
+  try {
+    writeFileSync(currentPath, resolution.contents, 'utf8')
+    if (readOrNull(currentPath) !== resolution.contents) {
+      const cause =
+        `\`${MANIFEST}\` was written but did not read back identical, so \`${LEGACY_MANIFEST}\` ` +
+        `was left exactly where it is. Nothing was deleted.`
+      write([`manifest: ${cause}`])
+      void vscode.window.showWarningMessage(cause)
+      return
+    }
+    unlinkSync(legacyPath)
+  } catch (error) {
+    const cause =
+      `\`${LEGACY_MANIFEST}\` could not be adopted: ${String(error)}. Nothing was deleted.`
+    write([`manifest: ${cause}`])
+    void vscode.window.showWarningMessage(cause)
+    return
+  }
+
+  write([`manifest: ${resolution.note}`])
+  void vscode.window.showInformationMessage(resolution.note)
+}
+
 function watchManifest(onChange: () => void): vscode.Disposable {
-  const watcher = vscode.workspace.createFileSystemWatcher(`**/${MANIFEST}`)
-  watcher.onDidChange(onChange)
-  watcher.onDidCreate(onChange)
-  watcher.onDidDelete(onChange)
-  return watcher
+  // **Both names, because the resolved one can stop being the answer.** The name
+  // is settled once at activation; a manifest created, renamed or removed by
+  // hand afterwards would otherwise leave every later read pointing at a path
+  // that no longer describes the project, and the symptom is silent defaults —
+  // limits nobody chose, applied with no error.
+  const watchers = [MANIFEST, LEGACY_MANIFEST].map((name) => {
+    const watcher = vscode.workspace.createFileSystemWatcher(`**/${name}`)
+    watcher.onDidChange(onChange)
+    watcher.onDidCreate(onChange)
+    watcher.onDidDelete(onChange)
+    return watcher
+  })
+  return { dispose: () => { for (const w of watchers) w.dispose() } }
 }
 
 /**
