@@ -74,6 +74,15 @@ an assertion settles.
 
 Written after this gate, not before.
 
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/the-name-is-resolved-once.md`](tasks/the-name-is-resolved-once.md) | Designed, at its gate |
+
+**What the design settled, and the operator decided on 2026-10-05:** the name is resolved **once, at
+activation**, so no other code learns that two names ever existed; and support for the old one is
+removed in **2.0.0**, said at the resolving function and in the README rather than only in a document
+somebody has to remember.
+
 ## Outcome
 
 Filled in when the story closes.
