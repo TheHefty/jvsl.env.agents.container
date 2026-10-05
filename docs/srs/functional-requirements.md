@@ -299,3 +299,35 @@ manual hand-off is accepted rather than designed around.
   No exemption list: documents of closed work lose their status row too, because a status is state and
   state has a new home. What those documents keep is their `Outcome`, which is the verdict rather than
   the state.
+
+## The rename left things behind (FR-11x)
+
+**Every one of these was found by somebody using the extension, not by a test**, and that is the
+epic's whole observation rather than an apology. A rename changes identities — an extension's, a
+command's, a file's — and an identity that is wrong does not fail. It resolves to nothing, or to
+something stale, and says nothing either way.
+
+- **FR-110** — The project manifest is named for the product that reads it:
+  `.agent-container.stack.json`. The old name is `.code-server.stack.json`, after a template that is
+  archived and absorbed, and it is the one file of all this that lives in every project's repository.
+- **FR-111** — **The extension activates on both names.** The activation event is what decides
+  whether it wakes at all, so a project carrying the old name must still be seen — otherwise nothing
+  can report anything, including the fact that the name changed.
+- **FR-112** — **It renames the file itself, and says that it did.** Finding only the old name, it
+  writes the new one, removes the old, and reports it once. This is the one place this extension
+  touches a tracked file it did not create in that moment, and it is allowed exactly because the file
+  *is* its own: the manifest is written by the configure flow, and renaming one's own file is not the
+  thing FR-83 and FR-91 refuse.
+- **FR-113** — **It renames only a manifest it recognises, and never overwrites.** A file at the old
+  path that does not parse as a manifest is left alone and reported; a project that already has the
+  new name keeps it, and the old one is not merged into it. The refusal is the same rule as FR-83 —
+  what the extension did not write is somebody's work — applied to the one case where the two names
+  disagree.
+- **FR-114** — **An older copy of this extension, still installed, is found and named.** The rename
+  changed the extension's identity, so installing the current one does not replace
+  `thehefty.jvsl-env-agents-vscode`: both remain, and the older keeps contributing palette entries
+  whose titles still look right and whose commands no longer exist. The failure a person sees is an
+  instruction that does nothing, with no error anybody can act on.
+- **FR-115** — That notice is said once and is not a blocker. Nothing about the older copy stops the
+  current one working; it costs a person time and a wrong belief, which a sentence fixes and a modal
+  on every window does not.
