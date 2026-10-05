@@ -99,6 +99,8 @@ jobs:
         run: bash scripts/command-names-are-current.test.sh
       - name: the project manifest's name is defined once
         run: bash scripts/manifest-name-is-defined-once.test.sh
+      - name: every job respects the change's scope
+        run: bash scripts/every-job-respects-the-scope.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
@@ -116,6 +118,8 @@ jobs:
         run: bash docs/agent/check-parity.test.sh
 
   bash-syntax:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,6 +136,8 @@ jobs:
             | xargs -0 -n1 bash -n
 
   git-credential-helper:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # Git inside the container must ask the container's own GitHub CLI, and
     # nothing belonging to the person at the keyboard: a helper inherited from
     # the host does not fail, it makes a `push` authenticate as somebody else.
@@ -153,6 +159,8 @@ jobs:
         run: bash core/cont-init/15-git-credential-helper.test.sh
 
   state-ownership:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The hook that gives the editor's and gpg's state directories back to 'abc'
     # after a connection left them owned by somebody else. /config is a named
     # volume, so that damage outlives every rebuild and this is the only thing
@@ -171,6 +179,8 @@ jobs:
         run: bash core/cont-init/10-state-ownership.test.sh
 
   editor-leftovers:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The only script in the template that deletes data a person did not ask to
     # have deleted, on the one volume that survives every rebuild. What this job
     # guards is its refusals: an unrecognised directory kept, a symlink not
@@ -182,6 +192,8 @@ jobs:
         run: bash core/cont-init/30-editor-leftovers.test.sh
 
   agent-rules:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The hook is four lines of copying; what this asserts is the refusal. It
     # refuses to write when its target is not a mount of its own — because
     # without that mount the target is a path inside the bind from the person's
@@ -195,6 +207,8 @@ jobs:
         run: bash core/cont-init/50-agent-rules.test.sh
 
   ai-memory:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The boot hook must preserve ai-memory opt-in and register every supported
     # first-party client. A missing Codex registration is silent until a new
     # session starts without memory, so the hook is exercised directly. The
@@ -209,6 +223,8 @@ jobs:
         run: bash core/services/svc-ai-memory/run.test.sh
 
   jail-wrappers:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The flags core/bin/claude.sh and core/bin/codex.sh hand ai-jail. Every one
     # of them fails quietly when it is wrong: a variable the sandbox never
     # receives does not error, it produces a tool inside the jail that behaves as
@@ -229,6 +245,8 @@ jobs:
         run: bash core/bin/jail-env-allowlist.test.sh
 
   compose-versions:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # core's pinned versions moved out of the middle of a RUN line and into
     # core/versions.json. What this guards is the seam: a placeholder no key
     # fills must stop the compose by name, not reach `docker build` as literal
@@ -240,6 +258,8 @@ jobs:
         run: bash core/compose-dockerfile.test.sh
 
   php-keyring:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The php stack installs from a third-party archive and is the only one that
     # does, so it is the only one carrying a signing key. What this guards is
     # drift between the three places that key lives — the file, the fingerprint
@@ -253,6 +273,8 @@ jobs:
         run: bash stacks/php/keyring.test.sh
 
   devcontainer-metadata:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The image has to tell a dev container client which user to connect as:
     # left to itself a client uses the image's USER, which is root here because
     # s6-overlay needs it, and the first connection then writes root-owned
@@ -426,6 +448,7 @@ jobs:
   # is caught by nothing.
 
   declared-extensions:
+    if: needs.changes.outputs.scope != 'docs-only'
     needs: changes
     if: needs.changes.outputs.extensions == 'yes'
     runs-on: ubuntu-latest
@@ -441,6 +464,8 @@ jobs:
   # newly added stack. This name never changes and stands for all of them.
 
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The types are the reason this is TypeScript rather than the plain
     # JavaScript the template uses: the logic reads JSON somebody else wrote and
     # emits JSON another tool consumes, where a field with the wrong name is
@@ -457,6 +482,8 @@ jobs:
       - run: npm run typecheck
 
   unit:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # Node 22 runs TypeScript directly, so these need no build step and take
     # about a second.
     runs-on: ubuntu-latest
@@ -470,6 +497,8 @@ jobs:
       - run: npm test
 
   package:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # What ships, and what does not. An incomplete bundle throws
     # module-not-found at activation inside the editor, as a notification naming
     # a path and no cause — the extension looks installed and does nothing. And
@@ -494,6 +523,8 @@ jobs:
           if-no-files-found: error
 
   integration:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The scenarios this task delivers assert the **running container**, not the
     # file we wrote. Asserting the file proves only that we wrote what we meant
     # to, which is the tautology that misses a field whose name is wrong and
@@ -520,6 +551,8 @@ jobs:
         run: npm run test:integration
 
   the-move:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The image's content arrived by merge rather than by copy, and these three
     # assert the properties that made that worth doing. They are about this
     # repository's own git history, which is unusual for a test and is the only
@@ -541,6 +574,8 @@ jobs:
         run: bash tools/the-history-is-reachable.test.sh
 
   guard-is-sound:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # The guard below decides whether every other check here is trusted, so
     # nothing else covers its own correctness: **its failure mode is passing
     # when it should fail**, which running it reveals nothing about. This runs
@@ -552,6 +587,8 @@ jobs:
         run: bash scripts/every-test-has-a-runner.test.test.sh
 
   nothing-was-dropped:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
     # It was red at 25 of 30 for one task, on purpose, so that it would be seen
     # failing for its own reason — a guard first run against a complete pipeline
     # is green on day one and has proven nothing. This is the change that makes
