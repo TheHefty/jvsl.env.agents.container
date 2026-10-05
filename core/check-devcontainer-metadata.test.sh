@@ -78,7 +78,7 @@ expect_accept() {
     fi
 }
 
-GOOD="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\"}]'"
+GOOD="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"remoteEnv\":{\"HOME\":\"/config\"}}]'"
 
 # fixture <composed Dockerfile> [core fragment] [stack fragment]
 #
@@ -122,14 +122,23 @@ expect_reject "the value is an object rather than an array" "must be a JSON arra
 fixture "LABEL devcontainer.metadata='[{\"remoteUser\":\"root\"}]'"
 expect_reject "remoteUser is somebody else" "declares no entry with remoteUser"
 
-fixture "LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"containerUser\":\"abc\"}]'"
+# **The regression test for the defect this check was added for.** remoteUser
+# alone is what the image declared, and the editor connected as abc with root's
+# HOME — `gh` read /root/.config/gh and `claude` read /root/.ai-jail, both
+# reporting a permissions problem about a path nobody chose. Nothing failed, and
+# the only green test over it asserted that a login shell runs, not that it runs
+# at home.
+fixture "LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\"}]'"
+expect_reject "remoteUser without a HOME" "declares no remoteEnv HOME"
+
+fixture "LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"remoteEnv\":{\"HOME\":\"/config\"},\"containerUser\":\"abc\"}]'"
 expect_reject "containerUser is declared" "declares containerUser"
 
-TRUST="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"customizations\":{\"vscode\":{\"settings\":{\"security.workspace.trust.enabled\":false}}}}]'"
+TRUST="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"remoteEnv\":{\"HOME\":\"/config\"},\"customizations\":{\"vscode\":{\"settings\":{\"security.workspace.trust.enabled\":false}}}}]'"
 fixture "$TRUST"
 expect_reject "a Workspace Trust setting rides in the label" "security.workspace.trust"
 
-TABS="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"customizations\":{\"vscode\":{\"settings\":{\"editor.tabSize\":2}}}}]'"
+TABS="LABEL devcontainer.metadata='[{\"remoteUser\":\"abc\",\"remoteEnv\":{\"HOME\":\"/config\"},\"customizations\":{\"vscode\":{\"settings\":{\"editor.tabSize\":2}}}}]'"
 fixture "$TABS"
 expect_accept "an unrelated editor setting is not the thing being guarded"
 
