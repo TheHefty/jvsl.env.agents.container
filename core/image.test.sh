@@ -41,6 +41,17 @@ echo "$metadata" | jq -e --arg u "$USER_NAME" '[.[] | select(.remoteUser == $u)]
     >/dev/null 2>&1 \
     || fail "devcontainer.metadata does not declare remoteUser \"$USER_NAME\": $metadata"
 
+# **The half that remoteUser leaves behind.** Connecting as abc does not give
+# abc a HOME: `bash` does not set it, `login` and `su` do, and neither the
+# editor's server nor `docker exec` runs either — so it stays whatever the
+# container was started with, which is root's. Tools keeping state under $HOME
+# then fail on a path abc cannot read and call it a permissions problem.
+# Checked statically too, by core/check-devcontainer-metadata.sh; here is where
+# it is read back off a built image.
+echo "$metadata" | jq -e '[.[] | select(.remoteEnv.HOME == "/config")] | length >= 1' \
+    >/dev/null 2>&1 \
+    || fail "devcontainer.metadata declares no remoteEnv HOME of /config: $metadata"
+
 if echo "$metadata" | jq -e 'any(.[]; has("containerUser"))' >/dev/null 2>&1; then
     fail "devcontainer.metadata declares containerUser. This image must start as root so \
 s6-overlay can drop privileges itself; declaring it stops the container booting"

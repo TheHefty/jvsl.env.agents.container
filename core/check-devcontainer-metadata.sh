@@ -89,6 +89,30 @@ later LABEL replaces an earlier one, so all but the last are silently lost"
         || fail "devcontainer.metadata declares no entry with remoteUser \"abc\" ($what); a client \
 would fall back to the image's USER, which is root"
 
+    # **`remoteUser` alone leaves HOME behind, and nothing fails.** The editor
+    # connects as `abc` and the prompt says so, while HOME is still the value
+    # the container was started with — root's. Tools that keep their state
+    # under $HOME then read a directory `abc` cannot open, and report it as a
+    # permissions problem about a path nobody chose:
+    #
+    #     gh:     open /root/.config/gh/config.yml: permission denied
+    #     claude: Failed to stat /root/.ai-jail: Permission denied (os error 13)
+    #
+    # **Nothing can fix this by probing.** `bash` does not set HOME — `login`,
+    # `su` and `sshd` do, and neither `docker exec` nor the editor's server runs
+    # any of them. So the tooling's own `userEnvProbe`, which reads a login
+    # shell's environment, reads back the same inherited value. The only cure is
+    # declaring it.
+    #
+    # `remoteEnv` rather than `containerEnv`, deliberately: `containerEnv`
+    # reaches the container's own init, which runs as root before s6-overlay
+    # drops privileges, and giving root a HOME of /config during boot changes
+    # something nobody asked to change.
+    echo "$raw" | jq -e '[.[] | select(.remoteEnv.HOME == "/config")] | length >= 1' >/dev/null 2>&1 \
+        || fail "devcontainer.metadata declares no remoteEnv HOME of /config ($what); the editor \
+connects as abc with root's HOME, and every tool keeping state under \$HOME fails on a path abc \
+cannot read while nothing reports a cause"
+
     # A setting reaches the editor by three routes and only one of them is the
     # extension's code. This is the third: anything in this label's editor
     # customizations is applied by the tooling on every connection, to every

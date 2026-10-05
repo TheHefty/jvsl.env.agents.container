@@ -1,6 +1,9 @@
 [
   {
     "remoteUser": "abc",
+    "remoteEnv": {
+      "HOME": "/config"
+    },
     "customizations": {
       "vscode": {
         "extensions": [
