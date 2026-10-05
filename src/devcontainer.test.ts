@@ -170,3 +170,64 @@ test('the rules directory is a tmpfs of its own, not part of the host bind', () 
   const inner = c.findIndex((m) => m.includes('/config/.claude/rules'))
   assert.ok(bind < inner, `the bind must be declared before the mount inside it:\n${c.join('\n')}`)
 })
+
+/**
+ * FR-31 and FR-32, on the half this extension controls.
+ *
+ * **Both were accepted and neither was asserted.** The generated configuration
+ * forwards no ssh-agent, no gpg-agent, no X11 socket, no host credential helper
+ * and no host `gitconfig` — which was true by reading the code and by nothing
+ * else. The failure is silent: a forwarded helper does not error, it makes a
+ * `push` authenticate as somebody else.
+ *
+ * **It asserts what the configuration may contain, not a list of what it may
+ * not.** A blocklist of names passes while `SSH_AUTH_SOCK` arrives under a
+ * different spelling, or while a mount with an innocent name points at an agent
+ * socket — the same reason `tools/vsix.test.ts` is an allowlist. Reading the
+ * serialised whole is also what makes a *new* field fail rather than be ignored.
+ *
+ * **And it claims only what this extension does.** FR-37 records that the gpg
+ * and X11 sockets the editor forwards cannot be prevented by anything here:
+ * they are created inside the container by the editor's own server when it
+ * attaches, after every boot hook. A test named "no agent socket reaches the
+ * container" would be false. This one is about what the configuration adds.
+ */
+test('the generated configuration forwards nothing of the host but the two paths it must', () => {
+  const config = buildConfiguration(input)
+  const serialised = JSON.stringify(config)
+
+  // Every host path the configuration is allowed to name. The workspace, so the
+  // project is editable; and ~/.claude, so an agent's own credentials and
+  // history survive a rebuild — which is the one piece of host state this
+  // arrangement deliberately keeps.
+  const allowedHostPaths = [input.projectRoot, `${input.homeDir}/.claude`]
+
+  const hostPaths = [config.workspaceMount, ...config.mounts]
+    .flatMap((m) => m.split(',').filter((part) => part.startsWith('source=')))
+    .map((part) => part.slice('source='.length))
+    .filter((src) => src.startsWith('/'))
+  const unexpected = hostPaths.filter((p) => !allowedHostPaths.includes(p))
+  assert.deepEqual(
+    unexpected,
+    [],
+    `these host paths are mounted and nothing asked for them:\n${unexpected.join('\n')}`,
+  )
+
+  // Nothing names a socket, an agent, or the host's git configuration — checked
+  // over the serialised whole so a field added later is covered too.
+  for (const forbidden of [
+    'SSH_AUTH_SOCK', 'ssh-agent', 'ssh_auth',
+    'GPG_AGENT_INFO', 'gpg-agent', '.gnupg',
+    'DISPLAY', 'X11', '.Xauthority', 'wayland',
+    'credential.helper', 'GIT_ASKPASS', 'gitconfig',
+  ]) {
+    assert.ok(
+      !serialised.toLowerCase().includes(forbidden.toLowerCase()),
+      `the configuration names ${forbidden}:\n${serialised}`,
+    )
+  }
+
+  // The floor. If the configuration ever stops carrying the two paths it must,
+  // every assertion above passes over nothing.
+  assert.equal(hostPaths.length, 2, serialised)
+})
