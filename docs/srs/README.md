@@ -24,9 +24,9 @@ requirement outlives its reason.
 
 | | |
 |---|---|
-| [Functional requirements](functional-requirements.md) | FR-11 through FR-92, grouped by what they are about. The struck ones stay, annotated, because a requirement that was wrong is part of why the next one reads as it does |
+| [Functional requirements](functional-requirements.md) | FR-11 through FR-109, grouped by what they are about. The struck ones stay, annotated, because a requirement that was wrong is part of why the next one reads as it does |
 | [Non-functional requirements](non-functional-requirements.md) | NFR-1 and the rest — what the system must be, rather than do |
 | [Data and legal](data-and-legal.md) | what is processed, which is almost nothing, and the licence |
-| [Epics and stories](epics-and-stories.md) | the three epics, their stories, and the order each is fixed in |
+| [Epics and stories](epics-and-stories.md) | the four epics, their stories, and the order each is fixed in |
 | [Alternatives considered](alternatives-considered.md) | what was weighed and rejected, with the reason — including the two reversed later |
 | [Outcome](outcome.md) | acceptance, and the seven amendments. The record of every requirement that changed and why |

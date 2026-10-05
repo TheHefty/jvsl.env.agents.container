@@ -150,6 +150,54 @@ hardest: it is a CI move, and a CI move that silently drops a job leaves a guard
 nothing. Each of the thirteen guards and each stack's in-image assertions has to be observed running
 here, by name, before the archive.
 
+## Epic: Beads tracks the work
+
+**Status, order and blocking stop living in markdown.**
+
+The epic closes when the state of work is in one place that is not a document — `bd` — and the
+documents keep only what a document is for: what was agreed, and why.
+
+**Two layers, and the division is the whole idea.** An item in somebody else's tracker says *what*
+and is never written to; Beads says *how* — the breakdown, the order, the blockers, the status — and
+each item it holds carries its origin in `--external-ref`. The hand-off is manual on purpose:
+automatic synchronisation with a second tracker is a second source of truth, which is the problem
+this epic exists to remove rather than to duplicate.
+
+**Grilled on 2026-10-05, and the grilling corrected three assumptions about the tool itself:**
+
+1. **The storage engine is embedded, so nothing has to run.** `bd init` runs Dolt in-process with the
+   data under the directory `BEADS_DIR` names; `--server` exists and is opt-in for concurrent
+   writers. So there is **no s6 service and no resident memory cost** — the question this epic was
+   expected to turn on does not apply. What it costs instead is image size: the linux-amd64 asset is
+   **50.8 MB compressed**, because the engine is compiled in.
+2. **`bd init` is explicit and nothing works before it.** That is why FR-101's boot hook exists at
+   all; without it, an opted-in project would have a mapped directory and no database in it.
+3. **Beads ships its own memory**, `bd remember`. Nobody had looked, and two stores of the same kind
+   of thing is how both stop being trusted — hence FR-107 rather than a note.
+
+**The error not to repeat is measured rather than feared.** `AI_MEMORY_DATA_DIR` is not forwarded into
+the sandbox, and a bare `ai-memory` there resolves `/config/.local/share/ai-memory` while the server
+its boot hook started serves `/config/ai-memory`. The hooks escape it because each has its path baked
+in; a hand-run command does not. FR-103 requires **both** the variable and the map for exactly this
+reason: a missing map fails, and a missing variable succeeds about the wrong database.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the image carries `bd` | FR-100, FR-101, FR-102, FR-103 — invisible to a project that does not opt in, and nothing below is verifiable without it |
+| 2 | the open work becomes a tree | FR-105 — the seven `@manual` passes, the two debts and the release; the three closed epics as context, so `bd dep tree` shows the shape |
+| 3 | the status leaves the markdown | FR-104, FR-109 — about twenty documents, and the guard that stops it coming back |
+| 4 | the agent works from the tracker | FR-106 — what `RULES.md` and `WORKFLOW.md` say about taking the next task, moving it, and closing it with a reason |
+| 5 | the panel asks for Beads | FR-108 — last, because a question that writes a marker needs the marker to already mean something |
+
+**Story 1 ships the binary and changes nothing about how anybody works**, deliberately. Installing a
+tool and changing a method are two decisions, and bundling them would mean agreeing to the second in
+order to get the first. Stories 3 and 4 are kept apart for the same reason: removing status from
+twenty documents is mechanical, and deciding what the agent is allowed to do with a tracker is not.
+
+**It is validated here before it becomes the template's default.** This repository is the author's own
+and has real open work in it — the `@manual` passes nobody can automate — so it is the honest first
+subject rather than a scratch project.
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
@@ -157,8 +205,9 @@ and none starts before the epic above closes. **Two of them stopped being option
 — see the charter's second amendment, which is where the reasoning and the cost are recorded.
 
 **Every entry below is now closed out, and the last one closed by being deleted rather than built.**
-The list has done what it was for: nothing here is waiting, so the next epic is one nobody has named
-yet.
+The list has done what it was for. The epic above it was never on this list — *Beads tracks the work*
+was named and grilled on the same day, which is what this list exists to make possible: it holds
+nothing, so nothing had to be waited for.
 
 - **The image stops being code-server's** — **decomposed and shipped** in template `v4.0.0` and
   `v5.0.0`. It is no longer in this list. The fallback it gave up — a browser against a loopback
