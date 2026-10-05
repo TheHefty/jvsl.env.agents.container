@@ -242,3 +242,60 @@ pre-approves the dialog**, so this extension cannot clear it on the user's behal
 names the escape it uses instead: *"To load shared rules without that approval, keep them in
 `~/.claude/rules/`"*. In the container `~` is `/config` and the image already sets
 `CLAUDE_CONFIG_DIR=/config/.claude`, so both readings resolve to the same path.
+
+## The work has a tracker (FR-10x)
+
+**A new decade rather than FR-93.** The FR-8x section already holds FR-81 to FR-92, so continuing
+there would overflow a second decade and make the section name a lie twice over.
+
+**Two layers, and only one of them is ours.** An item in somebody else's tracker — an Azure DevOps
+epic at work, an issue on a repository — says *what*. Beads says *how*: the breakdown, the order,
+what blocks what, and where each piece stands. Nothing here writes to the other tracker, and the
+manual hand-off is accepted rather than designed around.
+
+- **FR-100** — The image installs the `bd` CLI at a pinned version with its published checksum
+  verified, by the same rule as `ai-jail` and `ai-memory`. Not the project's install script: a
+  script fetched and piped to a shell verifies nothing, and the release publishes a `checksums.txt`
+  precisely so it does not have to be trusted blind. The cost is named rather than hidden — the
+  linux-amd64 asset is 50.8 MB compressed, the largest single thing the image fetches, because the
+  storage engine is compiled into the binary.
+- **FR-101** — Beads is **opt-in through a marker in the project**, as `ai-memory` is through
+  `.ai-memory.toml`. Without the marker there is no database, no boot initialisation and no extra
+  grant in the sandbox. This widens what the agent can reach, so it widens only where somebody asked
+  for it.
+- **FR-102** — The database lives on the project's volume, outside the repository, and `bd` is
+  always initialised with `--stealth`. Stealth writes `no-git-ops: true`, so no git hook is installed
+  and nothing is committed — which is what makes the arrangement usable in a repository that is not
+  the user's to change. The consequence is accepted: work state belongs to the environment rather
+  than to the clone, and a fresh machine starts empty.
+- **FR-103** — `BEADS_DIR` crosses into the sandbox by name and its directory is mapped read-write.
+  **Both halves, because either alone is a silent wrong answer.** `bd init` must be explicit and
+  nothing works before it, so a missing map is a failure; and a missing variable is worse than a
+  failure, because `bd` then resolves a *different* directory and reports success about the wrong
+  database. That is measured rather than feared: `ai-memory` without `AI_MEMORY_DATA_DIR` resolves
+  `/config/.local/share/ai-memory` while the server its boot hook started serves
+  `/config/ai-memory`.
+- **FR-104** — **Beads holds state; documents hold what was agreed.** Status, order and blocking live
+  in Beads and nowhere else. A charter, an SRS, an epic, a story and a task design stay markdown in
+  the repository, reviewed in a pull request, because the thing they carry — why this order, what
+  this deliberately does not do, what was measured — is not a field.
+- **FR-105** — An item that came from another tracker carries its origin in `--external-ref`, and the
+  origin item is never written to. One field rather than a convention in the title, so that losing
+  the link requires deleting something rather than forgetting something.
+- **FR-106** — `bd ready` informs and does not authorise. The agent may report what is unblocked; it
+  may not start work that has not been through its gate. A tracker that knows what is possible is not
+  thereby a tracker that decides what happens, and the gates are where this project has found most of
+  its design errors.
+- **FR-107** — `bd remember` is not used. `ai-memory` keeps knowledge and context; Beads keeps the
+  state of work. Both tools ship a memory, so the boundary is written down rather than left to
+  whichever one the agent reaches for first — two stores of the same kind of thing is how both become
+  untrustworthy.
+- **FR-108** — The create-project flow asks about Beads exactly as it asks about `ai-memory`, and
+  writes the marker of FR-101 when asked. The one moment somebody is deciding what a project *is* is
+  the right moment to ask.
+- **FR-109** — **A guard fails when a status appears in markdown under `docs/`.** Without it FR-104 is
+  a convention, and this repository has already established that a convention nothing verifies is
+  indistinguishable from nothing — the argument `scripts/every-test-has-a-runner.test.sh` exists for.
+  No exemption list: documents of closed work lose their status row too, because a status is state and
+  state has a new home. What those documents keep is their `Outcome`, which is the verdict rather than
+  the state.
