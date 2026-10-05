@@ -112,7 +112,18 @@ a future bump is read against a number rather than a feeling.
 
 ## Tasks
 
-Written after this gate, not before.
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/the-tracker-exists-when-asked-for.md`](tasks/the-tracker-exists-when-asked-for.md) | Designed, at its gate |
+
+**What the design settled, and the operator decided on 2026-10-05:** opting in is a field in the
+manifest the extension already writes, not a second marker file; the boot hook runs `bd init` as
+`abc` rather than as root; and the export is a command somebody runs rather than a git hook.
+
+**The third carries a risk the design names rather than solves.** The requirement is to carry on from
+where you left off on another machine, and a manual export satisfies it only when somebody
+remembered — the moment that is discovered being the new machine. A hook, and a CI job that made
+forgetting loud, were both offered and declined. The risk is carried knowingly.
 
 ## Outcome
 
