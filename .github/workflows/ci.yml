@@ -97,6 +97,8 @@ jobs:
         run: bash scripts/nothing-reads-the-submodule.test.sh
       - name: every command name in the source is one the manifest contributes
         run: bash scripts/command-names-are-current.test.sh
+      - name: the project manifest's name is defined once
+        run: bash scripts/manifest-name-is-defined-once.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule

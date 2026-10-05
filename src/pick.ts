@@ -1,3 +1,5 @@
+import { MANIFEST } from './stack-manifest.ts'
+
 /**
  * What to do with the folder a picker came back with.
  *
@@ -56,7 +58,7 @@ export function decidePick(pick: Pick): PickDecision {
       // work, and configuring first does not change that.
       newWindow: pick.currentFolder !== undefined,
       because:
-        `${pick.chosen} has no \`.code-server.stack.json\` yet, so the questions that write one ` +
+        `${pick.chosen} has no \`${MANIFEST}\` yet, so the questions that write one ` +
         `are asked about it now. The folder is named here because the questions themselves do ` +
         `not show a path, and answering them for the wrong project would rewrite a file that is ` +
         `the only record of what that project selected.`,
