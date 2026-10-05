@@ -55,7 +55,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-questions-gain-a-location-and-ai-memory.md`](tasks/the-questions-gain-a-location-and-ai-memory.md) | Draft |
+| 1 | [`tasks/the-questions-gain-a-location-and-ai-memory.md`](tasks/the-questions-gain-a-location-and-ai-memory.md) | Done — #77 |
 | 2 | scaffolding, and refusing somebody's work | not written |
 | 3 | the handoff across the reload | not written |
 
