@@ -226,3 +226,20 @@ test('the folder picker is contributed, and declares no onCommand event for itse
   const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
   assert.deepEqual(events.filter((e: unknown) => String(e).startsWith('onCommand:')), [])
 })
+
+test('the create command is contributed, with the Agent Container prefix', () => {
+  const contributes = typeof real.contributes === 'object' && real.contributes !== null
+    ? (real.contributes as Record<string, unknown>)
+    : {}
+  const commands = Array.isArray(contributes['commands']) ? contributes['commands'] : []
+  const create = commands.find(
+    (c: unknown) =>
+      typeof c === 'object' && c !== null &&
+      (c as Record<string, unknown>)['command'] === 'jvsl.agentContainer.create',
+  ) as Record<string, unknown> | undefined
+  assert.ok(create, JSON.stringify(commands))
+  // The prefix is what stops it interleaving with the Dev Containers
+  // extension's own commands, where singular versus plural was the only
+  // difference and nobody noticed it.
+  assert.match(String(create['title']), /^Agent Container: /)
+})

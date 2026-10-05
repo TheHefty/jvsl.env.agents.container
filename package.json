@@ -31,6 +31,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "jvsl.agentContainer.create",
+        "title": "Agent Container: Create a Project\u2026"
+      },
+      {
         "command": "jvsl.agentContainer.open",
         "title": "Agent Container: Open a Project\u2026"
       },
