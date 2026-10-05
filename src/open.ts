@@ -210,7 +210,7 @@ export function decideOpen(context: OpenContext): Decision {
  * decision, and nagging it would be the kind of warning people learn to
  * ignore.
  */
-function ignoresGeneratedConfig(gitignore: string | null): boolean {
+export function ignoresGeneratedConfig(gitignore: string | null): boolean {
   if (gitignore === null) return false
   return gitignore
     .split('\n')
