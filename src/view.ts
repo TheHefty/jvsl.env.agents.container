@@ -102,7 +102,7 @@ export function viewItems(state: ViewState): Row[] {
       {
         kind: 'empty',
         label: 'Not configured yet',
-        detail: 'run Dev Container: Configure Stacks and Limits',
+        detail: 'run Agent Container: Configure Stacks and Limits',
       },
     ]
   }

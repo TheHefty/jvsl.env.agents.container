@@ -145,7 +145,7 @@ export function decideOpen(context: OpenContext): Decision {
       `the project manifest \`.code-server.stack.json\` could not be read, so the default limits ` +
         `are being used ` +
         `(${limits.memory} memory, half the host's cores). Fix the file, or run ` +
-        `the \`Dev Container: Configure Stacks and Limits\` command to rewrite it.`,
+        `the \`Agent Container: Configure Stacks and Limits\` command to rewrite it.`,
     )
   }
 

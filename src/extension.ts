@@ -722,7 +722,7 @@ async function buildInTerminal(
   const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
   const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
   const terminal = vscode.window.createTerminal({
-    name: 'Dev Container: build',
+    name: 'Agent Container: build',
     shellPath,
     shellArgs,
   })

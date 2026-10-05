@@ -95,6 +95,8 @@ jobs:
         run: bash scripts/no-ubuntu-only-sources.test.sh
       - name: nothing in the extension reads a project's submodule
         run: bash scripts/nothing-reads-the-submodule.test.sh
+      - name: every command name in the source is one the manifest contributes
+        run: bash scripts/command-names-are-current.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
