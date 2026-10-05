@@ -103,6 +103,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   )
 
   write(await describe(context))
+
+  // **Activation now runs in every window on this host**, because the panel has
+  // to exist before anybody asks for it and no command-triggered activation
+  // gives that. What keeps the cost the SRS accepted is that `prepare` returns
+  // immediately when there is no folder — so a window onto an unrelated project
+  // pays a registration and nothing else.
+  //
+  // The host check is the one thing worth paying for without a folder: the panel
+  // is the first thing anybody sees, so a host that cannot build says so there
+  // rather than three clicks later inside a build.
+  if (vscode.workspace.workspaceFolders === undefined) {
+    const blocker = hostProblems(await hostChecks()).find((p) => p.blocking)
+    view.recordHostProblem(blocker?.message)
+    return
+  }
+
   await prepare(context, channel, write, { handOver: false })
 }
 
@@ -123,6 +139,20 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
   /** What the extension carries is not a property of the project being viewed. */
   constructor(private readonly extensionPath: string) {}
 
+  /**
+   * A blocking host problem, shown before the panel offers anything.
+   *
+   * Set once at activation rather than computed per render: `docker info` is the
+   * expensive half of the host check, and a tree view re-renders on every
+   * refresh.
+   */
+  private hostProblem: string | undefined
+
+  recordHostProblem(message: string | undefined): void {
+    this.hostProblem = message
+    this.refresh()
+  }
+
   private readonly changed = new vscode.EventEmitter<void>()
   readonly onDidChangeTreeData = this.changed.event
   private lastBuild: 'ok' | 'failed' | 'cancelled' | undefined
@@ -139,7 +169,16 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
 
   getChildren(): Row[] {
     const folder = vscode.workspace.workspaceFolders?.[0]
-    if (!folder) return []
+    if (!folder) {
+      // **The panel.** This returned nothing, so the view was invisible exactly
+      // when somebody has nothing open and most needs a way in.
+      return viewItems({
+        stacksAvailable: stacksAvailable(carried(this.extensionPath, 'stacks')),
+        manifest: null,
+        folderOpen: false,
+        hostProblem: this.hostProblem,
+      })
+    }
     return viewItems({
       ...readViewState(folder.uri.fsPath, this.extensionPath),
       lastBuild: this.lastBuild,

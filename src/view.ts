@@ -7,8 +7,22 @@
  */
 
 export interface ViewState {
-  /** The stacks the template has. Empty means the submodule is not checked out. */
+  /**
+   * The stacks the extension carries. **Empty means a broken installation**, not
+   * an uninitialised submodule — this extension carries them and there is no
+   * submodule to initialise.
+   */
   stacksAvailable: readonly string[]
+  /**
+   * Whether a folder is open at all.
+   *
+   * **The view returned nothing when there was none**, so it was invisible
+   * exactly when somebody has nothing open and most needs a way in. With no
+   * folder it shows the two entries instead.
+   */
+  folderOpen?: boolean
+  /** A blocking host problem, shown before anything is offered. */
+  hostProblem?: string
   /** The parsed manifest, or null when there is none. */
   manifest: Record<string, unknown> | null
   /** What the last build in this session did, if there was one. */
@@ -16,9 +30,18 @@ export interface ViewState {
 }
 
 export interface Row {
-  kind: 'stack' | 'limit' | 'note' | 'empty' | 'uninitialised' | 'build'
+  kind: 'stack' | 'limit' | 'note' | 'empty' | 'uninitialised' | 'build' | 'entry' | 'problem'
   label: string
   detail: string
+  /**
+   * The command an entry runs.
+   *
+   * **Carried rather than written beside the row**, so a command that is removed
+   * takes its entry with it. The story is explicit that an entry for a
+   * capability that does not exist is worse than no entry: it reports a defect
+   * where there is only an absence.
+   */
+  command?: string
 }
 
 const LIMIT_ORDER = ['memory', 'memorySwap', 'cpus'] as const
@@ -39,12 +62,37 @@ const LIMIT_ORDER = ['memory', 'memorySwap', 'cpus'] as const
  *   questions they have already answered.
  */
 export function viewItems(state: ViewState): Row[] {
+  // **Before anything is offered.** The panel is the first thing anybody sees,
+  // so a host that cannot build says so here rather than three clicks later,
+  // inside a build, as a message about something else.
+  const problem: Row[] = state.hostProblem === undefined
+    ? []
+    : [{ kind: 'problem', label: 'This host cannot build yet', detail: state.hostProblem }]
+
+  if (state.folderOpen === false) {
+    return [
+      ...problem,
+      {
+        kind: 'entry',
+        label: 'Create a project',
+        detail: 'A new directory, the stacks it needs, and a container',
+        command: 'jvsl.agentContainer.create',
+      },
+      {
+        kind: 'entry',
+        label: 'Open a project',
+        detail: 'Pick a folder; it is built if its image is missing',
+        command: 'jvsl.agentContainer.open',
+      },
+    ]
+  }
+
   if (state.stacksAvailable.length === 0) {
     return [
       {
         kind: 'uninitialised',
-        label: 'Template not checked out',
-        detail: 'run: git submodule update --init',
+        label: 'This installation is incomplete',
+        detail: 'the extension carries the stacks — reinstall it',
       },
     ]
   }

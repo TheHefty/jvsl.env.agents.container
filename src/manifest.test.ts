@@ -243,3 +243,15 @@ test('the create command is contributed, with the Agent Container prefix', () =>
   // difference and nobody noticed it.
   assert.match(String(create['title']), /^Agent Container: /)
 })
+
+test('activation reaches a window with no folder, and the manifest event stays', () => {
+  const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
+  // The panel has to exist before anybody asks for it, which no command-triggered
+  // activation gives. The cost is loading in every window on the host, which the
+  // SRS accepted — and which activation doing the least it can is what pays for.
+  assert.ok(events.includes('onStartupFinished'), JSON.stringify(events))
+  // **Not redundant, and the next person to read them will think they are.**
+  // onStartupFinished fires when the editor has settled; a project opened
+  // directly wants the extension awake without waiting for that.
+  assert.ok(events.includes('workspaceContains:.code-server.stack.json'), JSON.stringify(events))
+})

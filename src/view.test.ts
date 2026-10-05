@@ -60,14 +60,19 @@ test('a manifest selecting nothing is not the same as no manifest', () => {
   assert.ok(rows.some((r) => r.kind === 'note' && /core/i.test(r.detail)), JSON.stringify(rows))
 })
 
-test('an uninitialised submodule is its own row, not an empty list', () => {
-  // `.code-server/` exists and is empty until the submodule is checked out. An
-  // empty tree there reads as a broken extension rather than a missing checkout,
-  // which is the same confusion the questions refuse.
+test('no stacks available is its own row, not an empty list', () => {
+  // **The structural claim survives and the message reversed.** This asserted
+  // that the detail named `submodule update --init`, which was right while the
+  // stacks came from a submodule: an empty `.code-server/` read as a broken
+  // extension rather than a missing checkout. The extension carries the stacks
+  // now, so an empty list *is* a broken installation and the row says so.
+  //
+  // What has not changed is that it must be a row of its own. An empty list and
+  // "there is nothing to list" send somebody to different places.
   const rows = viewItems({ stacksAvailable: [], manifest: null })
   assert.equal(rows.length, 1)
   assert.equal(rows[0]?.kind, 'uninitialised')
-  assert.match(rows[0]?.detail ?? '', /submodule update --init/)
+  assert.match(rows[0]?.detail ?? '', /reinstall/)
 })
 
 test('a manifest key the extension does not own is not shown as a limit or a stack', () => {
@@ -95,4 +100,42 @@ test('no build in this session leaves no row', () => {
   // Rather than "last build: never", which is a row that is always there and
   // says nothing on the first open.
   assert.ok(!viewItems(configured).some((r) => r.kind === 'build'), 'a build row appeared')
+})
+
+test('with no folder, the rows are the two entries and each names a contributed command', () => {
+  // **The panel.** `getChildren` returned [] with no folder, so the view was
+  // invisible exactly when somebody has nothing open and most needs a way in.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: null, folderOpen: false })
+  assert.deepEqual(rows.map((r) => r.kind), ['entry', 'entry'])
+  // Derived from the commands rather than written beside them, so the next
+  // command removed does not leave a row behind offering it.
+  for (const row of rows) {
+    assert.match(row.command ?? '', /^jvsl\.agentContainer\./)
+  }
+})
+
+test('a host problem is the first row, before either entry', () => {
+  // The panel is the first thing anybody sees, so a host with no usable docker
+  // says so there — not three clicks later, inside a build, as a message about
+  // something else.
+  const rows = viewItems({
+    stacksAvailable: ['java'],
+    manifest: null,
+    folderOpen: false,
+    hostProblem: 'docker is not on PATH',
+  })
+  assert.equal(rows[0]?.kind, 'problem')
+  assert.match(rows[0]?.detail ?? '', /docker/)
+  assert.ok(rows.slice(1).every((r) => r.kind === 'entry'), JSON.stringify(rows))
+})
+
+test('the no-stacks row names a reinstall, not a submodule', () => {
+  // **Two places described this condition and disagreed.** The command says the
+  // installation is incomplete and to reinstall; this said "run git submodule
+  // update --init", for a submodule this repository removed. The guard did not
+  // catch it because it looks for `.code-server/` paths and this is prose.
+  const rows = viewItems({ stacksAvailable: [], manifest: null, folderOpen: true })
+  const text = rows.map((r) => `${r.label} ${r.detail}`).join(' ')
+  assert.doesNotMatch(text, /submodule|checked out/i)
+  assert.match(text, /reinstall|incomplete/i)
 })

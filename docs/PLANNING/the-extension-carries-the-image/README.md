@@ -21,12 +21,28 @@ second version to keep in step: the extension composes and builds from what it b
 | 5 | [`the-documents-arrive-with-the-image`](the-documents-arrive-with-the-image/) | **Done** — two `@manual` passes owed |
 | 6 | [`opening-a-project-the-extension-chose`](opening-a-project-the-extension-chose/) | **Done** — one `@manual` pass owed |
 | 7 | [`creating-a-project-from-nothing`](creating-a-project-from-nothing/) | **Done** — one `@manual` pass owed |
-| 8 | [`the-panel`](the-panel/) | Draft |
+| 8 | [`the-panel`](the-panel/) | **Done** — two `@manual` passes owed |
 
 **The order is fixed by what cannot be verified until the CI exists**, not by preference. Moving
 4629 lines of shell into a repository that cannot build an image leaves every later story
 unverified, and "it worked in the other repo" is not a result. The panel is last because an entry
 offering a capability that does not exist yet is a worse state than no entry.
+
+## Status: every story shipped, seven `@manual` passes owed
+
+**All eight closed.** A project installs this extension and needs nothing else: no submodule, no
+`setup` on the host, no second repository to bump. The extension carries `core/` and `stacks/`,
+composes a project's Dockerfile and builds it, delivers the normative documents through the image,
+writes a project's instruction files when they are absent, and offers creating or opening from a
+panel that exists before anybody asks.
+
+**What is not done is the part no test can do.** Seven `@manual` scenarios, and two of them are the
+only things that would tell anybody whether story 5 actually worked: that an agent session opens with
+the modes and the rules in its context, and that no approval dialog appears. Everything automatable
+asserts the files are in the right place, which is a different claim.
+
+They need the extension installed on a host. Until they are run, this epic is complete by its tests
+and unverified by use.
 
 ## What this epic absorbs
 

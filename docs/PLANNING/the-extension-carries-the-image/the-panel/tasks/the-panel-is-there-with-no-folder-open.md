@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/the-panel
 epic: the-extension-carries-the-image
-pr:
+pr: 83
 ---
 
 # Task: the-panel-is-there-with-no-folder-open
@@ -84,4 +84,27 @@ them will think they are.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #83. 166 unit tests, typecheck clean. **The last task of the epic.**
+
+**The entries carry their command rather than naming it beside the row.** The design's first failure
+scenario said the risk was rows written as literals, and carrying the command is what makes the row
+and the capability one thing rather than two that can drift.
+
+**A probe proved the ordering assertion holds.** Moving the host problem after the entries turned it
+red; it was put back.
+
+**The cost the SRS accepted is paid, and what pays for it is `prepare` returning early.** A window
+onto an unrelated project does a registration, one host check, and stops. The host check is the one
+thing worth paying for without a folder, because the panel is the first thing anybody sees.
+
+**One test reversed rather than being deleted**, and that is the second time in this epic. *"An
+uninitialised submodule is its own row"* asserted the detail named `submodule update --init` — right
+while the stacks came from a submodule. It now asserts a reinstall, and says in its own body that it
+reversed and why. **The structural claim survived the message:** an empty list and "there is nothing
+to list" send somebody to different places, which was always the point of that test.
+
+**And the guard that should have caught the stale message could not.**
+`nothing-reads-the-submodule.test.sh` looks for `.code-server/` *paths*; this was prose telling
+somebody to run a command for a submodule that no longer exists. The guard was right about its
+subject — this was never its subject — and what found it was reading `view.ts` while measuring for
+this task, not a check.
