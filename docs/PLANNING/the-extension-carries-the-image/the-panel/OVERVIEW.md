@@ -50,12 +50,17 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| — | — | — |
+| 1 | [`tasks/the-panel-is-there-with-no-folder-open.md`](tasks/the-panel-is-there-with-no-folder-open.md) | Draft |
 
-**Deliberately empty.** Writing tasks for the panel now would be inventing failure scenarios for
-code whose shape is decided by stories 3 through 7 — what the entries call, what they can report,
-and what state exists when no folder is open. The story is written so the shape of the door is
-agreed; the carpentry is specified when the room is built.
+**This table was deliberately empty until stories 3 through 7 shipped**, because writing tasks for
+the panel earlier would have invented failure scenarios for code whose shape they decided — what the
+entries call, what they can report, and what state exists when no folder is open. The room is built,
+so the carpentry is specified.
+
+**What they decided, measured rather than assumed:** both entries' commands exist, `hostProblems`
+already produces the sentences the third scenario needs, and the view returns `[]` with no folder —
+so it is invisible exactly when the panel is wanted. And the handoff needs no stored state, which
+answers the question this table was waiting on.
 
 ## Outcome
 
