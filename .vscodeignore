@@ -53,6 +53,16 @@ dist/**/*.map
 
 .ai-memory.toml
 .code-server.stack.json
+
+# The generated dev container configuration, which is this machine's answers:
+# absolute paths to the project and to the person's own ~/.claude, the core
+# count, the memory, the devices this host happens to have. The same class as
+# the skills above — never tracked in git, so a CI package from
+# actions/checkout never saw it and the published .vsix is clean, while
+# `npm run package` after opening the project once ships somebody's home
+# directory inside an editor extension. Caught by the allowlist in
+# tools/vsix.test.ts, which is what that allowlist exists for.
+.devcontainer/**
 .gitattributes
 .gitignore
 .gitmodules

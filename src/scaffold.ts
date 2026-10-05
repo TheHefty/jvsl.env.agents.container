@@ -71,16 +71,25 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
     },
     {
       path: '.gitignore',
-      // **The line a sketch would miss.** `open.ts` refuses a project whose
-      // .gitignore does not ignore the generated configuration, so a project
-      // scaffolded without this is created and then declines to open. The test
-      // asserts it against `ignoresGeneratedConfig` rather than against this
-      // literal, so the writer and the refuser cannot drift apart.
+      // **The line a sketch would miss.** `open.ts` checks this with
+      // `ignoresGeneratedConfig` and **warns** when it does not hold — a note,
+      // not a refusal. The test asserts the written line against that function
+      // rather than against this literal, so the writer and the checker cannot
+      // drift apart.
+      //
+      // This comment used to say `open.ts` *refuses*, and so did the text
+      // written into the project below. Neither was true: the check is a
+      // `notes.push`, and a project without the line opens with a warning. The
+      // wrong version shipped into every scaffolded project's .gitignore, which
+      // is the worst place for this repository's recurring defect — a comment
+      // asserting a protection that does not exist. See
+      // docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/.
       contents:
         `# Generated from this project's manifest and this machine's hardware: core count,\n` +
         `# memory, and which devices the host actually has. Committing it would carry one\n` +
-        `# machine's answers to every other, and the extension refuses to open a project\n` +
-        `# that does not ignore it.\n${CONFIG_PATH}\n`,
+        `# machine's answers to every other, where a --device against a path that does not\n` +
+        `# exist is a hard failure. The extension warns on every open while this is\n` +
+        `# missing.\n${CONFIG_PATH}\n`,
     },
   ]
 
