@@ -10,11 +10,24 @@ This story is what makes a tracker exist to hold it instead, so it is the first 
 without one. Its state is in `bd` once story 2 puts it there, and until then it is in the pull
 request.
 
+## Regrilled on 2026-10-05, the day it was agreed
+
+**This story was agreed and then invalidated by a reversal in its own epic.** Its first scenarios
+asserted `--stealth` and *"Nothing is written into the repository"*; FR-116 reverses both, because
+the work items' content now lives in the tracker and therefore has to be versioned.
+
+The scenarios are rewritten rather than edited. **A scenario patched to agree with a new decision is
+a scenario that describes what was built** — and the whole value of agreeing them first is that they
+describe what was wanted.
+
+What did not change is the `@manual` scenario and the reason for it, which was a measurement rather
+than a decision.
+
 ## Summary
 
-A project that opts in gets `bd` with its database on the project's own volume and the agent's
-sandbox able to reach it. A project that does not opt in is untouched. FR-100, FR-101, FR-102,
-FR-103.
+A project that opts in gets `bd`, with what the tracker holds versioned alongside the project and
+the agent's sandbox able to reach it. A project that does not opt in is untouched. FR-100, FR-101,
+FR-103, FR-116.
 
 ## Why it is first
 
@@ -67,6 +80,8 @@ deciding deliberately:
   would bring Python.
 - **`--server` mode.** The engine is embedded and single-writer, which is what one project in one
   container needs.
+- **Moving anything into the tracker.** This story makes one exist; story 2 fills it. A tracker with
+  the image's half done and the content's half not is the state the board must never be built over.
 
 ## The cost, named
 

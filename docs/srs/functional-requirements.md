@@ -264,11 +264,15 @@ manual hand-off is accepted rather than designed around.
   `.ai-memory.toml`. Without the marker there is no database, no boot initialisation and no extra
   grant in the sandbox. This widens what the agent can reach, so it widens only where somebody asked
   for it.
-- **FR-102** — The database lives on the project's volume, outside the repository, and `bd` is
-  always initialised with `--stealth`. Stealth writes `no-git-ops: true`, so no git hook is installed
-  and nothing is committed — which is what makes the arrangement usable in a repository that is not
-  the user's to change. The consequence is accepted: work state belongs to the environment rather
-  than to the clone, and a fresh machine starts empty.
+- ~~**FR-102** — The database lives on the project's volume, outside the repository, and `bd` is
+  always initialised with `--stealth`.~~ **Reversed on 2026-10-05, the day it was written.** Once the
+  work items' *content* lives in the tracker rather than beside it, the tracker's contents have to be
+  versioned and reviewable like everything else — so `bd` runs in its normal git mode and
+  `.beads/issues.jsonl` is tracked. See FR-116.
+
+  **What this gives up is named rather than discovered:** stealth existed so the arrangement could be
+  used in a repository that is not the user's to change, which is where the two-layer model of FR-105
+  was aimed. Always-tracked means Beads is not usable there at all.
 - **FR-103** — `BEADS_DIR` crosses into the sandbox by name and its directory is mapped read-write.
   **Both halves, because either alone is a silent wrong answer.** `bd init` must be explicit and
   nothing works before it, so a missing map is a failure; and a missing variable is worse than a
@@ -276,10 +280,15 @@ manual hand-off is accepted rather than designed around.
   database. That is measured rather than feared: `ai-memory` without `AI_MEMORY_DATA_DIR` resolves
   `/config/.local/share/ai-memory` while the server its boot hook started serves
   `/config/ai-memory`.
-- **FR-104** — **Beads holds state; documents hold what was agreed.** Status, order and blocking live
-  in Beads and nowhere else. A charter, an SRS, an epic, a story and a task design stay markdown in
-  the repository, reviewed in a pull request, because the thing they carry — why this order, what
-  this deliberately does not do, what was measured — is not a field.
+- **FR-104** — **The charter and the SRS stay markdown in the repository; every work item does
+  not.** Amended on 2026-10-05. The original form kept epics, stories and task designs as files too,
+  and that half is reversed: their content moves into the tracker and their markdown files are
+  deleted.
+
+  **The split is where a document stops changing.** A charter and an SRS are argued over, change
+  rarely, and change everything when they do — so they keep a readable diff and a pull request. An
+  epic, a story and a task design are worked on: they are read far more often than they are reviewed,
+  and the reading is what has had no home.
 - **FR-105** — An item that came from another tracker carries its origin in `--external-ref`, and the
   origin item is never written to. One field rather than a convention in the title, so that losing
   the link requires deleting something rather than forgetting something.
@@ -294,41 +303,46 @@ manual hand-off is accepted rather than designed around.
 - **FR-108** — The create-project flow asks about Beads exactly as it asks about `ai-memory`, and
   writes the marker of FR-101 when asked. The one moment somebody is deciding what a project *is* is
   the right moment to ask.
-- **FR-109** — **A guard fails when a status appears in markdown under `docs/`.** Without it FR-104 is
-  a convention, and this repository has already established that a convention nothing verifies is
-  indistinguishable from nothing — the argument `scripts/every-test-has-a-runner.test.sh` exists for.
-  No exemption list: documents of closed work lose their status row too, because a status is state and
-  state has a new home. What those documents keep is their `Outcome`, which is the verdict rather than
-  the state.
+- **FR-109** — **A guard fails when an epic, story or task survives as markdown under `docs/`, or
+  when a status appears in a document that stays.** Amended with FR-104, and it now guards two
+  things: that the documents which moved do not come back, and that the two which stayed — the
+  charter and the SRS — do not start carrying state again.
 
-## The rename left things behind (FR-11x)
+  Without it both halves of FR-104 are conventions, and this repository has already established that
+  a convention nothing verifies is indistinguishable from nothing — the argument
+  `scripts/every-test-has-a-runner.test.sh` exists for.
 
-**Every one of these was found by somebody using the extension, not by a test**, and that is the
-epic's whole observation rather than an apology. A rename changes identities — an extension's, a
-command's, a file's — and an identity that is wrong does not fail. It resolves to nothing, or to
-something stale, and says nothing either way.
+  **No exemption list.** A closed epic's content is in the tracker with everything else; leaving its
+  file behind "because it is history" is how the second place starts again.
 
-- **FR-110** — The project manifest is named for the product that reads it:
-  `.agent-container.stack.json`. The old name is `.code-server.stack.json`, after a template that is
-  archived and absorbed, and it is the one file of all this that lives in every project's repository.
-- **FR-111** — **The extension activates on both names.** The activation event is what decides
-  whether it wakes at all, so a project carrying the old name must still be seen — otherwise nothing
-  can report anything, including the fact that the name changed.
-- **FR-112** — **It renames the file itself, and says that it did.** Finding only the old name, it
-  writes the new one, removes the old, and reports it once. This is the one place this extension
-  touches a tracked file it did not create in that moment, and it is allowed exactly because the file
-  *is* its own: the manifest is written by the configure flow, and renaming one's own file is not the
-  thing FR-83 and FR-91 refuse.
-- **FR-113** — **It renames only a manifest it recognises, and never overwrites.** A file at the old
-  path that does not parse as a manifest is left alone and reported; a project that already has the
-  new name keeps it, and the old one is not merged into it. The refusal is the same rule as FR-83 —
-  what the extension did not write is somebody's work — applied to the one case where the two names
-  disagree.
-- **FR-114** — **An older copy of this extension, still installed, is found and named.** The rename
-  changed the extension's identity, so installing the current one does not replace
-  `thehefty.jvsl-env-agents-vscode`: both remain, and the older keeps contributing palette entries
-  whose titles still look right and whose commands no longer exist. The failure a person sees is an
-  instruction that does nothing, with no error anybody can act on.
-- **FR-115** — That notice is said once and is not a blocker. Nothing about the older copy stops the
-  current one working; it costs a person time and a wrong belief, which a sentence fixes and a modal
-  on every window does not.
+### Amended on 2026-10-05, after the section was written
+
+**The decision reversed the same day it was agreed**, before any code existed, and the
+requirements above carry it rather than being quietly rewritten. What the operator wanted, said
+plainly — *"preciso de lugar pra ler, quando aprovar eu venho aqui e digo aprovado"* — is a
+reading surface; the decision taken from it is that work items live in the tracker rather than
+beside it.
+
+**These continue the FR-10x section although the numbers are FR-11x's neighbours.** FR-110 to FR-115
+were allocated to a different epic between this section being written and being amended; splitting
+these into a third decade would hide that they belong here.
+
+- **FR-116** — `.beads/issues.jsonl` is tracked in git, and `bd` runs in its normal git mode rather
+  than stealth. The tracker's contents are versioned, travel with the clone, and reach a pull request
+  like anything else in the repository.
+- **FR-117** — **Epics, stories and task designs live in the tracker, and their markdown files are
+  deleted.** Not copied, not mirrored: two places holding one document is the arrangement where the
+  reader cannot tell which one the work followed.
+- **FR-118** — **A page shows them, and only shows them.** A board in the editor — the hierarchy,
+  each item's content, and its state — that reads and does not write. Approval is not on it: it
+  stays a sentence the operator says, which is where it already works.
+- **FR-119** — The page is part of this extension rather than a service. It already runs on the host,
+  already has a panel, and can read a database and a repository without anything being started,
+  served or logged into.
+- **FR-120** — **What moves, moves once and whole.** The migration carries every existing epic, story
+  and task — closed ones included — so the board shows the project's actual shape rather than its
+  recent half.
+
+**What this costs, stated once.** Reviewing a change to a work item becomes reading a diff of JSONL,
+where a markdown file used to show it. That is accepted deliberately: the items that still need a
+readable diff — the charter and the SRS — are exactly the ones FR-104 keeps as files.
