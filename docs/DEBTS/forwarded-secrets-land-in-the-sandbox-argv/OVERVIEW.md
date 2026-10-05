@@ -142,6 +142,65 @@ stay on the host"* will want, and that nobody had looked for:
 None of these is this debt's problem and none is acted on here. They are recorded because they were
 observed once, by accident, and the next person to look for them should not have to be lucky.
 
+## How the exception retires, settled by grilling on 2026-10-05
+
+**The grilling that deleted the *agents screen* epic settled this instead**, and the two halves turn
+out to be one change: removing `--env OPENAI_API_KEY` and having something run `codex login` are the
+same work, because the file the login writes is what replaces the variable.
+
+The operator authenticates Codex with `codex login` against a ChatGPT account rather than with an
+API key, so **removing the forward breaks nothing for them** — `~/.codex/auth.json` is already the
+path they use. That answers the question this exception was held open by. It does not answer the
+*verification* the section above demands, which is still owed and is a manual pass.
+
+### The behaviour that replaces the screen
+
+**The first interactive shell after the container starts asks for the agent logins that are
+missing.** Not a panel, not a status view: one prompt, at the moment a person arrives.
+
+| | |
+|---|---|
+| **Which agents** | both, and only the ones whose credential file is absent — `~/.claude/.credentials.json` and `~/.codex/auth.json` |
+| **What it does** | runs the agent's own login, interactively. `Ctrl-C` leaves the shell usable and writes nothing |
+| **How often** | the first interactive shell after the container starts. Other terminals of the same session stay quiet |
+| **The "asked" mark** | tmpfs, so it dies when the container stops. Nothing is written to the `/config` volume |
+| **Where it lives** | `/etc/bash.bashrc` |
+
+**`/etc/bash.bashrc` rather than `/etc/profile.d/`, and that is measured rather than assumed.** The
+editor's terminals are interactive *non-login* shells — read inside a running container, `shopt -q
+login_shell` says non-login — so a script under `profile.d` would never run and the feature would be
+silently absent. `abc`'s shell is `/bin/bash` (`core/Dockerfile.frag:219`), which is what makes the
+system-wide `bashrc` the right file.
+
+**And `bash.bashrc` was confirmed positively, not merely inferred from `profile.d` failing.** In a
+running container, `bash -ic 'echo $PS1'` returns the exact prompt string that `/etc/bash.bashrc`
+sets on its line 21 — so an interactive non-login shell demonstrably sources that file. The
+negative result alone would have left the feature's premise resting on an absence.
+
+**The guard is `[[ $- == *i* ]]` and `[ -t 0 ]`, and it was verified against the thing it must not
+trap.** An agent's own shell in this container reports `$-` as `hBc` — no `i` — and has a tty on
+neither stdin nor stdout. So it is excluded twice over, by two independent conditions. That matters
+because the editor opens terminals nobody asked for: one on reconnect, and one per command an agent
+runs. An interactive login firing in those would hang work that has no person watching it.
+
+**Why `once per container` collapsed into `once per session`.** Two answers during the grilling
+contradicted each other: a mark that survives rebuild, and a `Ctrl-C` that does not count as having
+asked. If the mark is only written when the login succeeds, then *having asked* and *having a
+credential* are the same fact and the mark carries no information. What survives is the only job a
+mark can still do — keeping the other terminals of one session quiet — which is a tmpfs mark and
+no stored state at all.
+
+### What this does not do
+
+It does not hold a credential, report one, or print one. It asks the agent's own tool for a login and
+looks only at whether a file exists.
+
+### Still owed, and it is the operator's pass
+
+`codex login` has never run in this environment. Whether it completes inside a container with no
+browser is **unverified**, and it is the verification this debt already demanded before the exception
+may leave `KNOWN_EXCEPTIONS`. Nothing here removes that requirement; it names who can satisfy it.
+
 ## Payback
 
 Parts 2 and 3 retire this debt. The trigger that says they can no longer be deferred: the next time
