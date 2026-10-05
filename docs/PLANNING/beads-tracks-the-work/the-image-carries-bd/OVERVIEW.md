@@ -26,8 +26,8 @@ than a decision.
 ## Summary
 
 A project that opts in gets `bd`, with what the tracker holds versioned alongside the project and
-the agent's sandbox able to reach it. A project that does not opt in is untouched. FR-100, FR-101,
-FR-103, FR-116.
+the agent's sandbox able to reach it. A project that does not opt in is untouched. FR-100, FR-101
+and FR-116.
 
 ## Why it is first
 
@@ -39,9 +39,30 @@ and each of those is a claim about a tool that has to be there to be wrong about
 method are two decisions. A project with no opt-in sees no new file, no new process and no wider
 sandbox; a project that opts in gets a database and nothing that reads it yet.
 
+## What changed again on 2026-10-05, after the regrill
+
+**FR-103 is struck and FR-116 is amended**, both before any code.
+
+`BEADS_DIR` and its read-write map asked for something that putting the tracker inside the repository
+already provides: the workspace is mapped read-write by `ai-jail`, and `bd` finds its database by
+walking up from the working directory. **The `@manual` scenario it justified changed with it** —
+there is no variable left to go missing, and what remains is the narrower claim that the agent's walk
+lands where a person's does.
+
+And the export goes to a path of ours rather than into `.beads/`, because `bd init` writes that
+directory's `.gitignore` itself and the Beads project ignores all of it. Fighting the tool there
+buys nothing; exporting elsewhere costs a step.
+
+**The format follows the requirement, stated plainly by the operator:** *"se precisar trocar de
+máquina ou baixar um repositório de novo, poder continuar de onde parou"*. Machine, not tooling.
+An earlier draft argued for rendered Markdown because it survives the tool disappearing — which
+nobody had asked for, and which is the second time in one day a design question was answered
+before the purpose was.
+
 ## The one thing this story can get silently wrong
 
-**A missing variable succeeds about the wrong database.** FR-103 requires the variable *and* the map,
+**A walk that lands somewhere else succeeds about the wrong database.** FR-103 used to require a
+variable *and* a map,
 and the reason is measured rather than argued: `AI_MEMORY_DATA_DIR` is not forwarded into the
 sandbox, so a hand-run `ai-memory` there resolves `/config/.local/share/ai-memory` while the server
 its own boot hook started serves `/config/ai-memory`. The installed hooks escape it only because each

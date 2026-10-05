@@ -188,7 +188,7 @@ removes that, and the Azure DevOps case with it, until some later epic puts it b
 
 | # | Story | Why in that order |
 |---|---|---|
-| 1 | the image carries `bd` | FR-100, FR-101, FR-103, FR-116 — invisible to a project that does not opt in, and nothing below is verifiable without it |
+| 1 | the image carries `bd` | FR-100, FR-101, FR-116 — invisible to a project that does not opt in, and nothing below is verifiable without it |
 | 2 | the work items move into the tracker | FR-117, FR-120 — every epic, story and task, closed ones included, and their files deleted |
 | 3 | the board shows them | FR-118, FR-119 — the reading surface this epic exists for |
 | 4 | the agent works from the tracker | FR-106 — what the normative documents say about taking the next item and closing it with a reason |
@@ -196,6 +196,17 @@ removes that, and the Azure DevOps case with it, until some later epic puts it b
 
 **Story 3 is the one the operator asked for, and it is third on purpose.** A board over an empty
 tracker shows nothing, and a board over a half-migrated one shows a project that does not exist.
+
+**Two requirements changed again on 2026-10-05, after the reversal and before any code.** FR-103 is
+struck: putting the tracker inside the repository made its sandbox grant redundant, because the
+workspace is already mapped read-write and `bd` finds the database by walking up from it. And FR-116
+now exports to a path of ours rather than tracking `.beads/`, because `bd init` writes that
+directory's `.gitignore` itself and the Beads project ignores all of it.
+
+**The second of those came from asking what the thing was for, again.** The requirement is *"se
+precisar trocar de máquina ou baixar um repositório de novo, poder continuar de onde parou"* —
+machine, not tooling. An earlier draft argued for rendered Markdown on the grounds that it survives
+the tool disappearing, which nobody had asked for.
 
 **Story 1 was already agreed once and has to be regrilled.** Its scenarios were written under
 `--stealth` and under "nothing is written into the repository", and both are now false.

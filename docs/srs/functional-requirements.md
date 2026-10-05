@@ -273,13 +273,17 @@ manual hand-off is accepted rather than designed around.
   **What this gives up is named rather than discovered:** stealth existed so the arrangement could be
   used in a repository that is not the user's to change, which is where the two-layer model of FR-105
   was aimed. Always-tracked means Beads is not usable there at all.
-- **FR-103** — `BEADS_DIR` crosses into the sandbox by name and its directory is mapped read-write.
-  **Both halves, because either alone is a silent wrong answer.** `bd init` must be explicit and
-  nothing works before it, so a missing map is a failure; and a missing variable is worse than a
-  failure, because `bd` then resolves a *different* directory and reports success about the wrong
-  database. That is measured rather than feared: `ai-memory` without `AI_MEMORY_DATA_DIR` resolves
-  `/config/.local/share/ai-memory` while the server its boot hook started serves
-  `/config/ai-memory`.
+- ~~**FR-103** — `BEADS_DIR` crosses into the sandbox by name and its directory is mapped
+  read-write.~~ **Struck on 2026-10-05: what it asked for is already true by another route.** Once
+  FR-116 put the tracker inside the repository, its directory is under `/config/workspace`, which
+  `ai-jail` already maps read-write — `core/bin/jail-common.sh` only lays read-only maps *over*
+  subpaths of it. And `bd` finds the database by walking up from the working directory, which is that
+  workspace, so the variable has nothing left to say.
+
+  **The `@manual` scenario it justified goes with it.** That scenario watched for a missing variable
+  succeeding about the wrong database, which needs a variable to be missing. Measured rather than
+  assumed — and not verified in a running sandbox, because the environment this was written in had
+  lost its Docker. A task design that reintroduces the variable reintroduces the scenario.
 - **FR-104** — **The charter and the SRS stay markdown in the repository; every work item does
   not.** Amended on 2026-10-05. The original form kept epics, stories and task designs as files too,
   and that half is reversed: their content moves into the tracker and their markdown files are
@@ -327,9 +331,20 @@ beside it.
 were allocated to a different epic between this section being written and being amended; splitting
 these into a third decade would hide that they belong here.
 
-- **FR-116** — `.beads/issues.jsonl` is tracked in git, and `bd` runs in its normal git mode rather
-  than stealth. The tracker's contents are versioned, travel with the clone, and reach a pull request
-  like anything else in the repository.
+- **FR-116** — **The tracker's contents are exported to a tracked path outside `.beads/`**, and
+  `bd` runs in its normal git mode rather than stealth. The export travels with the clone and reaches
+  a pull request like anything else in the repository.
+
+  **Outside `.beads/` because that directory is the tool's, not ours.** `bd init` writes its own
+  `.gitignore` entries, and the Beads project's own repository ignores `.beads/*` entirely. Fighting
+  that would mean maintaining an exception against a tool that may rewrite it on the next version;
+  exporting elsewhere costs a step and contradicts nothing.
+
+  **JSONL rather than rendered Markdown**, because of what the requirement actually is: *"se precisar
+  trocar de máquina ou baixar um repositório de novo, poder continuar de onde parou"*. A new machine
+  re-imports a JSONL with one command. Portability away from Beads was never asked for — an earlier
+  draft of this requirement argued for Markdown on that basis and was answering a question nobody
+  had posed.
 - **FR-117** — **Epics, stories and task designs live in the tracker, and their markdown files are
   deleted.** Not copied, not mirrored: two places holding one document is the arrangement where the
   reader cannot tell which one the work followed.
