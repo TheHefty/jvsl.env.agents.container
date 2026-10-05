@@ -198,6 +198,20 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-dockerd-rootless/run \
 RUN mkdir -p /config/.claude /config/.codex \
     && chown -R abc:abc /config/.claude /config/.codex
 
+# **And the same thing again at boot, because the line above is not enough.**
+# It writes under /config, which is exactly the case section 5.0 below describes
+# and excludes itself from: a named volume is seeded from the image only on its
+# *first* mount, and a tmpfs is never seeded at all. So a project whose volume
+# predates this line never sees these directories, and the symptom is the one
+# this section's own comment warns about — the agent starting at onboarding on
+# every run with nothing saying why.
+#
+# The build-time mkdir is kept rather than replaced: it is correct for a volume
+# created empty, costs nothing otherwise, and leaves the image honest when read
+# on its own. See docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+COPY core/cont-init/45-agent-state-dirs.sh /custom-cont-init.d/45-agent-state-dirs.sh
+RUN chmod +x /custom-cont-init.d/45-agent-state-dirs.sh
+
 # 5.0 A login shell for 'abc'. The base image gives it /bin/false, which was
 # sound while the only way in was an editor running inside the container as
 # 'abc' already, never logging in. It stopped being sound the moment something

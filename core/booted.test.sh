@@ -41,9 +41,11 @@ NAME="core-booted-test-$$"
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/booted.matchers.sh"
 
 fail() { echo "booted.test: FAIL: $*" >&2; exit 1; }
-logs() { docker logs "$NAME" 2>&1; }
+logs() { docker logs "${1:-$NAME}" 2>&1; }
 
-cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
+SHADOW="$NAME-shadow"
+
+cleanup() { docker rm -f "$NAME" "$SHADOW" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 # Checked before `docker run`, because docker's own answer for an image that is
@@ -56,16 +58,16 @@ Nothing was pulled: this test asserts what a locally built image does on boot"
 
 # Waits until init has finished $1 times, i.e. for the $1-th boot.
 wait_for_boot() {
-    local want="$1" deadline
+    local want="$1" who="${2:-$NAME}" deadline
     deadline=$(( $(date +%s) + BOOT_TIMEOUT ))
-    while [ "$(init_count "$(logs)")" -lt "$want" ]; do
+    while [ "$(init_count "$(logs "$who")")" -lt "$want" ]; do
         if [ "$(date +%s)" -ge "$deadline" ]; then
-            echo "--- container logs ---" >&2; logs | tail -40 >&2
-            fail "boot $want did not finish within ${BOOT_TIMEOUT}s; logs above"
+            echo "--- container logs ---" >&2; logs "$who" | tail -40 >&2
+            fail "boot $want of $who did not finish within ${BOOT_TIMEOUT}s; logs above"
         fi
-        if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" != "true" ]; then
-            echo "--- container logs ---" >&2; logs | tail -40 >&2
-            fail "the container exited during boot $want; logs above"
+        if [ "$(docker inspect -f '{{.State.Running}}' "$who" 2>/dev/null)" != "true" ]; then
+            echo "--- container logs ---" >&2; logs "$who" | tail -40 >&2
+            fail "$who exited during boot $want; logs above"
         fi
         sleep 2
     done
@@ -154,6 +156,48 @@ after_quiet="$(hook_count "$(logs)")"
 $after_quiet). Standing still is how the record means something, and it is also the only \
 observable proof that no recursive chown ran over thousands of extension files"
 
+# --- the agent state directories exist under a /config that shadows the image -
+#
+# **A second container, because the mount shape is the whole point.** The boot
+# above runs with no mount over /config, where the directories section 5 of the
+# Dockerfile creates are really there — which is why every test this repository
+# had passed while they were absent in practice.
+#
+# Docker seeds a *volume* from the image only when the volume is empty at its
+# first mount, and seeds a *tmpfs* never. So in production two populations see
+# nothing from that layer: a project whose volume predates the line, and any
+# container whose /config is a tmpfs. `--tmpfs /config` reproduces the harsher
+# of the two exactly, and in one flag.
+#
+# What makes this worth a second boot rather than a cheaper assertion: ai-jail
+# maps into the sandbox only paths that already exist, so a missing directory is
+# not created inside the jail — it is simply absent, and the agent starts at
+# onboarding on every run with nothing saying why. See
+# docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+docker run -d --name "$SHADOW" \
+    --cap-add=SYS_ADMIN \
+    --security-opt seccomp=unconfined \
+    --security-opt systempaths=unconfined \
+    --tmpfs /config \
+    -e PUID=1000 -e PGID=1000 -e PASSWORD= \
+    "$IMAGE" >/dev/null \
+    || fail "the container would not start with a tmpfs over /config"
+
+wait_for_boot 1 "$SHADOW"
+
+for dir in /config/.claude /config/.codex; do
+    docker exec "$SHADOW" test -d "$dir" \
+        || fail "$dir does not exist after a boot with /config shadowed. The Dockerfile's mkdir \
+cannot be the only mechanism: image content under a mountpoint is not a guarantee. A cont-init \
+hook is how 10-state-ownership.sh and 40-ai-memory.sh already solve this"
+
+    owner="$(docker exec "$SHADOW" stat -c '%U' "$dir" 2>/dev/null || true)"
+    [ "$owner" = "$USER_NAME" ] \
+        || fail "$dir exists but belongs to $owner rather than $USER_NAME, so the user the \
+container runs as cannot write the credential that goes in it"
+done
+
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \
-changes nothing."
+changes nothing; and with /config shadowed by a tmpfs both agent state directories still exist \
+and belong to $USER_NAME."
