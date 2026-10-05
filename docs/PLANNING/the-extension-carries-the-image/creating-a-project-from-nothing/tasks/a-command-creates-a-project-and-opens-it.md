@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Done
 story: the-extension-carries-the-image/creating-a-project-from-nothing
 epic: the-extension-carries-the-image
-pr:
+pr: 81
 ---
 
 # Task: a-command-creates-a-project-and-opens-it
@@ -71,4 +71,27 @@ makes "does it open when nothing was written" a test rather than a manual check.
 
 ## Outcome
 
-Filled in when the status leaves `Draft`.
+Implemented in #81. 162 unit tests, typecheck clean.
+
+**The design missed that `configure` asks and writes in one pass**, and wiring it in that shape was
+wrong in two ways at once. It would have written the manifest into the directory — and then
+`scaffoldPlan`'s empty-directory check would have **refused what it had just created**, which is the
+protection that makes this story safe. It would also have written the manifest a second time, from
+answers the create flow fabricated, because `configure` returns stack *names* and not versions.
+
+Caught before it compiled, by reading what `configure` does rather than by its signature.
+
+**So the asking is extracted.** `askAnswers` returns `Answers` or `undefined` for a cancellation at
+any of eight points, and both callers use it. That is the distinction the task needed and did not
+name: **asking and writing are one pass when the manifest is the only thing changing, and two when it
+is one of five files a plan writes together.**
+
+**And one test was written and then deleted.** I added a case asserting that a freshly created
+project decides `build`, to pin the measurement that the handoff needs no stored state. It passed —
+and it duplicated the assertion of *"an absent image decides to build it"* with nothing but a
+different comment. A comment dressed as a test does not earn its place; the reasoning is in this
+document and in `decideCreate`'s own comment instead.
+
+`decideCreate` covers five cases, and the partial one is why the plan is a list: it names what
+landed, what did not, and **that the directory is no longer empty** — so creating here again will be
+refused, which somebody needs to know before they try.
