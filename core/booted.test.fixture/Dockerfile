@@ -6,7 +6,9 @@ RUN apk add --no-cache bash coreutils \
     && mkdir -p /config /custom-cont-init.d \
     && chown abc:abc /config
 COPY core/cont-init/10-state-ownership.sh /custom-cont-init.d/10-state-ownership.sh
+COPY core/cont-init/45-agent-state-dirs.sh /custom-cont-init.d/45-agent-state-dirs.sh
 COPY core/booted.test.fixture/entrypoint.sh /entrypoint.sh
-RUN chmod +x /custom-cont-init.d/10-state-ownership.sh /entrypoint.sh
+RUN chmod +x /custom-cont-init.d/10-state-ownership.sh \
+        /custom-cont-init.d/45-agent-state-dirs.sh /entrypoint.sh
 LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'
 ENTRYPOINT ["/entrypoint.sh"]

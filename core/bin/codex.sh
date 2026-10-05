@@ -31,11 +31,21 @@ source "$JAIL_COMMON"
 # and a silent no-op when it is unset — which is the ordinary case, because it
 # is only one of the two ways Codex authenticates.
 #
-# The other is `codex login`, which writes ~/.codex/auth.json, and that already
-# persists: --agent-state maps ~/.codex, and section 5 of core/Dockerfile.frag
-# creates /config/.codex so there is a directory there to map. Neither path is
-# required and neither is configured for you — handing an agent a credential is
-# a decision, so scope it narrowly and give it an expiry.
+# The other is `codex login`, which writes ~/.codex/auth.json, and that
+# persists: --agent-state maps ~/.codex, and core/cont-init/45-agent-state-dirs.sh
+# creates /config/.codex **at boot** so there is a directory there to map.
+#
+# This comment used to credit section 5 of core/Dockerfile.frag for that
+# directory, and it was wrong in a way that mattered: section 5 writes it at
+# build time, under /config, where a named volume that already exists is never
+# seeded from the image and a tmpfs is never seeded at all. The directory was
+# genuinely absent in running containers while this comment said it was there.
+# ai-jail maps only paths that already exist, so Codex was starting at
+# onboarding on every run. See
+# docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+#
+# Neither path is required and neither is configured for you — handing an agent
+# a credential is a decision, so scope it narrowly and give it an expiry.
 #
 # There is no CODEX_HOME here on purpose. Everything Codex keeps — config.toml,
 # auth.json, history, sessions — is under ~/.codex, which is /config/.codex in
