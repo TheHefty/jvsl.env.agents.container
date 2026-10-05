@@ -1,65 +1,88 @@
 # Epic: Beads tracks the work
 
-**Status, order and blocking stop living in markdown.**
+**The work items stop being files, and gain a place to be read.**
 
-Grilled on 2026-10-05, before any story was written and before any code. The SRS carries the
-requirements (FR-100 to FR-109) and the epic's reasoning; this directory carries the stories.
+The SRS carries the requirements (FR-100 to FR-109 and FR-116 to FR-120) and the epic's reasoning.
+This directory carries the stories — and it is the last thing in this repository shaped like this,
+because story 2 is what empties it.
 
-## What the grilling changed
+## Grilled on 2026-10-05, and reversed the same day
 
-**It was proposed as "integrate Beads", and what it settled was a boundary rather than an
-integration.** Six things came out of it that the proposal did not contain:
+**The first grilling settled the opposite split**: documents keep what was agreed, the tracker keeps
+state. It was careful, it was measured, and it answered the wrong question — because nobody had said
+what the thing was *for*.
 
-1. **The storage engine is embedded** — `bd init` runs Dolt in-process. The question the epic was
-   expected to turn on (an s6 service, resident memory) **does not apply**. The real cost is image
-   size: 50.8 MB compressed.
-2. **`bd dep tree` and `bd graph` exist.** An earlier reading of the project's README said otherwise
-   and was wrong; the CLI reference lists both. Recorded because a fact stated confidently and
-   corrected is worth more than a fact nobody checked.
-3. **`--external-ref` exists**, documented for exactly this — *"gh-9, jira-ABC, Linear URL"*. The
-   two-layer model needed a field and did not need a convention.
-4. **Beads ships `bd remember`.** Nobody had looked. Two memories of the same kind is how both stop
-   being trusted, so the boundary is a requirement (FR-107) rather than an understanding.
-5. **`bd init` is explicit** — nothing works before it. That is the whole reason a boot hook exists.
-6. **The `--design` and `--acceptance` fields are a trap.** Beads has fields for precisely what the
-   decision keeps in markdown. Left empty with a pointer, and written down, because the agent will
-   otherwise fill a field that exists.
+What reversed it was one sentence from the operator:
 
-## The decisions, and what each costs
+> *preciso de lugar pra ler, quando aprovar eu venho aqui e digo aprovado*
+
+**The requirement was a reading surface.** The first decomposition had assumed the requirement was
+tracking, and everything downstream of that assumption — always stealth, documents stay, a guard
+against status in markdown — was a correct answer to a question nobody had asked.
+
+**That is worth recording rather than tidying away.** The grilling did its job: it produced a
+coherent design fast enough that its wrongness was cheap. No code existed, one story had been agreed
+and nothing built. The cost of the reversal was an afternoon of writing.
+
+## What survived, and why those are different
+
+The measurements survived; the decisions did not.
+
+| measured | still true |
+|---|---|
+| the storage engine is embedded | no service, no resident memory, and 50.8 MB of image |
+| `bd init` is explicit | which is the whole reason a boot hook exists |
+| `--external-ref` exists | for an item that came from somewhere else |
+| `bd dep tree` and `bd graph` exist | an earlier reading of the README said otherwise and was wrong |
+| Beads ships `bd remember` | and it stays unused: `ai-memory` already holds knowledge |
+
+**A decision made from a measurement is not as durable as the measurement.** Every reversed item was
+a decision; every surviving one was something that was looked at.
+
+## The split, and its criterion
+
+**Where a document stops changing.**
 
 | | |
 |---|---|
-| **Documents stay markdown** | Beads holds state only. The reasoning a gate agrees — why this order, what this deliberately does not do — is not a field |
-| **Always stealth** | one rule, no special case. Cost: work state belongs to the environment, not the clone, and a fresh machine starts empty |
-| **CLI, not MCP, for now** | `beads-mcp` is a PyPI package, so adopting it means Python in the image and a second version to pin. Revisit with a measured reason, not a preference |
-| **Beads is authoritative for status** | so status comes out of markdown everywhere, closed documents included. A status is state; the `Outcome` sections keep the verdict |
-| **`bd ready` informs, never authorises** | the gates stay. They are where this project has found most of its design errors |
-| **Opt-in by marker** | no marker, no database and no extra grant in the sandbox. This widens what the agent can reach |
-| **Export, not sync** | `bd export` writes JSONL on demand. Nothing reads it back, because something that read it back would be a second owner of the state |
-| **Debts become items** | the six-fetches debt stayed open four days because it depended on somebody re-reading a document. In `bd ready` it is visible |
+| **charter, SRS** | stay markdown, reviewed in a pull request. Argued over, changed rarely, and changing everything when they do |
+| **epic, story, task** | live in the tracker, markdown deleted. Worked on — read far more often than reviewed, and the reading had no home |
+
+## What it costs
+
+- **Reviewing a work item becomes reading JSONL.** Accepted: the two documents that still need a
+  readable diff are exactly the two that stayed.
+- **Stealth is given up, and the Azure DevOps case with it.** It existed so this could be used in a
+  repository that is not the operator's to change. Always-tracked removes that until some later epic
+  puts it back.
+- **Two places hold one document for exactly as long as the migration takes.** Story 2 is written to
+  be one change rather than a gradual one for that reason.
 
 ## Stories
 
 | # | Story | Status |
 |---|---|---|
-| 1 | [the image carries `bd`](the-image-carries-bd/) | Scenarios written, at its gate |
-| 2 | the open work becomes a tree | Not started |
-| 3 | the status leaves the markdown | Not started |
+| 1 | [the image carries `bd`](the-image-carries-bd/) | **Regrilled, at its gate again** |
+| 2 | the work items move into the tracker | Not started |
+| 3 | the board shows them | Not started |
 | 4 | the agent works from the tracker | Not started |
-| 5 | the panel asks for Beads | Not started |
+| 5 | the guard holds the split | Not started |
 
-**This table is the last one of its kind in this repository.** Story 3 removes status from markdown
-and story 1 is what makes a tracker exist to hold it instead — so by the time story 3 lands, these
-cells are an item in `bd` and this table is a list of names and IDs. It is written this way now
-because nothing else exists yet to write it in, which is itself the argument for the epic.
+**Story 1's scenarios are false now, in two places.** They were written under `--stealth` and assert
+*"Nothing is written into the repository"* — FR-116 reverses both. It is regrilled rather than
+patched: a scenario edited to agree with a new decision is a scenario that describes what was built.
+
+**Story 3 is what the operator asked for, and it is third on purpose.** A board over an empty tracker
+shows nothing, and a board over a half-migrated one shows a project that does not exist.
 
 ## What this epic must not do
 
-- **Write to the other tracker.** An item from Azure DevOps is read, referenced and never modified.
-- **Put the design in the tracker.** `--design` and `--acceptance` carry a path, not a copy.
-- **Let a tracker open a gate.** `bd ready` is a question answered, not a permission granted.
-- **Commit the database.** Stealth is unconditional; the engine's files never enter a repository.
+- **Keep a copy.** The markdown of a migrated item is deleted, not archived — two places holding one
+  document is where a reader cannot tell which one the work followed.
+- **Put approval on the board.** It stays a sentence the operator says. FR-118.
+- **Become a service.** The board is part of an extension that already runs on the host and already
+  has a panel. Nothing is started, served or logged into.
 
 ## Outcome
 
-Open. Grilled, not started.
+Open. Grilled twice, and once reversed.

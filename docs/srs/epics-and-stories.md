@@ -152,51 +152,53 @@ here, by name, before the archive.
 
 ## Epic: Beads tracks the work
 
-**Status, order and blocking stop living in markdown.**
+**The work items stop being files, and gain a place to be read.**
 
-The epic closes when the state of work is in one place that is not a document — `bd` — and the
-documents keep only what a document is for: what was agreed, and why.
+The epic closes when an epic, a story and a task design live in the tracker rather than beside it,
+`.beads/issues.jsonl` is versioned like everything else, and a board in the editor shows the whole
+shape — hierarchy, content and state — without anybody opening a directory tree.
 
-**Two layers, and the division is the whole idea.** An item in somebody else's tracker says *what*
-and is never written to; Beads says *how* — the breakdown, the order, the blockers, the status — and
-each item it holds carries its origin in `--external-ref`. The hand-off is manual on purpose:
-automatic synchronisation with a second tracker is a second source of truth, which is the problem
-this epic exists to remove rather than to duplicate.
+**It was grilled on 2026-10-05 and reversed the same day, before any code existed.** What the first
+grilling settled was the opposite split: documents keep what was agreed, the tracker keeps state. It
+was reversed by the operator saying plainly what the whole thing was for — *"preciso de lugar pra
+ler, quando aprovar eu venho aqui e digo aprovado"*. A reading surface was the requirement; the first
+decomposition had assumed the requirement was tracking.
 
-**Grilled on 2026-10-05, and the grilling corrected three assumptions about the tool itself:**
+**What survived the reversal is what the grilling measured rather than what it decided.** Those facts
+cost the session and did not change: the storage engine is embedded, so there is no service and no
+resident memory, and the cost is 50.8 MB of image; `bd init` is explicit, which is why a boot hook
+exists at all; `--external-ref` exists for an item that came from elsewhere; `bd dep tree` and
+`bd graph` exist; and Beads ships `bd remember`, which stays unused because `ai-memory` already holds
+knowledge.
 
-1. **The storage engine is embedded, so nothing has to run.** `bd init` runs Dolt in-process with the
-   data under the directory `BEADS_DIR` names; `--server` exists and is opt-in for concurrent
-   writers. So there is **no s6 service and no resident memory cost** — the question this epic was
-   expected to turn on does not apply. What it costs instead is image size: the linux-amd64 asset is
-   **50.8 MB compressed**, because the engine is compiled in.
-2. **`bd init` is explicit and nothing works before it.** That is why FR-101's boot hook exists at
-   all; without it, an opted-in project would have a mapped directory and no database in it.
-3. **Beads ships its own memory**, `bd remember`. Nobody had looked, and two stores of the same kind
-   of thing is how both stop being trusted — hence FR-107 rather than a note.
+**The split, and its criterion: where a document stops changing.**
 
-**The error not to repeat is measured rather than feared.** `AI_MEMORY_DATA_DIR` is not forwarded into
-the sandbox, and a bare `ai-memory` there resolves `/config/.local/share/ai-memory` while the server
-its boot hook started serves `/config/ai-memory`. The hooks escape it because each has its path baked
-in; a hand-run command does not. FR-103 requires **both** the variable and the map for exactly this
-reason: a missing map fails, and a missing variable succeeds about the wrong database.
+| | |
+|---|---|
+| **charter, SRS** | stay markdown in the repository, reviewed in a pull request. Argued over, changed rarely, and changing everything when they do |
+| **epic, story, task** | live in the tracker, and their markdown is deleted. Worked on — read far more often than reviewed, and the reading had no home |
+
+**What it costs is accepted rather than discovered.** Reviewing a change to a work item becomes
+reading a diff of JSONL where a markdown file used to show it. The two documents that still need a
+readable diff are exactly the two that stayed.
+
+**And one thing is given up outright.** Stealth existed so this could be used in a repository that is
+not the operator's to change, which is where the two-layer model of FR-105 was aimed. Always-tracked
+removes that, and the Azure DevOps case with it, until some later epic puts it back.
 
 | # | Story | Why in that order |
 |---|---|---|
-| 1 | the image carries `bd` | FR-100, FR-101, FR-102, FR-103 — invisible to a project that does not opt in, and nothing below is verifiable without it |
-| 2 | the open work becomes a tree | FR-105 — the seven `@manual` passes, the two debts and the release; the three closed epics as context, so `bd dep tree` shows the shape |
-| 3 | the status leaves the markdown | FR-104, FR-109 — about twenty documents, and the guard that stops it coming back |
-| 4 | the agent works from the tracker | FR-106 — what `RULES.md` and `WORKFLOW.md` say about taking the next task, moving it, and closing it with a reason |
-| 5 | the panel asks for Beads | FR-108 — last, because a question that writes a marker needs the marker to already mean something |
+| 1 | the image carries `bd` | FR-100, FR-101, FR-103, FR-116 — invisible to a project that does not opt in, and nothing below is verifiable without it |
+| 2 | the work items move into the tracker | FR-117, FR-120 — every epic, story and task, closed ones included, and their files deleted |
+| 3 | the board shows them | FR-118, FR-119 — the reading surface this epic exists for |
+| 4 | the agent works from the tracker | FR-106 — what the normative documents say about taking the next item and closing it with a reason |
+| 5 | the guard holds the split | FR-109 — that the documents which left do not come back, and the two that stayed do not start carrying state |
 
-**Story 1 ships the binary and changes nothing about how anybody works**, deliberately. Installing a
-tool and changing a method are two decisions, and bundling them would mean agreeing to the second in
-order to get the first. Stories 3 and 4 are kept apart for the same reason: removing status from
-twenty documents is mechanical, and deciding what the agent is allowed to do with a tracker is not.
+**Story 3 is the one the operator asked for, and it is third on purpose.** A board over an empty
+tracker shows nothing, and a board over a half-migrated one shows a project that does not exist.
 
-**It is validated here before it becomes the template's default.** This repository is the author's own
-and has real open work in it — the `@manual` passes nobody can automate — so it is the honest first
-subject rather than a scratch project.
+**Story 1 was already agreed once and has to be regrilled.** Its scenarios were written under
+`--stealth` and under "nothing is written into the repository", and both are now false.
 
 ## Epic: the rename left things behind
 
