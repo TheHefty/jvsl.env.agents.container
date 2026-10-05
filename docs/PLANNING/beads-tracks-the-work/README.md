@@ -42,7 +42,7 @@ integration.** Six things came out of it that the proposal did not contain:
 
 | # | Story | Status |
 |---|---|---|
-| 1 | the image carries `bd` | Not started |
+| 1 | [the image carries `bd`](the-image-carries-bd/) | Scenarios written, at its gate |
 | 2 | the open work becomes a tree | Not started |
 | 3 | the status leaves the markdown | Not started |
 | 4 | the agent works from the tracker | Not started |

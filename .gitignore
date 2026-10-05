@@ -4,3 +4,4 @@ dist/
 .ai-jail
 .claude/settings.local.json
 .tmp/
+.devcontainer/
