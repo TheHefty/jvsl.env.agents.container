@@ -57,7 +57,13 @@ Written after this gate, not before.
 |---|---|---|
 | 1 | [`tasks/the-questions-gain-a-location-and-ai-memory.md`](tasks/the-questions-gain-a-location-and-ai-memory.md) | Done — #77 |
 | 2 | [`tasks/scaffolding-and-refusing-somebodys-work.md`](tasks/scaffolding-and-refusing-somebodys-work.md) | Draft |
-| 3 | the handoff across the reload | not written |
+| 3 | [`tasks/a-command-creates-a-project-and-opens-it.md`](tasks/a-command-creates-a-project-and-opens-it.md) | Draft |
+
+**Task 3 was sketched as "the handoff across the reload" and the measurement renamed it.** The
+handoff needs no stored state: activation builds a missing image, and building is what hands over, so
+a freshly scaffolded project attaches on its own. What was actually unbuilt is the command — nothing
+calls `scaffoldPlan` — and the handoff is the fifth scenario falling out of it. Written to the sketch,
+this task would have built `globalState` keyed by path for something that happens anyway.
 
 **Provisional**, and the third most of all: how a handoff is persisted and read back depends on
 what story 6 leaves at activation time.
