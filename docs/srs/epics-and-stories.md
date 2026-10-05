@@ -156,6 +156,10 @@ Named so the first release does not close the door on them. None has stories unt
 and none starts before the epic above closes. **Two of them stopped being optional on 2026-10-01**
 — see the charter's second amendment, which is where the reasoning and the cost are recorded.
 
+**Every entry below is now closed out, and the last one closed by being deleted rather than built.**
+The list has done what it was for: nothing here is waiting, so the next epic is one nobody has named
+yet.
+
 - **The image stops being code-server's** — **decomposed and shipped** in template `v4.0.0` and
   `v5.0.0`. It is no longer in this list. The fallback it gave up — a browser against a loopback
   port when the Dev Containers extension will not attach — is gone as predicted, and was not
@@ -167,6 +171,16 @@ and none starts before the epic above closes. **Two of them stopped being option
 - **Adopting the template into an existing project** — **merged into the epic above**, as the
   no-manifest branch of *opening a project the extension chose*. The heuristic detection it was
   specified around is deleted rather than built: the flow asks the question a new project answers.
-- **The agents screen** — **decomposed, and not grilled**; see
-  `docs/PLANNING/the-agents-screen/`. Connecting an agent once, renewing on request, and where each agent's
-  credentials live.
+- **The agents screen** — **deleted by its own grilling on 2026-10-05**, and its planning
+  directory with it. Three measurements took it apart. The Claude credential is a bind of this
+  machine's `~/.claude`, so a screen has nothing to offer for it. The screen was to run *inside* the
+  container, which this extension cannot do — `extensionKind` is pinned to exactly `["ui"]` by
+  `src/manifest.test.ts`, because the extension drives the host's Docker. And the credential loss
+  that justified the epic happened in the retired code-server template, so the arrangement that
+  caused it no longer exists.
+
+  **What survived is one behaviour rather than a screen:** the first interactive shell after the
+  container starts asks for the agent logins that are missing. It is written into the payback of
+  [`forwarded-secrets-land-in-the-sandbox-argv`](../DEBTS/forwarded-secrets-land-in-the-sandbox-argv/)
+  rather than into an epic of its own, because deleting `--env OPENAI_API_KEY` and having something
+  run `codex login` are one change: the file the login writes is what replaces the variable.
