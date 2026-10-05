@@ -39,7 +39,7 @@ left open by the component name changing under release-please.
 
 | # | Story | Status |
 |---|---|---|
-| 1 | the manifest is named for the product that reads it | Not started |
+| 1 | [the manifest is named for the product that reads it](the-manifest-is-named-for-the-product/) | Scenarios written, at its gate |
 | 2 | an older copy of this extension is found and said | Not started |
 
 ## What story 1 must not become
