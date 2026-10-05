@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { aiMemoryMarker } from './location.ts'
 import { CONFIG_PATH } from './open.ts'
+import { MANIFEST } from './stack-manifest.ts'
 import { nextManifest, type Answers } from './questions.ts'
 
 export interface ScaffoldInput {
@@ -59,7 +60,7 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
 
   const writes: ScaffoldWrite[] = [
     {
-      path: '.code-server.stack.json',
+      path: MANIFEST,
       // Through nextManifest, so a project created here and one configured
       // later agree about what a manifest looks like rather than this flow
       // inventing a second shape.

@@ -22,6 +22,7 @@ import { scaffoldPlan } from './scaffold.ts'
 import { projectNames } from './devcontainer.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
+import { MANIFEST } from './stack-manifest.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
@@ -44,7 +45,6 @@ const CONFIGURE = 'jvsl.agentContainer.configure'
 const BUILD = 'jvsl.agentContainer.build'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
 const DOCKER_CHECK_MS = 2000
-const MANIFEST = '.code-server.stack.json'
 const PICK = 'jvsl.agentContainer.open'
 const CREATE = 'jvsl.agentContainer.create'
 const VIEW = 'jvsl.agentContainer.view'
@@ -538,7 +538,7 @@ async function gather(
     homeDir: homedir(),
     extensionVersion: extensionVersion(context),
     facts: hostFacts(),
-    manifest: readOrNull(join(root, '.code-server.stack.json')),
+    manifest: readOrNull(join(root, MANIFEST)),
     existingConfig: readOrNull(join(root, CONFIG_PATH)),
     runningContainers: await runningContainers(write),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),

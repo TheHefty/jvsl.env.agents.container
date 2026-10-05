@@ -1,4 +1,5 @@
 import { carried } from './template.ts'
+import { MANIFEST } from './stack-manifest.ts'
 /**
  * What building is, as functions over what the host looks like.
  *
@@ -159,7 +160,7 @@ export function composeCommand(
   return {
     script: carried(extensionPath, 'core', 'compose-dockerfile.sh'),
     stacks,
-    manifest: `${workspace}/.code-server.stack.json`,
+    manifest: `${workspace}/${MANIFEST}`,
     context: extensionPath,
     image: `${basename}-dev`,
   }

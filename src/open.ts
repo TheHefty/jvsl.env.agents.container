@@ -1,6 +1,7 @@
 import { buildConfiguration, isOurs, projectNames, type Configuration } from './devcontainer.ts'
 import { isAtLeast, parseVersion } from './template.ts'
 import { readLimits } from './limits.ts'
+import { MANIFEST } from './stack-manifest.ts'
 import type { HostFacts } from './host.ts'
 
 export const REOPEN_COMMAND = 'remote-containers.reopenInContainer'
@@ -142,7 +143,7 @@ export function decideOpen(context: OpenContext): Decision {
   const limits = readLimits(context.manifest ?? '{}')
   if (limits.usedDefaults) {
     notes.push(
-      `the project manifest \`.code-server.stack.json\` could not be read, so the default limits ` +
+      `the project manifest \`${MANIFEST}\` could not be read, so the default limits ` +
         `are being used ` +
         `(${limits.memory} memory, half the host's cores). Fix the file, or run ` +
         `the \`Agent Container: Configure Stacks and Limits\` command to rewrite it.`,
