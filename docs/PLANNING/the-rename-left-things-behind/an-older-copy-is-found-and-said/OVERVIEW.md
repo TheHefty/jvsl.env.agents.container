@@ -82,7 +82,9 @@ which is why the fourth scenario compares the name against what the editor repor
 
 ## Tasks
 
-Written after this gate, not before.
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/the-older-copy-is-looked-for.md`](tasks/the-older-copy-is-looked-for.md) | Done |
 
 ## Outcome
 

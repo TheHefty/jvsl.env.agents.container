@@ -23,6 +23,7 @@ import { projectNames } from './devcontainer.ts'
 import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
+import { olderCopyNotice } from './older-copy.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
@@ -74,6 +75,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const write = (lines: string[]): void => {
     channel.appendLine(`--- ${new Date().toISOString()}`)
     for (const line of lines) channel.appendLine(line)
+  }
+
+  // **Fired, never awaited.** FR-115: the older copy costs a person time and a
+  // wrong belief, which a sentence fixes — and a sentence explicitly not worth
+  // blocking for must not hold activation, least of all in the one population
+  // already having a bad time. The lookup is synchronous over a list the editor
+  // already has.
+  const older = olderCopyNotice(vscode.extensions.all.map((e) => e.id))
+  if (older !== undefined) {
+    write([`older copy: ${older}`])
+    void vscode.window.showWarningMessage(older)
   }
 
   // Declared before the commands that close over it: the closure would resolve
