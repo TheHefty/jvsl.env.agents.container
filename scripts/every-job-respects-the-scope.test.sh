@@ -57,6 +57,31 @@ echo "ok      the search mechanism finds a scope guard that is really there"
 
 in_list() { local n="$1"; shift; local x; for x in "$@"; do [ "$x" = "$n" ] && return 0; done; return 1; }
 
+# **No job declares the same key twice**, which is the mistake this guard was
+# extended for. Adding `if:` to a job that already had one produced a duplicate
+# key; GitHub refused the whole workflow with "This run likely failed because of
+# a workflow file issue" and *no jobs at all* — so there was nothing to read, and
+# the first version of this guard passed because the string it looked for was
+# present twice rather than once.
+#
+# Text rather than a parser on purpose: this runs on a checkout with no
+# dependencies installed, and the defect is visible without understanding YAML.
+dupes="$(awk '
+    /^  [a-z][a-z0-9-]*:$/ { job = $0; gsub(/[ :]/, "", job); delete seen; next }
+    job != "" && match($0, /^    [a-z-]+:/) {
+        key = substr($0, RSTART + 4, RLENGTH - 5)
+        if (seen[key]++) print job "." key
+    }
+' "$WORKFLOW" | sort -u)"
+if [ -n "$dupes" ]; then
+    echo "every-job-respects-the-scope: FAIL: these jobs declare the same key twice. The workflow \
+is invalid YAML, and GitHub rejects it before running anything — so no job reports a failure and \
+nothing says why:" >&2
+    printf '        %s\n' $dupes >&2
+    exit 1
+fi
+echo "ok      no job declares the same key twice"
+
 # Each job's own block, from its key to the next one at the same indentation.
 unguarded=()
 for job in "${jobs[@]}"; do
@@ -81,4 +106,4 @@ fi
 echo "ok      every other job consults the scope"
 
 echo
-echo "every-job-respects-the-scope.test: 3 passed, 0 failed."
+echo "every-job-respects-the-scope.test: 4 passed, 0 failed."

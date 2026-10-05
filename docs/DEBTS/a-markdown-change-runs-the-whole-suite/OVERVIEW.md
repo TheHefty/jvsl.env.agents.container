@@ -66,6 +66,20 @@ whatever the author assumed. A name on a list is a decision somebody made; a num
 
 Observed failing against `ci.yml` before the fix, naming all eighteen.
 
+**And it gained a second check, from a mistake made inside this very fix.** Adding `if:` to a job
+that already had one — `declared-extensions`, which runs only when an extension identifier changed —
+produced a duplicate key. GitHub rejected the whole workflow with *"This run likely failed because of
+a workflow file issue"* and **no jobs at all**: nothing to read, nothing to diagnose, and the first
+version of this guard passed because the string it looked for was present *twice* rather than once.
+
+So the guard now also fails when any job declares the same key twice. Proved by injecting a duplicate
+`needs:` into another job and watching it be named.
+
+**Two keys were checked before the push and the wrong two.** Duplicate `needs:` was checked, because
+that is what the edit inserted; duplicate `if:` was not, because nothing had suggested a job might
+already have one. The lesson is not "check `if:` too" — it is that a text edit to a structured file
+needs the file parsed afterwards. `js-yaml` was in `node_modules` the whole time.
+
 ## Payback
 
 Paid in the change that recorded it. The trigger that said it could no longer be deferred was not

@@ -448,9 +448,13 @@ jobs:
   # is caught by nothing.
 
   declared-extensions:
-    if: needs.changes.outputs.scope != 'docs-only'
     needs: changes
-    if: needs.changes.outputs.extensions == 'yes'
+    # **Both halves, and the first is not redundant.** An extension identifier
+    # is declared in a stack, so `extensions == 'yes'` already implies a change
+    # that is not documentation — today. Stating the scope anyway means this job
+    # does not quietly start running on documentation the day that stops being
+    # true, which is the class of drift this guard exists for.
+    if: needs.changes.outputs.scope != 'docs-only' && needs.changes.outputs.extensions == 'yes'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
