@@ -15,6 +15,31 @@ export interface Answers {
   /** Stack name to the version chosen for it. */
   stacks: Record<string, string>
   limits: { memory: string; memorySwap?: string; cpus?: number }
+  /**
+   * Where the project goes, when it does not exist yet.
+   *
+   * **Absent when configuring a project that is already open**, where the
+   * location is the folder the questions were asked about. Present only for
+   * creation, and **never written to the manifest**: a tracked file carrying one
+   * machine's path is the defect that keeps the generated dev container
+   * configuration out of version control.
+   */
+  location?: string
+  /**
+   * Whether the project carries `.ai-memory.toml`.
+   *
+   * **A decision rather than a preference.** The image's boot hook exits when
+   * the marker is absent, so without it nothing listens, no lifecycle event is
+   * emitted, and the agent's sandbox is not widened to reach the store. With
+   * it, prompts and tool excerpts are captured to disk.
+   *
+   * The inherited rules say ai-memory is off until a project asks. Writing the
+   * marker without asking would be the project asking on somebody's behalf —
+   * which is why this is an answer and not a default. Also **never a manifest
+   * key**: the switch is the file's existence, and a key nothing reads would be
+   * a second place to say it.
+   */
+  aiMemory?: boolean
 }
 
 /**

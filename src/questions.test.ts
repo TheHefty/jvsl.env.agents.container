@@ -172,3 +172,32 @@ test('an absent swap or cpus is empty rather than invented', () => {
     cpus: '',
   })
 })
+
+test('the answers carry a location and the ai-memory choice', () => {
+  const a: Answers = {
+    stacks: { java: '21' },
+    limits: { memory: '6g' },
+    location: '/work/a-new-project',
+    aiMemory: true,
+  }
+  assert.equal(a.location, '/work/a-new-project')
+  assert.equal(a.aiMemory, true)
+})
+
+test('neither the location nor the ai-memory choice reaches the manifest', () => {
+  // **They are answers about where and whether, not about what the image
+  // contains.** A manifest carrying a location would be one machine's path in a
+  // tracked file — the same defect that keeps the generated dev container
+  // configuration out of version control. And ai-memory is switched by a
+  // marker file the image's boot hook reads, not by a manifest key nothing
+  // reads.
+  const next = nextManifest({}, {
+    stacks: { java: '21' },
+    limits: { memory: '6g' },
+    location: '/work/a-new-project',
+    aiMemory: true,
+  }, ['java'])
+  const serialised = JSON.stringify(next)
+  assert.doesNotMatch(serialised, /a-new-project/)
+  assert.doesNotMatch(serialised, /aiMemory|ai-memory/i)
+})
