@@ -109,6 +109,8 @@ jobs:
         run: bash scripts/no-unbounded-docker-call.test.sh
       - name: activation does not wait for the open flow
         run: bash scripts/activate-returns-promptly.test.sh
+      - name: the tracker rules are present, conditional, and the same in both languages
+        run: bash scripts/tracker-rules-are-conditional.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule

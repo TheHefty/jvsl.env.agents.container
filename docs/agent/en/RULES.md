@@ -239,6 +239,21 @@ Most do not. Everything else in these rules is unchanged for them.
 - **Initialising the tracker commits nothing.** The container's boot hook leaves `.beads/` and bd's
   `.gitignore` lines uncommitted on a first opt-in. Name them, and propose them as their own commit,
   asked for like any other.
+- **`bd ready` informs; it does not authorise.** Asked what to do next, report what it lists, which
+  is what has no open blocker, and wait. The tracker knowing that something is possible does not make
+  it next: every link of the chain is still agreed before it is written.
+- **A link is created after it is agreed, never before.** Draft an epic, story or task in the
+  conversation. Once the user agrees it, create its item with the agreed text, under its parent:
+  `bd create --parent <id>`. The tracker holds only what passed a gate.
+- **Mark agreed work as it starts.** `bd update <id> --claim` sets it in progress, with you as the
+  owner, so the next session finds it rather than starting it again.
+- **Close with the reason.** When the change that finishes an item is merged,
+  `bd close <id> --reason "…"`, saying what finished it and where. bd accepts a close with no reason
+  and records only "Closed", so the reason is this rule's to require, not the tool's.
+- **A problem found along the way is recorded only with a yes.** Ask first, every time. After a yes,
+  record it as a debt, `bd create --type bug --labels defect`, with the debt template's sections.
+  Recording it does not start the fix. This is the one item you may create without a gate of its
+  own, and only because the user said yes.
 
 ### The template submodule
 

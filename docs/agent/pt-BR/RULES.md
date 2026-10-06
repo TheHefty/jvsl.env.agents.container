@@ -241,6 +241,21 @@ maioria não tem. Para esses, nada mais nestas regras muda.
 - **Inicializar o rastreador não commita nada.** Na primeira adesão, o hook de boot do container
   deixa o `.beads/` e as linhas do bd no `.gitignore` sem commit. Diga quais são e proponha-os como
   um commit próprio, pedido como qualquer outro.
+- **`bd ready` informa; não autoriza.** Quando perguntarem o que fazer, informe o que ele lista, que
+  é o que não tem bloqueio aberto, e espere. Saber que algo é possível não o torna o próximo: cada elo
+  da cadeia continua sendo aprovado antes de ser escrito.
+- **Um elo é criado depois de aprovado, nunca antes.** Rascunhe o epic, a story ou a task na
+  conversa. Depois que o usuário aprovar, crie o item com o texto aprovado, sob o pai:
+  `bd create --parent <id>`. O rastreador guarda só o que passou por um gate.
+- **Marque o trabalho aprovado quando ele começa.** `bd update <id> --claim` o marca como em
+  andamento, com você como dono, para que a próxima sessão o encontre em vez de começá-lo de novo.
+- **Feche com o motivo.** Quando a mudança que termina um item for mergeada,
+  `bd close <id> --reason "…"`, dizendo o que o terminou e onde. O bd aceita fechar sem motivo e
+  grava só "Closed", então exigir o motivo é desta regra, não da ferramenta.
+- **Um problema encontrado no caminho só é registrado com um sim.** Pergunte antes, toda vez. Depois
+  do sim, registre-o como dívida, `bd create --type bug --labels defect`, com as seções do template de
+  dívida. Registrar não começa a correção. Este é o único item que você pode criar sem um gate
+  próprio, e só porque o usuário disse sim.
 
 ### O submódulo do template
 

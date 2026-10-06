@@ -157,6 +157,39 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **Every `bd` command the rules name exists in the bd this image carries.**
+# The rules tell an agent which commands to run, and a bump that renames a flag
+# would leave it running one that fails mid-session, then improvising another.
+# `--help` alone proves nothing: measured, `bd dolt nonexistent --help` exits 0
+# and prints `bd dolt`'s help. So the Usage line has to name exactly the
+# command, and each flag has to appear in that help. BD_DOCS lets the same
+# script run against a checkout, which is how it was first seen to fail.
+BD_COMMANDS_CHECK='
+docs="${BD_DOCS:-/opt/jvsl/docs/agent}"
+cat "$docs"/en/*.md "$docs"/pt-BR/*.md | grep -oE "\`bd [^\`]*\`" | tr -d "\`" | sort -u |
+while read -r cmd; do
+    words=""; flags=""
+    for w in $cmd; do
+        case "$w" in
+            bd) ;;
+            --*) flags="$flags $w" ;;
+            [a-z]*) [ -n "$flags" ] || words="$words $w" ;;
+        esac
+    done
+    help="$(bd $words --help 2>&1)" || { echo "\`$cmd\`: bd$words --help exits non-zero"; continue; }
+    printf "%s\n" "$help" | grep -A1 "^Usage:" | tail -1 | grep -qE "^ *bd$words( |\$)" \
+        || { echo "\`$cmd\`: bd has no command \"bd$words\""; continue; }
+    for f in $flags; do
+        printf "%s\n" "$help" | grep -qE -- "$f([ ,=]|\$)" || echo "\`$cmd\`: bd$words has no flag $f"
+    done
+done'
+bd_missing="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c "$BD_COMMANDS_CHECK" 2>&1)" \
+    || fail "could not run the bd command check inside $IMAGE: $bd_missing"
+[ -z "$bd_missing" ] || fail "the normative documents name bd commands this image's bd does not \
+have, so an agent following them fails mid-session:
+$bd_missing"
+
 echo "image.test: $IMAGE declares remoteUser $USER_NAME, declares no containerUser, gives \
 $USER_NAME a usable login shell ($shell), installs none of the launcher's libraries, and still \
-has a rust toolchain ($toolchain), and carries $docs_present normative documents."
+has a rust toolchain ($toolchain), carries $docs_present normative documents, and its bd has every \
+command they name."
