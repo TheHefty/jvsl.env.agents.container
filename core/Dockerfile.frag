@@ -459,7 +459,26 @@ RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 #
 # The binary ships whether a project opts in or not: the image is one artefact,
 # and only the database is conditional.
-RUN curl -fsSL https://github.com/steveyegge/beads/releases/download/v1.3.1/beads_1.3.1_linux_amd64.tar.gz -o /tmp/beads.tar.gz \
+# **The retry flags are not decoration, and this line has already proved it.**
+# Two runs failed with `curl: (22) The requested URL returned error: 500` from
+# GitHub releases while the other ten builds fetching the same file succeeded —
+# transient, server-side, and fatal to a build several minutes in.
+#
+# `--retry-all-errors` is the one that matters here: plain `--retry` does not
+# retry an HTTP 500, which is exactly what we are getting. `--connect-timeout`
+# is what makes any of it useful, for the reason stacks/android/Dockerfile.frag
+# sets out at length — curl's default connect timeout is around two minutes, so
+# without it the retries mostly wait. The speed-limit pair catches the other
+# half: a connection that opens and then stalls is not a failure curl retries on
+# its own.
+#
+# Copied from the android stack rather than from ai-memory, which is the idiom
+# this should have had from the start: ai-memory's tarball is small enough that
+# a hiccup is rare, and this one is 50.8 MB fetched eleven times a run.
+RUN curl -fL --no-progress-meter --proto '=https' --tlsv1.2 \
+         --retry 5 --retry-all-errors --retry-delay 5 \
+         --connect-timeout 15 --speed-limit 1024 --speed-time 30 \
+         https://github.com/steveyegge/beads/releases/download/v1.3.1/beads_1.3.1_linux_amd64.tar.gz -o /tmp/beads.tar.gz \
     && echo "3219443a9734b89b93fb16ee8d65844759fa1b3cd3cf139c606b7353cfb0715c  /tmp/beads.tar.gz" | sha256sum -c - \
     && mkdir -p /tmp/beads-unpack \
     && tar -xzf /tmp/beads.tar.gz -C /tmp/beads-unpack \
