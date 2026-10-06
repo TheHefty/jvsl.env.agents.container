@@ -34,11 +34,11 @@
     "commands": [
       {
         "command": "jvsl.agentContainer.create",
-        "title": "Agent Container: Create a Project\u2026"
+        "title": "Agent Container: Create a Project…"
       },
       {
         "command": "jvsl.agentContainer.open",
-        "title": "Agent Container: Open a Project\u2026"
+        "title": "Agent Container: Open a Project…"
       },
       {
         "command": "jvsl.agentContainer.showDetected",
@@ -89,8 +89,8 @@
     "@devcontainers/cli": "^0.89.0",
     "@types/node": "^22.10.2",
     "@types/vscode": "^1.90.0",
-    "@vscode/vsce": "^3.2.1",
-    "esbuild": "^0.24.2",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.7.2"
   }
 }
