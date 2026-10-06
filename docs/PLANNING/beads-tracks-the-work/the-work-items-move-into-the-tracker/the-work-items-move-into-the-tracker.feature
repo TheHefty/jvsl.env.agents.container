@@ -57,6 +57,16 @@ Feature: The work items move into the tracker
     When the repository is cloned somewhere else and its container boots
     Then every migrated item is in its tracker
 
+  Scenario: Debts move with their kind
+    # FR-117, amended on 2026-10-06. A debt's kind is free text in today's
+    # files, so the migration does not guess it: each is mapped by hand in
+    # the change that carries this scenario, and a debt left out of that map
+    # stops the migration before anything is deleted.
+    Given the debts this repository has
+    When they are migrated
+    Then each is a bug in the tracker with exactly one of hotfix, shortcut or defect
+    And a debt that was paid arrives closed, with why
+
   Scenario: The rules say where scenarios live
     # The inherited rules state that acceptance criteria live beside their story
     # as a .feature file, and the image ships a Gherkin extension for that

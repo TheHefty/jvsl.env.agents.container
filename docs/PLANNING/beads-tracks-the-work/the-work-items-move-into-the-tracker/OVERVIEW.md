@@ -56,8 +56,10 @@ rule corrected in one is two different sets of rules.
 
 ## Acceptance criteria
 
-Eight scenarios in
-[`the-work-items-move-into-the-tracker.feature`](the-work-items-move-into-the-tracker.feature).
+Nine scenarios in
+[`the-work-items-move-into-the-tracker.feature`](the-work-items-move-into-the-tracker.feature). The
+ninth, added on 2026-10-06 with FR-117's amendment, carries the five debts under `docs/DEBTS/` too,
+each with a kind label mapped by hand rather than guessed from free text.
 **This is the last `.feature` file this repository writes beside a story** — the behaviour it
 describes is what moves it.
 

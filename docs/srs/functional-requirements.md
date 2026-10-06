@@ -300,6 +300,10 @@ manual hand-off is accepted rather than designed around.
   may not start work that has not been through its gate. A tracker that knows what is possible is not
   thereby a tracker that decides what happens, and the gates are where this project has found most of
   its design errors.
+
+  **The one item the agent may create is a debt, and only after the operator says yes to recording
+  it.** Added on 2026-10-06 with FR-117's amendment. Every epic, story and task still passes its gate
+  before it exists.
 - **FR-107** — `bd remember` is not used. `ai-memory` keeps knowledge and context; Beads keeps the
   state of work. Both tools ship a memory, so the boundary is written down rather than left to
   whichever one the agent reaches for first — two stores of the same kind of thing is how both become
@@ -349,9 +353,23 @@ these into a third decade would hide that they belong here.
   outside `.beads/`, as JSONL rather than rendered Markdown, because the requirement in the operator's
   words is *"se precisar trocar de máquina ou baixar um repositório de novo, poder continuar de onde
   parou"*. That requirement is unchanged; only the mechanism moved.
-- **FR-117** — **Epics, stories and task designs live in the tracker, and their markdown files are
-  deleted.** Not copied, not mirrored: two places holding one document is the arrangement where the
-  reader cannot tell which one the work followed.
+- **FR-117** — **Epics, stories, task designs and debts live in the tracker, and their markdown files
+  are deleted.** Not copied, not mirrored: two places holding one document is the arrangement where
+  the reader cannot tell which one the work followed.
+
+  **Debts joined on 2026-10-06.** A debt is an item of type `bug`, carrying the debt template's
+  sections — problem, root cause, fix, regression scenario, payback — and exactly one label for its
+  kind:
+
+  | label | what it records |
+  |---|---|
+  | `hotfix` | a production fix that could not wait for a story |
+  | `shortcut` | a corner cut knowingly, with the intent of paying it back |
+  | `defect` | a problem found during other work and not yet fixed |
+
+  **`defect` is new, and it is why debts moved.** Before, a problem the agent found mid-task lived in
+  the conversation and was lost with it. **The agent asks before recording one**, every time: the
+  record is the operator's to allow, and recording never authorises starting the fix.
 - **FR-118** — **A page shows them, and only shows them.** A board in the editor — the hierarchy,
   each item's content, and its state — that reads and does not write. Approval is not on it: it
   stays a sentence the operator says, which is where it already works.
