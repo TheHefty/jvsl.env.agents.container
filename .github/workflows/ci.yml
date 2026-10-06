@@ -101,6 +101,8 @@ jobs:
         run: bash scripts/manifest-name-is-defined-once.test.sh
       - name: every job respects the change's scope
         run: bash scripts/every-job-respects-the-scope.test.sh
+      - name: the migration refuses to delete what did not arrive whole
+        run: bash scripts/migrate-planning.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
