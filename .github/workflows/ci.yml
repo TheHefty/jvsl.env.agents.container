@@ -105,6 +105,8 @@ jobs:
         run: bash scripts/migrate-planning.test.sh
       - name: nothing optional runs before the commands are registered
         run: bash scripts/commands-register-first.test.sh
+      - name: no call to docker runs without a time limit
+        run: bash scripts/no-unbounded-docker-call.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
