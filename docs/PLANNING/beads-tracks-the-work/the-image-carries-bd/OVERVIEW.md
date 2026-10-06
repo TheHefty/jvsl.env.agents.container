@@ -25,9 +25,9 @@ than a decision.
 
 ## Summary
 
-A project that opts in gets `bd`, with what the tracker holds versioned alongside the project and
-the agent's sandbox able to reach it. A project that does not opt in is untouched. FR-100, FR-101
-and FR-116.
+A project that opts in gets `bd`, with what the tracker holds travelling with the project through
+its own git remote and the agent's sandbox able to reach it. Initialising it leaves the repository as
+the person left it. A project that does not opt in is untouched. FR-100, FR-101, FR-116 and FR-121.
 
 ## Why it is first
 
@@ -59,6 +59,31 @@ An earlier draft argued for rendered Markdown because it survives the tool disap
 nobody had asked for, and which is the second time in one day a design question was answered
 before the purpose was.
 
+## Amended on 2026-10-06, after measuring the tool rather than its documentation
+
+**Two of this story's scenarios were false about the tool, and one thing was missing.** All three
+were found by running bd v1.3.1 in throwaway repositories, which nobody had done for these claims:
+
+- **Nothing is exported by default**, and a fresh clone does not read an export without an explicit
+  `bd import` — which bd's own instructions warn against in normal operation. The scenario that said
+  the work "is exported to a file the project tracks in git" described a step that does not happen.
+- **The tool's own sync is its Dolt remote.** `bd dolt push` writes `refs/dolt/data` to the project's
+  git remote, and a clone's `bd init` found the pushed work with no further step. FR-116 is amended
+  to that, and the push runs alongside every `git push` the operator approves — not by a git hook,
+  because bd's own hooks were measured not to send it.
+- **`bd init` commits on its own** on the first initialisation, sweeping in whatever was staged, and
+  installs a `SessionStart` hook, agent instructions in `CLAUDE.md` and `AGENTS.md`, editor hooks for
+  Codex and Cursor, and a `core.hooksPath` that disables the project's own hooks. The boot hook this
+  story shipped does all of that to the first project that opts in. FR-121 forbids it, and a new
+  scenario holds it.
+
+**The scenarios were rewritten at the gate, not patched to match code**: the operator approved the
+new text before anything was built against it. **What this gives up is named in FR-116:** the work
+items no longer appear in a pull request's diff, and the remote gains a `__dolt_remote_info__` branch.
+
+The paragraphs below that argue for an exported JSONL at a path of ours are kept as the reasoning of
+2026-10-05. The requirement they served is unchanged; the mechanism is not theirs any more.
+
 ## The one thing this story can get silently wrong
 
 **A walk that lands somewhere else succeeds about the wrong database.** FR-103 used to require a
@@ -80,7 +105,7 @@ agent reaches inside a sandbox is not a story to hand entirely to CI.
 
 ## Acceptance criteria
 
-Eight scenarios in [`the-image-carries-bd.feature`](the-image-carries-bd.feature). **One is
+Ten scenarios in [`the-image-carries-bd.feature`](the-image-carries-bd.feature). **One is
 `@manual`**, for the reason above.
 
 **The scenarios name no mechanism.** Whether opting in is a marker file or a field in the manifest the
@@ -114,16 +139,20 @@ a future bump is read against a number rather than a feeling.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-tracker-exists-when-asked-for.md`](tasks/the-tracker-exists-when-asked-for.md) | Designed, at its gate |
+| 1 | [`tasks/the-tracker-exists-when-asked-for.md`](tasks/the-tracker-exists-when-asked-for.md) | Shipped. Its export by hand is superseded by FR-116's amendment |
+| 2 | initialising the tracker leaves the repository as the person left it | Not yet designed. FR-121, and the push alongside the operator's |
 
 **What the design settled, and the operator decided on 2026-10-05:** opting in is a field in the
 manifest the extension already writes, not a second marker file; the boot hook runs `bd init` as
-`abc` rather than as root; and the export is a command somebody runs rather than a git hook.
+`abc` rather than as root; and the export is a command somebody runs rather than a git hook. The
+third was superseded on 2026-10-06: what travels is the Dolt remote, pushed alongside every `git push`
+the operator approves.
 
-**The third carries a risk the design names rather than solves.** The requirement is to carry on from
+**The third carried a risk the design named rather than solved, and the amendment narrows it.** The requirement is to carry on from
 where you left off on another machine, and a manual export satisfies it only when somebody
 remembered — the moment that is discovered being the new machine. A hook, and a CI job that made
-forgetting loud, were both offered and declined. The risk is carried knowingly.
+forgetting loud, were both offered and declined. Pushing the tracker in the same step as the code
+ties it to an approval that already happens, so forgetting means forgetting to push the code too.
 
 ## Outcome
 
