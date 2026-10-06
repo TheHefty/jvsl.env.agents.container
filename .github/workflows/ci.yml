@@ -389,7 +389,7 @@ jobs:
           core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
           docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
       - name: the user survives the boot, and ownership is repaired once
-        run: bash core/booted.test.sh core-ci
+        run: REQUIRE_JAIL=1 bash core/booted.test.sh core-ci
 
   discover-stacks:
     needs: changes
