@@ -40,14 +40,20 @@ Feature: The agent works from the tracker
     When the agent closes its item
     Then the item carries why it was closed
 
-  Scenario: Nothing is created without a gate
-    # The chain is charter, SRS, epic, story with its scenarios, task, code —
-    # each agreed before the next is written. An item that appeared because the
-    # agent decided it should exist is content that never passed a gate.
-    # The one exception, a debt recorded after a yes, is the next scenario.
-    Given the agent working from the tracker
-    When no new link has been agreed
-    Then it creates no epic, story or task
+  Scenario: A link is proposed, and becomes work only when agreed
+    # FR-106, amended on 2026-10-06. Replaces "Nothing is created without a
+    # gate": a draft now lives in the tracker, so the operator can read it on
+    # the board, but as a proposal that nothing treats as work.
+    Given a draft epic, story or task
+    When the agent records it
+    Then it is in the tracker labelled proposed, and bd ready does not list it
+    And only after the operator agrees is it open work
+
+  Scenario: Nothing starts from a proposal
+    Given an item that is still a proposal
+    When the agent is asked what to do next
+    Then it does not report the proposal as work
+    And it begins nothing under it
 
   Scenario: A problem found along the way is recorded only with a yes
     # FR-106 and FR-117, amended on 2026-10-06. A defect found mid-task used
