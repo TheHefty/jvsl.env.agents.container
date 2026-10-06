@@ -77,24 +77,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     for (const line of lines) channel.appendLine(line)
   }
 
-  // **Fired, never awaited.** FR-115: the older copy costs a person time and a
-  // wrong belief, which a sentence fixes — and a sentence explicitly not worth
-  // blocking for must not hold activation, least of all in the one population
-  // already having a bad time. The lookup is synchronous over a list the editor
-  // already has.
-  const older = olderCopyNotice(vscode.extensions.all.map((e) => e.id))
-  if (older !== undefined) {
-    write([`older copy: ${older}`])
-    void vscode.window.showWarningMessage(older)
-  }
-
   // Declared before the commands that close over it: the closure would resolve
   // either way, but a reader should not have to know that to be sure.
   const view = new SelectionView(context.extensionPath)
 
   context.subscriptions.push(
     vscode.commands.registerCommand(SHOW_DETECTED, async () => {
-      write(await describe(context))
+      // **After every command is registered, and inside a guard.** This is a
+  // sentence; the commands are the product. Anything that runs before
+  // `registerCommand` and throws leaves an extension whose palette entries all
+  // exist and none of which work — which is what "command
+  // 'jvsl.agentContainer.build' not found" looks like to a person, with nothing
+  // saying why.
+  //
+  // FR-115 says this notice blocks nothing. Being unable to break anything is
+  // the stronger form of the same requirement.
+  try {
+    const older = olderCopyNotice(vscode.extensions.all.map((e) => e.id))
+    if (older !== undefined) {
+      write([`older copy: ${older}`])
+      void vscode.window.showWarningMessage(older)
+    }
+  } catch (error) {
+    write([`older copy: could not be checked: ${String(error)}`])
+  }
+
+  write(await describe(context))
       channel.show(true)
     }),
     // For whoever dismissed the tooling's notification, or wants it again
