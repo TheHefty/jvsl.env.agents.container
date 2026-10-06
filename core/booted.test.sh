@@ -78,10 +78,19 @@ wait_for_boot() {
 # may not have is a different test. PASSWORD is empty for the same reason the
 # launcher leaves it empty — and that is what makes code-server unauthenticated,
 # which is why its port is not published by default.
+# `apparmor=unconfined` is the harness's, not the product's — and that gap is a
+# finding rather than a convenience. On a host enforcing AppArmor, docker applies
+# its default profile, which denies `mount`, and bwrap then fails with "Failed to
+# make / slave: Permission denied" before ai-jail reaches anything it would mount.
+# GitHub's runners enforce it; the operator's host does not. The generated dev
+# container configuration does not pass this option, so on such a host the
+# agent's sandbox may not open at all — recorded in
+# docs/DEBTS/the-sandbox-under-apparmor/ rather than decided here.
 docker run -d --name "$NAME" \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \
     --security-opt systempaths=unconfined \
+    --security-opt apparmor=unconfined \
     -e PUID=1000 -e PGID=1000 -e PASSWORD= \
     "$IMAGE" >/dev/null \
     || fail "the container would not start at all from $IMAGE. If devcontainer.metadata has grown \
@@ -263,6 +272,42 @@ docker exec "$NAME" test -d /config/workspace/.beads \
     || fail "the tracker is gone after a second boot, which means the hook ran and failed rather \
 than skipping. core/cont-init/45-beads.sh must pass --init-if-missing: a plain \`bd init\` exits 1 \
 against a workspace that already has one"
+
+# --- the agent's sandbox actually opens -------------------------------------
+#
+# **The image can build, boot and pass every check above while `claude` cannot
+# start.** On 2026-10-06 the ai-jail pin moved from v1.20.1 to v2.6.4 with every
+# flag the wrappers pass verified to still exist — and the jail died before the
+# CLI opened. v2.5.0 had turned on dev-toolchain cache persistence by default; it
+# reads CARGO_HOME (/usr/local/cargo) and binds $CARGO_HOME/registry and /git
+# read-write, neither of which existed, and /usr is read-only inside the jail,
+# so bwrap could not create the mount point. Found by the operator, reproduced
+# outside the editor.
+#
+# Checking that flags exist is not checking that the thing runs. This runs it:
+# the real wrapper, as the user the editor connects as, through the real jail.
+#
+# The stand-in has neither ai-jail nor claude, so the check is skipped there —
+# and REQUIRE_JAIL makes that skip a failure for the real image, so the one
+# place this matters can never pass by not trying.
+#
+# **SKIP_JAIL carries a reason, and the reason is printed.** On GitHub's runners
+# the jail opens and then `claude` itself aborts. Bun panics with `abort()
+# called` under Landlock. The same image starts it on the operator's host, so
+# the runner's red said nothing about the product. A skip that only says
+# "skipped" would read as a pass in the log, so the variable is the sentence.
+if [ -n "${SKIP_JAIL:-}" ]; then
+    echo "booted.test: SKIPPED the jail check, not passed: $SKIP_JAIL"
+elif docker exec "$NAME" sh -c 'command -v ai-jail >/dev/null && command -v claude >/dev/null'; then
+    jail_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" claude --version 2>&1)" \
+        || { echo "--- what the jail said ---" >&2; printf '%s\n' "$jail_out" | tail -20 >&2
+             fail "claude does not start through its sandbox. The output above is ai-jail's or \
+bwrap's own; a mount-point error under /usr means a toolchain path the image never created"; }
+    echo "booted.test: claude starts through the jail: $(printf '%s' "$jail_out" | tail -1)"
+elif [ -n "${REQUIRE_JAIL:-}" ]; then
+    fail "REQUIRE_JAIL is set but $IMAGE has no ai-jail or no claude, so the sandbox was not \
+exercised at all"
+fi
 
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \

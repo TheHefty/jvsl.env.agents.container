@@ -139,6 +139,27 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --profile minimal --default-toolchain stable \
     && chmod -R a+w $RUSTUP_HOME $CARGO_HOME
 
+# 1.1.1 The mount points ai-jail's toolchain caches bind onto, which cargo only
+# creates on its first download.
+#
+# **Without them the agent's sandbox does not open at all.** ai-jail v2.5.0
+# turned on dev-toolchain cache persistence by default: it reads CARGO_HOME and
+# binds $CARGO_HOME/registry and $CARGO_HOME/git read-write to a jail-owned store
+# under ~/.local/share/ai-jail/cache/ — on the /config volume, so the cache
+# survives rebuilds. /usr is read-only inside the jail, so bwrap cannot create
+# a missing mount point there, and the jail died before `claude` opened. Found
+# by the operator on 2026-10-06, the day the pin moved to v2.6.4, after every
+# flag the wrappers pass had been checked and nothing had been run.
+#
+# **A widening, decided rather than inherited.** The operator chose to use the
+# feature rather than pass --no-toolchains: the agent gets a writable cache store
+# of its own, never the host's real caches, which ai-jail does not bind. Only
+# cargo needs this — it is the one toolchain home this image sets outside $HOME;
+# go, npm, gradle and the rest default under $HOME, where bwrap can create the
+# mount point itself.
+RUN mkdir -p $CARGO_HOME/registry $CARGO_HOME/git \
+    && chmod a+w $CARGO_HOME/registry $CARGO_HOME/git
+
 # 1.2 Registers Git LFS's filters system-wide rather than per-repo. The
 # `git-lfs` package above only provides the binary; without this the filters
 # live in a repo's own .git/config, which for a bind-mounted workspace was
