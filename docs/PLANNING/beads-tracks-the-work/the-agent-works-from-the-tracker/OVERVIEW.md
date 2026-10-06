@@ -67,7 +67,9 @@ as an account of what happened.
 
 ## Tasks
 
-Written after this gate, not before.
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/the-rules-say-how-to-work-from-the-tracker.md`](tasks/the-rules-say-how-to-work-from-the-tracker.md) | Designed, at its gate |
 
 ## Outcome
 

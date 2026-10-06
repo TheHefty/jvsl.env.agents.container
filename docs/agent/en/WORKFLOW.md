@@ -124,3 +124,18 @@ see [the debt template](DEBT-TEMPLATE.md). A debt is a fix made *outside* the ch
 hotfix that could not wait for a story, or a shortcut taken knowingly with the intent of paying it
 back. A trivial `fix` inside a task is just a commit; a debt is the record of a decision to go
 around the process, kept so the decision stays visible and the payback stays findable.
+
+### Debts in a project that has a tracker
+
+This applies only to a project that has a tracker. In one, a debt is not a file: it is an item of
+type `bug` in the tracker, carrying the template's sections — problem, root cause, fix, regression
+scenario, payback — and exactly one label for its kind, and `docs/DEBTS/` is not used.
+
+| label | what it records |
+|---|---|
+| `hotfix` | a production fix that could not wait for a story |
+| `shortcut` | a corner cut knowingly, with the intent of paying it back |
+| `defect` | a problem found during other work and not yet fixed |
+
+**A `defect` is recorded only after the user says yes**, and recording it does not start the fix.
+How the agent asks is in "The work tracker" in [Rules](RULES.md).

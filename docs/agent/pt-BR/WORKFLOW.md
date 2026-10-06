@@ -128,3 +128,18 @@ hotfix de produção que não podia esperar uma estória, ou um atalho tomado co
 intenção de pagar depois. Um `fix` trivial dentro de uma task é só um commit; uma dívida é o
 registro de uma decisão de contornar o processo, guardado para que a decisão fique visível e o
 pagamento fique achável.
+
+### Dívidas num projeto que tem rastreador
+
+Isto vale só para um projeto que tem rastreador. Nele, uma dívida não é um arquivo: é um item do tipo
+`bug` no rastreador, com as seções do modelo — problema, causa raiz, correção, cenário de regressão,
+pagamento — e exatamente um rótulo para a sua espécie, e `docs/DEBTS/` não é usado.
+
+| rótulo | o que registra |
+|---|---|
+| `hotfix` | uma correção de produção que não podia esperar uma estória |
+| `shortcut` | um atalho tomado conscientemente, com a intenção de pagar depois |
+| `defect` | um problema encontrado durante outro trabalho e ainda não corrigido |
+
+**Um `defect` só é registrado depois que o usuário diz sim**, e registrá-lo não começa a correção.
+Como o agente pergunta está em "O rastreador de trabalho", em [Regras](RULES.md).
