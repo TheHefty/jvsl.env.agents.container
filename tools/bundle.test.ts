@@ -52,3 +52,61 @@ test('the bundle does not carry the editor API inside it', () => {
   const source = readFileSync(BUNDLE, 'utf8')
   assert.ok(source.includes('require("vscode")'), 'vscode should be required, not inlined')
 })
+
+test('activation registers every contributed command, each under its own id', async () => {
+  // **The editor refuses a second registration of one id, and so does this
+  // stub.** From 8ce33ad (2026-10-04) until this test, PICK and OPEN were both
+  // 'jvsl.agentContainer.open'. The second registerCommand threw inside
+  // activate(), so build and configure were never registered. The editor
+  // logged "command 'jvsl.agentContainer.open' already exists", and every
+  // palette entry answered "not found". #110, #111 and #114 each fixed
+  // something real near that symptom. None of them was the cause, because
+  // no test called activate().
+  const registered = new Set<string>()
+  const noop = { dispose() {} }
+  internals._load = function (this: unknown, request, parent, isMain) {
+    if (request === 'vscode') {
+      return {
+        window: {
+          createOutputChannel: () => ({ appendLine() {}, show() {}, dispose() {} }),
+          registerTreeDataProvider: () => noop,
+          showWarningMessage: async () => undefined,
+          showInformationMessage: async () => undefined,
+        },
+        workspace: {
+          workspaceFolders: undefined,
+          createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
+          getConfiguration: () => ({ get: () => undefined }),
+        },
+        commands: {
+          registerCommand: (id: string) => {
+            if (registered.has(id)) throw new Error(`command '${id}' already exists`)
+            registered.add(id)
+            return noop
+          },
+          executeCommand: async () => undefined,
+        },
+        extensions: { all: [] },
+        env: { remoteName: undefined },
+        EventEmitter: class { event = () => noop; fire() {} dispose() {} },
+        TreeItem: class {},
+        ThemeIcon: class {},
+        TreeItemCollapsibleState: { None: 0 },
+        Uri: { file: (p: string) => ({ fsPath: p }) },
+      }
+    }
+    return original.call(this, request, parent, isMain)
+  } as Loader
+
+  const require = createRequire(import.meta.url)
+  delete require.cache[BUNDLE]
+  const loaded = require(BUNDLE) as { activate: (context: unknown) => Promise<void> }
+  const context = { subscriptions: [], extensionPath: join(import.meta.dirname, '..'), globalState: { get: () => undefined, update: async () => undefined } }
+  await loaded.activate(context)
+
+  const manifest = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')) as {
+    contributes: { commands: { command: string }[] }
+  }
+  const missing = manifest.contributes.commands.map((c) => c.command).filter((id) => !registered.has(id))
+  assert.deepEqual(missing, [], 'contributed in package.json but never registered by activate()')
+})
