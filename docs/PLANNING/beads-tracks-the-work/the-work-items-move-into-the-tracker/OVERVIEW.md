@@ -76,7 +76,15 @@ gap.
 
 ## Tasks
 
-Written after this gate, not before.
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/the-migration-carries-the-prose.md`](tasks/the-migration-carries-the-prose.md) | Designed, at its gate |
+
+**What the design settled, with a measurement behind it.** The whole document body goes into one
+field as Markdown, because across the fourteen stories there are 43 distinct section headings and
+**34 appear exactly once** — the skeleton is the form and the tail is the argument, and a
+field-by-field mapping would carry the first perfectly and the second badly while reporting success
+for both.
 
 ## Outcome
 
