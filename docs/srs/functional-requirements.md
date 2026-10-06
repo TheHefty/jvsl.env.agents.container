@@ -301,9 +301,16 @@ manual hand-off is accepted rather than designed around.
   thereby a tracker that decides what happens, and the gates are where this project has found most of
   its design errors.
 
-  **The one item the agent may create is a debt, and only after the operator says yes to recording
-  it.** Added on 2026-10-06 with FR-117's amendment. Every epic, story and task still passes its gate
-  before it exists.
+  **A link is proposed in the tracker and agreed there.** The agent drafts an epic, story or task as
+  an item labelled `proposed`, created deferred (`bd create --labels proposed --status deferred`), so
+  `bd ready` never lists it and nothing starts from it. The operator reads it on the board and says
+  it is agreed; only then does the agent make it work (`bd undefer`, `bd label remove … proposed`). A
+  rejected proposal is closed with its reason. Besides proposals, the one item the agent may create is
+  a debt, after the operator says yes to recording it.
+
+  **Amended on 2026-10-06, reversing the same day's choice to keep drafts in the conversation**: the
+  board is the reading surface this epic exists for, and a draft that never reaches it leaves the
+  purpose half-served.
 - **FR-107** — `bd remember` is not used. `ai-memory` keeps knowledge and context; Beads keeps the
   state of work. Both tools ship a memory, so the boundary is written down rather than left to
   whichever one the agent reaches for first — two stores of the same kind of thing is how both become
@@ -376,6 +383,11 @@ these into a third decade would hide that they belong here.
 - **FR-119** — The page is part of this extension rather than a service. It already runs on the host,
   already has a panel, and can read a database and a repository without anything being started,
   served or logged into.
+
+  **"Nothing started" does not include the project's own container.** Measured on 2026-10-06: the
+  extension runs on the host, and the tracker is read from inside the container, by the bd the image
+  pins. A stopped container is said on the page rather than worked around: no snapshot is kept on the
+  host, because a stale board that looks current is the worse failure. Decided by the operator.
 - **FR-120** — **What moves, moves once and whole.** The migration carries every existing epic, story
   and task — closed ones included — so the board shows the project's actual shape rather than its
   recent half.

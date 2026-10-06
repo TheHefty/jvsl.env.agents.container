@@ -21,7 +21,7 @@ story, and it was settled by the operator on 2026-10-06:
 | **reading** | `bd ready` says what has no open blocker. The agent may report it |
 | **starting** | is a gate. The tracker knowing something is *possible* does not make it *next* |
 | **recording** | work already agreed moves to in-progress and closes with a reason, without anybody typing it |
-| **creating** | never an epic, story or task. An item that exists because the agent decided it should is content that passed no gate. The one exception, since 2026-10-06, is a debt the operator said yes to recording |
+| **creating** | an epic, story or task only as a **proposal**: labelled `proposed`, deferred, invisible to `bd ready`, and work only after the operator agrees it (amended on 2026-10-06, so drafts reach the board). Besides proposals, only a debt the operator said yes to recording |
 
 **The third of those is what makes a tracker worth having** rather than a second place to keep in
 step by hand — which is what the markdown status tables already were, and why they are being removed.
@@ -47,9 +47,10 @@ worse than a missing one: it is followed by nobody and trusted by everybody.
 
 ## Acceptance criteria
 
-Nine scenarios in
-[`the-agent-works-from-the-tracker.feature`](the-agent-works-from-the-tracker.feature). The ninth
-was added on 2026-10-06: a problem found along the way is recorded only after the operator's yes. **Two are
+Ten scenarios in
+[`the-agent-works-from-the-tracker.feature`](the-agent-works-from-the-tracker.feature). Added on
+2026-10-06: a problem found along the way is recorded only after the operator's yes; and "Nothing is
+created without a gate" became two scenarios about proposals, when drafts moved onto the board. **Two are
 `@manual`**, and both are about behaviour over a session rather than about a document.
 
 **A rule can be written correctly and followed badly, and nothing here can see the difference.** The
@@ -69,7 +70,8 @@ as an account of what happened.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-rules-say-how-to-work-from-the-tracker.md`](tasks/the-rules-say-how-to-work-from-the-tracker.md) | Designed, at its gate |
+| 1 | [`tasks/the-rules-say-how-to-work-from-the-tracker.md`](tasks/the-rules-say-how-to-work-from-the-tracker.md) | Shipped in #120. Its "drafts live in the conversation" is superseded |
+| 2 | the rules say how a proposal is made and agreed | Not yet designed |
 
 ## Outcome
 

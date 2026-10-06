@@ -68,8 +68,8 @@ a decision; every surviving one was something that was looked at.
 |---|---|---|
 | 1 | [the image carries `bd`](the-image-carries-bd/) | **Shipped** — both tasks (#117 for FR-121). Owed by hand: the `@manual` pass, and `bd dolt push` against GitHub on the first real push |
 | 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | **Script shipped, not run** — running it is the operator's, after this repository opts in and its container is rebuilt |
-| 3 | the board shows them | **Blocked** — needs a measurement: whether a local `.vsix` installs into the remote editor |
-| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | Scenarios agreed on 2026-10-06 |
+| 3 | [the board shows them](the-board-shows-them/) | Scenarios agreed on 2026-10-06 |
+| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | **Reopened on 2026-10-06** — drafts move onto the board as proposals; a second task owed |
 | 5 | the guard holds the split | Not started |
 
 **Story 1's scenarios are false now, in two places.** They were written under `--stealth` and assert
@@ -78,6 +78,12 @@ patched: a scenario edited to agree with a new decision is a scenario that descr
 
 **Story 3 is what the operator asked for, and it is third on purpose.** A board over an empty tracker
 shows nothing, and a board over a half-migrated one shows a project that does not exist.
+
+**What unblocked it, measured on the operator's machine on 2026-10-06:** with a window connected to a
+project's container, the Extensions view lists Agent Containers under **"Local - Installed" only**,
+and active. It runs on the host, as `extensionKind: ["ui"]` declares, and works in the remote window.
+So the board runs on the host while the tracker lives in the container, and how it reads across that
+boundary is the story's first design question.
 
 ## What this epic must not do
 
