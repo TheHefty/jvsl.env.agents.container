@@ -34,7 +34,11 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # stack that declares no extensions — which used to be asserted against
 # whichever stack happened not to have a file yet.
 STACKS_DIR="${STACKS_DIR:-$ROOT_DIR/stacks}"
-CORE_FRAG="$SCRIPT_DIR/Dockerfile.frag"
+# Overridable for the same reason CORE_VERSIONS is: the test beside this file
+# drives the real script, and the substitution it checks has to be exercisable
+# without core happening to contain a placeholder. It stopped containing one on
+# 2026-10-06, when the agent CLIs were unpinned.
+CORE_FRAG="${CORE_FRAG:-$SCRIPT_DIR/Dockerfile.frag}"
 CORE_VERSIONS="${CORE_VERSIONS:-$SCRIPT_DIR/versions.json}"
 CORE_DEVCONTAINER="${CORE_DEVCONTAINER:-$SCRIPT_DIR/devcontainer.json}"
 

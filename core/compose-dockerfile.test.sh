@@ -39,24 +39,31 @@ bash "$COMPOSE" > "$composed"
 check "nothing is left unsubstituted in the composed core" \
     "$({ grep -c '{{' "$composed" || true; })" "0"
 
-# Failure 2 — the file exists and nothing reads it. The pin has to be the one
-# that reaches the image, or the file is decoration and the literal in the
-# fragment is still the truth.
-for key in claude-code codex; do
-    version="$(jq -r --arg k "$key" '.[$k]' "$VERSIONS")"
-    check "the pinned $key version reaches the Dockerfile" \
-        "$({ grep -c -F "@$version" "$composed" || true; })" "1"
-done
+# Failure 2 — a pin in the file reaches the image. Core pins nothing today: the
+# agent CLIs were unpinned on 2026-10-06 and ai-jail and ai-memory carry their
+# versions as literals beside a digest. So this drives the substitution through
+# a fragment of its own rather than through whatever core happens to contain.
+#
+# **That is the point rather than a workaround.** The previous version of this
+# assertion read core's real versions.json, so it tested the mechanism only for
+# as long as core used it — and it broke the day core stopped, reporting a
+# missing pin as a broken composer.
+fixture_frag="$work/pinned.frag"
+printf 'FROM scratch\nRUN install thing@{{THING_VERSION}}\n' > "$fixture_frag"
+printf '{"thing":"9.9.9"}\n' > "$work/pinned.json"
+pinned="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/pinned.json" bash "$COMPOSE")"
+check "a pinned version reaches the composed Dockerfile" \
+    "$({ printf '%s' "$pinned" | grep -c -F 'thing@9.9.9' || true; })" "1"
 
-# Failure 3 — a placeholder with no key behind it. Adding a pin to the fragment
+# Failure 3 — a placeholder with no key behind it. Adding a pin to a fragment
 # and forgetting the JSON has to stop here, naming what is missing, rather than
 # compose something that cannot build.
 printf '%s' '{}' > "$work/empty.json"
-out="$(CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" 2>&1 >/dev/null || true)"
+out="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" 2>&1 >/dev/null || true)"
 check "an unfilled placeholder stops the compose" \
-    "$({ printf '%s' "$out" | grep -c 'CODEX_VERSION' || true; })" "1"
+    "$({ printf '%s' "$out" | grep -c 'THING_VERSION' || true; })" "1"
 check "and it exits non-zero rather than composing something unbuildable" \
-    "$(CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
+    "$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
 
 # Failure 4 — a metadata file that is not an array of entries. `jq -s add` over
 # an object produces something that is not a metadata array, the LABEL is
