@@ -231,8 +231,14 @@ wait_for_boot 4
 # that does not name its own cause sends the next person to guess at the same
 # three things.
 if ! docker exec "$NAME" test -d /config/workspace/.beads; then
-    echo "--- what the boot said about the hooks ---" >&2
-    logs | grep -E '\[custom-init\]' | tail -20 >&2
+    # **The whole tail, not just the hook announcements.** The first version of
+    # this grepped for `[custom-init]` and threw away everything else — which is
+    # exactly where the hook's own stderr goes, and therefore the only line that
+    # says *why* it exited non-zero. A dump that discards the error message is
+    # the same defect as no dump at all, arriving in the code written to prevent
+    # it.
+    echo "--- the tail of the boot log ---" >&2
+    logs | tail -40 >&2
     fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
 core/cont-init/45-beads.sh. Its exit code is in the lines above: 127 means the image lacks something \
 it calls — \`jq\`, \`bd\` or \`s6-setuidgid\` — and a non-zero from the script itself means it read \
