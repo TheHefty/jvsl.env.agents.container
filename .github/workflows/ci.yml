@@ -107,6 +107,8 @@ jobs:
         run: bash scripts/commands-register-first.test.sh
       - name: no call to docker runs without a time limit
         run: bash scripts/no-unbounded-docker-call.test.sh
+      - name: activation does not wait for the open flow
+        run: bash scripts/activate-returns-promptly.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule

@@ -45,13 +45,27 @@ scripts/**
 .agents/**
 
 .github/**
-docs/**
+# docs/agent/ ships: core/Dockerfile.frag copies it into the image, and the
+# build context of a real build is this package. Excluding docs/** whole kept
+# it out from 0d3dd5f on, and every CI job stayed green, because CI builds
+# from a checkout. The rest of docs/ is this repository's own planning. A new
+# directory under docs/ will ship until it is named here, and the allowlist
+# in tools/vsix.test.ts will refuse it.
+docs/*.md
+docs/DEBTS/**
+docs/PLANNING/**
+docs/srs/**
+docs/**/*.test.sh
 src/**
 tools/**
 node_modules/**
 dist/**/*.map
 
 .ai-memory.toml
+# This machine's answers, under both names: the current one and the one a
+# project may still carry until it is adopted. Only the old name was listed
+# here after the rename, so a local package shipped the current manifest.
+.agent-container.stack.json
 .code-server.stack.json
 
 # The generated dev container configuration, which is this machine's answers:
