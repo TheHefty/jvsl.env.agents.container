@@ -9,11 +9,15 @@
 #
 # Without this, the stand-in would create the directory every time and the
 # assertion about a second boot would pass against a hook that had the defect.
+# **`-C` refuses a directory that is not already a project**, which is why the
+# hook uses `cd` and why this reproduces that too: a stand-in that accepted `-C`
+# for creation would have passed a hook that could not create anything.
 set -u
 
 if [ "${1:-}" = "-C" ]; then
     cd "$2" || exit 1
     shift 2
+    [ -d .beads ] || { echo "bd: cannot use -C directory: no beads project found" >&2; exit 1; }
 fi
 
 if [ -d .beads ]; then

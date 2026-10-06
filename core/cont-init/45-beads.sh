@@ -55,11 +55,20 @@ jq -e '.beads == true' "$MANIFEST" >/dev/null 2>&1 || exit 0
 # own .gitignore is narrow — it ignores Dolt's data and stages .beads/config.yaml
 # and the hooks, which are meant to be committed.
 #
-# `-C` rather than `cd`, for the reason git has it: the directory a command acts
-# on is an argument, not a state the shell was left in.
+# **`cd` rather than `-C`, and `bd`'s `-C` is not git's.** Git changes directory
+# and operates there, so it can create a repository. `bd -C <dir>` refuses a
+# directory that is not already a beads project:
+#
+#     Error: cannot use -C directory "/config/workspace": no beads project found
+#
+# which makes it useless for the one thing this hook does. An earlier version of
+# this line used it, with a comment arguing that the directory a command acts on
+# is an argument rather than a state — a tidy principle applied to a flag nobody
+# had run. Measured both ways in a scratch directory: `-C` exits 1, `cd` exits
+# 0.
 # **No flags, and that is deliberate.** `bd init`'s options are not listed in
 # the project's CLI reference, and a flag this repository guessed at would fail
 # the boot of every project that opted in — with the failure appearing as a
 # container that starts badly rather than as a wrong tracker. Anything beyond
 # the bare command is added after somebody has run it.
-s6-setuidgid abc env HOME=/config bd -C "$WORKSPACE" init --init-if-missing --non-interactive
+cd "$WORKSPACE" && s6-setuidgid abc env HOME=/config bd init --init-if-missing --non-interactive
