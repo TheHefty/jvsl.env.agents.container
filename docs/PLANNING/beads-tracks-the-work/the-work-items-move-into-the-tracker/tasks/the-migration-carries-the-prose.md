@@ -45,9 +45,29 @@ of the three, because both halves report success: `bd create` exits 0 and `rm` e
 gone is the only copy anybody reads. A field limit, an encoding refusal, or a shell that ate a
 heredoc all land here.
 
-*Covered by:* reading every item back out of the tracker and comparing it **byte for byte** against
-the file, and deleting nothing until every comparison has passed. The same order the manifest rename
-used — write, read back, compare, and only then unlink — and the reason is identical.
+*Covered by:* reading every item back out of the tracker and comparing it against the file, and
+deleting nothing until every comparison has passed. The same order the manifest rename used — write,
+read back, compare, and only then unlink — and the reason is identical.
+
+**What "comparing" means is defined by measurement, not by the word.** An earlier version of this
+design said *byte for byte*, and that would have failed on all fifty-nine files. Round-tripping the
+largest document — 11,569 bytes — through the real binary returns 11,568: `bd` strips the trailing
+newline and changes nothing else. Measured, not assumed:
+
+```
+original termina com: 'hrown away.\n'
+de volta termina com: 'thrown away.'
+é só a newline final? True
+diferença em qualquer outro ponto? False
+```
+
+So the comparison is **exact after one named transformation**: the file's content with its trailing
+newlines removed must equal what the tracker returns. Any other difference is a failure.
+
+**The distinction matters because the obvious alternative is worse.** Somebody meeting fifty-nine red
+comparisons without knowing why would loosen the check until it passed — trimming whitespace, or
+comparing lengths, or comparing the first kilobyte. A transformation that is known, named and
+otherwise exact is not the same thing as a check that was relaxed to go green.
 
 **2. The deletion runs against a tree the creation did not see.** A file added between the two passes
 is deleted without ever being migrated; a file renamed is migrated twice.
