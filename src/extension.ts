@@ -41,7 +41,8 @@ import { carried } from './template.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
 const SHOW_DETECTED = 'jvsl.agentContainer.showDetected'
-const OPEN = 'jvsl.agentContainer.open'
+/** Never contributed, so never in the palette: registered so the open flow can be run again by id. */
+const OPEN = 'jvsl.agentContainer.prepare'
 const CONFIGURE = 'jvsl.agentContainer.configure'
 const BUILD = 'jvsl.agentContainer.build'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -93,6 +93,9 @@ test('nothing ships that this test was not told to expect', () => {
     // assertion below holds that true.
     /^core\//,
     /^stacks\//,
+    // The documents the image carries at /opt/jvsl/docs/agent. They are
+    // required, not just permitted, by the COPY-sources test at the end.
+    /^docs\/agent\//,
   ]
   const unexpected = packagedFiles().filter((f) => !allowed.some((p) => p.test(f)))
   assert.deepEqual(
@@ -242,4 +245,43 @@ test('the project assets ship, and this repository\'s own instructions do not', 
   // resolves to nothing says nothing.
   const mine = files.filter((f) => f === 'CLAUDE.md' || f === 'AGENTS.md')
   assert.deepEqual(mine, [], `this repository's own instructions must not ship:\n${mine.join('\n')}`)
+})
+
+/**
+ * Every path a Dockerfile fragment copies from the build context ships.
+ *
+ * **The context of a real build is the installed extension, not this
+ * checkout.** `core/Dockerfile.frag` has copied `docs/agent` since 0d3dd5f.
+ * `.vscodeignore` excludes `docs/**`, so that path was never in the package.
+ * CI builds the image from a checkout, where it exists, so every job was
+ * green. A person building from the installed extension got a failed
+ * `docker build`. The test above requires `core/` and `stacks/` by name, and
+ * a list written by hand cannot see a third directory. This test reads the
+ * list from the `COPY` lines themselves.
+ */
+test('every path a Dockerfile fragment copies from the context ships', () => {
+  const shipped = new Set(packagedFiles())
+  const fragments = trackedUnder('.').filter((f) => /(^|\/)Dockerfile\.frag$/.test(f))
+  assert.ok(fragments.length > 5, `only ${fragments.length} fragments found; this test would pass vacuously`)
+  const sources = new Set<string>()
+  for (const fragment of fragments) {
+    const text = readFileSync(new URL(`../${fragment}`, import.meta.url), 'utf8')
+    for (const line of text.split('\n')) {
+      const rest = /^\s*(?:COPY|ADD)\s+(.*)$/.exec(line)?.[1]
+      if (rest === undefined || /--from=/.test(rest)) continue
+      const args = rest.split(/\s+/).filter((a) => a !== '' && !a.startsWith('--'))
+      for (const src of args.slice(0, -1)) sources.add(src.replace(/\/$/, ''))
+    }
+  }
+  const missing: string[] = []
+  for (const src of sources) {
+    const tracked = trackedUnder(src).filter((f) => !isTest(f))
+    if (tracked.length === 0) missing.push(`${src} (not tracked in git at all)`)
+    for (const f of tracked) if (!shipped.has(f)) missing.push(`${f}  ← COPY ${src}`)
+  }
+  assert.deepEqual(
+    missing,
+    [],
+    `the image copies these from the build context, which is the installed extension, and they are not in the package:\n${missing.join('\n')}`,
+  )
 })
