@@ -24,11 +24,23 @@ which are what the generated dev container configuration passes, and not `apparm
 anything else in the image. The operator's host does not enforce AppArmor, which is why nobody has
 seen it.
 
+**A second AppArmor restriction sits on the host, not on the container.** With the harness
+unconfined, the next run failed earlier:
+
+```
+bwrap: setting up uid map: Permission denied
+```
+
+Ubuntu 24.04 sets `kernel.apparmor_restrict_unprivileged_userns=1`. That refuses an unprivileged
+process a user namespace, and bwrap needs one. CI turns it off on the runner with `sysctl`. A
+person's Ubuntu 24.04 host would have the same default, and nothing in the generated configuration
+can change a host's kernel setting.
+
 ## What is and is not known
 
 - **Known:** the harness fails this way on a GitHub runner, and passing `apparmor=unconfined` to the
   harness's container is what lets the test reach the defect it exists for.
-- **Not known:** that a real Ubuntu desktop with the generated configuration fails the same way. No
+- **Not known:** that a real Ubuntu desktop with the generated configuration fails either way. No
   such host has been tried. This is an inference from CI, written down as one.
 
 ## Fix, not done
