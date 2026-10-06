@@ -209,8 +209,16 @@ done
 # The manifest is written and the container restarted, rather than the image
 # being rebuilt: this asserts what a *boot* does, and the state it reacts to is
 # state a person's repository would already have.
+# **Owned by abc, because that is the shape production has.** The workspace is
+# bind-mounted from the person's own machine, where it belongs to them — uid
+# 1000, which is abc in here. Created as root instead, the hook drops privileges
+# correctly and then cannot write, which is a failure of the fixture rather than
+# of the thing being tested. The first version of this did exactly that, and the
+# hook exited 1.
 docker exec -u 0 "$NAME" sh -c \
-    'mkdir -p /config/workspace && printf "{\"beads\":true}" > /config/workspace/.agent-container.stack.json' \
+    'mkdir -p /config/workspace \
+     && printf "{\"beads\":true}" > /config/workspace/.agent-container.stack.json \
+     && chown -R abc:abc /config/workspace' \
     || fail "could not write the manifest the tracker hook reads"
 
 docker restart "$NAME" >/dev/null || fail "the container would not restart for the tracker check"
