@@ -28,7 +28,8 @@ ROOT="${TRACKER_RULES_ROOT:-$HERE/../docs/agent}"
 # The condition, as each language states it at the top of a tracker passage.
 declare -A CONDITION=([en]='has a tracker' [pt-BR]='tem rastreador')
 # What the story agreed the rules must say, as the commands that say it.
-REQUIRED=('bd ready' 'bd update --claim' 'bd close --reason' 'bd create --type bug --labels defect' 'bd dolt push')
+REQUIRED=('bd ready' 'bd update --claim' 'bd close --reason' 'bd create --type bug --labels defect' 'bd dolt push'
+    'bd create --labels proposed --status deferred --parent' 'bd undefer' 'bd label remove proposed')
 
 failures=0
 fail() { echo "FAIL $*" >&2; failures=$((failures + 1)); }
@@ -84,6 +85,34 @@ does not say '${CONDITION[$lang]}'. A project without a tracker would follow it.
             || fail "$lang: the rules never name \`$need\`, which the story's scenarios require"
     done
 done
+
+# **Agreement is one step, never half.** A proposal undeferred but still
+# labelled shows on the board as a draft; relabelled but still deferred, it
+# never reaches `bd ready`. So the rule that names one command names the other,
+# in the same bullet.
+bullet_with() {
+    awk -v needle="$2" '
+        /^- / { if (b ~ needle) { print b; exit } b = $0; next }
+        /^  / && b != "" { b = b " " $0; next }
+        { if (b ~ needle) { print b; exit } b = "" }
+        END { if (b ~ needle) print b }
+    ' "$1"
+}
+for lang in en pt-BR; do
+    [ -f "$ROOT/$lang/RULES.md" ] || continue
+    b="$(bullet_with "$ROOT/$lang/RULES.md" 'bd undefer')"
+    case "$b" in
+        *'bd label remove'*) ;;
+        *) fail "$lang: \`bd undefer\` and \`bd label remove … proposed\` are not in the same rule. \
+Agreeing a proposal by halves leaves it a draft on the board, or work that \`bd ready\` never lists." ;;
+    esac
+done
+
+# **A rejected proposal is closed, never deleted.** `bd delete` exists, and a
+# rule naming it would erase why something was not done.
+if grep -rnF '`bd delete' "$ROOT"/en "$ROOT"/pt-BR >/dev/null 2>&1; then
+    fail "the normative documents name \`bd delete\`: $(grep -rnF '`bd delete' "$ROOT"/en "$ROOT"/pt-BR | head -2 | tr '\n' ' ')"
+fi
 
 if [ "${SETS[en]:-}" != "${SETS[pt-BR]:-}" ]; then
     fail "English and Portuguese name different bd commands:"

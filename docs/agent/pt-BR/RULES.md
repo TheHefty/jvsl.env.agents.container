@@ -243,10 +243,17 @@ maioria não tem. Para esses, nada mais nestas regras muda.
   um commit próprio, pedido como qualquer outro.
 - **`bd ready` informa; não autoriza.** Quando perguntarem o que fazer, informe o que ele lista, que
   é o que não tem bloqueio aberto, e espere. Saber que algo é possível não o torna o próximo: cada elo
-  da cadeia continua sendo aprovado antes de ser escrito.
-- **Um elo é criado depois de aprovado, nunca antes.** Rascunhe o epic, a story ou a task na
-  conversa. Depois que o usuário aprovar, crie o item com o texto aprovado, sob o pai:
-  `bd create --parent <id>`. O rastreador guarda só o que passou por um gate.
+  da cadeia continua sendo aprovado antes de ser escrito. Uma proposta nunca é apresentada como
+  trabalho, e nada começa sob ela.
+- **Um elo é proposto no rastreador, onde o usuário o lê.** Registre o rascunho de um epic, story ou
+  task como proposta sob o pai, adiada para que o `bd ready` nunca a liste:
+  `bd create --labels proposed --status deferred --parent <id>`. Ela não é trabalho, e nada começa a
+  partir dela, até o usuário aprová-la.
+- **A aprovação a torna trabalho, num passo só.** Quando o usuário aprovar uma proposta, rode
+  `bd undefer <id>` e `bd label remove <id> proposed` juntos. Feito pela metade, o item continua
+  rascunho no quadro, ou vira trabalho que o `bd ready` nunca lista.
+- **Uma proposta recusada é fechada, nunca apagada.** `bd close <id> --reason "…"`, dizendo por quê.
+  O motivo é o que impede o mesmo rascunho de voltar.
 - **Marque o trabalho aprovado quando ele começa.** `bd update <id> --claim` o marca como em
   andamento, com você como dono, para que a próxima sessão o encontre em vez de começá-lo de novo.
 - **Feche com o motivo.** Quando a mudança que termina um item for mergeada,

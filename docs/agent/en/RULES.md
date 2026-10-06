@@ -241,10 +241,17 @@ Most do not. Everything else in these rules is unchanged for them.
   asked for like any other.
 - **`bd ready` informs; it does not authorise.** Asked what to do next, report what it lists, which
   is what has no open blocker, and wait. The tracker knowing that something is possible does not make
-  it next: every link of the chain is still agreed before it is written.
-- **A link is created after it is agreed, never before.** Draft an epic, story or task in the
-  conversation. Once the user agrees it, create its item with the agreed text, under its parent:
-  `bd create --parent <id>`. The tracker holds only what passed a gate.
+  it next: every link of the chain is still agreed before it is written. A proposal is never
+  reported as work, and nothing is started under it.
+- **A link is proposed in the tracker, where the user reads it.** Record a draft epic, story or task
+  as a proposal under its parent, deferred so that `bd ready` never lists it:
+  `bd create --labels proposed --status deferred --parent <id>`. It is not work, and nothing starts
+  from it, until the user agrees it.
+- **Agreement makes it work, in one step.** When the user agrees a proposal, run
+  `bd undefer <id>` and `bd label remove <id> proposed` together. Done by halves, it stays a draft on
+  the board, or becomes work that `bd ready` never lists.
+- **A rejected proposal is closed, never deleted.** `bd close <id> --reason "…"`, saying why. The
+  reason is what stops the same draft coming back.
 - **Mark agreed work as it starts.** `bd update <id> --claim` sets it in progress, with you as the
   owner, so the next session finds it rather than starting it again.
 - **Close with the reason.** When the change that finishes an item is merged,
