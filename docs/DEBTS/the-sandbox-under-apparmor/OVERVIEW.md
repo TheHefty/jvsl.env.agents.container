@@ -32,7 +32,9 @@ bwrap: setting up uid map: Permission denied
 ```
 
 Ubuntu 24.04 sets `kernel.apparmor_restrict_unprivileged_userns=1`. That refuses an unprivileged
-process a user namespace, and bwrap needs one. CI turns it off on the runner with `sysctl`. A
+process a user namespace, and bwrap needs one. Turning it off on the runner with `sysctl` got the
+jail open, and then `claude` itself aborted under Landlock. Bun panicked, where the same image
+starts it on the operator's host. CI therefore skips the jail check, with that reason printed. A
 person's Ubuntu 24.04 host would have the same default, and nothing in the generated configuration
 can change a host's kernel setting.
 

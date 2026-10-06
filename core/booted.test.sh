@@ -290,7 +290,15 @@ against a workspace that already has one"
 # The stand-in has neither ai-jail nor claude, so the check is skipped there —
 # and REQUIRE_JAIL makes that skip a failure for the real image, so the one
 # place this matters can never pass by not trying.
-if docker exec "$NAME" sh -c 'command -v ai-jail >/dev/null && command -v claude >/dev/null'; then
+#
+# **SKIP_JAIL carries a reason, and the reason is printed.** On GitHub's runners
+# the jail opens and then `claude` itself aborts. Bun panics with `abort()
+# called` under Landlock. The same image starts it on the operator's host, so
+# the runner's red said nothing about the product. A skip that only says
+# "skipped" would read as a pass in the log, so the variable is the sentence.
+if [ -n "${SKIP_JAIL:-}" ]; then
+    echo "booted.test: SKIPPED the jail check, not passed: $SKIP_JAIL"
+elif docker exec "$NAME" sh -c 'command -v ai-jail >/dev/null && command -v claude >/dev/null'; then
     jail_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" claude --version 2>&1)" \
         || { echo "--- what the jail said ---" >&2; printf '%s\n' "$jail_out" | tail -20 >&2
              fail "claude does not start through its sandbox. The output above is ai-jail's or \
