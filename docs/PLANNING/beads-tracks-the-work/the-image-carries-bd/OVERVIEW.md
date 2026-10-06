@@ -140,7 +140,7 @@ a future bump is read against a number rather than a feeling.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-tracker-exists-when-asked-for.md`](tasks/the-tracker-exists-when-asked-for.md) | Shipped. Its export by hand is superseded by FR-116's amendment |
-| 2 | initialising the tracker leaves the repository as the person left it | Not yet designed. FR-121, and the push alongside the operator's |
+| 2 | [`tasks/initialising-leaves-the-repository-alone.md`](tasks/initialising-leaves-the-repository-alone.md) | Designed, at its gate. FR-121, and the push alongside the operator's |
 
 **What the design settled, and the operator decided on 2026-10-05:** opting in is a field in the
 manifest the extension already writes, not a second marker file; the boot hook runs `bd init` as
