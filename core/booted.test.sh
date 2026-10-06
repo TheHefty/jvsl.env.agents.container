@@ -45,7 +45,8 @@ logs() { docker logs "${1:-$NAME}" 2>&1; }
 
 SHADOW="$NAME-shadow"
 
-cleanup() { docker rm -f "$NAME" "$SHADOW" >/dev/null 2>&1 || true; }
+WORK="$(mktemp -d)"
+cleanup() { docker rm -f "$NAME" "$SHADOW" >/dev/null 2>&1 || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 
 # Checked before `docker run`, because docker's own answer for an image that is
@@ -224,11 +225,23 @@ done
 # correctly and then cannot write, which is a failure of the fixture rather than
 # of the thing being tested. The first version of this did exactly that, and the
 # hook exited 1.
-docker exec -u 0 "$NAME" sh -c \
-    'mkdir -p /config/workspace \
-     && printf "{\"beads\":true}" > /config/workspace/.agent-container.stack.json \
-     && chown -R abc:abc /config/workspace' \
-    || fail "could not write the manifest the tracker hook reads"
+# **A git repository with work staged in it, because that is what a person's
+# workspace is**, and because what FR-121 forbids only happens in one: measured
+# on 2026-10-06, `bd init` commits on its own and the commit sweeps in whatever
+# was staged. A workspace that was a plain directory would pass a hook with
+# exactly that defect.
+as_user() { docker exec -u "$USER_NAME" -e HOME=/config -w /config/workspace "$NAME" "$@"; }
+docker exec -u 0 "$NAME" sh -c 'mkdir -p /config/workspace && chown -R abc:abc /config/workspace' \
+    || fail "could not create the workspace the tracker hook reads"
+as_user sh -c 'git init -q \
+    && git remote add origin https://example.invalid/acme/demo-project.git \
+    && echo a > tracked.txt && git add tracked.txt \
+    && git -c user.name=t -c user.email=t@t commit -q -m root \
+    && printf "{\"beads\":true}" > .agent-container.stack.json \
+    && echo "the person'"'"'s" > staged.txt && git add staged.txt' \
+    || fail "could not prepare the git workspace the tracker hook reads"
+snapshot() { as_user sh -c 'echo "$(git rev-parse HEAD) $(git ls-files --stage | sha256sum)"'; }
+before="$(snapshot)"
 
 docker restart "$NAME" >/dev/null || fail "the container would not restart for the tracker check"
 wait_for_boot 4
@@ -236,22 +249,17 @@ wait_for_boot 4
 # **The log, before the verdict.** The base image prints each hook's exit code,
 # and that is the difference between "the directory is missing" and "the hook
 # died on a command this image does not have" — which is what happened the first
-# time this assertion ran, against a stand-in with no `s6-setuidgid`. A failure
-# that does not name its own cause sends the next person to guess at the same
-# three things.
+# time this assertion ran, against a stand-in with no `s6-setuidgid`.
 if ! docker exec "$NAME" test -d /config/workspace/.beads; then
-    # **The whole tail, not just the hook announcements.** The first version of
-    # this grepped for `[custom-init]` and threw away everything else — which is
-    # exactly where the hook's own stderr goes, and therefore the only line that
-    # says *why* it exited non-zero. A dump that discards the error message is
-    # the same defect as no dump at all, arriving in the code written to prevent
-    # it.
+    # **The whole tail, not just the hook announcements.** Grepping for
+    # `[custom-init]` once threw away the hook's own stderr, which is the only
+    # line that says *why* it exited non-zero.
     echo "--- the tail of the boot log ---" >&2
     logs | tail -40 >&2
     fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
 core/cont-init/45-beads.sh. Its exit code is in the lines above: 127 means the image lacks something \
-it calls — \`jq\`, \`bd\` or \`s6-setuidgid\` — and a non-zero from the script itself means it read \
-the manifest as a no. If the hook is not listed at all, it was never copied into /custom-cont-init.d"
+it calls — \`jq\`, \`git\`, \`bd\` or \`s6-setuidgid\` — and a non-zero from the script itself is its own \
+error, printed above it"
 fi
 
 tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/dev/null || true)"
@@ -260,18 +268,68 @@ tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/de
 s6-overlay dropped privileges, which leaves a directory the person cannot write inside their own \
 repository — and no rebuild undoes it, because /config/workspace is a bind"
 
-# **And a second boot does not undo it.** `bd init` exits 1 against a workspace
-# that already has one, so a hook without --init-if-missing dies here under
-# `set -e` — on every start after the first, for every project that opted in.
-# The first version of this hook had exactly that defect and a comment denying
-# it.
+# --- FR-121: initialising left the repository as the person left it ----------
+[ "$(snapshot)" = "$before" ] \
+    || { as_user git log --oneline -3 >&2; as_user git status --short >&2
+         fail "the first opt-in changed HEAD or the index. bd init commits on its own and sweeps \
+in whatever was staged, so it must never run in the workspace: core/cont-init/45-beads.sh runs it in \
+a throwaway clone and copies .beads/ back"; }
+installed="$(as_user sh -c 'ls -d CLAUDE.md AGENTS.md .claude .codex .cursor .agents 2>/dev/null' || true)"
+[ -z "$installed" ] \
+    || fail "initialising the tracker installed $installed. bd init writes these unless it is \
+given --skip-agents, and one of them is a SessionStart hook that tells every session to create items"
+hooks_path="$(as_user git config core.hooksPath || true)"
+[ -z "$hooks_path" ] \
+    || fail "initialising the tracker set core.hooksPath to $hooks_path, which silently disables the \
+project's own hooks. bd init does this unless it is given --skip-hooks"
+
+# --- the copy is a working tracker (scenario 3 of the task) ------------------
+#
+# **Against the real binary this is the only proof the copy works**: a tracker
+# carried out of a throwaway clone could depend on something left behind in it.
+# Nothing on stderr, because bd warns on every command about a missing role or a
+# loose mode, and a tracker that always warns is one nobody reads the output of.
+created="$(as_user bd create "booted check" --description "made by booted.test.sh" 2>"$WORK/bd.err")" \
+    || { cat "$WORK/bd.err" >&2; fail "bd create fails in the workspace after a first opt-in"; }
+[ ! -s "$WORK/bd.err" ] \
+    || { cat "$WORK/bd.err" >&2; fail "bd create in the workspace writes to stderr after a first opt-in"; }
+printf '%s' "$created" | grep -q 'demo-project-' \
+    || fail "the tracker's ids do not carry the project's name: bd create said: $created"
+as_user bd list 2>/dev/null | grep -q 'booted check' \
+    || fail "bd list does not show what bd create just made"
+
+# **And a second boot changes nothing.**
+before="$(snapshot)"
 docker restart "$NAME" >/dev/null || fail "the container would not restart for the second tracker boot"
 wait_for_boot 5
+[ "$(snapshot)" = "$before" ] || fail "a second boot changed HEAD or the index"
+as_user bd list 2>/dev/null | grep -q 'booted check' \
+    || fail "the tracker lost its work across a second boot"
 
-docker exec "$NAME" test -d /config/workspace/.beads \
-    || fail "the tracker is gone after a second boot, which means the hook ran and failed rather \
-than skipping. core/cont-init/45-beads.sh must pass --init-if-missing: a plain \`bd init\` exits 1 \
-against a workspace that already has one"
+# --- a clone: .beads/ tracked, no local database ------------------------------
+#
+# The person commits .beads/ (nothing here does), and the database is then
+# removed, which is what a fresh clone looks like. The remote is unreachable on
+# purpose: bootstrap must not commit, must not take the boot with it, and must
+# leave a tracker that answers.
+as_user sh -c 'git restore --staged staged.txt && rm staged.txt \
+    && git add .beads .gitignore && git -c user.name=t -c user.email=t@t commit -q -m "track the tracker" \
+    && rm -rf .beads/embeddeddolt && git config --unset beads.role \
+    && echo mine > mine.txt && git add mine.txt' \
+    || fail "could not turn the workspace into the shape of a fresh clone"
+before="$(snapshot)"
+docker restart "$NAME" >/dev/null || fail "the container would not restart for the clone check"
+wait_for_boot 6
+[ "$(snapshot)" = "$before" ] \
+    || { as_user git log --oneline -3 >&2; fail "restoring a clone's tracker changed HEAD or the index"; }
+# The remote's host does not resolve, so the restore fails — measured against
+# the real binary, it exits 1 at once. What is asserted is how that failure
+# looks: the boot finished (wait_for_boot above), nothing was committed, and
+# one line says the tracker is empty and why.
+logs | grep -q '\[45-beads\] the tracker is empty: bd bootstrap' \
+    || { logs | tail -30 >&2; fail "a clone whose remote cannot be reached booted without saying its \
+tracker is empty and why. core/cont-init/45-beads.sh must report a failed or timed-out bd bootstrap \
+in one line of the boot log"; }
 
 # --- the agent's sandbox actually opens -------------------------------------
 #

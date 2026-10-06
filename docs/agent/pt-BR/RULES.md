@@ -228,6 +228,20 @@ pessoa depurando às três da manhã descobre por que parou.
   gate de merge. O único gate mecânico num merge é a CI. A release que torna a frase de um épico
   verdadeira é a que vale nomear.
 
+### O rastreador de trabalho
+
+Isto vale só para um projeto que tem rastreador, ou seja, um cujo manifesto diz `"beads": true`. A
+maioria não tem. Para esses, nada mais nestas regras muda.
+
+- **O que o rastreador guarda viaja pelo remote do próprio projeto**, como `refs/dolt/data`, e quem
+  envia é o `bd dolt push`. **Rode-o no mesmo passo de cada `git push` que o usuário aprovar, e nunca
+  fora disso.** Essa única aprovação envia os dois. Enviado sozinho, o rastreador seria um passo
+  voltado para fora que ninguém aprovou. Deixado para trás, outra máquina continua de um rastreador
+  atrasado em relação ao código, e nada avisa.
+- **Inicializar o rastreador não commita nada.** Na primeira adesão, o hook de boot do container
+  deixa o `.beads/` e as linhas do bd no `.gitignore` sem commit. Diga quais são e proponha-os como
+  um commit próprio, pedido como qualquer outro.
+
 ### O submódulo do template
 
 - **Bumpe `.code-server/` para uma tag, nunca para um commit solto.** Um commit alcançável só a

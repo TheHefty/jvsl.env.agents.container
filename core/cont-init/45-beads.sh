@@ -34,41 +34,106 @@ MANIFEST="$WORKSPACE/.agent-container.stack.json"
 # too, and that is also a no.
 jq -e '.beads == true' "$MANIFEST" >/dev/null 2>&1 || exit 0
 
-# **`--init-if-missing`, because a second `bd init` fails.** The first version of
-# this hook carried a comment claiming a re-run was a no-op. It is not: run
-# twice in a scratch directory, `bd init` exits 1 and aborts with advice about a
-# corrupt database. The hook runs on every boot, so without this flag an
-# opted-in project's second start would die under `set -e` — and the comment
-# asserting otherwise is the defect this repository keeps meeting, in new code
-# of its own this time.
+# **`bd init` never runs in the person's repository.** Measured against bd
+# v1.3.1 on 2026-10-06: every `bd init` that creates a database in a git
+# repository commits on its own, and the commit is of the index, so it sweeps in
+# whatever the person had staged. That happens on a first opt-in and again in a
+# fresh clone. No flag turns it off, and hiding git from it (GIT_DIR) makes it
+# fail half-way and leave a partial .beads/. Without --skip-agents and
+# --skip-hooks it also writes CLAUDE.md, AGENTS.md, .claude/settings.json (a
+# SessionStart hook that tells every session to create items and to use
+# `bd remember`), Codex and Cursor hooks, and repoints core.hooksPath. FR-121.
 #
-# Measured by downloading the binary and running it, after three claims about
-# this tool's behaviour had already been wrong.
+# So a boot takes exactly one of four paths, and none of them commits:
 #
-# **`bd init` writes more than a database**, and that is why this runs once
-# rather than every boot. It appends a marked block to the project's CLAUDE.md
-# and AGENTS.md and creates .cursor/, .codex/ and .agents/ — additive, never
-# overwriting, verified against files with content in them. Writing those on
-# every start would make booting a container dirty somebody's working tree.
+#   no opt-in                         nothing (above)
+#   a local database exists           nothing: a second boot changes nothing
+#   .beads/ tracked, no database      `bd bootstrap`, which restores from the
+#                                     remote and was measured never to commit
+#   no .beads/ (the first opt-in)     `bd init` in a throwaway clone, and only
+#                                     its .beads/ is brought back
 #
-# Stealth is not passed: the export is what travels (FR-116), and `bd init`'s
-# own .gitignore is narrow — it ignores Dolt's data and stages .beads/config.yaml
-# and the hooks, which are meant to be committed.
+# **The tracker travels by the project's git remote** (FR-116, amended on
+# 2026-10-06): `bd dolt push` writes refs/dolt/data, and a clone's bootstrap
+# finds it. The agent runs that push alongside every `git push` the operator
+# approves. Nothing here pushes.
 #
-# **`cd` rather than `-C`, and `bd`'s `-C` is not git's.** Git changes directory
-# and operates there, so it can create a repository. `bd -C <dir>` refuses a
-# directory that is not already a beads project:
+# See docs/PLANNING/beads-tracks-the-work/the-image-carries-bd/tasks/
+# initialising-leaves-the-repository-alone.md.
+
+say() { echo "[45-beads] $*"; }
+
+# As abc, never as root, and HOME is declared because `bash` does not set it.
+as_abc() { s6-setuidgid abc env HOME=/config "$@"; }
+
+if ! as_abc git -C "$WORKSPACE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    say "not initialising the tracker: $WORKSPACE is not a git repository, and the tracker \
+travels by the project's git remote. bd would run \`git init\` here, which is not this hook's to do."
+    exit 0
+fi
+
+# **The local database is what decides, not .beads/.** .beads/ is tracked; the
+# database under it is ignored by bd's own .gitignore, so a clone has the first
+# and not the second.
+if [ -d "$WORKSPACE/.beads/embeddeddolt" ]; then
+    exit 0
+fi
+
+if [ -d "$WORKSPACE/.beads" ]; then
+    # **Bounded, because it reaches the network** and a boot that waits on a
+    # remote looks like the editor's fault and names no cause. A failure or a
+    # timeout leaves an empty tracker and says so; it never stops the boot.
+    bound="${BEADS_BOOTSTRAP_TIMEOUT:-60}"
+    if ( cd "$WORKSPACE" && timeout -k 5 "$bound" s6-setuidgid abc env HOME=/config bd bootstrap </dev/null ); then
+        as_abc git -C "$WORKSPACE" config beads.role maintainer
+        # A checkout gives .beads/ 0755, and bd warns on every command until it
+        # is 0700. Git does not track a directory's mode, so this changes
+        # nothing anybody would commit.
+        as_abc chmod 700 "$WORKSPACE/.beads"
+        say "tracker restored with bd bootstrap"
+    else
+        rc=$?
+        say "the tracker is empty: bd bootstrap $( [ "$rc" -eq 124 ] && echo "did not finish within ${bound}s" || echo "exited $rc" ) \
+while restoring from the project's remote. Nothing was committed. Run \`bd bootstrap\` in the workspace once the remote is reachable."
+    fi
+    exit 0
+fi
+
+# --- the first opt-in: init in a throwaway clone ----------------------------
 #
-#     Error: cannot use -C directory "/config/workspace": no beads project found
-#
-# which makes it useless for the one thing this hook does. An earlier version of
-# this line used it, with a comment arguing that the directory a command acts on
-# is an argument rather than a state — a tidy principle applied to a flag nobody
-# had run. Measured both ways in a scratch directory: `-C` exits 1, `cd` exits
-# 0.
-# **No flags, and that is deliberate.** `bd init`'s options are not listed in
-# the project's CLI reference, and a flag this repository guessed at would fail
-# the boot of every project that opted in — with the failure appearing as a
-# container that starts badly rather than as a wrong tracker. Anything beyond
-# the bare command is added after somebody has run it.
-cd "$WORKSPACE" && s6-setuidgid abc env HOME=/config bd init --init-if-missing --non-interactive
+# **The clone takes the workspace's origin URL**, so .beads/config.yaml carries
+# the same sync.remote a later clone derives, and bootstrap there has nothing to
+# rewrite. **The prefix is the repository's name**, because bd otherwise names
+# ids after the directory it ran in, which here would be the throwaway one. bd
+# turns dots into underscores itself.
+origin="$(as_abc git -C "$WORKSPACE" remote get-url origin 2>/dev/null || true)"
+prefix="$(basename "${origin:-$WORKSPACE}" .git)"
+scratch="$(as_abc mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+
+as_abc git clone -q --shared "$WORKSPACE" "$scratch/c" 2>/dev/null
+[ -z "$origin" ] || as_abc git -C "$scratch/c" remote set-url origin "$origin"
+
+# The identity only signs bd's commit inside the throwaway clone, which is
+# deleted below; it never reaches the person's history.
+( cd "$scratch/c" && as_abc env GIT_AUTHOR_NAME=bd GIT_AUTHOR_EMAIL=bd@localhost \
+    GIT_COMMITTER_NAME=bd GIT_COMMITTER_EMAIL=bd@localhost \
+    bd init --non-interactive --skip-agents --skip-hooks --prefix "$prefix" >/dev/null )
+
+as_abc cp -a "$scratch/c/.beads" "$WORKSPACE/.beads"
+
+# bd's ignore lines, appended only where missing, never over what is there.
+as_abc touch "$WORKSPACE/.gitignore"
+added=0
+while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    if ! grep -qxF -- "$line" "$WORKSPACE/.gitignore"; then
+        printf '%s\n' "$line" | as_abc tee -a "$WORKSPACE/.gitignore" >/dev/null
+        added=$((added + 1))
+    fi
+done < "$scratch/c/.gitignore"
+
+as_abc git -C "$WORKSPACE" config beads.role maintainer
+
+say "tracker initialised with prefix '$prefix'. .beads/ and $added .gitignore line(s) are new \
+and not committed: nothing here commits for you."

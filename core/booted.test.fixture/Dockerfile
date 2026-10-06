@@ -1,7 +1,7 @@
 # A stand-in for the real image, carrying only what booted.test.sh asserts.
 # See entrypoint.sh for what it emulates and what it deliberately does not.
 FROM alpine:3.21
-RUN apk add --no-cache bash coreutils jq su-exec \
+RUN apk add --no-cache bash coreutils git jq su-exec \
     && adduser -D -s /bin/bash abc \
     && mkdir -p /config /custom-cont-init.d \
     && chown abc:abc /config
