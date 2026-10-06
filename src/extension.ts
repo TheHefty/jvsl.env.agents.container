@@ -53,6 +53,37 @@ const VIEW = 'jvsl.agentContainer.view'
 const run = promisify(execFile)
 
 /**
+ * Every call to docker, bounded.
+ *
+ * **An unbounded one hangs activation, and a hung activation is every command
+ * reporting that it does not exist.** `docker info` was raced against a timeout
+ * because it "hangs on an unreachable daemon rather than failing"; `image
+ * inspect`, `version` and `ps` were not, and three of the four run inside the
+ * path `activate` awaits. On 2026-10-06 the editor sat at `Activating…` for
+ * ever while every palette entry answered `command 'jvsl.agentContainer.build'
+ * not found` — which is what it says when it activates an extension to dispatch
+ * a command and the activation never finishes.
+ *
+ * **One helper rather than a race at each call site.** The previous arrangement
+ * had the race written out once, three lines from a call that did not get one.
+ * A mechanism applied where somebody remembered is not a mechanism, and
+ * `scripts/no-unbounded-docker-call.test.sh` now refuses any call that does not
+ * come through here.
+ *
+ * It rejects on timeout rather than resolving, so callers keep the `catch` they
+ * already had and a slow daemon reads as a daemon that did not answer — which
+ * is what it is.
+ */
+async function dockerBounded(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return Promise.race([
+    run('docker', args),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), DOCKER_CHECK_MS),
+    ),
+  ])
+}
+
+/**
  * Wakes up on a project built on this template, writes the configuration the
  * container tooling needs, and gets out of the way.
  *
@@ -493,10 +524,7 @@ async function hostChecks(): Promise<HostChecks> {
   if (dockerPresent) {
     docker = 'unknown'
     try {
-      await Promise.race([
-        run('docker', ['info']),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), DOCKER_CHECK_MS)),
-      ])
+      await dockerBounded(['info'])
       docker = 'ok'
     } catch (error) {
       docker = (error as Error).message === 'timeout' ? 'unknown' : 'unusable'
@@ -658,11 +686,11 @@ async function imageState(
   write: (lines: string[]) => void,
 ): Promise<ImageState> {
   try {
-    await run('docker', ['image', 'inspect', image])
+    await dockerBounded(['image', 'inspect', image])
     return 'present'
   } catch {
     try {
-      await run('docker', ['version', '--format', '{{.Server.Version}}'])
+      await dockerBounded(['version', '--format', '{{.Server.Version}}'])
       write([`image ${image}: not present`])
       return 'absent'
     } catch (error) {
@@ -674,7 +702,7 @@ async function imageState(
 
 async function runningContainers(write: (lines: string[]) => void): Promise<string[]> {
   try {
-    const { stdout } = await run('docker', ['ps', '--format', '{{.Names}}'])
+    const { stdout } = await dockerBounded(['ps', '--format', '{{.Names}}'])
     return stdout.split('\n').map((n) => n.trim()).filter((n) => n !== '')
   } catch (error) {
     write([`could not list running containers: ${String(error)}`])
