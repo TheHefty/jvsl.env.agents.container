@@ -435,6 +435,32 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-ai-memory/run \
 COPY core/cont-init/40-ai-memory.sh /custom-cont-init.d/40-ai-memory.sh
 RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 
+# 7.3 Installs beads (steveyegge/beads), the work tracker, and the boot hook
+# that initialises one for a project that asked. Pinned and digest-checked for
+# the same reason ai-jail and ai-memory are, above.
+#
+# **The largest single thing this image fetches: 50.8 MB compressed.** The
+# storage engine is compiled into the binary — `bd init` runs Dolt in-process,
+# so there is no service, no port and no resident memory, and the whole cost is
+# this download. Recorded as a number so a future bump is read against one.
+#
+# **The project's own install script is not used, and that is the rule rather
+# than a preference about this project.** A script fetched and piped to a shell
+# verifies nothing about what it fetched; the release publishes checksums.txt
+# precisely so it does not have to be trusted blind.
+#
+# The binary ships whether a project opts in or not: the image is one artefact,
+# and only the database is conditional.
+RUN curl -fsSL https://github.com/steveyegge/beads/releases/download/v1.3.1/beads_1.3.1_linux_amd64.tar.gz -o /tmp/beads.tar.gz \
+    && echo "3219443a9734b89b93fb16ee8d65844759fa1b3cd3cf139c606b7353cfb0715c  /tmp/beads.tar.gz" | sha256sum -c - \
+    && mkdir -p /tmp/beads-unpack \
+    && tar -xzf /tmp/beads.tar.gz -C /tmp/beads-unpack \
+    && install -m 0755 "$(find /tmp/beads-unpack -name bd -type f | head -1)" /usr/local/bin/bd \
+    && rm -rf /tmp/beads-unpack /tmp/beads.tar.gz
+
+COPY core/cont-init/45-beads.sh /custom-cont-init.d/45-beads.sh
+RUN chmod +x /custom-cont-init.d/45-beads.sh
+
 # 6. The normative documents, and the hook that puts two of them where the agent
 # loads them from.
 #

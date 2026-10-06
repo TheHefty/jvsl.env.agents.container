@@ -197,7 +197,56 @@ hook is how 10-state-ownership.sh and 40-ai-memory.sh already solve this"
 container runs as cannot write the credential that goes in it"
 done
 
+# --- a project that asked for a tracker gets one, and owns it ---------------
+#
+# **The scenario this was written around is ownership, not existence.** The hook
+# runs before s6-overlay drops privileges and `bd init` writes into
+# /config/workspace, which is bind-mounted from the person's own machine. A
+# root-owned .beads/ would be a directory the user cannot write, in their own
+# repository, created by a container start — the defect 10-state-ownership.sh
+# exists to repair, arriving the same way it arrived the first time.
+#
+# The manifest is written and the container restarted, rather than the image
+# being rebuilt: this asserts what a *boot* does, and the state it reacts to is
+# state a person's repository would already have.
+# **Owned by abc, because that is the shape production has.** The workspace is
+# bind-mounted from the person's own machine, where it belongs to them — uid
+# 1000, which is abc in here. Created as root instead, the hook drops privileges
+# correctly and then cannot write, which is a failure of the fixture rather than
+# of the thing being tested. The first version of this did exactly that, and the
+# hook exited 1.
+docker exec -u 0 "$NAME" sh -c \
+    'mkdir -p /config/workspace \
+     && printf "{\"beads\":true}" > /config/workspace/.agent-container.stack.json \
+     && chown -R abc:abc /config/workspace' \
+    || fail "could not write the manifest the tracker hook reads"
+
+docker restart "$NAME" >/dev/null || fail "the container would not restart for the tracker check"
+wait_for_boot 4
+
+# **The log, before the verdict.** The base image prints each hook's exit code,
+# and that is the difference between "the directory is missing" and "the hook
+# died on a command this image does not have" — which is what happened the first
+# time this assertion ran, against a stand-in with no `s6-setuidgid`. A failure
+# that does not name its own cause sends the next person to guess at the same
+# three things.
+if ! docker exec "$NAME" test -d /config/workspace/.beads; then
+    echo "--- what the boot said about the hooks ---" >&2
+    logs | grep -E '\[custom-init\]' | tail -20 >&2
+    fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
+core/cont-init/45-beads.sh. Its exit code is in the lines above: 127 means the image lacks something \
+it calls — \`jq\`, \`bd\` or \`s6-setuidgid\` — and a non-zero from the script itself means it read \
+the manifest as a no. If the hook is not listed at all, it was never copied into /custom-cont-init.d"
+fi
+
+tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/dev/null || true)"
+[ "$tracker_owner" = "$USER_NAME" ] \
+    || fail "the tracker belongs to $tracker_owner rather than $USER_NAME. It was created before \
+s6-overlay dropped privileges, which leaves a directory the person cannot write inside their own \
+repository — and no rebuild undoes it, because /config/workspace is a bind"
+
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \
-changes nothing; and with /config shadowed by a tmpfs both agent state directories still exist \
-and belong to $USER_NAME."
+changes nothing; with /config shadowed by a tmpfs both agent state directories still exist and \
+belong to $USER_NAME; and a project whose manifest asks for a tracker gets one owned by \
+$USER_NAME."
