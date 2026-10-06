@@ -63,7 +63,7 @@ a decision; every surviving one was something that was looked at.
 | # | Story | Status |
 |---|---|---|
 | 1 | [the image carries `bd`](the-image-carries-bd/) | **Regrilled, at its gate again** |
-| 2 | the work items move into the tracker | Not started |
+| 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | Scenarios written, at its gate |
 | 3 | the board shows them | Not started |
 | 4 | the agent works from the tracker | Not started |
 | 5 | the guard holds the split | Not started |
