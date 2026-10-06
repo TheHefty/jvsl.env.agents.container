@@ -44,9 +44,20 @@ Feature: The agent works from the tracker
     # The chain is charter, SRS, epic, story with its scenarios, task, code —
     # each agreed before the next is written. An item that appeared because the
     # agent decided it should exist is content that never passed a gate.
+    # The one exception, a debt recorded after a yes, is the next scenario.
     Given the agent working from the tracker
     When no new link has been agreed
     Then it creates no epic, story or task
+
+  Scenario: A problem found along the way is recorded only with a yes
+    # FR-106 and FR-117, amended on 2026-10-06. A defect found mid-task used
+    # to live in the conversation and be lost with it. Recording it is the
+    # operator's to allow, every time, and never authorises fixing it.
+    Given the agent finds a problem outside the work it was given
+    When it would record it
+    Then it asks first
+    And only after a yes is there a bug labelled defect
+    And it has not started fixing it
 
   Scenario: The rules say this, and say it for projects that have no tracker
     # The normative documents ship in the image to every project, and most will
