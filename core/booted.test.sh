@@ -78,10 +78,19 @@ wait_for_boot() {
 # may not have is a different test. PASSWORD is empty for the same reason the
 # launcher leaves it empty — and that is what makes code-server unauthenticated,
 # which is why its port is not published by default.
+# `apparmor=unconfined` is the harness's, not the product's — and that gap is a
+# finding rather than a convenience. On a host enforcing AppArmor, docker applies
+# its default profile, which denies `mount`, and bwrap then fails with "Failed to
+# make / slave: Permission denied" before ai-jail reaches anything it would mount.
+# GitHub's runners enforce it; the operator's host does not. The generated dev
+# container configuration does not pass this option, so on such a host the
+# agent's sandbox may not open at all — recorded in
+# docs/DEBTS/the-sandbox-under-apparmor/ rather than decided here.
 docker run -d --name "$NAME" \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \
     --security-opt systempaths=unconfined \
+    --security-opt apparmor=unconfined \
     -e PUID=1000 -e PGID=1000 -e PASSWORD= \
     "$IMAGE" >/dev/null \
     || fail "the container would not start at all from $IMAGE. If devcontainer.metadata has grown \
