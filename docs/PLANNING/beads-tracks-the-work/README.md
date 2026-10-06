@@ -62,10 +62,10 @@ a decision; every surviving one was something that was looked at.
 
 | # | Story | Status |
 |---|---|---|
-| 1 | [the image carries `bd`](the-image-carries-bd/) | **Regrilled, at its gate again** |
-| 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | Scenarios written, at its gate |
-| 3 | the board shows them | Not started |
-| 4 | the agent works from the tracker | Not started |
+| 1 | [the image carries `bd`](the-image-carries-bd/) | **Shipped** — one `@manual` pass owed |
+| 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | **Script shipped, not run** — running it is the operator's |
+| 3 | the board shows them | **Blocked** — needs a measurement: whether a local `.vsix` installs into the remote editor |
+| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | Scenarios written, at its gate |
 | 5 | the guard holds the split | Not started |
 
 **Story 1's scenarios are false now, in two places.** They were written under `--stealth` and assert
