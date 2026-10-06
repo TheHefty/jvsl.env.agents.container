@@ -292,21 +292,31 @@ RUN chmod +x /custom-cont-init.d/30-editor-leftovers.sh
 COPY core/cont-init/20-kvm-gid.sh /custom-cont-init.d/20-kvm-gid.sh
 RUN chmod +x /custom-cont-init.d/20-kvm-gid.sh
 
-# 6. Installs the agent CLIs, both pinned, from core/versions.json.
+# 6. Installs the agent CLIs, unpinned.
 #
-# These two lines were `npm install -g <name>` with no version until 2026-08-30,
-# which is the same "the image changes under a project on a rebuild that changed
-# nothing in it" that `releases/latest` was pinned away from in section 7 — just
-# less visible, because an npm package has no release page to notice moving.
+# **These were pinned from 2026-08-30 to 2026-10-06, and the pin was removed
+# deliberately rather than forgotten.** What it bought was the property the
+# inherited rules ask for — the image not changing under a project on a rebuild
+# that changed nothing in it. What it cost was an agent CLI frozen at whatever
+# number somebody last typed, missing fixes, for as long as nobody remembered to
+# bump it.
 #
-# There is no digest to check alongside them, and there does not need to be: a
-# published npm version is immutable, so an exact version names one artifact for
-# good. That is the property a digest buys for a GitHub asset, where a tag can
-# be repointed and its files replaced. Bumping either is a deliberate step —
-# edit core/versions.json, read the release notes, rebuild. The numbers are
-# deliberately not repeated here: a version in a comment is a second copy, and
-# the copy is the one nobody edits.
-RUN npm install -g @anthropic-ai/claude-code@{{CLAUDE_CODE_VERSION}}
+# **The two kinds of dependency are not the same risk, and only these two are
+# unpinned.** `ai-jail` and `ai-memory` keep their tag *and* their digest in
+# section 7, because a regression in the sandbox is silent: the environment lost
+# its network once to an ai-jail release that made it opt-in, and presented as a
+# host fault that did not exist. A regression in an agent CLI is in front of
+# somebody immediately.
+#
+# **The cost is accepted and real:** two rebuilds of the same commit can now
+# install different agent versions, and a failure that appears after a rebuild
+# has one more candidate cause. `npm list -g` names what is actually installed,
+# which is where to look first.
+#
+# Recorded in docs/RULES.md as this repository's exception to the inherited
+# "pin a version" rule, rather than left as a Dockerfile that quietly disagrees
+# with the rules it ships.
+RUN npm install -g @anthropic-ai/claude-code
 
 # 6.0 The OpenAI Codex CLI, sandboxed the same way and by the same wrapper
 # machinery — see section 7.1. ai-jail has known it as a preset since before
@@ -317,7 +327,7 @@ RUN npm install -g @anthropic-ai/claude-code@{{CLAUDE_CODE_VERSION}}
 # config.toml, auth.json, history, sessions — lives under ~/.codex, which is
 # /config/.codex here and is on the persistent volume. The problem 6.1 exists to
 # solve was a *second* file one level up, and Codex does not have one.
-RUN npm install -g @openai/codex@{{CODEX_VERSION}}
+RUN npm install -g @openai/codex
 
 # 6.1 Keeps the CLI's whole state inside /config/.claude — the directory
 # `start` bind-mounts from the host — instead of only its credentials. By
@@ -371,8 +381,8 @@ ENV CLAUDE_CONFIG_DIR=/config/.claude
 # is a moving target — assets can be replaced without the URL changing. Bump the
 # two together, and read the release notes on the way: this dependency's minor
 # versions are where its threat model changes.
-RUN curl -fsSL https://github.com/akitaonrails/ai-jail/releases/download/v1.20.1/ai-jail-linux-x86_64.tar.gz -o /tmp/ai-jail.tar.gz \
-    && echo "f0d974f29a0ae37c0ca4fcfee6b3ca92ee3220e31e4e0a013b5e5a99c9851962  /tmp/ai-jail.tar.gz" | sha256sum -c - \
+RUN curl -fsSL https://github.com/akitaonrails/ai-jail/releases/download/v2.6.4/ai-jail-linux-x86_64.tar.gz -o /tmp/ai-jail.tar.gz \
+    && echo "7749b73435686b783567bf0427f7cdf4faf7783ac31b1d590d0454048b243d4b  /tmp/ai-jail.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/ai-jail.tar.gz -C /usr/local/bin \
     && rm /tmp/ai-jail.tar.gz \
     && chmod +x /usr/local/bin/ai-jail

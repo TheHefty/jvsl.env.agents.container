@@ -216,6 +216,25 @@ If it is fixed upstream, part 2 becomes defence in depth rather than the only de
 mitigation stands on its own and does not wait for it — a pinned dependency's fix arrives when
 somebody bumps the pin, and this is readable today.
 
+**It was fixed upstream, and the pin is bumped.** The issue was closed on 2026-10-03 and the fix
+shipped in `v2.6.2`, in the maintainer's own words:
+
+> **`--env` values no longer land on bwrap's argv (#147).** Previously the sandbox launcher's
+> `--setenv NAME VALUE` pairs — carrying every `--env` … options through an anonymous in-memory file
+> (`bwrap --args FD`) on Linux, so the values never appear on argv.
+
+That is the mechanism this document named as the right one. `core/Dockerfile.frag` now pins `v2.6.4`.
+
+**What that does and does not change.** It makes the local mitigation defence in depth, as predicted.
+It does **not** retire this debt: `OPENAI_API_KEY` still crosses as a variable, and a rule that
+depends on a dependency's current version is a rule that an older image silently stops enforcing.
+The allowlist and its exception stand.
+
+**The bump crosses a major and the flags were measured rather than read.** `--env`, `--map`,
+`--rw-map`, `--agent-state`, `--network` and `--no-save-config` all exist in the v2.6.4 binary,
+checked by running it. The release notes for v2.0.0 name no removal among them, which is weaker
+evidence than the binary and is recorded as the weaker thing it is.
+
 ## Outcome
 
 Filled in when the status leaves `Open`.

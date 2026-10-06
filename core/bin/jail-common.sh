@@ -196,7 +196,9 @@ fi
 # /config/.docker is outside the project directory, so ai-jail drops it as an
 # outside map and says so — `project .ai-jail map /config/.docker outside
 # project ignored (use --rw-map/--ro-map or global config)`. Verified against
-# v1.20.1, the release section 7 of core/Dockerfile.frag pins. Which leaves the
+# v1.20.1; section 7 of core/Dockerfile.frag now pins v2.6.4, and the six flags
+# this file passes were checked against that binary rather than its release
+# notes. The behaviour above was not re-observed. Which leaves the
 # image, the same as --network and --agent-state, or the operator's own
 # ~/.ai-jail.
 #
