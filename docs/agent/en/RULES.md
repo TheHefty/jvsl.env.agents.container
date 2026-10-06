@@ -226,6 +226,20 @@ person debugging it at three in the morning finds out why it stopped.
   only mechanical gate on a merge is CI. The release that makes an epic's sentence true is the one
   worth naming.
 
+### The work tracker
+
+This applies only to a project that has a tracker, which is one whose manifest says `"beads": true`.
+Most do not. Everything else in these rules is unchanged for them.
+
+- **What the tracker holds travels by the project's own remote**, as `refs/dolt/data`, and
+  `bd dolt push` is what sends it. **Run it in the same step as each `git push` the user approves,
+  and never otherwise.** That one approval sends both. Pushed on its own, the tracker would be an
+  outward-facing step nobody agreed to. Left behind, another machine carries on from a tracker that
+  is behind the code, and nothing says so.
+- **Initialising the tracker commits nothing.** The container's boot hook leaves `.beads/` and bd's
+  `.gitignore` lines uncommitted on a first opt-in. Name them, and propose them as their own commit,
+  asked for like any other.
+
 ### The template submodule
 
 - **Bump `.code-server/` to a tag, never to a bare commit.** A commit reachable only from a branch
