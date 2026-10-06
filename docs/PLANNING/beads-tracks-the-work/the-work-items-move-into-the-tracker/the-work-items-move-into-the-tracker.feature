@@ -12,7 +12,7 @@
 
 Feature: The work items move into the tracker
   Every epic, story and task lives in the tracker, their documents are gone from
-  the repository, and what travels with a clone is the export.
+  the repository, and what travels with a clone is the tracker's remote.
 
   Scenario: Everything that exists is carried, closed work included
     # 5 epics, 14 stories, 25 tasks. Migrating only what is open would leave a
@@ -52,9 +52,10 @@ Feature: The work items move into the tracker
     Then what the document said is there
 
   Scenario: A clone carries the work
-    Given the migration has been committed
-    When the repository is cloned somewhere else
-    Then the exported tracker is in it
+    # FR-116, amended on 2026-10-06: the tracker travels by its Dolt remote.
+    Given the migration has run and the tracker has been pushed
+    When the repository is cloned somewhere else and its container boots
+    Then every migrated item is in its tracker
 
   Scenario: The rules say where scenarios live
     # The inherited rules state that acceptance criteria live beside their story

@@ -45,21 +45,33 @@ Feature: The image carries bd
     Then the tracker is initialised
     And booting again leaves what is in it alone
 
-  Scenario: What the tracker holds travels with the project
-    # FR-116. The requirement in the operator's words: change machine, or clone
-    # the repository again, and carry on from where you left off. So the content
-    # has to be in the repository — and outside .beads/, which is the tool's own
-    # directory and which bd init teaches git to ignore.
-    Given a project that opted in
-    When work is recorded in the tracker
-    Then it is exported to a file the project tracks in git
-    And that file is outside the tracker's own directory
+  Scenario: What the tracker holds travels with the code
+    # FR-116, amended on 2026-10-06: the Dolt remote, not an exported file.
+    # The requirement is unchanged, in the operator's words: change machine,
+    # or clone the repository again, and carry on from where you left off.
+    # Measured against bd v1.3.1: nothing is exported by default, and a clone
+    # does not read an export without an explicit import. The tool's own sync
+    # is its Dolt remote, and a clone's init found the pushed work unaided.
+    Given a project that opted in, with work recorded
+    When the operator approves a push of the code
+    Then the tracker's contents are pushed to the same remote
+    And not before that approval
 
   Scenario: A fresh clone carries on from where it left off
     # The whole of the requirement, at the level a person experiences it.
-    Given a project whose tracker was exported and committed
-    When it is cloned somewhere else and the tracker is initialised
+    Given a project whose tracker was pushed to its remote
+    When it is cloned somewhere else and its container boots
     Then the work that was recorded is there
+
+  Scenario: Initialising the tracker leaves the repository as the person left it
+    # FR-121. Measured: a bare bd init commits on its own, sweeping in
+    # whatever was staged, and installs agent instructions, session hooks
+    # and a git hooks path nobody asked for.
+    Given a project that opted in, with work staged but not committed
+    When its container boots for the first time
+    Then no commit was made
+    And what was staged is still staged, and nothing else is
+    And no agent instructions, session hooks or git hooks path were added
 
   Scenario: The tracker survives a rebuild
     # The lesson the state-directory debt left: a claim about a path under

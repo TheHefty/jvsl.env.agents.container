@@ -2,7 +2,7 @@
 
 **The work items stop being files, and gain a place to be read.**
 
-The SRS carries the requirements (FR-100 to FR-109 and FR-116 to FR-120) and the epic's reasoning.
+The SRS carries the requirements (FR-100 to FR-109 and FR-116 to FR-121) and the epic's reasoning.
 This directory carries the stories — and it is the last thing in this repository shaped like this,
 because story 2 is what empties it.
 
@@ -50,8 +50,12 @@ a decision; every surviving one was something that was looked at.
 
 ## What it costs
 
-- **Reviewing a work item becomes reading JSONL.** Accepted: the two documents that still need a
-  readable diff are exactly the two that stayed.
+- **A work item has no diff in a pull request at all.** Since FR-116's amendment on 2026-10-06 the
+  items travel by the tracker's Dolt remote rather than as a tracked JSONL, so a pull request no
+  longer shows them. Accepted by the operator: the two documents that still need a readable diff are
+  exactly the two that stayed. It was "reviewing becomes reading JSONL" until then.
+- **The remote gains a `__dolt_remote_info__` branch**, which `bd dolt push` creates beside
+  `refs/dolt/data`.
 - **Stealth is given up, and the Azure DevOps case with it.** It existed so this could be used in a
   repository that is not the operator's to change. Always-tracked removes that until some later epic
   puts it back.
@@ -62,10 +66,10 @@ a decision; every surviving one was something that was looked at.
 
 | # | Story | Status |
 |---|---|---|
-| 1 | [the image carries `bd`](the-image-carries-bd/) | **Shipped** — one `@manual` pass owed |
-| 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | **Script shipped, not run** — running it is the operator's |
+| 1 | [the image carries `bd`](the-image-carries-bd/) | **Reopened on 2026-10-06** — FR-116 amended and FR-121 added; scenarios agreed, a second task owed |
+| 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | **Script shipped, not run** — and not to be run before story 1's second task: today the tracker reaches no other machine |
 | 3 | the board shows them | **Blocked** — needs a measurement: whether a local `.vsix` installs into the remote editor |
-| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | Scenarios written, at its gate |
+| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | Scenarios agreed on 2026-10-06 |
 | 5 | the guard holds the split | Not started |
 
 **Story 1's scenarios are false now, in two places.** They were written under `--stealth` and assert

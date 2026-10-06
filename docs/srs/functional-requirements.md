@@ -267,8 +267,8 @@ manual hand-off is accepted rather than designed around.
 - ~~**FR-102** — The database lives on the project's volume, outside the repository, and `bd` is
   always initialised with `--stealth`.~~ **Reversed on 2026-10-05, the day it was written.** Once the
   work items' *content* lives in the tracker rather than beside it, the tracker's contents have to be
-  versioned and reviewable like everything else — so `bd` runs in its normal git mode and
-  `.beads/issues.jsonl` is tracked. See FR-116.
+  versioned like everything else — so `bd` runs in its normal git mode. How the contents travel is
+  FR-116, amended on 2026-10-06 from a tracked JSONL to the Dolt remote.
 
   **What this gives up is named rather than discovered:** stealth existed so the arrangement could be
   used in a repository that is not the user's to change, which is where the two-layer model of FR-105
@@ -331,20 +331,24 @@ beside it.
 were allocated to a different epic between this section being written and being amended; splitting
 these into a third decade would hide that they belong here.
 
-- **FR-116** — **The tracker's contents are exported to a tracked path outside `.beads/`**, and
-  `bd` runs in its normal git mode rather than stealth. The export travels with the clone and reaches
-  a pull request like anything else in the repository.
+- **FR-116** — **The tracker's contents travel through the project's own git remote**, as Dolt data
+  under `refs/dolt/data`, and a fresh clone has them once its tracker is initialised. `bd dolt push`
+  is what sends them, and it runs alongside every `git push` the operator approves — never on its own.
 
-  **Outside `.beads/` because that directory is the tool's, not ours.** `bd init` writes its own
-  `.gitignore` entries, and the Beads project's own repository ignores `.beads/*` entirely. Fighting
-  that would mean maintaining an exception against a tool that may rewrite it on the next version;
-  exporting elsewhere costs a step and contradicts nothing.
+  **Amended on 2026-10-06, after measuring both ways.** The first version exported JSONL to a tracked
+  path. Measured against bd v1.3.1: nothing is exported by default, a fresh clone does not read an
+  export without an explicit `bd import`, and bd itself calls that file a passive export and warns
+  against importing it in normal operation. The Dolt remote is the tool's own sync: a clone's `bd init`
+  found the pushed work with no further step.
 
-  **JSONL rather than rendered Markdown**, because of what the requirement actually is: *"se precisar
-  trocar de máquina ou baixar um repositório de novo, poder continuar de onde parou"*. A new machine
-  re-imports a JSONL with one command. Portability away from Beads was never asked for — an earlier
-  draft of this requirement argued for Markdown on that basis and was answering a question nobody
-  had posed.
+  **What this gives up, named:** the work items no longer appear in a pull request's diff, and
+  `bd dolt push` leaves a branch named `__dolt_remote_info__` on the remote. The operator judged
+  reviewability-in-the-diff not worth the cost.
+
+  **What the first version said, kept because it was agreed:** the export went to a tracked path
+  outside `.beads/`, as JSONL rather than rendered Markdown, because the requirement in the operator's
+  words is *"se precisar trocar de máquina ou baixar um repositório de novo, poder continuar de onde
+  parou"*. That requirement is unchanged; only the mechanism moved.
 - **FR-117** — **Epics, stories and task designs live in the tracker, and their markdown files are
   deleted.** Not copied, not mirrored: two places holding one document is the arrangement where the
   reader cannot tell which one the work followed.
@@ -357,6 +361,14 @@ these into a third decade would hide that they belong here.
 - **FR-120** — **What moves, moves once and whole.** The migration carries every existing epic, story
   and task — closed ones included — so the board shows the project's actual shape rather than its
   recent half.
+- **FR-121** — **Initialising the tracker writes nothing into the repository that nobody asked for.**
+  No commit, no agent integrations (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.codex/`, `.cursor/`,
+  `.agents/`), and no change to `core.hooksPath`.
+
+  **Measured, not assumed:** a bare `bd init` commits on its own, on whatever branch is checked out,
+  installs a `SessionStart` hook that tells every session to create items before writing code and to
+  use `bd remember` instead of memory files — both contrary to FR-106 and to this epic's split — and
+  repoints `core.hooksPath`, which silently disables a project's own hooks.
 
 **What this costs, stated once.** Reviewing a change to a work item becomes reading a diff of JSONL,
 where a markdown file used to show it. That is accepted deliberately: the items that still need a

@@ -188,7 +188,7 @@ removes that, and the Azure DevOps case with it, until some later epic puts it b
 
 | # | Story | Why in that order |
 |---|---|---|
-| 1 | the image carries `bd` | FR-100, FR-101, FR-116 — invisible to a project that does not opt in, and nothing below is verifiable without it |
+| 1 | the image carries `bd` | FR-100, FR-101, FR-116, FR-121 — invisible to a project that does not opt in, and nothing below is verifiable without it |
 | 2 | the work items move into the tracker | FR-117, FR-120 — every epic, story and task, closed ones included, and their files deleted |
 | 3 | the board shows them | FR-118, FR-119 — the reading surface this epic exists for |
 | 4 | the agent works from the tracker | FR-106 — what the normative documents say about taking the next item and closing it with a reason |
