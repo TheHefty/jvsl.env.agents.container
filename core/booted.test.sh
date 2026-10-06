@@ -216,10 +216,20 @@ docker exec -u 0 "$NAME" sh -c \
 docker restart "$NAME" >/dev/null || fail "the container would not restart for the tracker check"
 wait_for_boot 4
 
-docker exec "$NAME" test -d /config/workspace/.beads \
-    || fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
-core/cont-init/45-beads.sh; if its own test passes, the likely cause is that it was never copied \
-into /custom-cont-init.d"
+# **The log, before the verdict.** The base image prints each hook's exit code,
+# and that is the difference between "the directory is missing" and "the hook
+# died on a command this image does not have" — which is what happened the first
+# time this assertion ran, against a stand-in with no `s6-setuidgid`. A failure
+# that does not name its own cause sends the next person to guess at the same
+# three things.
+if ! docker exec "$NAME" test -d /config/workspace/.beads; then
+    echo "--- what the boot said about the hooks ---" >&2
+    logs | grep -E '\[custom-init\]' | tail -20 >&2
+    fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
+core/cont-init/45-beads.sh. Its exit code is in the lines above: 127 means the image lacks something \
+it calls — \`jq\`, \`bd\` or \`s6-setuidgid\` — and a non-zero from the script itself means it read \
+the manifest as a no. If the hook is not listed at all, it was never copied into /custom-cont-init.d"
+fi
 
 tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/dev/null || true)"
 [ "$tracker_owner" = "$USER_NAME" ] \
