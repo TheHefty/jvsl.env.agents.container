@@ -245,6 +245,19 @@ tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/de
 s6-overlay dropped privileges, which leaves a directory the person cannot write inside their own \
 repository — and no rebuild undoes it, because /config/workspace is a bind"
 
+# **And a second boot does not undo it.** `bd init` exits 1 against a workspace
+# that already has one, so a hook without --init-if-missing dies here under
+# `set -e` — on every start after the first, for every project that opted in.
+# The first version of this hook had exactly that defect and a comment denying
+# it.
+docker restart "$NAME" >/dev/null || fail "the container would not restart for the second tracker boot"
+wait_for_boot 5
+
+docker exec "$NAME" test -d /config/workspace/.beads \
+    || fail "the tracker is gone after a second boot, which means the hook ran and failed rather \
+than skipping. core/cont-init/45-beads.sh must pass --init-if-missing: a plain \`bd init\` exits 1 \
+against a workspace that already has one"
+
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \
 changes nothing; with /config shadowed by a tmpfs both agent state directories still exist and \
