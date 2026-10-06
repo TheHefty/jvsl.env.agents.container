@@ -103,6 +103,8 @@ jobs:
         run: bash scripts/every-job-respects-the-scope.test.sh
       - name: the migration refuses to delete what did not arrive whole
         run: bash scripts/migrate-planning.test.sh
+      - name: nothing optional runs before the commands are registered
+        run: bash scripts/commands-register-first.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
