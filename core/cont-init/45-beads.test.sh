@@ -80,6 +80,14 @@ check "and does it as abc, never as root" \
 check "so bd is never invoked directly" \
     "$(printf '%s' "$out" | grep -c 'bd-called-directly' || true)" "0"
 
+# **The second boot, which the first version of this hook failed.** `bd init`
+# exits 1 against a workspace that already has one — measured, not read: run
+# twice in a scratch directory it aborts with "If the database is genuinely
+# corrupt and unrecoverable". The hook runs on every boot, so without
+# --init-if-missing an opted-in project's second start fails under `set -e`.
+check "and asks bd to skip rather than fail when there is already one" \
+    "$(printf '%s' "$out" | grep -c -- '--init-if-missing')" "1"
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "45-beads.test: all checks passed."

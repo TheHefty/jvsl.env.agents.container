@@ -12,8 +12,8 @@ COPY core/booted.test.fixture/entrypoint.sh /entrypoint.sh
 # A stand-in bd that does the one thing the hook asks of it. The assertion in
 # booted.test.sh is about the *hook* — that it ran, and as abc — not about what
 # bd does with a database, which is the tool's own business.
-RUN printf '#!/bin/sh\nmkdir -p .beads\n' > /usr/local/bin/bd \
-    && chmod +x /usr/local/bin/bd
+COPY core/booted.test.fixture/bd-stub.sh /usr/local/bin/bd
+RUN chmod +x /usr/local/bin/bd
 
 # **And s6-setuidgid, which must really drop privileges here.** The base image
 # provides it; this stand-in does not, and the first hook it carries that uses

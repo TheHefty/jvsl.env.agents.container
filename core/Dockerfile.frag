@@ -444,6 +444,14 @@ RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 # so there is no service, no port and no resident memory, and the whole cost is
 # this download. Recorded as a number so a future bump is read against one.
 #
+# **And the number CI pays is eleven times that.** Every stack build composes
+# core plus one stack, so a full run downloads this file once per stack and once
+# for core — about 560 MB from GitHub releases, in parallel. That showed up on
+# the first run carrying it: one of the eleven got `curl: (22) … error: 500`
+# while the other ten succeeded. It is transient and it is not free, and the
+# next person wondering why a build failed on a URL that plainly works should
+# find this paragraph before they go looking for a cause in the Dockerfile.
+#
 # **The project's own install script is not used, and that is the rule rather
 # than a preference about this project.** A script fetched and piped to a shell
 # verifies nothing about what it fetched; the release publishes checksums.txt
