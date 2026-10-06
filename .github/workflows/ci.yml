@@ -206,6 +206,19 @@ jobs:
       - name: it refuses to write into somebody's own home directory
         run: bash core/cont-init/50-agent-rules.test.sh
 
+  beads:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # What the hook owns is the decision, not the initialisation. Reading a
+    # project's manifest as "yes" when it did not say so writes a database and a
+    # .gitignore entry into somebody's repository by something they did not run,
+    # and every shape that is not an explicit true has to read as no.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the tracker hook asks before it initialises
+        run: bash core/cont-init/45-beads.test.sh
+
   ai-memory:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -609,7 +622,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, beads, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

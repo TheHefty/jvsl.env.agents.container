@@ -197,7 +197,38 @@ hook is how 10-state-ownership.sh and 40-ai-memory.sh already solve this"
 container runs as cannot write the credential that goes in it"
 done
 
+# --- a project that asked for a tracker gets one, and owns it ---------------
+#
+# **The scenario this was written around is ownership, not existence.** The hook
+# runs before s6-overlay drops privileges and `bd init` writes into
+# /config/workspace, which is bind-mounted from the person's own machine. A
+# root-owned .beads/ would be a directory the user cannot write, in their own
+# repository, created by a container start — the defect 10-state-ownership.sh
+# exists to repair, arriving the same way it arrived the first time.
+#
+# The manifest is written and the container restarted, rather than the image
+# being rebuilt: this asserts what a *boot* does, and the state it reacts to is
+# state a person's repository would already have.
+docker exec -u 0 "$NAME" sh -c \
+    'mkdir -p /config/workspace && printf "{\"beads\":true}" > /config/workspace/.agent-container.stack.json' \
+    || fail "could not write the manifest the tracker hook reads"
+
+docker restart "$NAME" >/dev/null || fail "the container would not restart for the tracker check"
+wait_for_boot 4
+
+docker exec "$NAME" test -d /config/workspace/.beads \
+    || fail "a project whose manifest asks for a tracker has none after a boot. The hook is \
+core/cont-init/45-beads.sh; if its own test passes, the likely cause is that it was never copied \
+into /custom-cont-init.d"
+
+tracker_owner="$(docker exec "$NAME" stat -c '%U' /config/workspace/.beads 2>/dev/null || true)"
+[ "$tracker_owner" = "$USER_NAME" ] \
+    || fail "the tracker belongs to $tracker_owner rather than $USER_NAME. It was created before \
+s6-overlay dropped privileges, which leaves a directory the person cannot write inside their own \
+repository — and no rebuild undoes it, because /config/workspace is a bind"
+
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \
-changes nothing; and with /config shadowed by a tmpfs both agent state directories still exist \
-and belong to $USER_NAME."
+changes nothing; with /config shadowed by a tmpfs both agent state directories still exist and \
+belong to $USER_NAME; and a project whose manifest asks for a tracker gets one owned by \
+$USER_NAME."
