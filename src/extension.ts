@@ -113,29 +113,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const view = new SelectionView(context.extensionPath)
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(SHOW_DETECTED, async () => {
-      // **After every command is registered, and inside a guard.** This is a
-  // sentence; the commands are the product. Anything that runs before
-  // `registerCommand` and throws leaves an extension whose palette entries all
-  // exist and none of which work — which is what "command
-  // 'jvsl.agentContainer.build' not found" looks like to a person, with nothing
-  // saying why.
-  //
-  // FR-115 says this notice blocks nothing. Being unable to break anything is
-  // the stronger form of the same requirement.
-  try {
-    const older = olderCopyNotice(vscode.extensions.all.map((e) => e.id))
-    if (older !== undefined) {
-      write([`older copy: ${older}`])
-      void vscode.window.showWarningMessage(older)
-    }
-  } catch (error) {
-    write([`older copy: could not be checked: ${String(error)}`])
-  }
-
-  write(await describe(context))
-      channel.show(true)
-    }),
+    vscode.commands.registerCommand(SHOW_DETECTED, () => showDetected(context, channel, write)),
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
@@ -153,17 +131,57 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     watchManifest(() => view.refresh()),
   )
 
+  // **Started, never awaited, and that is what lets the commands work.** The
+  // editor waits for activation to finish before it dispatches a command, so
+  // anything activate() awaits is something every command waits behind. This
+  // used to await the open flow, which awaits a notification being clicked, a
+  // build in a terminal finishing, and a reopen — and the extension sat at
+  // "Activating…" while every palette entry answered "not found".
+  // scripts/activate-returns-promptly.test.sh holds activate() to no await.
+  void startup(context, channel, write, view).catch((error: unknown) => {
+    write([`startup failed: ${String(error)}`])
+  })
+}
+
+async function showDetected(
+  context: vscode.ExtensionContext,
+  channel: vscode.OutputChannel,
+  write: (lines: string[]) => void,
+): Promise<void> {
+  write(await describe(context))
+  channel.show(true)
+}
+
+/**
+ * Everything activation does after the commands exist, none of it awaited by
+ * activate() itself.
+ */
+async function startup(
+  context: vscode.ExtensionContext,
+  channel: vscode.OutputChannel,
+  write: (lines: string[]) => void,
+  view: SelectionView,
+): Promise<void> {
+  // A sentence; the commands are the product. FR-115 says this notice blocks
+  // nothing, and being unable to break anything is the stronger form of that.
+  // It sat inside the Show What Was Detected callback from #110 until here: a
+  // text replacement matched the indented copy of the line it was aimed at, so
+  // the notice appeared only when somebody asked to see what was detected.
+  try {
+    const older = olderCopyNotice(vscode.extensions.all.map((e) => e.id))
+    if (older !== undefined) {
+      write([`older copy: ${older}`])
+      void vscode.window.showWarningMessage(older)
+    }
+  } catch (error) {
+    write([`older copy: could not be checked: ${String(error)}`])
+  }
+
   write(await describe(context))
 
-  // **Activation now runs in every window on this host**, because the panel has
-  // to exist before anybody asks for it and no command-triggered activation
-  // gives that. What keeps the cost the SRS accepted is that `prepare` returns
-  // immediately when there is no folder — so a window onto an unrelated project
-  // pays a registration and nothing else.
-  //
-  // The host check is the one thing worth paying for without a folder: the panel
-  // is the first thing anybody sees, so a host that cannot build says so there
-  // rather than three clicks later inside a build.
+  // **Activation runs in every window on this host**, because the panel has to
+  // exist before anybody asks for it. What keeps the cost the SRS accepted is
+  // that a window with no folder pays a registration and one host check.
   if (vscode.workspace.workspaceFolders === undefined) {
     const blocker = hostProblems(await hostChecks()).find((p) => p.blocking)
     view.recordHostProblem(blocker?.message)
@@ -171,8 +189,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // **Before `prepare`, and that is the whole of "resolved once".** Adoption
-  // renames the file, so every read after this point finds one name on disk and
-  // no other code in this extension learns that two ever existed.
+  // renames the file, so every read after this point finds one name on disk.
   const root = workspaceRoot()
   if (root !== undefined) await adoptManifest(root, write)
 
