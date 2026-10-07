@@ -13,6 +13,8 @@ import {
   detectManager,
   hostProblems,
   sandboxWarnings,
+  afterBuild,
+  type ContainerForImage,
   type SandboxConditions,
   type DockerState,
   type HostChecks,
@@ -27,7 +29,7 @@ import { hostFacts } from './host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { showWork } from './board.ts'
-import { projectOnHost, type ProjectOnHost } from './board-locate.ts'
+import { containerFor, projectOnHost, type ProjectOnHost } from './board-locate.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
@@ -546,8 +548,66 @@ async function build(
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
   // dismissed before the useful text can be read.
-  if (outcome === 'ok') {
+  if (outcome === 'ok') await offerRecreate(project.path, write)
+}
+
+/**
+ * After a good build: does the project's container still run the previous
+ * image? See afterBuild for the decision; this reads docker and asks the user.
+ * **It never removes a container**: the only action is Dev Containers' own
+ * rebuild, when the person clicks it.
+ */
+async function offerRecreate(hostPath: string, write: (lines: string[]) => void): Promise<void> {
+  const image = projectNames(hostPath).image
+  let built: string | undefined
+  try {
+    built = (await dockerBounded(['image', 'inspect', '-f', '{{.Id}}', image])).stdout.trim() || undefined
+  } catch (error) {
+    write([`build: could not read the image ${image} just built: ${String(error)}`])
+  }
+
+  let container: ContainerForImage = { kind: 'none' }
+  try {
+    const { stdout } = await dockerBounded([
+      'ps', '-a', '--filter', 'label=devcontainer.local_folder',
+      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}',
+    ])
+    const rows = stdout.split('\n').filter((l) => l.trim() !== '').map((l) => {
+      const [id = '', name = '', localFolder = ''] = l.split('\t')
+      return { id, name, localFolder }
+    })
+    const choice = containerFor(hostPath, rows)
+    if (choice.kind === 'many') container = choice
+    if (choice.kind === 'one') {
+      const row = rows.find((r) => r.id === choice.id)!
+      const { stdout: img } = await dockerBounded(['inspect', '-f', '{{.Image}}', choice.id])
+      container = { kind: 'one', id: choice.id, name: row.name, image: img.trim() }
+    }
+  } catch (error) {
+    write([`build: could not read the project's container: ${String(error)}`])
+  }
+
+  const decision = afterBuild({ built, container, inContainer: vscode.env.remoteName === 'dev-container' })
+  if (decision.say === 'nothing') {
     void vscode.window.showInformationMessage('The image was built.')
+    return
+  }
+  write([`build: ${decision.message}`])
+  if (decision.say === 'ambiguous') {
+    void vscode.window.showWarningMessage(decision.message)
+    return
+  }
+  const available = (await vscode.commands.getCommands(true)).includes(decision.command)
+  if (!available) {
+    void vscode.window.showWarningMessage(
+      `${decision.message} Dev Containers does not provide \`${decision.command}\` here: run "Dev Containers: Rebuild Container" from the Command Palette.`,
+    )
+    return
+  }
+  const recreate = 'Recreate container'
+  if ((await vscode.window.showWarningMessage(decision.message, recreate)) === recreate) {
+    write([`build: recreating through ${decision.command}`])
+    await vscode.commands.executeCommand(decision.command)
   }
 }
 
