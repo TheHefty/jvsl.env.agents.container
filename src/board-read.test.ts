@@ -85,3 +85,28 @@ test('an item whose parent is missing is not lost', () => {
     dependencies: [dep('o', 'gone', 'parent-child')] }))
   assert.deepEqual(tree(orphan).map((n) => n.item.id), ['o'])
 })
+
+// --- Azure DevOps's shape (task: the-board-takes-azure-devops-shape) --------
+
+import { backlogRows, typeLook } from './board-read.ts'
+
+test('every known bd type is shown under Azure DevOps\'s name and colour', () => {
+  assert.deepEqual(typeLook('epic'), { name: 'Epic', colour: '#FF7B00' })
+  assert.deepEqual(typeLook('feature'), { name: 'User Story', colour: '#009CCC' })
+  assert.deepEqual(typeLook('task'), { name: 'Task', colour: '#F2CB1D' })
+  assert.deepEqual(typeLook('bug'), { name: 'Bug', colour: '#CC293D' })
+})
+
+test('a type the table does not know keeps its own name, never folded into another', () => {
+  assert.deepEqual(typeLook('chore'), { name: 'chore', colour: '#8A8886' })
+})
+
+test('the backlog lists every item exactly once, depth first, orphans at the top', () => {
+  const items = parseExport(EXPORT)
+  const rows = backlogRows(items)
+  assert.deepEqual(rows.map((r) => r.item.id).sort(), items.map((i) => i.id).sort())
+  assert.deepEqual(
+    rows.slice(0, 5).map((r) => [r.item.id, r.depth, r.hasChildren]),
+    [['p-1', 0, true], ['p-1.1', 1, true], ['p-1.1.1', 2, false], ['p-1.1.2', 2, false], ['p-1.1.3', 0, false]],
+  )
+})
