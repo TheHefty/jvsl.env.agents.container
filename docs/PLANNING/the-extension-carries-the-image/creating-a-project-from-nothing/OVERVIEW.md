@@ -56,7 +56,7 @@ Written after this gate, not before.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-questions-gain-a-location-and-ai-memory.md`](tasks/the-questions-gain-a-location-and-ai-memory.md) | Done — #77 |
-| 2 | [`tasks/scaffolding-and-refusing-somebodys-work.md`](tasks/scaffolding-and-refusing-somebodys-work.md) | Draft |
+| 2 | [`tasks/scaffolding-and-refusing-somebodys-work.md`](tasks/scaffolding-and-refusing-somebodys-work.md) | Done — #79 |
 | 3 | [`tasks/a-command-creates-a-project-and-opens-it.md`](tasks/a-command-creates-a-project-and-opens-it.md) | Done — #81 |
 
 **Task 3 was sketched as "the handoff across the reload" and the measurement renamed it.** The

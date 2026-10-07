@@ -66,7 +66,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-documents-move-here-with-their-parity-check.md`](tasks/the-documents-move-here-with-their-parity-check.md) | Draft |
+| 1 | [`tasks/the-documents-move-here-with-their-parity-check.md`](tasks/the-documents-move-here-with-their-parity-check.md) | Done — #60 |
 | 2 | [`tasks/the-image-carries-them-and-a-hook-writes-them.md`](tasks/the-image-carries-them-and-a-hook-writes-them.md) | Done — #62 |
 | 3 | [`tasks/the-submodule-goes.md`](tasks/the-submodule-goes.md) | Done — #64 |
 
