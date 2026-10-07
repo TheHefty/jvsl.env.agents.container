@@ -58,7 +58,7 @@ test('both views and every item are on the page', () => {
     item({ id: 'c', title: 'Gamma', type: 'bug', labels: ['defect'], debtKind: 'defect' }),
   ]
   const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
-  assert.ok(html.includes('data-tab="board"') && html.includes('data-tab="tree"'))
+  assert.ok(html.includes('data-tab="board"') && html.includes('data-tab="backlog"'))
   for (const title of ['Alpha', 'Beta', 'Gamma']) assert.ok(html.includes(title), title)
   assert.ok(html.includes('Proposals'))
   assert.ok(html.includes('defect'))
@@ -83,4 +83,76 @@ test('a notice is said above the board, as text', () => {
   // page says why rather than leaving the operator to wonder.
   const html = boardPage({ nonce: NONCE, items: [item({})], rendered: new Map(), notice: 'Markdown <off>' })
   assert.ok(html.includes('Markdown &lt;off&gt;'))
+})
+
+// --- Azure DevOps's shape (task: the-board-takes-azure-devops-shape) --------
+
+test('the page script never builds HTML from data', () => {
+  // The client only toggles attributes. Building markup in the browser from
+  // item data would reopen what the policy closed.
+  const html = boardPage({ nonce: NONCE, items: [item({})], rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`))
+  for (const sink of ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'eval(', 'new Function']) {
+    assert.ok(!script.includes(sink), sink)
+  }
+})
+
+test('a card shows its type by Azure DevOps\'s name and colour, with ID, state and tags', () => {
+  const html = boardPage({
+    nonce: NONCE,
+    items: [item({ id: 's-1', title: 'A story', type: 'feature', status: 'in_progress', labels: ['ux'] })],
+    rendered: new Map(),
+  })
+  assert.ok(html.includes('User Story'))
+  assert.ok(html.includes('#009CCC'))
+  assert.ok(html.includes('s-1') && html.includes('In progress') && html.includes('>ux<'))
+})
+
+test('a debt\'s kind and a proposal are tags', () => {
+  const html = boardPage({
+    nonce: NONCE,
+    items: [
+      item({ id: 'd-1', type: 'bug', labels: ['defect'], debtKind: 'defect' }),
+      item({ id: 'p-1', type: 'feature', status: 'deferred', labels: ['proposed'] }),
+    ],
+    rendered: new Map(),
+  })
+  assert.ok(html.includes('>defect<'))
+  assert.ok(html.includes('>Proposal<'))
+})
+
+test('the backlog is a grid with ID, Title, State and Tags, open and collapsible', () => {
+  const items = [item({ id: 'e-1', type: 'epic', title: 'Epic <one>' }), item({ id: 's-1', type: 'feature', title: 'Story', parent: 'e-1' })]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
+  for (const h of ['<th>ID</th>', '<th>Title</th>', '<th>State</th>', '<th>Tags</th>']) assert.ok(html.includes(h), h)
+  assert.ok(html.includes('id="expand-all"') && html.includes('id="collapse-all"'))
+  assert.ok(html.includes('data-toggle="e-1"'))
+  assert.ok(!/<tr[^>]*data-row="s-1"[^>]*hidden/.test(html), 'the grid opens expanded')
+  assert.ok(html.includes('Epic &lt;one&gt;') && !html.includes('Epic <one>'))
+})
+
+test('the form links its parent and its children', () => {
+  const items = [
+    item({ id: 'e-1', type: 'epic', title: 'Epic' }),
+    item({ id: 's-1', type: 'feature', title: 'Story', parent: 'e-1' }),
+    item({ id: 't-1', type: 'task', title: 'Task', parent: 's-1' }),
+  ]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
+  const form = html.slice(html.indexOf('data-detail="s-1"'), html.indexOf('</section>', html.indexOf('data-detail="s-1"')))
+  assert.ok(form.includes('Parent') && form.includes('data-open="e-1"'))
+  assert.ok(form.includes('Children') && form.includes('data-open="t-1"'))
+})
+
+test('no element carries a style attribute, because the policy would drop it silently', () => {
+  // style-src allows the page's nonce'd stylesheet only. An inline style=""
+  // is blocked by the webview with nothing said, so colours and indentation
+  // must come from classes defined in that stylesheet.
+  const items = [
+    item({ id: 'e-1', type: 'epic' }),
+    item({ id: 's-1', type: 'feature', parent: 'e-1' }),
+    item({ id: 'x-1', type: 'chore' }),
+  ]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
+  assert.equal((html.match(/\sstyle="/g) ?? []).length, 0)
+  for (const c of ['type-epic', 'type-feature', 'type-other', 'depth-1']) assert.ok(html.includes(c), c)
 })

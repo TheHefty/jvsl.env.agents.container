@@ -140,3 +140,43 @@ export function tree(items: readonly Item[]): Node[] {
   }
   return roots
 }
+
+/**
+ * How each bd type is shown, in Azure DevOps's names and colours (FR-118 as
+ * amended on 2026-10-07). **Only the name shown changes**: bd still stores a
+ * story as a `feature`. A type this table does not know keeps its own name and
+ * a neutral colour, never folded into one it is not.
+ */
+const LOOKS: Readonly<Record<string, { name: string; colour: string }>> = {
+  epic: { name: 'Epic', colour: '#FF7B00' },
+  feature: { name: 'User Story', colour: '#009CCC' },
+  task: { name: 'Task', colour: '#F2CB1D' },
+  bug: { name: 'Bug', colour: '#CC293D' },
+}
+
+export function typeLook(type: string): { name: string; colour: string } {
+  return LOOKS[type] ?? { name: type, colour: '#8A8886' }
+}
+
+export interface BacklogRow {
+  item: Item
+  depth: number
+  hasChildren: boolean
+}
+
+/**
+ * The backlog grid: the tree, depth first, one row per item. Every item from
+ * the export appears exactly once, because the rows are the tree's nodes and
+ * the tree holds each item once.
+ */
+export function backlogRows(items: readonly Item[]): BacklogRow[] {
+  const rows: BacklogRow[] = []
+  const walk = (nodes: readonly Node[], depth: number) => {
+    for (const n of nodes) {
+      rows.push({ item: n.item, depth, hasChildren: n.children.length > 0 })
+      walk(n.children, depth + 1)
+    }
+  }
+  walk(tree(items), 0)
+  return rows
+}
