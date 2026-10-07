@@ -71,8 +71,13 @@ as an account of what happened.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-rules-say-how-to-work-from-the-tracker.md`](tasks/the-rules-say-how-to-work-from-the-tracker.md) | Shipped in #120. Its "drafts live in the conversation" is superseded |
-| 2 | [`tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md`](tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md) | Designed, at its gate |
+| 2 | [`tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md`](tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md) | Shipped in #122 |
 
 ## Outcome
 
-Filled in when the story closes.
+**Shipped, not yet closed.** Both tasks are merged: the rules in #120, and the proposal cycle in
+#122. The rules are held by `scripts/tracker-rules-are-conditional.test.sh`, and every bd command
+they name is run against the image's own bd by `core/image.test.sh`.
+
+Still owed by hand: the two `@manual` scenarios, observed over a real session in a project that has
+a tracker. They are the only test of whether an agent follows the rules.
