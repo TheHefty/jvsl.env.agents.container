@@ -26,12 +26,18 @@ export interface ProjectFiles {
   currentManifest: string | null
   /** Every tracked text file worth reading, by path relative to the root. */
   texts: ReadonlyMap<string, string>
+  /** The project's .gitignore, or null when it has none. Absent means not read. */
+  gitignore?: string | null
+  /** Whether .devcontainer/ is tracked, which the generated one must never be. */
+  trackedDevcontainer?: boolean
 }
 
 export type Op =
   | { kind: 'write'; path: string; content: string }
   | { kind: 'remove'; path: string }
   | { kind: 'remove-submodule'; path: string }
+  /** `git rm --cached`: out of the index, still on disk. */
+  | { kind: 'untrack'; path: string }
 
 export interface Mention {
   path: string
@@ -107,6 +113,21 @@ export function planFileMigration(project: ProjectFiles): Plan {
     edited.add(HOOK)
   }
 
+  // **The generated devcontainer never reaches the repository.** The
+  // extension writes .devcontainer/devcontainer.json with this machine's
+  // absolute paths; gosnip's migration committed it because its .gitignore did
+  // not list it (debt the-migration-commits-the-generated-devcontainer).
+  if (project.gitignore !== undefined) {
+    const ignored = (project.gitignore ?? '').split('\n').some((l) => /^\/?\.devcontainer\/?\s*$/.test(l))
+    if (!ignored) {
+      const base = project.gitignore ?? ''
+      const sep = base === '' || base.endsWith('\n') ? '' : '\n'
+      writes.push({ kind: 'write', path: '.gitignore', content:
+        `${base}${sep}\n# The dev container configuration this machine generates: absolute paths to\n# this project and to ~/.claude. Never committed.\n.devcontainer/\n` })
+    }
+  }
+  const untracks: Op[] = project.trackedDevcontainer === true ? [{ kind: 'untrack', path: '.devcontainer' }] : []
+
   // Every mention that remains after the edits, in every file, listed with
   // its line and never rewritten.
   const after = new Map(project.texts)
@@ -124,6 +145,7 @@ export function planFileMigration(project: ProjectFiles): Plan {
   const ops: Op[] = [
     ...writes,
     ...removes,
+    ...untracks,
     ...(project.hasSubmodule ? [{ kind: 'remove-submodule', path: '.code-server' } as Op] : []),
   ]
   return {
@@ -151,6 +173,8 @@ export async function applyFileMigration(root: string, plan: Plan & { kind: 'pla
         writeFileSync(join(root, op.path), op.content, 'utf8')
       } else if (op.kind === 'remove') {
         rmSync(join(root, op.path), { force: true })
+      } else if (op.kind === 'untrack') {
+        await run('git', ['-C', root, 'rm', '-q', '-r', '--cached', '--', op.path])
       } else {
         await run('git', ['-C', root, 'rm', '-q', '-r', '--', op.path])
       }

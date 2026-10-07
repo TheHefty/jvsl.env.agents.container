@@ -58,7 +58,10 @@ export function migrationStep(f: MigrationFacts): MigrationStep {
 /** The files' plan as Markdown, for the operator to read before Apply. */
 export function planMarkdown(hostPath: string, plan: Plan & { kind: 'plan' }): string {
   const ops = plan.ops.map((o) =>
-    o.kind === 'write' ? `- write \`${o.path}\`` : o.kind === 'remove' ? `- remove \`${o.path}\`` : `- remove the submodule \`${o.path}\` (git rm)`,
+    o.kind === 'write' ? `- write \`${o.path}\``
+      : o.kind === 'remove' ? `- remove \`${o.path}\``
+      : o.kind === 'untrack' ? `- stop tracking \`${o.path}\` (git rm --cached; it stays on disk)`
+      : `- remove the submodule \`${o.path}\` (git rm)`,
   )
   const mentions = plan.report.mentions.length === 0
     ? ['None.']

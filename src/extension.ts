@@ -500,7 +500,11 @@ async function migrate(write: (lines: string[]) => void): Promise<void> {
       const t = read(f)
       if (t !== null) texts.set(f, t)
     }
-    const plan = planFileMigration({ hasSubmodule, legacyManifest: legacy, currentManifest: current, texts })
+    const plan = planFileMigration({
+      hasSubmodule, legacyManifest: legacy, currentManifest: current, texts,
+      gitignore: read('.gitignore'),
+      trackedDevcontainer: tracked.some((f) => f.startsWith('.devcontainer/')),
+    })
     if (plan.kind === 'nothing') {
       void vscode.window.showInformationMessage(plan.why)
       return

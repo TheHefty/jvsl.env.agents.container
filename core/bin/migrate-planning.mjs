@@ -136,6 +136,9 @@ export function plan(root) {
   }
 
   for (const entry of isDir(D) ? readdirSync(D).sort() : []) {
+    // README.md is the folder's index, never a debt: gosnip's migration took it
+    // for one (debt the-migration-takes-the-debts-index-for-a-debt).
+    if (entry === 'README.md') continue
     const doc = isDir(join(D, entry)) ? join(D, entry, 'OVERVIEW.md') : entry.endsWith('.md') ? join(D, entry) : null
     if (!doc || !existsSync(doc)) continue
     const text = read(doc)
