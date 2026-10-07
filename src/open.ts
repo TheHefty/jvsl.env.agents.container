@@ -218,3 +218,20 @@ export function ignoresGeneratedConfig(gitignore: string | null): boolean {
     .map((line) => line.trim().replace(/^\//, '').replace(/\/$/, ''))
     .some((line) => line === CONFIG_PATH || line === '.devcontainer')
 }
+
+/**
+ * Whether the open flow has anything to do in this window.
+ *
+ * **Not inside the project's container.** The flow writes the dev container
+ * configuration and hands the window over; a window already connected has
+ * nothing left to hand over. Until 2026-10-07 it ran there on every
+ * connection, aimed at the container's path on the host, and only EACCES
+ * stopped the write. Another kind of remote has no project on this machine.
+ */
+export function prepareHere(remoteName: string | undefined): { act: true } | { act: false; why: string } {
+  if (remoteName === undefined) return { act: true }
+  if (remoteName === 'dev-container') {
+    return { act: false, why: "this window is already inside the project's container, so there is nothing to prepare" }
+  }
+  return { act: false, why: `this window is connected to "${remoteName}", and the project is not on this machine` }
+}

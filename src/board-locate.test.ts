@@ -63,3 +63,37 @@ test('two containers for one project are refused by name, never guessed between'
     names: ['demo_devcontainer', 'demo_again'],
   })
 })
+
+// --- every command finds the project on the host (debt: the-panel-reads-the-containers-path)
+
+import { projectOnHost } from './board-locate.ts'
+
+test('a local window\'s project is its folder', () => {
+  assert.deepEqual(projectOnHost({ remoteName: undefined, folder: { fsPath: '/home/jv/demo', authority: '' } }),
+    { kind: 'host', path: '/home/jv/demo' })
+})
+
+test('a window connected to a dev container finds the project through the authority, never /config/workspace', () => {
+  const r = projectOnHost({
+    remoteName: 'dev-container',
+    folder: { fsPath: '/config/workspace', authority: `dev-container+${hex('/home/jv/demo')}` },
+  })
+  assert.deepEqual(r, { kind: 'host', path: '/home/jv/demo' })
+})
+
+test('an undecodable dev container authority is none, with the reason, never the container path', () => {
+  const r = projectOnHost({ remoteName: 'dev-container', folder: { fsPath: '/config/workspace', authority: 'dev-container+zz' } })
+  assert.equal(r.kind, 'none')
+  assert.ok(r.kind === 'none' && r.reason.includes('dev-container+zz'))
+})
+
+test('another kind of remote is none: its files are not on this machine', () => {
+  for (const remoteName of ['ssh-remote', 'wsl']) {
+    const r = projectOnHost({ remoteName, folder: { fsPath: '/home/u/p', authority: `${remoteName}+box` } })
+    assert.equal(r.kind, 'none', remoteName)
+  }
+})
+
+test('no folder is none', () => {
+  assert.equal(projectOnHost({ remoteName: undefined, folder: undefined }).kind, 'none')
+})
