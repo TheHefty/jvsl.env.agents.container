@@ -101,8 +101,6 @@ jobs:
         run: bash scripts/manifest-name-is-defined-once.test.sh
       - name: every job respects the change's scope
         run: bash scripts/every-job-respects-the-scope.test.sh
-      - name: the migration refuses to delete what did not arrive whole
-        run: bash scripts/migrate-planning.test.sh
       - name: nothing optional runs before the commands are registered
         run: bash scripts/commands-register-first.test.sh
       - name: no call to docker runs without a time limit

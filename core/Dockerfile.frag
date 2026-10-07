@@ -459,6 +459,12 @@ COPY core/bin/jail-common.sh /usr/local/lib/jail-common.sh
 # editor's git runs here. core/image.test.sh asserts it runs.
 COPY core/bin/check-md-size.sh /usr/local/bin/check-md-size
 RUN chmod +x /usr/local/bin/check-md-size
+
+# The migration of a project's planning and debts into its tracker (FR-125,
+# FR-126). It runs here because bd is only here, and it is plain JavaScript so
+# it runs on whichever Node the project's stack installed.
+COPY core/bin/migrate-planning.mjs /usr/local/bin/migrate-planning
+RUN chmod +x /usr/local/bin/migrate-planning
 COPY core/bin/claude.sh /usr/local/bin/claude
 COPY core/bin/codex.sh /usr/local/bin/codex
 RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex
