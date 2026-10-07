@@ -54,7 +54,7 @@ scripts/**
 docs/*.md
 docs/DEBTS/**
 docs/PLANNING/**
-docs/srs/**
+docs/SRS/**
 docs/**/*.test.sh
 src/**
 tools/**

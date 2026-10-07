@@ -29,7 +29,7 @@ violations() {
     done < <(cd "$root" && find docs/PLANNING docs/DEBTS -type f 2>/dev/null | sort)
     [ -f "$root/docs/CHARTER.md" ] && docs+=("$root/docs/CHARTER.md")
     [ -f "$root/docs/SRS.md" ] && docs+=("$root/docs/SRS.md")
-    while IFS= read -r f; do docs+=("$f"); done < <(find "$root/docs/srs" -name '*.md' 2>/dev/null | sort)
+    while IFS= read -r f; do docs+=("$f"); done < <(find "$root/docs/SRS" -name '*.md' 2>/dev/null | sort)
     [ "${#docs[@]}" -ge 2 ] || { echo "found ${#docs[@]} charter/SRS file(s) under $root; nothing to check would pass vacuously"; return; }
     for f in "${docs[@]}"; do
         # A header row is a table line immediately followed by a |---| separator.
@@ -63,10 +63,10 @@ fi
 # --- fixtures: each case the guard claims, seen on every run ---------------
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 fixture() {
-    rm -rf "$work/t"; mkdir -p "$work/t/docs/PLANNING" "$work/t/docs/DEBTS" "$work/t/docs/srs"
+    rm -rf "$work/t"; mkdir -p "$work/t/docs/PLANNING" "$work/t/docs/DEBTS" "$work/t/docs/SRS"
     touch "$work/t/docs/PLANNING/.gitkeep" "$work/t/docs/DEBTS/.gitkeep"
     printf '# Charter\n\n| | |\n|---|---|\n| **Status** | Accepted |\n\nWhat shipped is done.\n' > "$work/t/docs/CHARTER.md"
-    printf '# SRS\n\nNothing here is in progress.\n' > "$work/t/docs/srs/README.md"
+    printf '# SRS\n\nNothing here is in progress.\n' > "$work/t/docs/SRS/README.md"
 }
 
 fixture
@@ -79,7 +79,7 @@ fixture; mkdir -p "$work/t/docs/DEBTS/x"; printf '# Debt\n' > "$work/t/docs/DEBT
 check "a debt as a file is refused, named" "$(violations "$work/t" | grep -c 'docs/DEBTS/x/OVERVIEW.md')" "1"
 
 for header in '| # | Story | Status |' '# | Story | Status' '| Order | Task | **Status** |' '|  #  |  Story  |   Status   |'; do
-    fixture; printf '\n%s\n|---|---|---|\n| 1 | x | Done |\n' "$header" >> "$work/t/docs/srs/README.md"
+    fixture; printf '\n%s\n|---|---|---|\n| 1 | x | Done |\n' "$header" >> "$work/t/docs/SRS/README.md"
     check "a status table is refused: $header" "$(violations "$work/t" | grep -c 'a status table')" "1"
 done
 
