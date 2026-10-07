@@ -318,8 +318,10 @@ manual hand-off is accepted rather than designed around.
 - **FR-108** — The create-project flow asks about Beads exactly as it asks about `ai-memory`, and
   writes the marker of FR-101 when asked. The one moment somebody is deciding what a project *is* is
   the right moment to ask.
-- **FR-109** — **A guard fails when an epic, story or task survives as markdown under `docs/`, or
-  when a status appears in a document that stays.** Amended with FR-104, and it now guards two
+- **FR-109** — **A guard fails when an epic, story, task or debt survives as markdown under `docs/`,
+  or when a status appears in a document that stays.** Debts joined on 2026-10-07, when FR-117 moved
+  them into the tracker. The folders `docs/PLANNING/` and `docs/DEBTS/` stay, holding only a
+  `.gitkeep`, for projects without a tracker; they are not a failure. Amended with FR-104, and it now guards two
   things: that the documents which moved do not come back, and that the two which stayed — the
   charter and the SRS — do not start carrying state again.
 
