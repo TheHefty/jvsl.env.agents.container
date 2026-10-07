@@ -76,7 +76,7 @@ Written after this gate, not before.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-name-is-resolved-once.md`](tasks/the-name-is-resolved-once.md) | Designed, at its gate |
+| 1 | [`tasks/the-name-is-resolved-once.md`](tasks/the-name-is-resolved-once.md) | Shipped in #95 |
 
 **What the design settled, and the operator decided on 2026-10-05:** the name is resolved **once, at
 activation**, so no other code learns that two names ever existed; and support for the old one is
