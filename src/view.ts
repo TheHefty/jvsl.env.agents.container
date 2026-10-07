@@ -23,6 +23,11 @@ export interface ViewState {
   folderOpen?: boolean
   /** A blocking host problem, shown before anything is offered. */
   hostProblem?: string
+  /**
+   * Why the agents' sandbox will not open on this host, when it will not. Not
+   * blocking: the project is still shown, and this sits above it.
+   */
+  sandboxWarning?: string
   /** The parsed manifest, or null when there is none. */
   manifest: Record<string, unknown> | null
   /** What the last build in this session did, if there was one. */
@@ -107,14 +112,17 @@ export function viewItems(state: ViewState): Row[] {
     ]
   }
 
-  const rows: Row[] = []
+  const rows: Row[] = state.sandboxWarning === undefined
+    ? []
+    : [{ kind: 'problem', label: "The agents' sandbox will not open on this host", detail: state.sandboxWarning }]
+  const stackRowsFrom = rows.length
   for (const stack of state.stacksAvailable) {
     const version = state.manifest[stack]
     if (typeof version === 'string') {
       rows.push({ kind: 'stack', label: stack, detail: version })
     }
   }
-  if (rows.length === 0) {
+  if (rows.length === stackRowsFrom) {
     rows.push({ kind: 'note', label: 'No stacks selected', detail: 'the core image alone' })
   }
 

@@ -12,6 +12,8 @@ import {
   buildOutcome,
   detectManager,
   hostProblems,
+  sandboxWarnings,
+  type SandboxConditions,
   type DockerState,
   type HostChecks,
 } from './build.ts'
@@ -189,6 +191,15 @@ async function startup(
   // **Activation runs in every window on this host**, because the panel has to
   // exist before anybody asks for it. What keeps the cost the SRS accepted is
   // that a window with no folder pays a registration and one host check.
+  // **The agents' sandbox, said in the panel** (the debt
+  // the-sandbox-under-apparmor). Not awaited by anything the commands wait on:
+  // it reads docker and /proc, and the panel fills in when it answers.
+  void sandboxConditions().then((c) => {
+    const warnings = sandboxWarnings(c)
+    for (const w of warnings) write([`host: warning: ${w.message}`])
+    view.recordSandboxWarning(warnings.length === 0 ? undefined : warnings.map((w) => w.message).join(' '))
+  })
+
   if (vscode.workspace.workspaceFolders === undefined) {
     const blocker = hostProblems(await hostChecks()).find((p) => p.blocking)
     view.recordHostProblem(blocker?.message)
@@ -287,9 +298,16 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
    * refresh.
    */
   private hostProblem: string | undefined
+  private sandboxWarning: string | undefined
 
   recordHostProblem(message: string | undefined): void {
     this.hostProblem = message
+    this.refresh()
+  }
+
+  /** Why the agents' sandbox will not open on this host; undefined when it will. */
+  recordSandboxWarning(message: string | undefined): void {
+    this.sandboxWarning = message
     this.refresh()
   }
 
@@ -317,6 +335,7 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
         manifest: null,
         folderOpen: false,
         hostProblem: this.hostProblem,
+        sandboxWarning: this.sandboxWarning,
       })
     }
     const project = hostProject()
@@ -325,6 +344,7 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
     }
     return viewItems({
       ...readViewState(project.path, this.extensionPath),
+      sandboxWarning: this.sandboxWarning,
       lastBuild: this.lastBuild,
     })
   }
@@ -571,7 +591,30 @@ async function hostChecks(): Promise<HostChecks> {
   const exists = (command: string): boolean =>
     command === 'apt-get' ? apt : command === 'dnf' ? dnf : command === 'pacman' ? pacman : false
 
-  return { jq, docker, manager: detectManager(exists) }
+  return { jq, docker, manager: detectManager(exists), sandbox: await sandboxConditions() }
+}
+
+/**
+ * What this host does to the agents' sandbox, read on the host where this
+ * extension runs. **A read that fails is 'unknown'**, never a guess: a warning
+ * that is sometimes false is one everybody learns to ignore. Absent /proc entry
+ * means the kernel has no such restriction, which is every host but Ubuntu's.
+ */
+async function sandboxConditions(): Promise<SandboxConditions> {
+  let dockerAppArmor: SandboxConditions['dockerAppArmor'] = 'unknown'
+  try {
+    const { stdout } = await dockerBounded(['info', '--format', '{{json .SecurityOptions}}'])
+    dockerAppArmor = stdout.includes('name=apparmor')
+  } catch {
+    dockerAppArmor = 'unknown'
+  }
+  let usernsRestricted: SandboxConditions['usernsRestricted'] = 'unknown'
+  try {
+    usernsRestricted = readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1'
+  } catch (error) {
+    usernsRestricted = (error as NodeJS.ErrnoException).code === 'ENOENT' ? false : 'unknown'
+  }
+  return { dockerAppArmor, usernsRestricted }
 }
 
 /** An input box whose undefined means escape, which the caller treats as abandon. */

@@ -174,3 +174,44 @@ test('the handover is reachable from a successful build and from nothing else', 
   assert.equal(handsOver(buildOutcome(1)), false)
   assert.equal(handsOver(buildOutcome(undefined)), false)
 })
+
+// --- the agents' sandbox under AppArmor (debt: the-sandbox-under-apparmor) ---
+
+import { sandboxWarnings } from './build.ts'
+
+test('a host with neither condition gets no sandbox warning', () => {
+  // The operator's Arch host: no AppArmor in Docker, no Ubuntu restriction.
+  assert.deepEqual(sandboxWarnings({ dockerAppArmor: false, usernsRestricted: false }), [])
+})
+
+test('what could not be read claims nothing', () => {
+  assert.deepEqual(sandboxWarnings({ dockerAppArmor: 'unknown', usernsRestricted: 'unknown' }), [])
+})
+
+test('the kernel restriction is named, with the setting and what to decide', () => {
+  const [w] = sandboxWarnings({ dockerAppArmor: false, usernsRestricted: true })
+  assert.ok(w)
+  assert.equal(w.blocking, false, 'the image builds; only the sandbox fails')
+  assert.match(w.message, /apparmor_restrict_unprivileged_userns/)
+  assert.match(w.message, /sandbox/)
+})
+
+test('Docker\'s AppArmor confinement is named, and nothing is changed for the operator', () => {
+  const [w] = sandboxWarnings({ dockerAppArmor: true, usernsRestricted: false })
+  assert.ok(w)
+  assert.equal(w.blocking, false)
+  assert.match(w.message, /AppArmor/)
+  assert.match(w.message, /mount/)
+})
+
+test('both conditions are two warnings, neither blocking', () => {
+  const ws = sandboxWarnings({ dockerAppArmor: true, usernsRestricted: true })
+  assert.equal(ws.length, 2)
+  assert.ok(ws.every((w) => !w.blocking))
+})
+
+test('the sandbox warnings join the host problems without blocking a build', () => {
+  const problems = hostProblems({ ...ready, sandbox: { dockerAppArmor: true, usernsRestricted: true } })
+  assert.equal(problems.filter((p) => p.blocking).length, 0)
+  assert.equal(problems.length, 2)
+})

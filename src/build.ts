@@ -17,6 +17,52 @@ export interface HostChecks {
   jq: boolean
   docker: DockerState
   manager: Manager | null
+  /** What this host does to the agents' sandbox. Absent when not read. */
+  sandbox?: SandboxConditions
+}
+
+/**
+ * Two things on a host with AppArmor stop `bwrap`, and with it the agents'
+ * sandbox, measured on GitHub's Ubuntu runner (the debt
+ * the-sandbox-under-apparmor in the tracker). Each is true, false, or
+ * 'unknown' when it could not be read, and unknown claims nothing.
+ */
+export interface SandboxConditions {
+  /** `docker info` lists `name=apparmor` among its security options. */
+  dockerAppArmor: boolean | 'unknown'
+  /** `/proc/sys/kernel/apparmor_restrict_unprivileged_userns` reads 1. */
+  usernsRestricted: boolean | 'unknown'
+}
+
+/**
+ * The warnings a host's AppArmor earns: **never blocking**, because the image
+ * builds and only the sandbox fails, and **never a change to the host**, because
+ * widening confinement is the operator's decision, not this extension's. Each
+ * says what fails, why, and what the operator of that host can decide.
+ */
+export function sandboxWarnings(c: SandboxConditions): HostProblem[] {
+  const out: HostProblem[] = []
+  if (c.usernsRestricted === true) {
+    out.push({
+      blocking: false,
+      message:
+        "the agents' sandbox will not open on this host: the kernel restricts unprivileged user " +
+        'namespaces (kernel.apparmor_restrict_unprivileged_userns=1), and bwrap needs one. The image ' +
+        'still builds. Whether to lift it is your decision about this host: ' +
+        '`sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0`, or an AppArmor profile that allows bwrap.',
+    })
+  }
+  if (c.dockerAppArmor === true) {
+    out.push({
+      blocking: false,
+      message:
+        "the agents' sandbox may not open on this host: Docker confines containers with AppArmor, and " +
+        'its default profile denies the mounts bwrap makes inside the container. The image still builds. ' +
+        'The generated configuration does not pass apparmor=unconfined, by design: widening the ' +
+        "container's confinement is a decision this extension does not make for you.",
+    })
+  }
+  return out
 }
 
 export interface HostProblem {
@@ -117,6 +163,8 @@ export function hostProblems(checks: HostChecks): HostProblem[] {
     case 'ok':
       break
   }
+
+  if (checks.sandbox !== undefined) problems.push(...sandboxWarnings(checks.sandbox))
 
   return problems
 }
