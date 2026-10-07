@@ -54,8 +54,13 @@ echo "ok      the search mechanism finds a string that is really there"
 #
 # `'.code-server'` as a whole quoted segment does not match
 # `'.code-server.stack.json'`, which is the manifest and must stay readable.
+# **One file is exempt, by name: src/migrate-files.ts.** It does not read the
+# submodule; it removes it, which is the opposite of depending on it, and it
+# cannot do that without naming it (FR-123). The exemption is a path, not a
+# pattern, so a second file naming the submodule still fails here.
 hits="$(grep -nE "\.code-server/|['\"]\.code-server['\"]" -- "${sources[@]}" \
-    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' || true)"
+    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' \
+    | grep -v '^src/migrate-files\.ts:' || true)"
 if [ -n "$hits" ]; then
     echo "nothing-reads-the-submodule: FAIL: these name a path inside a project's \
 \`.code-server/\`. The extension carries the image's content; a project is not required to have a \
