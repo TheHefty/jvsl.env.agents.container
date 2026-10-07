@@ -164,3 +164,12 @@ test('no warning, no row', () => {
   const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
   assert.equal(rows.find((r) => r.label.includes('sandbox')), undefined)
 })
+
+test('a project still on the code-server template offers to migrate, above its stacks', () => {
+  // FR-122: the command is offered where the project already is.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' }, oldFormat: true })
+  const entry = rows.find((r) => r.command === 'jvsl.agentContainer.migrate')
+  assert.ok(entry, JSON.stringify(rows))
+  assert.equal(entry.label, 'Migrate from code-server')
+  assert.equal(viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } }).find((r) => r.command === 'jvsl.agentContainer.migrate'), undefined)
+})

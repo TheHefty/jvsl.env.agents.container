@@ -28,6 +28,8 @@ export interface ViewState {
    * blocking: the project is still shown, and this sits above it.
    */
   sandboxWarning?: string
+  /** The project still carries the code-server template's submodule (FR-122). */
+  oldFormat?: boolean
   /** The parsed manifest, or null when there is none. */
   manifest: Record<string, unknown> | null
   /** What the last build in this session did, if there was one. */
@@ -115,6 +117,14 @@ export function viewItems(state: ViewState): Row[] {
   const rows: Row[] = state.sandboxWarning === undefined
     ? []
     : [{ kind: 'problem', label: "The agents' sandbox will not open on this host", detail: state.sandboxWarning }]
+  if (state.oldFormat === true) {
+    rows.push({
+      kind: 'entry',
+      label: 'Migrate from code-server',
+      detail: 'this project still carries the template submodule',
+      command: 'jvsl.agentContainer.migrate',
+    })
+  }
   const stackRowsFrom = rows.length
   for (const stack of state.stacksAvailable) {
     const version = state.manifest[stack]

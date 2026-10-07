@@ -29,6 +29,8 @@ import { hostFacts } from './host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { showWork } from './board.ts'
+import { applyFileMigration, carriesTemplateSubmodule, planFileMigration, textsWorthReading } from './migrate-files.ts'
+import { migrationStep, planMarkdown, type MigrationFacts } from './migrate-step.ts'
 import { containerFor, projectOnHost, type ProjectOnHost } from './board-locate.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
@@ -52,6 +54,7 @@ const OPEN = 'jvsl.agentContainer.prepare'
 const CONFIGURE = 'jvsl.agentContainer.configure'
 const BUILD = 'jvsl.agentContainer.build'
 const SHOW_WORK = 'jvsl.agentContainer.showWork'
+const MIGRATE = 'jvsl.agentContainer.migrate'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
 const DOCKER_CHECK_MS = 2000
 const PICK = 'jvsl.agentContainer.open'
@@ -132,6 +135,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
     vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerBounded, write)),
+    vscode.commands.registerCommand(MIGRATE, () => migrate(write)),
   )
 
   context.subscriptions.push(
@@ -399,7 +403,150 @@ function readViewState(root: string, extensionPath: string): ViewState {
   return {
     stacksAvailable: stacksAvailable(carried(extensionPath, 'stacks')),
     manifest,
+    oldFormat: carriesTemplateSubmodule(readOrNull(join(root, '.gitmodules'))),
   }
+}
+
+/**
+ * Agent Container: Migrate from code-server (FR-122). **One step per run**,
+ * decided by migrationStep from what is on disk and in the container, so a
+ * window reloaded by recreating the container loses nothing: run it again and
+ * it continues. Every change waits for an explicit Apply, and nothing is
+ * committed.
+ */
+async function migrate(write: (lines: string[]) => void): Promise<void> {
+  const project = hostProject()
+  if (project.kind === 'none') {
+    void vscode.window.showErrorMessage(`Migrate: ${project.reason}.`)
+    return
+  }
+  const root = project.path
+  const read = (rel: string) => readOrNull(join(root, rel))
+  let tracked: string[] = []
+  try {
+    tracked = (await run('git', ['-C', root, 'ls-files'], { maxBuffer: 64 * 1024 * 1024 })).stdout.split('\n').filter((f) => f !== '')
+  } catch (error) {
+    void vscode.window.showErrorMessage(`Migrate: ${root} is not a git repository this can read: ${String(error)}`)
+    return
+  }
+  const hasSubmodule = carriesTemplateSubmodule(read('.gitmodules'))
+  const legacy = read(LEGACY_MANIFEST)
+  const current = read(MANIFEST)
+  const facts: MigrationFacts = {
+    oldFormat: hasSubmodule || legacy !== null,
+    planningFolders: existsSync(join(root, 'docs/PLANNING')) || existsSync(join(root, 'docs/DEBTS')),
+    container: { kind: 'none' },
+  }
+  let containerId = ''
+  if (!facts.oldFormat && facts.planningFolders) {
+    try {
+      const { stdout } = await dockerBounded([
+        'ps', '-a', '--filter', 'label=devcontainer.local_folder',
+        '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.State}}',
+      ])
+      const rows = stdout.split('\n').filter((l) => l.trim() !== '').map((l) => {
+        const [id = '', name = '', localFolder = '', state = ''] = l.split('\t')
+        return { id, name, localFolder, state }
+      })
+      const choice = containerFor(root, rows)
+      if (choice.kind === 'many') facts.container = choice
+      if (choice.kind === 'one') {
+        containerId = choice.id
+        const running = rows.find((r) => r.id === choice.id)?.state === 'running'
+        let probe = ''
+        if (running) {
+          probe = (await dockerBounded([
+            'exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', choice.id, 'sh', '-c',
+            'command -v migrate-planning >/dev/null && echo M; test -d .beads/embeddeddolt && echo T && bd list --all --json 2>/dev/null | jq length',
+          ], 15000)).stdout
+        }
+        const lines = probe.split('\n').map((l) => l.trim())
+        facts.container = {
+          kind: 'one', running,
+          hasMigrator: lines.includes('M'), hasTracker: lines.includes('T'),
+          items: Number(lines.find((l) => /^\d+$/.test(l)) ?? '0'),
+        }
+      }
+    } catch (error) {
+      write([`migrate: could not read the project's container: ${String(error)}`])
+    }
+  }
+
+  const step = migrationStep(facts)
+  write([`migrate: step ${step.step}${'why' in step ? ` — ${step.why}` : ''}`])
+  const showPlan = async (content: string) => {
+    const doc = await vscode.workspace.openTextDocument({ content, language: 'markdown' })
+    await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside, preview: true })
+  }
+
+  if (step.step === 'done') {
+    void vscode.window.showInformationMessage('This project is already in the new format: nothing to migrate.')
+    return
+  }
+  if (step.step === 'refuse') {
+    void vscode.window.showWarningMessage(`Migrate: ${step.why}`)
+    return
+  }
+  if (step.step === 'rebuild') {
+    const build = 'Build the Image'
+    const chosen = await vscode.window.showInformationMessage(
+      `Migrate: ${step.why}. Build the image and recreate the container, then run Migrate again to move the planning.`, build)
+    if (chosen === build) await vscode.commands.executeCommand(BUILD)
+    return
+  }
+  if (step.step === 'files') {
+    const texts = new Map<string, string>()
+    for (const f of textsWorthReading(tracked)) {
+      const t = read(f)
+      if (t !== null) texts.set(f, t)
+    }
+    const plan = planFileMigration({ hasSubmodule, legacyManifest: legacy, currentManifest: current, texts })
+    if (plan.kind === 'nothing') {
+      void vscode.window.showInformationMessage(plan.why)
+      return
+    }
+    await showPlan(planMarkdown(root, plan))
+    const apply = 'Apply'
+    const chosen = await vscode.window.showWarningMessage('Apply the migration of the files?', {
+      modal: true, detail: `${plan.ops.length} change(s) in ${root}. Nothing is committed.`,
+    }, apply)
+    if (chosen !== apply) {
+      write(['migrate: the files were not changed: the plan was not applied'])
+      return
+    }
+    try {
+      await applyFileMigration(root, plan)
+    } catch (error) {
+      void vscode.window.showErrorMessage(String(error))
+      return
+    }
+    write([`migrate: files migrated; ${plan.report.mentions.length} mention(s) left for review`])
+    void vscode.window.showInformationMessage(
+      'The files are migrated, uncommitted. Next: build the image and recreate the container, then run Migrate again to move the planning.')
+    return
+  }
+  // step.step === 'planning'
+  let preview = ''
+  try {
+    preview = (await dockerBounded(['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId,
+      'migrate-planning', '--plan'], 60000)).stdout
+  } catch (error) {
+    void vscode.window.showErrorMessage(`Migrate: the planning's plan could not be read in the container: ${String(error)}`)
+    return
+  }
+  await showPlan(['# Migrate from code-server: the planning', '', '```', preview.trim(), '```', '',
+    'docs/PLANNING and docs/DEBTS are removed once every item reads back whole. Nothing is committed.', ''].join('\n'))
+  const apply = 'Apply'
+  const chosen = await vscode.window.showWarningMessage('Move the planning into the tracker?', {
+    modal: true, detail: 'It runs inside the container, in a terminal you can read.',
+  }, apply)
+  if (chosen !== apply) return
+  const terminal = vscode.window.createTerminal({
+    name: 'Migrate the planning',
+    shellPath: 'docker',
+    shellArgs: ['exec', '-it', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId, 'migrate-planning'],
+  })
+  terminal.show()
 }
 
 /**

@@ -1,0 +1,68 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+
+import { migrationStep, planMarkdown, type MigrationFacts } from './migrate-step.ts'
+
+const ready: MigrationFacts = {
+  oldFormat: false,
+  planningFolders: true,
+  container: { kind: 'one', running: true, hasMigrator: true, hasTracker: true, items: 0 },
+}
+
+test('a project on the old format starts with its files', () => {
+  assert.equal(migrationStep({ ...ready, oldFormat: true }).step, 'files')
+})
+
+test('the files come first even when a container is ready, so nothing runs out of order', () => {
+  assert.equal(migrationStep({ ...ready, oldFormat: true, container: { ...ready.container, items: 5 } as MigrationFacts['container'] }).step, 'files')
+})
+
+test('each missing fact about the container leads to a rebuild, and says which', () => {
+  const cases: Array<[MigrationFacts['container'], RegExp]> = [
+    [{ kind: 'none' }, /no container/],
+    [{ kind: 'one', running: false, hasMigrator: true, hasTracker: true, items: 0 }, /not running/],
+    [{ kind: 'one', running: true, hasMigrator: false, hasTracker: true, items: 0 }, /migrate-planning/],
+    [{ kind: 'one', running: true, hasMigrator: true, hasTracker: false, items: 0 }, /tracker/],
+  ]
+  for (const [container, why] of cases) {
+    const s = migrationStep({ ...ready, container })
+    assert.equal(s.step, 'rebuild', JSON.stringify(container))
+    assert.ok(s.step === 'rebuild' && why.test(s.why), s.step === 'rebuild' ? s.why : '')
+  }
+})
+
+test('several containers for the project are refused by name', () => {
+  const s = migrationStep({ ...ready, container: { kind: 'many', names: ['a', 'b'] } })
+  assert.equal(s.step, 'refuse')
+  assert.ok(s.step === 'refuse' && s.why.includes('a') && s.why.includes('b'))
+})
+
+test('a ready container with the planning still on disk and an empty tracker moves the planning', () => {
+  assert.equal(migrationStep(ready).step, 'planning')
+})
+
+test('a tracker that already holds items refuses the planning, because a second run duplicates everything', () => {
+  const s = migrationStep({ ...ready, container: { ...ready.container, items: 287 } as MigrationFacts['container'] })
+  assert.equal(s.step, 'refuse')
+  assert.ok(s.step === 'refuse' && /287/.test(s.why) && /duplicate/.test(s.why))
+})
+
+test('a project with nothing left to move is done, whatever its container', () => {
+  assert.equal(migrationStep({ ...ready, planningFolders: false }).step, 'done')
+  assert.equal(migrationStep({ oldFormat: false, planningFolders: false, container: { kind: 'none' } }).step, 'done')
+})
+
+test('the plan is Markdown that names every operation and every mention, and how to undo', () => {
+  const md = planMarkdown('/home/jv/p', {
+    kind: 'plan',
+    ops: [
+      { kind: 'write', path: 'CLAUDE.md', content: 'x' },
+      { kind: 'remove', path: '.code-server.stack.json' },
+      { kind: 'remove-submodule', path: '.code-server' },
+    ],
+    report: { mentions: [{ path: 'README.md', line: 3, text: 'see .code-server' }], undo: 'git restore' },
+  })
+  for (const s of ['/home/jv/p', 'CLAUDE.md', '.code-server.stack.json', 'README.md:3', 'git restore', 'Nothing is committed']) {
+    assert.ok(md.includes(s), s)
+  }
+})
