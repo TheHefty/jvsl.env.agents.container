@@ -130,6 +130,20 @@ $(grep '^UNMAPPED' "$plan" | cut -d$'\x1f' -f2). Add each to DEBT_MAP in this sc
     exit 1
 fi
 
+# **A finished parent with an unfinished child cannot be closed** — bd refuses —
+# so it is refused here, before anything is created, naming both.
+conflicts="$(awk -F'\x1f' '
+    $1 == "epic"  { state["e:" $7] = $4 }
+    $1 == "story" { state["s:" $3 "/" $7] = $4; if (state["e:" $3] == "closed" && $4 == "open") print "epic " $3 " is finished but its story " $7 " is not" }
+    $1 == "task"  { if (state["s:" $3] == "closed" && $4 == "open") print "story " $3 " is finished but its task " $7 " is not" }
+' "$plan")"
+if [ -n "$conflicts" ]; then
+    echo "migrate-planning: bd will not close an issue while a child of it is open, and these tables \
+disagree. Fix the status in the table, then run again. Nothing was created." >&2
+    printf '    %s\n' "$conflicts" >&2
+    exit 1
+fi
+
 count="$(wc -l < "$plan")"
 [ "$count" -gt 0 ] || { echo "migrate-planning: nothing to migrate under $ROOT." >&2; exit 1; }
 
@@ -191,7 +205,9 @@ echo "migrate-planning: $(wc -l < "$work/created") item(s) created."
 
 bad=0
 while IFS=$'\t' read -r path id; do
-    back="$(bd show "$id" --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["description"], end="")')"
+    # bd show --json prints a list holding the item, measured against the real
+    # binary; the first real run stopped here when this read a bare object.
+    back="$(bd show "$id" --json | python3 -c 'import json,sys; d=json.load(sys.stdin); d=d[0] if isinstance(d, list) else d; print(d["description"], end="")')"
     want="$(python3 -c 'import sys; print(open(sys.argv[1]).read().rstrip("\n"), end="")' "$path")"
     if [ "$back" != "$want" ]; then
         echo "migrate-planning: $id does not match $path" >&2
@@ -209,11 +225,15 @@ fi
 echo "migrate-planning: every item came back whole."
 
 # --- what is finished is closed, with the status that said so ---------------
+#
+# **Children first.** bd will not close an issue while a child of it is open,
+# measured in a rehearsal against the real binary on 2026-10-07. The plan lists
+# parents before children, so the closes run in reverse.
 
 if [ -f "$work/to-close" ]; then
     while IFS=$'\t' read -r id reason; do
         bd close "$id" --reason "$reason" >/dev/null
-    done < "$work/to-close"
+    done < <(tac "$work/to-close")
     echo "migrate-planning: $(wc -l < "$work/to-close") item(s) closed."
 fi
 
