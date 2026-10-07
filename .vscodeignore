@@ -62,6 +62,12 @@ node_modules/**
 dist/**/*.map
 
 .ai-memory.toml
+
+# A project's work tracker, which this repository has since 2026-10-07. vsce
+# packages the working directory rather than git's view of it, so bd's own
+# .gitignore does not keep its Dolt database out. tools/vsix.test.ts holds it.
+.beads/**
+.beads.*
 # This machine's answers, under both names: the current one and the one a
 # project may still carry until it is adopted. Only the old name was listed
 # here after the rename, so a local package shipped the current manifest.

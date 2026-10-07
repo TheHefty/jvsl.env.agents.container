@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "jvsl_env_agents_container",
+  "project_id": "e9ee9831-f751-4851-aa72-dce40768044c"
+}
