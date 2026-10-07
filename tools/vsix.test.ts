@@ -285,3 +285,18 @@ test('every path a Dockerfile fragment copies from the context ships', () => {
     `the image copies these from the build context, which is the installed extension, and they are not in the package:\n${missing.join('\n')}`,
   )
 })
+
+/**
+ * A project's work tracker never ships.
+ *
+ * **This repository has one since 2026-10-07**, and `vsce` packages the working
+ * directory, not git's view of it: bd's own .gitignore does not keep its
+ * database out. Before .vscodeignore excluded it, a local `npm run package`
+ * would have carried twelve files of .beads/, the Dolt database among them,
+ * inside the extension. CI never sees it, because a checkout has no database;
+ * the allowlist above caught it on a developer's machine.
+ */
+test('the work tracker does not ship', () => {
+  const tracker = packagedFiles().filter((f) => f === '.beads' || f.startsWith('.beads/') || f.startsWith('.beads.'))
+  assert.deepEqual(tracker, [], `the project's tracker would ship inside the extension:\n${tracker.join('\n')}`)
+})

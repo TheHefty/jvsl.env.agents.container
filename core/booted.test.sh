@@ -293,9 +293,10 @@ created="$(as_user bd create "booted check" --description "made by booted.test.s
     || { cat "$WORK/bd.err" >&2; fail "bd create fails in the workspace after a first opt-in"; }
 [ ! -s "$WORK/bd.err" ] \
     || { cat "$WORK/bd.err" >&2; fail "bd create in the workspace writes to stderr after a first opt-in"; }
-printf '%s' "$created" | grep -q 'demo-project-' \
+grep -q 'demo-project-' <<<"$created" \
     || fail "the tracker's ids do not carry the project's name: bd create said: $created"
-as_user bd list 2>/dev/null | grep -q 'booted check' \
+listed="$(as_user bd list 2>/dev/null || true)"
+grep -q 'booted check' <<<"$listed" \
     || fail "bd list does not show what bd create just made"
 
 # **And a second boot changes nothing.**
@@ -303,7 +304,8 @@ before="$(snapshot)"
 docker restart "$NAME" >/dev/null || fail "the container would not restart for the second tracker boot"
 wait_for_boot 5
 [ "$(snapshot)" = "$before" ] || fail "a second boot changed HEAD or the index"
-as_user bd list 2>/dev/null | grep -q 'booted check' \
+listed="$(as_user bd list 2>/dev/null || true)"
+grep -q 'booted check' <<<"$listed" \
     || fail "the tracker lost its work across a second boot"
 
 # --- a clone: .beads/ tracked, no local database ------------------------------
@@ -326,7 +328,12 @@ wait_for_boot 6
 # the real binary, it exits 1 at once. What is asserted is how that failure
 # looks: the boot finished (wait_for_boot above), nothing was committed, and
 # one line says the tracker is empty and why.
-logs | grep -q '\[45-beads\] the tracker is empty: bd bootstrap' \
+# **Captured before it is searched.** `logs | grep -q` under pipefail fails
+# when the log is long: grep exits at the first match, docker logs takes a
+# SIGPIPE writing the rest, and the pipeline reports 141. It passed in #117 and
+# failed in #129 with the line present. Reproduced: exit 141 piped, 0 captured.
+boot_log="$(logs)"
+grep -q '\[45-beads\] the tracker is empty: bd bootstrap' <<<"$boot_log" \
     || { logs | tail -30 >&2; fail "a clone whose remote cannot be reached booted without saying its \
 tracker is empty and why. core/cont-init/45-beads.sh must report a failed or timed-out bd bootstrap \
 in one line of the boot log"; }
