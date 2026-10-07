@@ -99,7 +99,22 @@ check "and claude adds only what is Claude's" \
     "--env CLAUDE_JAILED=1 --env CLAUDE_CONFIG_DIR claude"
 check "and codex adds only what is Codex's" \
     "$(argv codex -u RUSTUP_HOME | rest)" \
-    "--env CODEX_JAILED=1 --env OPENAI_API_KEY codex"
+    "--env CODEX_JAILED=1 codex"
+
+# **OPENAI_API_KEY is not forwarded, and a caller who set it is told.** It was
+# the one secret still crossing by variable (the debt
+# forwarded-secrets-land-in-the-sandbox-argv in the tracker). Codex
+# authenticates from ~/.codex/auth.json, which `codex login` writes and the
+# sandbox maps. Dropping a key somebody set without a word looks like a broken
+# login, so the wrapper names the command that stores it.
+codex_err="$(env -u CLAUDE_JAILED -u CODEX_JAILED -u RUSTUP_HOME OPENAI_API_KEY=sk-test-not-real \
+    JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/codex.sh" 2>&1 >/dev/null)"
+check "with OPENAI_API_KEY set, the wrapper says how to store it instead" \
+    "$(printf '%s' "$codex_err" | count 'codex login --with-api-key')" "1"
+check "and the key's value is never printed" \
+    "$(printf '%s' "$codex_err" | count 'sk-test-not-real')" "0"
+check "and nothing about it reaches the sandbox" \
+    "$(argv codex -u RUSTUP_HOME OPENAI_API_KEY=sk-test-not-real | count OPENAI)" "0"
 
 # Failure 2 — the recursion guard. /usr is read-only inside the sandbox, so the
 # wrapper is still the first `codex` on PATH in there and ai-jail's preset
@@ -125,18 +140,15 @@ check "the marker short-circuits to the real CLI" \
 # one process later. See
 # the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker.
 #
-# OPENAI_API_KEY is still forwarded, knowingly, and is the exception that debt
-# tracks: Codex has never been authenticated in the environment this was found
-# in, so the file-based path that replaced GH_TOKEN could not be verified for it,
-# and an unverified change to how a second agent authenticates is not something
-# this repository ships.
-for pair in "codex:OPENAI_API_KEY"; do
-    agent="${pair%%:*}"; var="${pair##*:}"
-    check "$agent forwards $var by name and never by value" \
-        "$(argv "$agent" "$var=sekrit" | count "^$var=")" "0"
-    check "and it is in the argv at all" \
-        "$(argv "$agent" "$var=sekrit" | count "^$var$")" "1"
-done
+# OPENAI_API_KEY was the exception that debt tracked, forwarded by name, until
+# 2026-10-07. It is no longer forwarded at all: the checks beside "codex adds
+# only what is Codex's" hold that, and that a caller who set it is told how to
+# store it in ~/.codex/auth.json. This block used to assert the opposite.
+#
+# **What is still unverified, said rather than hidden:** Codex had never been
+# authenticated in the environment this was found in, so the file-based login
+# could not be tested end to end. The operator verifies it by hand: one
+# `codex login` inside the jail, then a new session starts logged in.
 
 # GH_TOKEN is not forwarded at all any more, in either form. The sandbox is
 # given gh's configuration directory instead and gh reads its own credentials
