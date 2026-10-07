@@ -215,3 +215,45 @@ test('the sandbox warnings join the host problems without blocking a build', () 
   assert.equal(problems.filter((p) => p.blocking).length, 0)
   assert.equal(problems.length, 2)
 })
+
+// --- a rebuilt image reaches the container (debt: a-rebuilt-image-does-not-reach-the-running-container)
+
+import { afterBuild, REBUILD_IN_CONTAINER, REBUILD_FROM_HOST } from './build.ts'
+
+const NEW = 'sha256:aaaa'
+const OLD = 'sha256:bbbb'
+const one = (image: string) => ({ kind: 'one' as const, id: 'c1', name: 'demo_devcontainer', image })
+
+test('a container on the image just built needs nothing said', () => {
+  assert.deepEqual(afterBuild({ built: NEW, container: one(NEW), inContainer: true }), { say: 'nothing' })
+})
+
+test('no container for the project needs nothing said', () => {
+  assert.deepEqual(afterBuild({ built: NEW, container: { kind: 'none' }, inContainer: false }), { say: 'nothing' })
+})
+
+test('a container on an older image is named, and recreating it is offered through Dev Containers', () => {
+  const inWindow = afterBuild({ built: NEW, container: one(OLD), inContainer: true })
+  assert.equal(inWindow.say, 'stale')
+  assert.ok(inWindow.say === 'stale' && inWindow.message.includes('demo_devcontainer'))
+  assert.ok(inWindow.say === 'stale' && inWindow.command === REBUILD_IN_CONTAINER)
+  const fromHost = afterBuild({ built: NEW, container: one(OLD), inContainer: false })
+  assert.ok(fromHost.say === 'stale' && fromHost.command === REBUILD_FROM_HOST)
+})
+
+test('the decision never removes anything: its only action is a Dev Containers command for the user to choose', () => {
+  const d = afterBuild({ built: NEW, container: one(OLD), inContainer: true })
+  assert.ok(d.say === 'stale' && d.command.startsWith('remote-containers.'))
+  assert.ok(!JSON.stringify(d).includes('docker rm'))
+})
+
+test('several containers for the project are named, and none is offered', () => {
+  const d = afterBuild({ built: NEW, container: { kind: 'many', names: ['a', 'b'] }, inContainer: false })
+  assert.equal(d.say, 'ambiguous')
+  assert.ok(d.say === 'ambiguous' && d.message.includes('a') && d.message.includes('b'))
+})
+
+test('an image that could not be read claims nothing', () => {
+  assert.deepEqual(afterBuild({ built: undefined, container: one(OLD), inContainer: true }), { say: 'nothing' })
+  assert.deepEqual(afterBuild({ built: NEW, container: one(''), inContainer: true }), { say: 'nothing' })
+})

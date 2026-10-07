@@ -117,6 +117,8 @@ jobs:
         run: bash scripts/no-fetch-runs-unverified.test.sh
       - name: every Go version the stack offers has a pinned digest
         run: bash stacks/golang/digests.test.sh
+      - name: the extension never removes a container itself
+        run: bash scripts/no-container-is-removed.test.sh
       - name: the planning stays in the tracker, and the charter and SRS carry no state
         run: bash scripts/the-guard-holds-the-split.test.sh
 
