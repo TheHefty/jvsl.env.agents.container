@@ -426,3 +426,49 @@ these into a third decade would hide that they belong here.
 **What this costs, stated once.** Reviewing a change to a work item becomes reading a diff of JSONL,
 where a markdown file used to show it. That is accepted deliberately: the items that still need a
 readable diff — the charter and the SRS — are exactly the ones FR-104 keeps as files.
+
+## Projects on the code-server template move to this format (FR-12x)
+
+Agreed at the SRS gate on 2026-10-07. Measured first, on fresh clones of the three projects the
+operator named: `jvsl.monorepo.agents.fahrenheit404`, `jvsl.monorepo.agents.gosnip` and
+`jvsl-tech/jvsl.monorepo.agents.kotodori`. Each carries the `.code-server/` submodule, a
+`.code-server.stack.json`, `@.code-server/…` imports in `CLAUDE.md` and `docs/RULES.md`, and its
+planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30 debts.
+
+- **FR-122** — **One command migrates a project: Agent Container: Migrate from code-server.** It
+  shows the whole plan first, applies only on confirmation, and leaves every change uncommitted for
+  the operator to review.
+- **FR-123** — **The submodule goes, and the state stays.** `.code-server/` and its `.gitmodules`
+  entry are removed; the manifest takes its current name with `"beads": true`. The project's data
+  volume keeps its name, so `/config` survives the move.
+- **FR-124** — **The instructions stop importing from the submodule.** `@.code-server/…` lines are
+  removed from `CLAUDE.md`, `AGENTS.md` and `docs/RULES.md`; the inherited rules reach the project
+  through the image, at `~/.claude/rules/`. Prose that still mentions the submodule is **listed, never
+  rewritten by guess**.
+- **FR-125** — **The planning and the debts move into the project's tracker, and their folders go.**
+  After every item is read back whole, `docs/PLANNING` and `docs/DEBTS` are deleted entirely. An item's
+  state is read from its own document first (a task's `status:` front matter, a story's or epic's
+  `**Status**` row), then from its parent's table; an epic closes when every story under it is closed.
+  Measured, the vocabulary maps as the operator decided:
+
+  | The document says | The item becomes |
+  |---|---|
+  | Done, Complete, Built, Shipped, Implemented, Implementada | closed, with the text as its reason |
+  | Superseded by …, Refiled, Migrated | closed as superseded |
+  | Accepted, Aceita | open work |
+  | Draft | a proposal |
+  | On hold | deferred |
+  | nothing | the state of its story |
+
+  A debt's kind is its Kind row: `hotfix` and `shortcut` stand; anything else is `defect`.
+- **FR-126** — **The migration runs where bd is.** bd exists only inside the project's container, so the
+  move of the planning runs there, after a boot has initialised the tracker; the migration script ships
+  in the image rather than in `scripts/`.
+- **FR-127** — **The Markdown size check ships in the image.** `check-md-size` is installed on the
+  image's `PATH`, and a migrated project's `.githooks/pre-commit` calls it from there, saying why if it
+  is absent. Found while measuring: the pre-commit of `fahrenheit404` and `gosnip` runs
+  `.code-server/scripts/check-md-size.sh`, so removing the submodule would refuse every commit. In a
+  window connected to the container, the editor's git runs inside it, where the image's `PATH` is.
+  Decided by the operator on 2026-10-07, over a copy per project or no check at all. The normative
+  rule that names `.code-server/scripts/check-md-size.sh` changes with it.
+

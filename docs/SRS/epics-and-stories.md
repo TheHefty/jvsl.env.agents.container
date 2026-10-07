@@ -253,6 +253,20 @@ restate.
 **Story 2 is deliberately small.** The whole of it is one sentence shown once. An older copy costs a
 person time and a wrong belief; a modal on every window would cost more than the defect.
 
+## Epic: the code-server projects move
+
+**Projects built on the code-server template move to the extension's format.**
+
+Agreed at the SRS gate on 2026-10-07, for `fahrenheit404`, `gosnip` and `kotodori`. The epic closes
+when one command takes such a project to having no submodule, instructions that do not import from it,
+and its planning and debts in its own tracker, with its container state intact.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the files move on the host | FR-123, FR-124, FR-127 — the submodule, the manifest, the imports, and the pre-commit's check; no container needed |
+| 2 | the planning moves into the tracker | FR-125, FR-126 — the migration generalised to these projects' layouts and vocabulary, shipped in the image |
+| 3 | the command carries a project across | FR-122 — the plan, the confirmation, the container recreated, the migration run inside it, and the folders deleted |
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
@@ -286,6 +300,6 @@ nothing had to wait.
 
   **What survived is one behaviour rather than a screen:** the first interactive shell after the
   container starts asks for the agent logins that are missing. It is written into the payback of
-  [`forwarded-secrets-land-in-the-sandbox-argv`](../DEBTS/forwarded-secrets-land-in-the-sandbox-argv/)
+  the debt `forwarded-secrets-land-in-the-sandbox-argv` (in the tracker, paid in #138)
   rather than into an epic of its own, because deleting `--env OPENAI_API_KEY` and having something
   run `codex login` are one change: the file the login writes is what replaces the variable.
