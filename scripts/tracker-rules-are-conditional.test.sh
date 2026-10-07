@@ -16,7 +16,7 @@
 # **And the rules the story agreed must be there**: reporting what is
 # unblocked, claiming agreed work, closing with a reason, and recording a found
 # problem as a `defect` only after a yes. See
-# docs/PLANNING/beads-tracks-the-work/the-agent-works-from-the-tracker/.
+# the story `the-agent-works-from-the-tracker` in the tracker.
 #
 # TRACKER_RULES_ROOT points this at another docs/agent tree, which is how the
 # failure cases below are proven to fail.

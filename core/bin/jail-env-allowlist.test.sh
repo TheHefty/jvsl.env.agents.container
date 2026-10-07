@@ -6,7 +6,7 @@
 # executes, and bwrap runs in the container's PID namespace — so the value is
 # readable with `ps` from anywhere else in the container, including a build and
 # anything that build runs. The full finding is in
-# docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/OVERVIEW.md.
+# the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker.
 #
 # **An allowlist, not a denylist of suspicious names.** GH_TOKEN would have been
 # caught by a denylist only through the luck of being called a token; the next
@@ -76,7 +76,7 @@ for agent in claude codex; do
         bad "$agent forwards only names that have been decided about" \
             "not allowed and not a known exception: ${unexpected[*]}" \
             "if one of these is a secret it must not cross as a variable at all —" \
-            "see docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/OVERVIEW.md." \
+            "see the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker." \
             "if it is not a secret, add it to ALLOWED in this file and say why."
     fi
 done

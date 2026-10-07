@@ -19,7 +19,7 @@
 # directory, so a file that appeared between the passes is not deleted without
 # having been carried.
 #
-# See docs/PLANNING/beads-tracks-the-work/the-work-items-move-into-the-tracker/.
+# See the story `the-work-items-move-into-the-tracker` in the tracker.
 set -euo pipefail
 
 PLAN_ONLY=""

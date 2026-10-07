@@ -86,7 +86,7 @@ wait_for_boot() {
 # GitHub's runners enforce it; the operator's host does not. The generated dev
 # container configuration does not pass this option, so on such a host the
 # agent's sandbox may not open at all — recorded in
-# docs/DEBTS/the-sandbox-under-apparmor/ rather than decided here.
+# the debt `the-sandbox-under-apparmor` in the tracker rather than decided here.
 docker run -d --name "$NAME" \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \
@@ -183,7 +183,7 @@ observable proof that no recursive chown ran over thousands of extension files"
 # maps into the sandbox only paths that already exist, so a missing directory is
 # not created inside the jail — it is simply absent, and the agent starts at
 # onboarding on every run with nothing saying why. See
-# docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+# the debt `agent-state-directory-is-lost-under-the-mount` in the tracker.
 docker run -d --name "$SHADOW" \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \

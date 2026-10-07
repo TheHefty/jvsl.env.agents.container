@@ -79,7 +79,7 @@ JAIL_COMMON_ARGS=(
 # started from it, any dependency that build runs. Observed in a real
 # environment on 2026-10-01; reported upstream as akitaonrails/ai-jail#147; the
 # whole finding is in
-# docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/OVERVIEW.md.
+# the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker.
 #
 # So the sandbox is given the `gh` configuration directory instead, and `gh`
 # reads its own credentials from it exactly as it would outside. Nothing secret
