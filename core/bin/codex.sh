@@ -42,7 +42,7 @@ source "$JAIL_COMMON"
 # genuinely absent in running containers while this comment said it was there.
 # ai-jail maps only paths that already exist, so Codex was starting at
 # onboarding on every run. See
-# docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+# the debt `agent-state-directory-is-lost-under-the-mount` in the tracker.
 #
 # Neither path is required and neither is configured for you — handing an agent
 # a credential is a decision, so scope it narrowly and give it an expiry.

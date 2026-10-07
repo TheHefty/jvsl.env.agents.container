@@ -20,7 +20,7 @@
 # database and a .gitignore entry written into somebody's repository by
 # something they did not run.
 #
-# See docs/PLANNING/beads-tracks-the-work/the-image-carries-bd/.
+# See the story `the-image-carries-bd` in the tracker.
 set -euo pipefail
 
 # Overridable so the test beside this file drives the real script.
@@ -58,8 +58,8 @@ jq -e '.beads == true' "$MANIFEST" >/dev/null 2>&1 || exit 0
 # finds it. The agent runs that push alongside every `git push` the operator
 # approves. Nothing here pushes.
 #
-# See docs/PLANNING/beads-tracks-the-work/the-image-carries-bd/tasks/
-# initialising-leaves-the-repository-alone.md.
+# See the task `initialising-leaves-the-repository-alone`, under the story
+# `the-image-carries-bd` in the tracker.
 
 say() { echo "[45-beads] $*"; }
 

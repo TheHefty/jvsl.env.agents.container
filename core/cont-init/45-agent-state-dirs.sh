@@ -21,7 +21,7 @@
 # a missing directory is not created inside the jail — it is simply absent, and
 # the agent starts at onboarding on every single run with nothing saying why.
 #
-# See docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
+# See the debt `agent-state-directory-is-lost-under-the-mount` in the tracker.
 set -euo pipefail
 
 # Overridable so the unit test beside this file can run without /config.

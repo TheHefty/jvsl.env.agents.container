@@ -123,7 +123,7 @@ check "the marker short-circuits to the real CLI" \
 # longer sufficient on its own — ai-jail re-expands `--env NAME` into
 # `--setenv NAME <value>` on the bwrap command line, so the value lands in argv
 # one process later. See
-# docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/OVERVIEW.md.
+# the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker.
 #
 # OPENAI_API_KEY is still forwarded, knowingly, and is the exception that debt
 # tracks: Codex has never been authenticated in the environment this was found

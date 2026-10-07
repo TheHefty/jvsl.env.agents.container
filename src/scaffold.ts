@@ -84,7 +84,7 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
       // wrong version shipped into every scaffolded project's .gitignore, which
       // is the worst place for this repository's recurring defect — a comment
       // asserting a protection that does not exist. See
-      // docs/DEBTS/forwarded-secrets-land-in-the-sandbox-argv/.
+      // the debt `forwarded-secrets-land-in-the-sandbox-argv` in the tracker.
       contents:
         `# Generated from this project's manifest and this machine's hardware: core count,\n` +
         `# memory, and which devices the host actually has. Committing it would carry one\n` +

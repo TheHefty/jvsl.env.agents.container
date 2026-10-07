@@ -12,7 +12,7 @@
 # the wrong side of it, and the next job added inherits whatever its author
 # assumed. A name on this list is a decision somebody made; a number is not.
 #
-# See docs/DEBTS/a-markdown-change-runs-the-whole-suite/.
+# See the debt `a-markdown-change-runs-the-whole-suite` in the tracker.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
