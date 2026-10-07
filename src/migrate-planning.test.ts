@@ -206,6 +206,13 @@ test('a body that does not come back whole stops the run, names the item, and de
   assert.ok(readdirSync(join(root, 'docs/DEBTS')).length > 0)
 })
 
+test('the debts folder\'s README is its index, never a debt (found in gosnip PR #10)', () => {
+  const root = project()
+  put(root, 'docs/DEBTS/README.md', '# Debts\n\nAn index of the debts below.\n')
+  migrate(root)
+  assert.equal(byTitle(root, 'README'), undefined)
+})
+
 test('a project with no planning has nothing to migrate', () => {
   const root = mkdtempSync(join(work, 'empty-'))
   const r = migrate(root)

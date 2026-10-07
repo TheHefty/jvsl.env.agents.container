@@ -185,3 +185,41 @@ test('the files read for the plan are text, and never the submodule\'s own', () 
     ['CLAUDE.md', '.githooks/pre-commit', 'docs/RULES.md', 'a.ts'],
   )
 })
+
+// --- found in gosnip PR #10: the generated devcontainer was committed --------
+
+test('the plan ignores .devcontainer/ when .gitignore does not, keeping every existing line', () => {
+  const p = planFileMigration(project({ gitignore: '.ai-jail\n.claude/settings.local.json\n' }))
+  const w = op(p, '.gitignore')
+  assert.ok(w && w.kind === 'write')
+  assert.ok(w.content.startsWith('.ai-jail\n.claude/settings.local.json\n'))
+  assert.match(w.content, /^\.devcontainer\/$/m)
+})
+
+test('a .gitignore that already ignores the devcontainer is left alone', () => {
+  for (const gitignore of ['.devcontainer/\n', 'x\n.devcontainer\n', '/.devcontainer/\n']) {
+    assert.equal(op(planFileMigration(project({ gitignore })), '.gitignore'), undefined, gitignore)
+  }
+})
+
+test('a tracked devcontainer is untracked, never deleted', () => {
+  const p = planFileMigration(project({ gitignore: '', trackedDevcontainer: true }))
+  assert.ok(p.kind === 'plan')
+  assert.ok(p.ops.some((o) => o.kind === 'untrack' && o.path === '.devcontainer'))
+  assert.ok(!p.ops.some((o) => o.kind === 'remove' && o.path.startsWith('.devcontainer')))
+})
+
+test('applying an untrack takes the devcontainer out of the index and leaves it on disk', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'untrack-'))
+  const g = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: root, encoding: 'utf8', stdio: 'pipe' })
+  g('init', '-q'); mkdirSync(join(root, '.devcontainer'))
+  writeFileSync(join(root, '.devcontainer/devcontainer.json'), '{"workspaceMount":"source=/home/someone"}')
+  writeFileSync(join(root, '.code-server.stack.json'), '{}'); g('add', '.'); g('commit', '-qm', 'x')
+  const plan = planFileMigration({ hasSubmodule: false, legacyManifest: '{}', currentManifest: null, texts: new Map(), gitignore: '', trackedDevcontainer: true })
+  assert.ok(plan.kind === 'plan')
+  await applyFileMigration(root, plan)
+  assert.ok(existsSync(join(root, '.devcontainer/devcontainer.json')), 'still on disk')
+  assert.equal(g('ls-files', '.devcontainer').trim(), '', 'out of the index')
+  assert.equal(g('status', '--porcelain', '--', '.devcontainer').trim().startsWith('D'), true, 'staged as removed from the index')
+  assert.match(readFileSync(join(root, '.gitignore'), 'utf8'), /^\.devcontainer\/$/m)
+})
