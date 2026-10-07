@@ -335,9 +335,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: no tracked Markdown over the limit
-        run: bash scripts/check-md-size.sh
+        run: bash core/bin/check-md-size.sh
       - name: the size check can actually fail
-        run: bash scripts/check-md-size.test.sh
+        run: bash core/bin/check-md-size.test.sh
 
   core-build:
     needs: changes

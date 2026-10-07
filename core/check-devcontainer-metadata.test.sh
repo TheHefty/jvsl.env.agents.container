@@ -2,7 +2,7 @@
 # Proves check-devcontainer-metadata.sh can actually fail, and fails for the
 # right reason in each case. A check that has never been seen rejecting
 # anything is a line of CI that will stay green through the bug it was written
-# for — the same reason scripts/check-md-size.test.sh exists.
+# for — the same reason core/bin/check-md-size.test.sh exists.
 #
 # It drives the real checker with its paths overridden at fixtures, rather than
 # reimplementing the rules. A copy of a rule is a rule that goes the other way

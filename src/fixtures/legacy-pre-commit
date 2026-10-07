@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Cheap repository-wide checks, run before a commit is written.
+#
+# Enable it per clone:
+#     git config core.hooksPath .githooks
+#
+# It cannot be enabled for you by a commit — git config is not versioned, which
+# is deliberate on git's part: a repository you clone should not be able to run
+# code on your machine by shipping a hook. Same arrangement as the template's
+# own .githooks/pre-push.
+#
+# The check itself lives in the template and arrives by bump, so this repository
+# stops carrying a second copy of it. A second copy is the thing that drifts,
+# and it drifts silently: the rule is written in one place and enforced from
+# another, and nothing says which of the two is current.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHECK="$HERE/../.code-server/scripts/check-md-size.sh"
+
+# Say why, rather than dying on a missing file. The submodule is empty until
+# `git submodule update --init`, and a hook that fails with "No such file or
+# directory" sends the next person looking for a bug in their commit.
+if [ ! -f "$CHECK" ]; then
+    echo "pre-commit: $CHECK is missing." >&2
+    echo "pre-commit: the .code-server/ submodule is not checked out — run" >&2
+    echo "pre-commit:     git submodule update --init" >&2
+    exit 1
+fi
+
+exec bash "$CHECK" --root "$HERE/.."
