@@ -2,11 +2,11 @@
 # Fails when a tracked Markdown file is larger than the limit in the rules.
 #
 # **It checks the repository you are standing in, not the one this script lives
-# in.** That is the whole trick of shipping it from a submodule, and it is also
-# the way to get it wrong. From a consuming monorepo's root,
-# `.code-server/scripts/check-md-size.sh` checks the monorepo and never the
-# template; run from inside `.code-server/`, it checks the template. Both are
-# correct and they are not the same check, so a hook that `cd`s somewhere first
+# in.** That was the whole trick of shipping it from the template's submodule,
+# and it is how it ships from the image now: installed at
+# /usr/local/bin/check-md-size, it checks whichever repository it is run from,
+# never the image. Run from a project's root it checks the project. A hook
+# that `cd`s somewhere first
 # is a hook reporting on a tree nobody asked about — green forever, about the
 # wrong files. Pass --root to say which one you mean and stop guessing.
 #

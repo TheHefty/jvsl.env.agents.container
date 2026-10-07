@@ -157,6 +157,17 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **check-md-size is on PATH and checks the repository it is run from** (FR-127).
+# A project migrated off the code-server template has a pre-commit that calls
+# it from PATH; without it in the image, every commit there is refused.
+md_check="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c \
+    'd="$(mktemp -d)" && cd "$d" && git init -q && check-md-size 2>&1' || true)"
+case "$md_check" in
+    *"all under 50 KiB"*) ;;
+    *) fail "check-md-size does not run in $IMAGE: '$md_check'. A migrated project's pre-commit calls it \
+from PATH (FR-127); core/Dockerfile.frag must install core/bin/check-md-size.sh at /usr/local/bin/check-md-size" ;;
+esac
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships

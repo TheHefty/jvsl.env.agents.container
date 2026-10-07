@@ -137,7 +137,7 @@ whoever opens the change.
   Nothing will stop a broken change: the discipline has to come from whoever opens it.
 - **A test here is a `*.test.sh` beside the thing it exercises**, driving the real script rather
   than a copy of its logic, and exiting non-zero on failure. The template's
-  `scripts/check-md-size.test.sh`, `scripts/every-test-has-a-runner.test.sh` and
+  `core/bin/check-md-size.test.sh`, `scripts/every-test-has-a-runner.test.sh` and
   `core/cont-init/15-git-credential-helper.test.sh` are the shape to copy, and the ones with a CI job
   behind them.
 - **A local hook is not CI.** It is opt-in per clone and skippable with `--no-verify`, so treat it
@@ -316,11 +316,14 @@ Most do not. Everything else in these rules is unchanged for them.
 - **`CHANGELOG.md` is exempt.** It only grows, it is written by release-please rather than by a
   person, and blocking a release commit on it would teach everyone to reach for `--no-verify` —
   which turns off every other check at the same time.
-- **The check ships with the rule: `.code-server/scripts/check-md-size.sh`.** It examines the
-  repository you run it from and never the submodule — a submodule reaches its parent as a gitlink
-  rather than as files — so from a monorepo's root it checks the monorepo. It reports which tree it
+- **The check ships with the rule: `check-md-size`, on the agent container's `PATH`.** The image
+  installs it at `/usr/local/bin/check-md-size`; it lived in the template's submodule while the
+  template was one. It examines the repository you run it from and never a submodule — a
+  submodule reaches its parent as a gitlink rather than as files — so from a monorepo's root it
+  checks the monorepo. It reports which tree it
   examined, because a check reporting on the wrong repository is otherwise indistinguishable from a
-  check that passes. Wire it to a `.githooks/pre-commit` of your own and enable it per clone with
-  `git config core.hooksPath .githooks`; git config is not versioned, so no commit can turn it on
+  check that passes. Wire it to a `.githooks/pre-commit` of your own, calling `check-md-size` from `PATH` and saying
+  why when it is absent, and enable it per clone with `git config core.hooksPath .githooks`. In a
+  window connected to the container the editor's git runs inside it, where the command is; git config is not versioned, so no commit can turn it on
   for you. There is no CI in a consuming repo to catch this afterwards, so an unenabled
   hook means the rule is only as real as the person remembering to run the script.

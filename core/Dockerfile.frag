@@ -452,6 +452,13 @@ RUN curl -fsSL https://github.com/akitaonrails/ai-jail/releases/download/v2.6.4/
 # produces a tool inside the jail that behaves as if it were misconfigured.
 # jail-common.sh is not on PATH because it is not a command.
 COPY core/bin/jail-common.sh /usr/local/lib/jail-common.sh
+
+# The Markdown size check, on PATH for every project (FR-127). A project moved
+# off the code-server template ran it from the submodule in its pre-commit; it
+# now calls `check-md-size`, and in a window connected to the container the
+# editor's git runs here. core/image.test.sh asserts it runs.
+COPY core/bin/check-md-size.sh /usr/local/bin/check-md-size
+RUN chmod +x /usr/local/bin/check-md-size
 COPY core/bin/claude.sh /usr/local/bin/claude
 COPY core/bin/codex.sh /usr/local/bin/codex
 RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex
