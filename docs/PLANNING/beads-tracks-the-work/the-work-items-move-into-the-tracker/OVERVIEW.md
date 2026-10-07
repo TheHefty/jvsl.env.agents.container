@@ -80,7 +80,8 @@ gap.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/the-migration-carries-the-prose.md`](tasks/the-migration-carries-the-prose.md) | Designed, at its gate |
+| 1 | [`tasks/the-migration-carries-the-prose.md`](tasks/the-migration-carries-the-prose.md) | Shipped as `scripts/migrate-planning.sh`, not run |
+| 2 | [`tasks/the-migration-carries-state-and-debts.md`](tasks/the-migration-carries-state-and-debts.md) | Designed, at its gate |
 
 **What the design settled, with a measurement behind it.** The whole document body goes into one
 field as Markdown, because across the fourteen stories there are 43 distinct section headings and
