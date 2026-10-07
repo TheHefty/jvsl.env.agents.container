@@ -204,3 +204,24 @@ test('a refusal comes before a build, because building would not help', () => {
   const d = decideOpen({ ...base, image: 'absent', existingConfig: '{"name":"theirs"}' })
   assert.equal(d.action, 'refuse')
 })
+
+// --- the open flow inside the container (debt: the-panel-reads-the-containers-path)
+
+import { prepareHere } from './open.ts'
+
+test('a window already connected to the project\'s container has nothing to prepare', () => {
+  // Observed on 2026-10-07: on every connection the open flow tried to write
+  // .devcontainer/ at the container's path on the host, and only EACCES
+  // stopped it.
+  const r = prepareHere('dev-container')
+  assert.equal(r.act, false)
+  assert.ok(!r.act && r.why.includes('already inside'))
+})
+
+test('a local window prepares, as before', () => {
+  assert.deepEqual(prepareHere(undefined), { act: true })
+})
+
+test('another remote does not prepare either: the project is not on this machine', () => {
+  assert.equal(prepareHere('ssh-remote').act, false)
+})

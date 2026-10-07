@@ -25,7 +25,8 @@ import { hostFacts } from './host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { showWork } from './board.ts'
-import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
+import { projectOnHost, type ProjectOnHost } from './board-locate.ts'
+import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
   limitDefaults,
@@ -196,8 +197,8 @@ async function startup(
 
   // **Before `prepare`, and that is the whole of "resolved once".** Adoption
   // renames the file, so every read after this point finds one name on disk.
-  const root = workspaceRoot()
-  if (root !== undefined) await adoptManifest(root, write)
+  const project = hostProject()
+  if (project.kind === 'host') await adoptManifest(project.path, write)
 
   await prepare(context, channel, write, { handOver: false })
 }
@@ -318,8 +319,12 @@ class SelectionView implements vscode.TreeDataProvider<Row> {
         hostProblem: this.hostProblem,
       })
     }
+    const project = hostProject()
+    if (project.kind === 'none') {
+      return [{ kind: 'note', label: 'This project is not reachable from here', detail: project.reason }]
+    }
     return viewItems({
-      ...readViewState(folder.uri.fsPath, this.extensionPath),
+      ...readViewState(project.path, this.extensionPath),
       lastBuild: this.lastBuild,
     })
   }
@@ -404,12 +409,15 @@ async function configure(
 ): Promise<ConfigureResult> {
   let root = forRoot
   if (root === undefined) {
-    const folder = vscode.workspace.workspaceFolders?.[0]
-    if (!folder) {
-      void vscode.window.showErrorMessage('Open a project folder first.')
+    const project = hostProject()
+    if (project.kind === 'none') {
+      // **Refused before anything is read or written**: a path guessed here is
+      // a manifest written into a folder that is not the project.
+      write([`configure: refused — ${project.reason}`])
+      void vscode.window.showErrorMessage(`Configure: ${project.reason}. Nothing was written.`)
       return { wrote: false, root: '(none)', stacks: [] }
     }
-    root = folder.uri.fsPath
+    root = project.path
   }
   // What the extension carries, not what the project has. A project is not
   // supposed to have a `.code-server/` at all, and one that still does carries
@@ -507,7 +515,13 @@ async function build(
     return
   }
 
-  const outcome = await buildInTerminal(folder.uri.fsPath, extensionPath, write)
+  const project = hostProject()
+  if (project.kind === 'none') {
+    write([`build: refused — ${project.reason}`])
+    void vscode.window.showErrorMessage(`Build: ${project.reason}.`)
+    return
+  }
+  const outcome = await buildInTerminal(project.path, extensionPath, write)
   view.recordBuild(outcome)
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
@@ -580,8 +594,14 @@ async function prepare(
   write: (lines: string[]) => void,
   options: { handOver: boolean },
 ): Promise<void> {
-  const root = workspaceRoot()
-  if (root === undefined) return
+  const here = prepareHere(vscode.env.remoteName)
+  if (!here.act) {
+    write([`open flow: nothing to do — ${here.why}`])
+    return
+  }
+  const project = hostProject()
+  if (project.kind === 'none') return
+  const root = project.path
 
   const openContext = await gather(root, context, write)
   const decision = decideOpen(openContext)
@@ -734,23 +754,28 @@ async function runningContainers(write: (lines: string[]) => void): Promise<stri
 }
 
 async function describe(context: vscode.ExtensionContext): Promise<string[]> {
-  const root = workspaceRoot()
-  if (root === undefined) return ['no folder is open, so there is no project to describe']
+  const project = hostProject()
+  if (project.kind === 'none') return [`no project to describe: ${project.reason}`]
   return [
-    `project: ${root}`,
+    `project: ${project.path}`,
     ...formatDetected({
       facts: hostFacts(),
-      // Undefined exactly when the extension host is local. Reported rather
-      // than assumed: from the remote host every number above describes the
-      // container, and a limit computed from them would be wrong without
-      // failing.
-      runningOnHost: vscode.env.remoteName === undefined,
+      // **Where this extension runs, not where the window points.** remoteName
+      // says the window is remote; it was read as "the extension is not on the
+      // host" and printed a false alarm in every connected window. The
+      // extension's own kind is the answer: UI runs on the host.
+      runningOnHost: context.extension?.extensionKind === vscode.ExtensionKind?.UI,
     }),
   ]
 }
 
-function workspaceRoot(): string | undefined {
-  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+/** The project's folder on the host, for this window. See projectOnHost. */
+function hostProject(): ProjectOnHost {
+  const folder = vscode.workspace.workspaceFolders?.[0]
+  return projectOnHost({
+    remoteName: vscode.env.remoteName,
+    folder: folder === undefined ? undefined : { fsPath: folder.uri.fsPath, authority: folder.uri.authority },
+  })
 }
 
 function readOrNull(path: string): string | null {
@@ -797,7 +822,7 @@ async function pick(
   const chosen = picked?.[0]?.fsPath
   const decision = decidePick({
     chosen,
-    currentFolder: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+    currentFolder: (() => { const p = hostProject(); return p.kind === 'host' ? p.path : undefined })(),
     hasManifest: chosen !== undefined && existsSync(join(chosen, MANIFEST)),
   })
 

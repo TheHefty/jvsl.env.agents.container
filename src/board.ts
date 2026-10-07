@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { containerFor, hostPathFromAuthority, type Running } from './board-locate.ts'
+import { containerFor, projectOnHost, type Running } from './board-locate.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
 import { MANIFEST } from './stack-manifest.ts'
@@ -56,24 +56,19 @@ async function render(target: vscode.WebviewPanel, docker: Docker, write: (lines
     target.webview.html = messagePage({ nonce, title, body })
   }
 
+  // **The same resolver every command uses**, so the board and the panel can
+  // never disagree about which folder is the project.
   const folder = vscode.workspace.workspaceFolders?.[0]
-  if (folder === undefined) {
-    say('No folder is open', 'Open a project to see its work.')
+  const project = projectOnHost({
+    remoteName: vscode.env.remoteName,
+    folder: folder === undefined ? undefined : { fsPath: folder.uri.fsPath, authority: folder.uri.authority },
+  })
+  if (project.kind === 'none') {
+    say('This window could not be traced to a project on this machine', `${project.reason}. The board reads the ` +
+      "tracker through the project's container, found by that folder.")
     return
   }
-
-  // **The host path, never the container's.** In a window connected to the
-  // container the folder is /config/workspace, which names nothing here.
-  const hostPath =
-    vscode.env.remoteName === undefined ? folder.uri.fsPath : hostPathFromAuthority(folder.uri.authority)
-  if (hostPath === undefined) {
-    say(
-      'This window could not be traced to a project on this machine',
-      `The window is connected to "${vscode.env.remoteName}", and its address (${folder.uri.authority}) did not ` +
-        'decode to a folder on the host. The board reads the tracker through the project\'s container, found by that folder.',
-    )
-    return
-  }
+  const hostPath = project.path
 
   let optedIn = false
   try {
