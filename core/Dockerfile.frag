@@ -135,8 +135,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --profile minimal --default-toolchain stable \
+# **rustup-init itself, pinned and checked, instead of sh.rustup.rs piped into
+# sh.** The installer script fetched and ran whatever was published that day,
+# as root. The binary below is the release's own, checked against the sha256
+# static.rust-lang.org publishes beside it (measured on 2026-10-07). The
+# `stable` toolchain it installs still moves on a rebuild: rustup checks every
+# component against the channel manifest's hashes, so the bytes are verified,
+# but the version is not pinned, and that is a separate decision.
+ARG RUSTUP_VERSION=1.29.1
+ARG RUSTUP_INIT_SHA256=dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71
+RUN curl -fL --no-progress-meter --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors \
+         -o /tmp/rustup-init \
+         "https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/x86_64-unknown-linux-gnu/rustup-init" \
+    && echo "${RUSTUP_INIT_SHA256}  /tmp/rustup-init" | sha256sum -c - \
+    && chmod +x /tmp/rustup-init \
+    && /tmp/rustup-init -y --profile minimal --default-toolchain stable \
+    && rm -f /tmp/rustup-init \
     && chmod -R a+w $RUSTUP_HOME $CARGO_HOME
 
 # 1.1.1 The mount points ai-jail's toolchain caches bind onto, which cargo only
@@ -172,7 +186,18 @@ RUN mkdir -p $CARGO_HOME/registry $CARGO_HOME/git \
 RUN git lfs install --system
 
 # 2. Installs Node.js 22 (LTS) — required by the Claude Code CLI
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+#
+# **What nodesource's setup_22.x did, done by hand**, instead of piping it into
+# bash as root (measured on 2026-10-07): a signing key, one deb822 source and an
+# apt pin. The key is vendored, as the php stack does with sury's; its
+# fingerprint is 6F71 F525 2828 41EE DAF8 51B4 2F59 B5F9 9B1B E0B4
+# (NSolid <nsolid-gpg@nodesource.com>). stacks/node writes its own version over
+# the same source.
+COPY core/nodesource.asc /usr/share/keyrings/nodesource.asc
+RUN printf 'Types: deb\nURIs: https://deb.nodesource.com/node_22.x\nSuites: nodistro\nComponents: main\nArchitectures: %s\nSigned-By: /usr/share/keyrings/nodesource.asc\n' \
+        "$(dpkg --print-architecture)" > /etc/apt/sources.list.d/nodesource.sources \
+    && printf 'Package: nodejs\nPin: origin deb.nodesource.com\nPin-Priority: 600\n' > /etc/apt/preferences.d/nodejs \
+    && apt-get update \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
