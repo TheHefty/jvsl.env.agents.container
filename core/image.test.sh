@@ -157,6 +157,15 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **ps runs, because Codex cannot start without it.** Codex records its
+# background server's process with `ps`, and on 2026-10-07 it stopped at start
+# with "failed to invoke ps … No such file or directory": the base image ships
+# no procps and nothing asked for it. The debt is the-image-has-no-ps in the
+# tracker.
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'ps -p 1 -o pid= >/dev/null' \
+    || fail "ps does not run in $IMAGE. Codex needs it to start its background server; core/Dockerfile.frag \
+must install procps"
+
 # **Node.js 22, from nodesource's source signed by the vendored key.** The
 # fragment writes that source by hand since 2026-10-07, instead of piping
 # setup_22.x into bash as root. A source that drifted would install Debian's

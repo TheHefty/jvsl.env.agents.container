@@ -90,6 +90,10 @@ USER root
 # for the sake of documentation nobody reads inside a container.
 RUN mkdir -p /usr/share/man/man1
 
+# procps is here because Codex needs `ps` to start its background server, and
+# the base image does not ship it: Codex stopped at start without it on
+# 2026-10-07 (the debt the-image-has-no-ps in the tracker). core/image.test.sh
+# asserts that ps runs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
@@ -121,6 +125,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nftables \
     file \
     libssl-dev \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # 1.1 Installs Rust (stable, via rustup) system-wide, so the CLI/agent and
