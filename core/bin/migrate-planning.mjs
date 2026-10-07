@@ -14,9 +14,14 @@
 // `| **Status** |` row) more than in the parent's table; debts are a folder or
 // a single file, with a Kind row.
 //
-// **The order is the safety property**: plan, create every item, read every
-// one back, close children before parents, and only then delete the folders.
-// Nothing is committed.
+// **The order is the safety property**: plan, place what the tracker already
+// holds, create what is missing, read every item back, close children before
+// parents, and only then delete the folders. Nothing is committed.
+//
+// **A run that stops part-way is carried on, never repeated** (FR-128). Every
+// item records its document as its external reference, so a second run
+// creates only what is missing; fahrenheit404's first run stopped after 18 of
+// 28 items, and a rerun of the earlier script would have duplicated them.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -92,7 +97,7 @@ export function plan(root) {
     const parentTable = new Map([...index, ...(edoc ? tableStatuses(etext) : [])])
     const stories = readdirSync(edir).sort().filter((s) => existsSync(join(edir, s, 'OVERVIEW.md')))
     if (!edoc && stories.length === 0) continue
-    const erow = { key: epic, kind: 'epic', type: 'epic', parent: null, title: epic, path: edoc,
+    const erow = { key: epic, ref: `planning:docs/PLANNING/${epic}`, kind: 'epic', type: 'epic', parent: null, title: epic, path: edoc,
       body: etext || `# Epic: ${epic}\n\n(no document; its stories are below)`, labels: [], state: 'open', reason: '' }
     rows.push(erow)
     const storyRows = []
@@ -103,7 +108,7 @@ export function plan(root) {
       const s = stateFrom(sstatus)
       if (!s.known) listed.push(`story ${epic}/${story}: state not recognised (${sstatus ?? 'none recorded'}), left open`)
       const feature = join(sdir, `${story}.feature`)
-      const srow = { key: `${epic}/${story}`, kind: 'story', type: 'feature', parent: epic, title: story,
+      const srow = { key: `${epic}/${story}`, ref: `planning:docs/PLANNING/${epic}/${story}`, kind: 'story', type: 'feature', parent: epic, title: story,
         path: join(sdir, 'OVERVIEW.md'), body: stext, acceptance: existsSync(feature) ? read(feature) : undefined,
         labels: s.state === 'proposal' ? ['proposed'] : [], state: s.state, reason: s.reason, statusText: sstatus }
       rows.push(srow)
@@ -123,7 +128,7 @@ export function plan(root) {
           t = { state: 'closed', reason: `closed with its story: ${sstatus}; the task recorded ${tstatus ?? 'nothing'}`, known: true }
           listed.push(`task ${epic}/${story}/${name}: closed with its finished story (it recorded ${tstatus ?? 'nothing'})`)
         }
-        rows.push({ key: `${epic}/${story}/${name}`, kind: 'task', type: 'task', parent: `${epic}/${story}`, title: name,
+        rows.push({ key: `${epic}/${story}/${name}`, ref: `planning:docs/PLANNING/${epic}/${story}/${name}`, kind: 'task', type: 'task', parent: `${epic}/${story}`, title: name,
           path: join(tdir, task), body: ttext, labels: t.state === 'proposal' ? ['proposed'] : [], state: t.state, reason: t.reason })
       }
     }
@@ -146,7 +151,7 @@ export function plan(root) {
     const kind = /^\s*hotfix\b/i.test(kindRow?.[1] ?? '') ? 'hotfix' : /^\s*shortcut\b/i.test(kindRow?.[1] ?? '') ? 'shortcut' : 'defect'
     const status = ownStatus(text) ?? ''
     const closed = /^\s*(paid|closed|fixed|done)\b/i.test(status.replace(/\*\*/g, ''))
-    rows.push({ key: `debt:${entry}`, kind: 'debt', type: 'bug', parent: null, title: entry.replace(/\.md$/, ''),
+    rows.push({ key: `debt:${entry}`, ref: `planning:docs/DEBTS/${entry}`, kind: 'debt', type: 'bug', parent: null, title: entry.replace(/\.md$/, ''),
       path: doc, body: text, labels: [kind], state: closed ? 'closed' : 'open', reason: closed ? status.replace(/\*\*/g, '').trim() : '' })
   }
   return { rows, listed }
@@ -165,6 +170,52 @@ function say(rows, listed) {
 const bd = (args) => execFileSync('bd', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 const strip = (s) => (s ?? '').replace(/\n+$/, '')
 
+const one = (out) => { const v = JSON.parse(out); return Array.isArray(v) ? v[0] : v }
+
+/**
+ * Places every item the tracker already holds on a row of the plan (FR-128).
+ * A marked item is the row its mark names. An unmarked one, as the earlier
+ * script left them, is recognised by type, title and the same of its parents,
+ * and only when exactly one row looks like it. Anything else is not guessed
+ * at: it is returned as unplaced, and the run refuses before writing.
+ */
+export function place(rows, existing) {
+  const byRef = new Map(rows.map((r) => [r.ref, r]))
+  const byKey = new Map(rows.map((r) => [r.key, r]))
+  const rowSig = (r) => (r.parent ? rowSig(byKey.get(r.parent)) + '/' : '') + `${r.type}:${r.title}`
+  const sigRows = new Map()
+  for (const r of rows) sigRows.set(rowSig(r), [...(sigRows.get(rowSig(r)) ?? []), r])
+  const byId = new Map(existing.map((i) => [i.id, i]))
+  const itemSig = (i, seen = 0) => {
+    const parent = i.parent ? byId.get(i.parent) : undefined
+    if (i.parent && (!parent || seen > 32)) return `?${i.parent}/${i.issue_type}:${i.title}`
+    return (parent ? itemSig(parent, seen + 1) + '/' : '') + `${i.issue_type}:${i.title}`
+  }
+  const claims = new Map()
+  const unplaced = []
+  const recognised = []
+  for (const i of existing) {
+    const name = `${i.id} (${i.issue_type} ${i.title})`
+    let row
+    if (i.external_ref) {
+      row = byRef.get(i.external_ref)
+      if (!row) { unplaced.push(`${name}: its mark ${i.external_ref} names no document here`); continue }
+    } else {
+      const matches = sigRows.get(itemSig(i)) ?? []
+      if (matches.length !== 1) { unplaced.push(`${name}: no mark, and no single document it could have come from`); continue }
+      row = matches[0]
+      recognised.push({ id: i.id, row })
+    }
+    claims.set(row.key, [...(claims.get(row.key) ?? []), i])
+  }
+  const placed = new Map()
+  for (const [key, items] of claims) {
+    if (items.length === 1) { placed.set(key, items[0]); continue }
+    for (const i of items) unplaced.push(`${i.id} (${i.issue_type} ${i.title}): one of ${items.length} items that all look like ${byKey.get(key).ref}`)
+  }
+  return { placed, unplaced, recognised: recognised.filter((r) => placed.get(r.row.key)?.id === r.id) }
+}
+
 export function main(argv, root = process.cwd()) {
   const { rows, listed } = plan(root)
   if (rows.length === 0) {
@@ -172,31 +223,58 @@ export function main(argv, root = process.cwd()) {
     return 0
   }
   say(rows, listed)
-  if (argv.includes('--plan')) return 0
+  const dry = argv.includes('--plan')
 
+  // --limit 0: bd lists 50 items unless told otherwise (measured, bd 1.3.1),
+  // and an item it did not list would be created a second time.
+  const existing = JSON.parse(bd(['list', '--all', '--limit', '0', '--json']) || '[]')
+  const { placed, unplaced, recognised } = place(rows, existing)
+  if (unplaced.length > 0) {
+    const say = dry ? console.log : console.error
+    say(`\nmigrate-planning: the tracker holds ${unplaced.length} item(s) the folders do not describe, so ${dry ? 'the run will refuse' : 'nothing was written'}:`)
+    for (const u of unplaced) say(`  ${u}`)
+    say('Close or move them, or migrate by hand.')
+    return dry ? 0 : 1
+  }
+  if (existing.length > 0) {
+    console.log(`migrate-planning: ${existing.length} already in the tracker from an earlier run; ${rows.length - placed.size} to create.`)
+  }
+  if (dry) return 0
+
+  if (recognised.length > 0) {
+    console.log(`migrate-planning: recognised ${recognised.length} item(s) an earlier run left without a mark, and marked them:`)
+    for (const r of recognised) {
+      bd(['update', r.id, '--external-ref', r.row.ref])
+      console.log(`  ${r.id} as ${r.row.ref}`)
+    }
+  }
+
+  const ids = new Map([...placed].map(([key, item]) => [key, item.id]))
   const tmp = mkdtempSync(join(tmpdir(), 'migrate-planning-'))
-  const ids = new Map()
+  let created = 0
   try {
     for (const r of rows) {
+      if (ids.has(r.key)) continue
       const bodyFile = join(tmp, 'body')
       writeFileSync(bodyFile, r.body)
-      const args = ['create', r.title, '--type', r.type, '--body-file', bodyFile, '--json']
+      const args = ['create', r.title, '--type', r.type, '--body-file', bodyFile, '--external-ref', r.ref, '--json']
       if (r.parent) args.push('--parent', ids.get(r.parent))
       if (r.labels.length > 0) args.push('--labels', r.labels.join(','))
       if (r.state === 'proposal' || r.state === 'deferred') args.push('--status', 'deferred')
       if (r.acceptance !== undefined) args.push('--acceptance', r.acceptance)
-      const out = JSON.parse(bd(args))
-      ids.set(r.key, (Array.isArray(out) ? out[0] : out).id)
+      ids.set(r.key, one(bd(args)).id)
+      created++
     }
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }
-  console.log(`migrate-planning: ${ids.size} item(s) created.`)
+  console.log(`migrate-planning: ${created} item(s) created.`)
 
   const bad = []
+  const status = new Map()
   for (const r of rows) {
-    const shown = JSON.parse(bd(['show', ids.get(r.key), '--json']))
-    const item = Array.isArray(shown) ? shown[0] : shown
+    const item = one(bd(['show', ids.get(r.key), '--json']))
+    status.set(r.key, item.status)
     if (strip(item.description) !== strip(r.body)) bad.push(`${ids.get(r.key)} (${r.path})`)
   }
   if (bad.length > 0) {
@@ -207,10 +285,14 @@ export function main(argv, root = process.cwd()) {
   console.log('migrate-planning: every item came back whole.')
 
   // Children before parents: bd will not close a parent with an open child.
+  // An item an earlier run already closed is left as it is.
+  let closed = 0
   for (const r of [...rows].reverse()) {
-    if (r.state === 'closed') bd(['close', ids.get(r.key), '--reason', r.reason || 'closed'])
+    if (r.state !== 'closed' || status.get(r.key) === 'closed') continue
+    bd(['close', ids.get(r.key), '--reason', r.reason || 'closed'])
+    closed++
   }
-  console.log(`migrate-planning: ${rows.filter((r) => r.state === 'closed').length} item(s) closed.`)
+  console.log(`migrate-planning: ${closed} item(s) closed.`)
 
   for (const dir of ['docs/PLANNING', 'docs/DEBTS']) rmSync(join(root, dir), { recursive: true, force: true })
   console.log('migrate-planning: docs/PLANNING and docs/DEBTS removed. Nothing was committed.')

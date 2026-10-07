@@ -25,7 +25,8 @@ export interface MigrationFacts {
 export type MigrationStep =
   | { step: 'files' }
   | { step: 'rebuild'; why: string }
-  | { step: 'planning' }
+  /** `resuming` says what an earlier run left, when it left anything. */
+  | { step: 'planning'; resuming?: string }
   | { step: 'refuse'; why: string }
   | { step: 'done' }
 
@@ -43,13 +44,16 @@ export function migrationStep(f: MigrationFacts): MigrationStep {
   if (!c.running) return { step: 'rebuild', why: "the project's container is not running" }
   if (!c.hasMigrator) return { step: 'rebuild', why: 'the container runs an image without migrate-planning' }
   if (!c.hasTracker) return { step: 'rebuild', why: "the container has not initialised the project's tracker" }
+  // **An earlier run that stopped is carried on, not refused** (FR-128): the
+  // script places what the tracker holds and creates only what is missing, and
+  // refuses on its own when it holds something the folders do not describe.
   if (c.items > 0) {
     return {
-      step: 'refuse',
-      why:
-        `the tracker already holds ${c.items} item(s) while docs/PLANNING or docs/DEBTS is still here: ` +
-        'running the planning step again would duplicate every one of them. Check the earlier run in the ' +
-        'tracker, then remove the folders by hand if they were carried.',
+      step: 'planning',
+      resuming:
+        `The tracker already holds ${c.items} item(s) while docs/PLANNING or docs/DEBTS is still here, so an ` +
+        'earlier run stopped part-way. This run carries on from where it stopped: it creates only what is ' +
+        'missing, and refuses before writing anything if the tracker holds an item the folders do not describe.',
     }
   }
   return { step: 'planning' }

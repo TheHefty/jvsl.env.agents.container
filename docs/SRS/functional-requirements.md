@@ -471,4 +471,11 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   window connected to the container, the editor's git runs inside it, where the image's `PATH` is.
   Decided by the operator on 2026-10-07, over a copy per project or no check at all. The normative
   rule that names `.code-server/scripts/check-md-size.sh` changes with it.
+- **FR-128** — **A planning migration that stopped part-way carries on from where it stopped.** Every
+  item records the document it came from as its external reference (`planning:<path>`), so a second run
+  creates only what is missing, closes only what is still open, and reads every item back before the
+  folders go. Items an earlier version created without that mark are recognised by type, title and
+  parents, and marked; an item the plan cannot place stops the run before anything is written. Found on
+  fahrenheit404 on 2026-10-07: the run stopped after 18 of 28 items, and the command then refused it for
+  good, since a rerun would have duplicated them.
 
