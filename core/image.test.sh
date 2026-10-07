@@ -157,6 +157,17 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **migrate-planning is on PATH and runs on the image's Node** (FR-126). A
+# project's planning moves into its tracker from inside its container, where bd
+# is; in a directory with no planning it says there is nothing to migrate.
+migrate_out="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c \
+    'cd "$(mktemp -d)" && migrate-planning --plan 2>&1' || true)"
+case "$migrate_out" in
+    *"nothing to migrate"*) ;;
+    *) fail "migrate-planning does not run in $IMAGE: '$migrate_out'. core/Dockerfile.frag must install \
+core/bin/migrate-planning.mjs at /usr/local/bin/migrate-planning" ;;
+esac
+
 # **check-md-size is on PATH and checks the repository it is run from** (FR-127).
 # A project migrated off the code-server template has a pre-commit that calls
 # it from PATH; without it in the image, every commit there is refused.
