@@ -266,3 +266,53 @@ export function composeAndBuildCommand(
 export function handsOver(outcome: 'ok' | 'failed' | 'cancelled'): boolean {
   return outcome === 'ok'
 }
+
+/** Dev Containers' own rebuild, from a window already inside the container. */
+export const REBUILD_IN_CONTAINER = 'remote-containers.rebuildContainer'
+/** Dev Containers' own rebuild, from a local window: recreates and reopens. */
+export const REBUILD_FROM_HOST = 'remote-containers.rebuildAndReopenInContainer'
+
+export type ContainerForImage =
+  | { kind: 'one'; id: string; name: string; image: string }
+  | { kind: 'none' }
+  | { kind: 'many'; names: string[] }
+
+export type AfterBuild =
+  | { say: 'nothing' }
+  | { say: 'stale'; message: string; command: string }
+  | { say: 'ambiguous'; message: string }
+
+/**
+ * What to say after a successful build about the project's container.
+ *
+ * **Dev Containers reuses a project's existing container**, which stays bound to
+ * the image it was created from, so a rebuilt image reached nothing until the
+ * operator removed the container by hand (the debt
+ * a-rebuilt-image-does-not-reach-the-running-container in the tracker).
+ *
+ * **This never removes anything.** Recreating a container ends everything
+ * running in it, agent sessions included, so the only action it returns is
+ * Dev Containers' own rebuild command, run when the person chooses it. An
+ * image that could not be read claims nothing.
+ */
+export function afterBuild(input: {
+  built: string | undefined
+  container: ContainerForImage
+  inContainer: boolean
+}): AfterBuild {
+  const { built, container, inContainer } = input
+  if (container.kind === 'many') {
+    return {
+      say: 'ambiguous',
+      message: `More than one container claims this project (${container.names.join(', ')}), so none is recreated. ` +
+        'Remove the ones not in use, then rebuild from Dev Containers.',
+    }
+  }
+  if (container.kind === 'none' || !built || !container.image || container.image === built) return { say: 'nothing' }
+  return {
+    say: 'stale',
+    message: `The image was built, but the container ${container.name} still runs the previous image. ` +
+      'Recreating it ends everything running inside; what is in /config stays on its volume.',
+    command: inContainer ? REBUILD_IN_CONTAINER : REBUILD_FROM_HOST,
+  }
+}
