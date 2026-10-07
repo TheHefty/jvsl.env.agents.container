@@ -28,10 +28,15 @@ grep -q "^URIs: https://deb.nodesource.com/node_${want}.x$" "$src" 2>/dev/null &
 grep -q '^Signed-By: /usr/share/keyrings/nodesource.asc$' "$src" 2>/dev/null && echo "ok   the source is signed by the vendored key" \
     || fail "$src is not signed by /usr/share/keyrings/nodesource.asc"
 
-origin="$(apt-cache policy nodejs 2>/dev/null | awk '/\*\*\*/{getline; print; exit}')"
-case "$origin" in
-    *deb.nodesource.com*) echo "ok   the installed nodejs came from nodesource" ;;
-    *) fail "the installed nodejs did not come from deb.nodesource.com: $origin" ;;
+# **Asked of dpkg, not apt-cache.** The image removes /var/lib/apt/lists to
+# stay small, so `apt-cache policy` can only see dpkg's status file and never
+# names an origin; the first version of this check failed on exactly that, in
+# #136's CI, with node 18 correctly installed. nodesource's packages carry
+# "nodesource" in their version, Debian's do not.
+version="$(dpkg-query -W -f='${Version}' nodejs 2>/dev/null)"
+case "$version" in
+    *nodesource*) echo "ok   the installed nodejs is nodesource's ($version)" ;;
+    *) fail "the installed nodejs is '${version:-absent}', not nodesource's: Debian's own package was installed instead" ;;
 esac
 
 [ "$failures" -eq 0 ] && echo "node image.test: all checks passed." || { echo "node image.test: $failures failed."; exit 1; }
