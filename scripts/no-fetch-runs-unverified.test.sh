@@ -10,7 +10,9 @@
 # Two shapes are refused in every Dockerfile.frag, after joining continued
 # lines and dropping comments:
 #   - curl or wget piped into sh or bash;
-#   - git clone, which fetches whatever a branch points at today.
+#   - git clone, which fetches whatever a branch points at today;
+#   - curl or wget piped into tar, which unpacks an archive before anything
+#     checked it (added with the Go and Android task, the debt's second half).
 # A download is fine; executing it unverified is not.
 #
 # FETCH_GUARD_ROOT points this at another tree, which is how each shape was
@@ -34,9 +36,11 @@ for f in "${frags[@]}"; do
     joined="$(grep -vE '^[[:space:]]*#' "$f" | sed -e ':a' -e '/\\$/N; s/\\\n//; ta')"
     piped="$(printf '%s\n' "$joined" | grep -E '(curl|wget)[^;&]*\|[[:space:]]*(sudo[[:space:]]+)?(ba)?sh\b' || true)"
     cloned="$(printf '%s\n' "$joined" | grep -E '\bgit[[:space:]]+clone\b' || true)"
+    untarred="$(printf '%s\n' "$joined" | grep -E '(curl|wget)[^;&]*\|[[:space:]]*tar\b' || true)"
     rel="${f#"$ROOT"/}"
     [ -z "$piped" ] || bad+="$rel: pipes a download into a shell"$'\n'
     [ -z "$cloned" ] || bad+="$rel: runs git clone, which fetches whatever a branch points at today"$'\n'
+    [ -z "$untarred" ] || bad+="$rel: pipes a download into tar, unpacking it before anything checked it"$'\n'
 done
 
 if [ -n "$bad" ]; then

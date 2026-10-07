@@ -1,0 +1,14 @@
+{
+  "_comment": [
+    "SHA-256 of each go.dev/dl/goVERSION.linux-amd64.tar.gz, pinned per version.",
+    "Measured with sha256sum on the downloaded archive on 2026-10-07; each equals the",
+    "sha256 go.dev publishes in https://go.dev/dl/?mode=json&include=all. The digest",
+    "is what makes the build fail instead of installing something else.",
+    "To add or bump a version: download the archive, run sha256sum, and record it here",
+    "beside the version in versions.json. stacks/golang/digests.test.sh holds the two",
+    "files to the same set."
+  ],
+  "1.24.13": "1fc94b57134d51669c72173ad5d49fd62afb0f1db9bf3f798fd98ee423f8d730",
+  "1.25.12": "234828b7a89e0e303d2556310ee549fbcf253d28de937bac3da13d6294262ac1",
+  "1.26.5": "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
+}

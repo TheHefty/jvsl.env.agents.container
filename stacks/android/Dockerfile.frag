@@ -99,12 +99,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # this hardening exists for. --no-progress-meter rather than -s so retry
 # warnings still reach the build log — the next failure should be diagnosable
 # from the log alone.
+#
+# **Checked before it is unzipped.** The build number was pinned and the bytes
+# were not. CMDLINE_TOOLS_SHA256 was measured with sha256sum on the downloaded
+# zip on 2026-10-07; its sha1 equals the one Google publishes in
+# repository2-3.xml, which publishes sha1 only. Bump the two ARGs together.
+ARG CMDLINE_TOOLS_BUILD=15859902
+ARG CMDLINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
 RUN mkdir -p $ANDROID_HOME/cmdline-tools \
     && curl -fL --no-progress-meter --proto '=https' --tlsv1.2 \
          --retry 5 --retry-all-errors --retry-delay 5 \
          --connect-timeout 15 --speed-limit 1024 --speed-time 30 \
-         https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip \
+         "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_BUILD}_latest.zip" \
          -o /tmp/cmdline-tools.zip \
+    && { echo "${CMDLINE_TOOLS_SHA256}  /tmp/cmdline-tools.zip" | sha256sum -c - \
+         || { echo "android stack: the command-line tools zip for build ${CMDLINE_TOOLS_BUILD} does not match CMDLINE_TOOLS_SHA256. If the build was bumped, bump both ARGs together: download the zip, run sha256sum, and check its sha1 against Google's repository2-3.xml." >&2; exit 1; }; } \
     && unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools \
     && mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest \
     && rm /tmp/cmdline-tools.zip
