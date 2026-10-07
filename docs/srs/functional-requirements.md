@@ -393,6 +393,11 @@ these into a third decade would hide that they belong here.
     criteria, design and close reason; its parent and its children linked, so the form navigates.
   - **Azure DevOps's names** for the three levels: Epic, User Story, Task, and Bug for a debt. Only
     the names shown change. The data, bd's types and the chain of gates do not.
+  - **The backlog filters and sorts**, as Azure DevOps's does: a keyword box over ID and title, and
+    filters by type, state and tag; a click on a column header sorts within each level, so a story
+    stays under its epic. An item that matches keeps its ancestors visible, dimmed, so it is never
+    shown out of its place. Filtering and sorting happen in the page and change nothing in the
+    tracker. Added on 2026-10-07.
 
   It still reads, and writes nothing.
 - **FR-119** — The page is part of this extension rather than a service. It already runs on the host,
