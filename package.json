@@ -51,6 +51,10 @@
       {
         "command": "jvsl.agentContainer.build",
         "title": "Agent Container: Build the Image"
+      },
+      {
+        "command": "jvsl.agentContainer.showWork",
+        "title": "Agent Container: Show the Work"
       }
     ],
     "views": {

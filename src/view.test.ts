@@ -139,3 +139,14 @@ test('the no-stacks row names a reinstall, not a submodule', () => {
   assert.doesNotMatch(text, /submodule|checked out/i)
   assert.match(text, /reinstall|incomplete/i)
 })
+
+test('a project with a tracker offers to show the work', () => {
+  // FR-118: the board opens from where the project already is. Only a project
+  // that asked for a tracker has one to show.
+  const withTracker = viewItems({ stacksAvailable: ['java'], manifest: { java: '21', beads: true } })
+  const entry = withTracker.find((r) => r.kind === 'entry')
+  assert.ok(entry, JSON.stringify(withTracker))
+  assert.equal(entry.command, 'jvsl.agentContainer.showWork')
+  const without = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
+  assert.equal(without.find((r) => r.command === 'jvsl.agentContainer.showWork'), undefined)
+})

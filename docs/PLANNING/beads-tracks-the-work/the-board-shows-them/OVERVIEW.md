@@ -56,7 +56,9 @@ renders it, so a script or a remote load inside it must not run.
 
 ## Tasks
 
-Written after this gate, not before.
+| Order | Task | Status |
+|---|---|---|
+| 1 | [`tasks/a-page-reads-the-tracker-through-the-container.md`](tasks/a-page-reads-the-tracker-through-the-container.md) | Designed, at its gate |
 
 ## Outcome
 

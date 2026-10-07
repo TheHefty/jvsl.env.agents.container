@@ -24,6 +24,7 @@ import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './stack-manifest.ts'
 import { olderCopyNotice } from './older-copy.ts'
+import { showWork } from './board.ts'
 import { CONFIG_PATH, decideOpen, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
 import { viewItems, type Row, type ViewState } from './view.ts'
 import {
@@ -45,6 +46,7 @@ const SHOW_DETECTED = 'jvsl.agentContainer.showDetected'
 const OPEN = 'jvsl.agentContainer.prepare'
 const CONFIGURE = 'jvsl.agentContainer.configure'
 const BUILD = 'jvsl.agentContainer.build'
+const SHOW_WORK = 'jvsl.agentContainer.showWork'
 /** Bounded because `docker info` hangs on an unreachable daemon rather than failing. */
 const DOCKER_CHECK_MS = 2000
 const PICK = 'jvsl.agentContainer.open'
@@ -75,11 +77,13 @@ const run = promisify(execFile)
  * already had and a slow daemon reads as a daemon that did not answer — which
  * is what it is.
  */
-async function dockerBounded(args: string[]): Promise<{ stdout: string; stderr: string }> {
+async function dockerBounded(args: string[], ms = DOCKER_CHECK_MS): Promise<{ stdout: string; stderr: string }> {
   return Promise.race([
-    run('docker', args),
+    // 64 MiB of output: execFile's default is 1 MiB, and a whole tracker read
+    // by the board can pass that, failing as "maxBuffer exceeded".
+    run('docker', args, { maxBuffer: 64 * 1024 * 1024 }),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), DOCKER_CHECK_MS),
+      setTimeout(() => reject(new Error('timeout')), ms),
     ),
   ])
 }
@@ -122,6 +126,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
+    vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerBounded, write)),
   )
 
   context.subscriptions.push(
