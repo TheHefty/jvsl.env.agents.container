@@ -115,6 +115,8 @@ jobs:
         run: bash scripts/board-only-reads.test.sh
       - name: no image fragment runs code it downloaded without verifying it
         run: bash scripts/no-fetch-runs-unverified.test.sh
+      - name: every Go version the stack offers has a pinned digest
+        run: bash stacks/golang/digests.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
