@@ -150,3 +150,17 @@ test('a project with a tracker offers to show the work', () => {
   const without = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
   assert.equal(without.find((r) => r.command === 'jvsl.agentContainer.showWork'), undefined)
 })
+
+test('a host that will stop the agents\' sandbox says so in the panel, without hiding the project', () => {
+  // A warning only in the build log is one nobody reads before the failure.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' }, sandboxWarning: 'kernel says no' })
+  const warning = rows.find((r) => r.label === "The agents' sandbox will not open on this host")
+  assert.ok(warning, JSON.stringify(rows))
+  assert.equal(warning.detail, 'kernel says no')
+  assert.ok(rows.some((r) => r.kind === 'stack'), 'the project is still shown')
+})
+
+test('no warning, no row', () => {
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
+  assert.equal(rows.find((r) => r.label.includes('sandbox')), undefined)
+})
