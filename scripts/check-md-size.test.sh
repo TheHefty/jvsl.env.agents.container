@@ -92,13 +92,28 @@ rm -rf "$d"
 
 # A nested repository is a gitlink to its parent, not a pile of files. This is
 # what keeps the template's own documents out of a consuming repo's check.
-d=$(make_repo); child=$(make_repo)
+# **Built where it is used**, never copied: copying a .git that git may be
+# maintaining in the background is the race this case once lost.
+d=$(make_repo); child="$d/vendored"
+mkdir -p "$child"; git -C "$child" init -q
+git -C "$child" config user.email t@t; git -C "$child" config user.name t
 big 51201 > "$child/huge.md"; git -C "$child" add -A
 git -C "$child" commit -q -m x
-cp -r "$child" "$d/vendored"
 git -C "$d" add -A 2>/dev/null
 check "an embedded repository's files are not the parent's problem" "$(run "$d")" 0
+# And it is that for the reason the case exists: the parent records the child
+# as a gitlink, not as files. Without this, a case that stopped embedding
+# anything would still pass.
+check "the parent records the embedded repository as a gitlink" \
+    "$(git -C "$d" ls-files --stage vendored | cut -d' ' -f1)" "160000"
 rm -rf "$d" "$child"
+
+# **No case copies a live repository.** A `cp` of a .git that git may be
+# maintaining in the background raced it in #126's CI: maintenance.lock was
+# listed and then gone. The debt is the-size-check-test-races-git in the
+# tracker. Build a repository where it is used instead.
+check "no case in this file copies a repository with cp" \
+    "$(grep -cE '^[[:space:]]*cp[[:space:]]' "${BASH_SOURCE[0]}" || true)" "0"
 
 echo "-- failure 2: dying quietly on a healthy tree"
 
