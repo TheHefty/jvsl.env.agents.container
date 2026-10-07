@@ -22,10 +22,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON="$HERE/jail-common.sh"
 
-# Names that are not secrets: two recursion markers, two paths, and a socket
-# address. Each is here because it cannot be inherited — ai-jail --clearenv's
+# Names that are not secrets: two recursion markers, two paths, a socket
+# address, and a telemetry switch. Each is here because it cannot be inherited — ai-jail --clearenv's
 # the sandbox — and none of them is worth anything to somebody reading `ps`.
-ALLOWED=(CLAUDE_JAILED CLAUDE_CONFIG_DIR CODEX_JAILED RUSTUP_HOME DOCKER_HOST)
+ALLOWED=(CLAUDE_JAILED CLAUDE_CONFIG_DIR CODEX_JAILED RUSTUP_HOME DOCKER_HOST DO_NOT_TRACK)
 
 # Secrets still crossing, knowingly, each one a line in the debt. **This list
 # must only ever shrink.** The check below fails if a name appears that is

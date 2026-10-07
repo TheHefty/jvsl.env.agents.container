@@ -519,6 +519,15 @@ RUN curl -fL --no-progress-meter --proto '=https' --tlsv1.2 \
 COPY core/cont-init/45-beads.sh /custom-cont-init.d/45-beads.sh
 RUN chmod +x /custom-cont-init.d/45-beads.sh
 
+# 7.3.1 bd's usage metrics are off. **bd ships them on**: the name of every
+# command run, its version and the platform, keyed by a machine-derived id.
+# Measured on 2026-10-07, after dozens of commands had already reported from
+# this environment. The operator decided that nothing leaves the machine without
+# a decision, as with ai-memory's provider. bd honours DO_NOT_TRACK, the common
+# convention, and this covers the boot hook and a person's terminal. The agent's
+# sandbox clears its environment, so core/bin/jail-common.sh passes it again.
+ENV DO_NOT_TRACK=1
+
 # 6. The normative documents, and the hook that puts two of them where the agent
 # loads them from.
 #

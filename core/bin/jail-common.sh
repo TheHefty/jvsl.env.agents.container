@@ -167,6 +167,13 @@ fi
 # rather than correctness.
 JAIL_COMMON_ARGS+=(--env "RUSTUP_HOME=${RUSTUP_HOME:-/usr/local/rustup}")
 
+# **Telemetry stays off inside the sandbox too.** The image sets DO_NOT_TRACK=1
+# so bd reports nothing, and ai-jail --clearenv's the sandbox, so without this
+# the agent's own bd would report every command it runs. A literal rather than
+# the caller's value: this is a decision of the image, not something a shell
+# that happened to unset it should be able to undo.
+JAIL_COMMON_ARGS+=(--env "DO_NOT_TRACK=1")
+
 # ai-memory's lifecycle hooks run *inside* the sandbox — the installed hook
 # config invokes the binary directly, not the staged shell scripts — and they
 # read their capture policy out of the store, whose path is baked into each hook

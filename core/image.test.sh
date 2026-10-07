@@ -157,6 +157,16 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **bd's usage metrics are off.** bd ships them on: the name of every command
+# run, the version and the platform, keyed by a machine-derived id. Measured on
+# 2026-10-07, after dozens of commands had already reported. The operator
+# decided nothing leaves without a decision, so the image sets DO_NOT_TRACK,
+# which bd honours. The sandbox has its own copy, in core/bin/jail-common.sh.
+metrics="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'bd metrics status 2>&1 | head -1')"
+[ "$metrics" = "Anonymous usage metrics: OFF" ] || fail "bd in $IMAGE reports its metrics as: \
+\"$metrics\". The image must set DO_NOT_TRACK=1, which bd honours; without it every bd command run in \
+a project's container reports itself"
+
 # **Every `bd` command the rules name exists in the bd this image carries.**
 # The rules tell an agent which commands to run, and a bump that renames a flag
 # would leave it running one that fails mid-session, then improvising another.
