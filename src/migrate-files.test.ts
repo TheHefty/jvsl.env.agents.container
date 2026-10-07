@@ -158,3 +158,30 @@ test('applying the plan removes the submodule and its .gitmodules entry, writes 
   assert.ok(!existsSync(join(root, '.code-server.stack.json')))
   assert.ok(!readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes('@.code-server/'))
 })
+
+test('a manifest the extension already renamed still gains beads, and the submodule still goes', () => {
+  // The extension adopts .code-server.stack.json on first opening a project,
+  // so a project opened before its migration arrives with the current name,
+  // no "beads": true, and the submodule still there.
+  const p = planFileMigration(project({ legacyManifest: null, currentManifest: '{\n  "node": "22"\n}\n' }))
+  assert.ok(p.kind === 'plan')
+  const w = op(p, '.agent-container.stack.json')
+  assert.ok(w && w.kind === 'write')
+  assert.deepEqual(JSON.parse(w.content), { node: '22', beads: true })
+  assert.equal(op(p, '.code-server.stack.json'), undefined, 'there is no old file to remove')
+})
+
+import { carriesTemplateSubmodule, textsWorthReading } from './migrate-files.ts'
+
+test('a .gitmodules with the template is the old format; one without it is not', () => {
+  assert.equal(carriesTemplateSubmodule('[submodule ".code-server"]\n\tpath = .code-server\n\turl = x\n'), true)
+  assert.equal(carriesTemplateSubmodule('[submodule "vendor/lib"]\n\tpath = vendor/lib\n'), false)
+  assert.equal(carriesTemplateSubmodule(null), false)
+})
+
+test('the files read for the plan are text, and never the submodule\'s own', () => {
+  assert.deepEqual(
+    textsWorthReading(['CLAUDE.md', '.githooks/pre-commit', '.code-server/docs/x.md', 'logo.png', 'docs/RULES.md', 'a.ts']),
+    ['CLAUDE.md', '.githooks/pre-commit', 'docs/RULES.md', 'a.ts'],
+  )
+})

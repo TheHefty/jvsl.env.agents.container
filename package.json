@@ -55,6 +55,10 @@
       {
         "command": "jvsl.agentContainer.showWork",
         "title": "Agent Container: Show the Work"
+      },
+      {
+        "command": "jvsl.agentContainer.migrate",
+        "title": "Agent Container: Migrate from code-server"
       }
     ],
     "views": {

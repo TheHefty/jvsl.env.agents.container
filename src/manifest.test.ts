@@ -224,6 +224,7 @@ test('the folder picker is contributed, and declares no onCommand event for itse
   )
   assert.ok(ids.includes('jvsl.agentContainer.open'), JSON.stringify(ids))
   assert.ok(ids.includes('jvsl.agentContainer.showWork'), JSON.stringify(ids))
+  assert.ok(ids.includes('jvsl.agentContainer.migrate'), JSON.stringify(ids))
   const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
   assert.deepEqual(events.filter((e: unknown) => String(e).startsWith('onCommand:')), [])
 })

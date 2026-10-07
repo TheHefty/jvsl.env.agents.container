@@ -80,10 +80,15 @@ export function planFileMigration(project: ProjectFiles): Plan {
   const removes: Op[] = []
   const edited = new Set<string>()
 
-  if (project.legacyManifest !== null) {
-    const base = JSON.parse(project.currentManifest ?? project.legacyManifest) as Record<string, unknown>
-    writes.push({ kind: 'write', path: MANIFEST, content: `${JSON.stringify({ ...base, beads: true }, null, 2)}\n` })
-    removes.push({ kind: 'remove', path: LEGACY_MANIFEST })
+  // **The manifest may already have its current name**: the extension adopts
+  // the old one on first opening a project, without turning the tracker on.
+  const source = project.currentManifest ?? project.legacyManifest
+  if (source !== null) {
+    const base = JSON.parse(source) as Record<string, unknown>
+    if (project.legacyManifest !== null || base['beads'] !== true) {
+      writes.push({ kind: 'write', path: MANIFEST, content: `${JSON.stringify({ ...base, beads: true }, null, 2)}\n` })
+    }
+    if (project.legacyManifest !== null) removes.push({ kind: 'remove', path: LEGACY_MANIFEST })
   }
 
   for (const path of INSTRUCTIONS) {
@@ -155,3 +160,16 @@ export async function applyFileMigration(root: string, plan: Plan & { kind: 'pla
   }
 }
 
+
+/** Whether a project's .gitmodules carries the code-server template (FR-122). */
+export function carriesTemplateSubmodule(gitmodules: string | null): boolean {
+  return gitmodules !== null && /path\s*=\s*\.code-server\s*$/m.test(gitmodules)
+}
+
+/**
+ * Which tracked files the plan reads: text worth scanning for imports and
+ * mentions, and never the submodule's own files.
+ */
+export function textsWorthReading(tracked: readonly string[]): string[] {
+  return tracked.filter((f) => !f.startsWith('.code-server/') && /\.(md|sh|json|ya?ml|toml|py|ts|mjs|js)$|^\.githooks\//.test(f))
+}
