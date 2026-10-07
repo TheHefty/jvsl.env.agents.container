@@ -318,8 +318,10 @@ manual hand-off is accepted rather than designed around.
 - **FR-108** — The create-project flow asks about Beads exactly as it asks about `ai-memory`, and
   writes the marker of FR-101 when asked. The one moment somebody is deciding what a project *is* is
   the right moment to ask.
-- **FR-109** — **A guard fails when an epic, story or task survives as markdown under `docs/`, or
-  when a status appears in a document that stays.** Amended with FR-104, and it now guards two
+- **FR-109** — **A guard fails when an epic, story, task or debt survives as markdown under `docs/`,
+  or when a status appears in a document that stays.** Debts joined on 2026-10-07, when FR-117 moved
+  them into the tracker. The folders `docs/PLANNING/` and `docs/DEBTS/` stay, holding only a
+  `.gitkeep`, for projects without a tracker; they are not a failure. Amended with FR-104, and it now guards two
   things: that the documents which moved do not come back, and that the two which stayed — the
   charter and the SRS — do not start carrying state again.
 
@@ -388,9 +390,17 @@ these into a third decade would hide that they belong here.
   - **A backlog grid** of the hierarchy, with ID, Title, State and Tags columns, that expands and
     collapses.
   - **An item form**: title, state and tags at the top; sections for the description, acceptance
-    criteria, design and close reason; its parent and its children linked, so the form navigates.
+    criteria, design and close reason; its parent and its children linked, so the form navigates. It
+    opens as a dialog over the board or the backlog, from either view, closed with Esc or its close
+    button, and the view behind it stays as it was. Added on 2026-10-07: at the bottom of the page the
+    form was out of sight.
   - **Azure DevOps's names** for the three levels: Epic, User Story, Task, and Bug for a debt. Only
     the names shown change. The data, bd's types and the chain of gates do not.
+  - **The backlog filters and sorts**, as Azure DevOps's does: a keyword box over ID and title, and
+    filters by type, state and tag; a click on a column header sorts within each level, so a story
+    stays under its epic. An item that matches keeps its ancestors visible, dimmed, so it is never
+    shown out of its place. Filtering and sorting happen in the page and change nothing in the
+    tracker. Added on 2026-10-07.
 
   It still reads, and writes nothing.
 - **FR-119** — The page is part of this extension rather than a service. It already runs on the host,
