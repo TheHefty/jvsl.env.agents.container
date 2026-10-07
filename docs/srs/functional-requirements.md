@@ -380,6 +380,19 @@ these into a third decade would hide that they belong here.
 - **FR-118** — **A page shows them, and only shows them.** A board in the editor — the hierarchy,
   each item's content, and its state — that reads and does not write. Approval is not on it: it
   stays a sentence the operator says, which is where it already works.
+
+  **Its shape follows Azure DevOps, which the operator works in.** Amended on 2026-10-07, for reading
+  before approving and for following progress equally:
+
+  - **Cards** coloured and marked by type, each showing its ID, state and tags.
+  - **A backlog grid** of the hierarchy, with ID, Title, State and Tags columns, that expands and
+    collapses.
+  - **An item form**: title, state and tags at the top; sections for the description, acceptance
+    criteria, design and close reason; its parent and its children linked, so the form navigates.
+  - **Azure DevOps's names** for the three levels: Epic, User Story, Task, and Bug for a debt. Only
+    the names shown change. The data, bd's types and the chain of gates do not.
+
+  It still reads, and writes nothing.
 - **FR-119** — The page is part of this extension rather than a service. It already runs on the host,
   already has a panel, and can read a database and a repository without anything being started,
   served or logged into.

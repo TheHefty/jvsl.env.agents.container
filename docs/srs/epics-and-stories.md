@@ -193,6 +193,7 @@ removes that, and the Azure DevOps case with it, until some later epic puts it b
 | 3 | the board shows them | FR-118, FR-119 — the reading surface this epic exists for |
 | 4 | the agent works from the tracker | FR-106 — what the normative documents say about taking the next item and closing it with a reason |
 | 5 | the guard holds the split | FR-109 — that the documents which left do not come back, and the two that stayed do not start carrying state |
+| 6 | the board reads like Azure DevOps | FR-118, amended on 2026-10-07 — cards by type, a backlog grid, an item form, and Azure DevOps's names, for reading before approving and for following progress equally |
 
 **Story 3 is the one the operator asked for, and it is third on purpose.** A board over an empty
 tracker shows nothing, and a board over a half-migrated one shows a project that does not exist.
