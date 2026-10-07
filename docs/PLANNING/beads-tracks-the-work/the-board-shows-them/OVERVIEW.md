@@ -58,8 +58,15 @@ renders it, so a script or a remote load inside it must not run.
 
 | Order | Task | Status |
 |---|---|---|
-| 1 | [`tasks/a-page-reads-the-tracker-through-the-container.md`](tasks/a-page-reads-the-tracker-through-the-container.md) | Designed, at its gate |
+| 1 | [`tasks/a-page-reads-the-tracker-through-the-container.md`](tasks/a-page-reads-the-tracker-through-the-container.md) | Shipped in #123 |
 
 ## Outcome
 
-Filled in when the story closes.
+**Shipped, not yet closed.** On 2026-10-07 the operator opened the board in a window connected to
+this repository's container, and it said "This project has no tracker". That message is reached only
+after the host path is decoded from the remote authority and the manifest is read there, so both were
+verified on a real host. The page also showed that the panel reads the container's path on the host,
+recorded as the debt `docs/DEBTS/the-panel-reads-the-containers-path/`.
+
+Still owed by hand: a board over a real tracker, which needs a project that has opted in, and the two
+`@manual` scenarios.

@@ -68,8 +68,8 @@ a decision; every surviving one was something that was looked at.
 |---|---|---|
 | 1 | [the image carries `bd`](the-image-carries-bd/) | **Shipped** — both tasks (#117 for FR-121). Owed by hand: the `@manual` pass, and `bd dolt push` against GitHub on the first real push |
 | 2 | [the work items move into the tracker](the-work-items-move-into-the-tracker/) | **Script shipped, not run** — running it is the operator's, after this repository opts in and its container is rebuilt |
-| 3 | [the board shows them](the-board-shows-them/) | Scenarios agreed on 2026-10-06 |
-| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | **Reopened on 2026-10-06** — drafts move onto the board as proposals; a second task owed |
+| 3 | [the board shows them](the-board-shows-them/) | **Shipped** in #123. Seen on the operator's host in a connected window on 2026-10-07. Owed by hand: a board over real items, and the two `@manual` passes |
+| 4 | [the agent works from the tracker](the-agent-works-from-the-tracker/) | **Shipped** in #120 and #122. Owed by hand: the two `@manual` passes |
 | 5 | the guard holds the split | Not started |
 
 **Story 1's scenarios are false now, in two places.** They were written under `--stealth` and assert
