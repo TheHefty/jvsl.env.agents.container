@@ -31,7 +31,10 @@ ALLOWED=(CLAUDE_JAILED CLAUDE_CONFIG_DIR CODEX_JAILED RUSTUP_HOME DOCKER_HOST DO
 # must only ever shrink.** The check below fails if a name appears that is
 # neither allowed nor already written here, which is what stops the next
 # credential arriving without the decision being made.
-KNOWN_EXCEPTIONS=(OPENAI_API_KEY)
+# Empty since 2026-10-07, when Codex stopped receiving OPENAI_API_KEY and
+# began authenticating from its own auth.json. Nothing secret crosses by
+# variable; a name added here is a decision to reverse that, in the debt.
+KNOWN_EXCEPTIONS=()
 
 failures=0
 ok()  { echo "ok   $1"; }
@@ -84,7 +87,7 @@ done
 # The exceptions list is the thing most likely to rot upward, so it is pinned
 # rather than merely consulted. Shrinking it is the point; growing it has to be
 # a deliberate edit to this assertion as well.
-expected_exceptions="OPENAI_API_KEY"
+expected_exceptions=""   # emptied on 2026-10-07; it can only ever shrink, and it has nowhere left to go
 if [ "${KNOWN_EXCEPTIONS[*]}" = "$expected_exceptions" ]; then
     ok "the list of secrets still crossing has not grown"
 else

@@ -26,14 +26,17 @@ JAIL_COMMON="${JAIL_COMMON:-/usr/local/lib/jail-common.sh}"
 # shellcheck source=jail-common.sh
 source "$JAIL_COMMON"
 
-# OPENAI_API_KEY is Codex's GH_TOKEN: forwarded by name so the value is copied
-# across without ever appearing in this process's argv, opt-in per invocation,
-# and a silent no-op when it is unset — which is the ordinary case, because it
-# is only one of the two ways Codex authenticates.
+# **Codex authenticates from its own file, never from a variable.** Until
+# 2026-10-07 this forwarded OPENAI_API_KEY with --env, the one secret still
+# crossing into the sandbox by variable (the debt
+# forwarded-secrets-land-in-the-sandbox-argv in the tracker). Decided by the
+# operator: it is not forwarded at all. An API key is stored where a login is,
+# with `printenv OPENAI_API_KEY | codex login --with-api-key`, measured to read
+# stdin into ~/.codex/auth.json.
 #
-# The other is `codex login`, which writes ~/.codex/auth.json, and that
-# persists: --agent-state maps ~/.codex, and core/cont-init/45-agent-state-dirs.sh
-# creates /config/.codex **at boot** so there is a directory there to map.
+# `codex login` writes ~/.codex/auth.json, and that persists: --agent-state
+# maps ~/.codex, and core/cont-init/45-agent-state-dirs.sh creates
+# /config/.codex **at boot** so there is a directory there to map.
 #
 # This comment used to credit section 5 of core/Dockerfile.frag for that
 # directory, and it was wrong in a way that mattered: section 5 writes it at
@@ -53,10 +56,16 @@ source "$JAIL_COMMON"
 # to fix was a *second* file one level up that nothing mounted; Codex has no
 # equivalent, so setting the variable would only be a second definition of the
 # default.
+# Said once, because a key somebody set and the wrapper dropped looks like a
+# broken login. The value itself is never printed.
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  echo "codex: OPENAI_API_KEY is set but is not passed into the sandbox, where a variable can leak." >&2
+  echo "codex: store it in Codex's own file instead: printenv OPENAI_API_KEY | codex login --with-api-key" >&2
+fi
+
 jail_args=(
   "${JAIL_COMMON_ARGS[@]}"
   --env CODEX_JAILED=1
-  --env OPENAI_API_KEY
 )
 
 exec ai-jail "${jail_args[@]}" codex "$@"
