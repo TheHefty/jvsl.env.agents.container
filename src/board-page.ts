@@ -12,6 +12,7 @@
  * hidden until opened, so the only message the page sends is to read again.
  * Nothing on it changes the tracker (FR-118).
  */
+import { orderedIds, visibleIds } from './board-filter.ts'
 import { backlogRows, columns, typeLook, type Item } from './board-read.ts'
 
 export interface Rendered {
@@ -70,32 +71,80 @@ button.link { background: none; border: none; color: var(--vscode-textLink-foreg
 .type-other { --type-colour: #8A8886; }
 ${['epic', 'feature', 'task', 'bug'].map((t) => `.type-${t} { --type-colour: ${typeLook(t).colour}; }`).join('\n')}
 ${Array.from({ length: 7 }, (_, d) => `td.depth-${d} { padding-left: ${d * 20 + 8}px; }`).join('\n')}
-#detail { border-top: 1px solid var(--vscode-panel-border); margin-top: 16px; padding-top: 8px; }
+dialog#detail { width: min(900px, 92vw); max-height: 85vh; overflow: auto; padding: 16px 20px;
+  color: var(--vscode-foreground); background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); }
+dialog#detail::backdrop { background: rgba(0, 0, 0, 0.45); }
+#close-detail { float: right; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.filters input, .filters select { font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); padding: 2px 6px; }
+tr.context { opacity: 0.5; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[aria-sort="ascending"]::after { content: " ▲"; }
+th[aria-sort="descending"]::after { content: " ▼"; }
 #detail h3 { font-size: 0.9em; text-transform: uppercase; opacity: 0.8; }
 pre.raw { white-space: pre-wrap; font-family: var(--vscode-editor-font-family); }
 `
 
-const SCRIPT = `
+/**
+ * The page's script. **It never builds markup**: it toggles `hidden`, a class
+ * and ARIA attributes, moves existing rows with `append`, and opens and closes
+ * the one dialog. The filter and the sort are board-filter.ts's own functions,
+ * embedded by their source, so the page runs what the tests prove.
+ */
+const SCRIPT = `const visibleIds = (${visibleIds.toString()});
+const orderedIds = (${orderedIds.toString()});
+// -- page --
 const vscode = acquireVsCodeApi();
 document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('nav [data-tab]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   document.querySelectorAll('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== b.dataset.tab; });
 }));
+const dialog = document.getElementById('detail');
 document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => {
   document.querySelectorAll('[data-detail]').forEach((d) => { d.hidden = d.dataset.detail !== c.dataset.open; });
-  document.getElementById('detail').hidden = false;
+  if (!dialog.open) dialog.showModal();
+  dialog.scrollTop = 0;
 }));
+document.getElementById('close-detail').addEventListener('click', () => dialog.close());
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
+const tbody = document.querySelector('table.backlog tbody');
 const rows = [...document.querySelectorAll('tr[data-row]')];
+const data = rows.map((r) => ({ id: r.dataset.row, parent: r.dataset.parent || undefined, type: r.dataset.type,
+  state: r.dataset.state, tags: r.dataset.tags ? r.dataset.tags.split('\\u001f') : [], title: r.dataset.title }));
+const field = (id) => document.getElementById(id);
+const filter = () => ({ text: field('f-text').value, type: field('f-type').value, state: field('f-state').value, tag: field('f-tag').value });
 const expanded = (id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); return !t || t.getAttribute('aria-expanded') === 'true'; };
-const shown = (row) => { for (let p = row.dataset.parent; p; ) { if (!expanded(p)) return false; const up = document.querySelector('tr[data-row="' + CSS.escape(p) + '"]'); p = up ? up.dataset.parent : ''; } return true; };
-const relayout = () => rows.forEach((r) => { r.hidden = !shown(r); });
+const parentOf = new Map(data.map((d) => [d.id, d.parent]));
+const underCollapsed = (id) => { for (let p = parentOf.get(id); p; p = parentOf.get(p)) { if (!expanded(p)) return true; } return false; };
+const relayout = () => {
+  const f = filter();
+  const active = f.text.trim() !== '' || f.type !== '' || f.state !== '' || f.tag !== '';
+  const v = visibleIds(data, f);
+  if (active) v.context.forEach((id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); if (t) t.setAttribute('aria-expanded', 'true'); });
+  let any = false;
+  rows.forEach((r) => {
+    const hide = !v.shown.has(r.dataset.row) || underCollapsed(r.dataset.row);
+    r.hidden = hide; r.classList.toggle('context', v.context.has(r.dataset.row));
+    if (!hide) any = true;
+  });
+  field('no-match').hidden = any;
+};
+['f-text', 'f-type', 'f-state', 'f-tag'].forEach((id) => field(id).addEventListener('input', relayout));
 document.querySelectorAll('[data-toggle]').forEach((t) => t.addEventListener('click', () => {
   t.setAttribute('aria-expanded', String(t.getAttribute('aria-expanded') !== 'true')); relayout();
 }));
 const all = (open) => { document.querySelectorAll('[data-toggle]').forEach((t) => t.setAttribute('aria-expanded', String(open))); relayout(); };
-document.getElementById('expand-all').addEventListener('click', () => all(true));
-document.getElementById('collapse-all').addEventListener('click', () => all(false));
+field('expand-all').addEventListener('click', () => all(true));
+field('collapse-all').addEventListener('click', () => all(false));
+document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('click', () => {
+  const dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
+  document.querySelectorAll('th[data-sort]').forEach((x) => x.setAttribute('aria-sort', 'none'));
+  th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+  const byId = new Map(rows.map((r) => [r.dataset.row, r]));
+  orderedIds(data, th.dataset.sort, dir).forEach((id) => tbody.append(byId.get(id)));
+  tbody.append(field('no-match'));
+}));
 `
 
 function shell(nonce: string, body: string, script: string): string {
@@ -154,15 +203,28 @@ function backlog(items: readonly Item[]): string {
       const toggle = hasChildren
         ? `<button class="toggle" data-toggle="${escape(item.id)}" aria-expanded="true" aria-label="Expand or collapse">▾</button>`
         : '<span class="toggle"></span>'
-      return `<tr data-row="${escape(item.id)}" data-parent="${escape(item.parent ?? '')}">` +
+      const shownTags = [...(isProposal(item) ? ['Proposal'] : []), ...item.labels.filter((l) => l !== 'proposed')]
+      return `<tr data-row="${escape(item.id)}" data-parent="${escape(item.parent ?? '')}" ` +
+        `data-type="${escape(typeLook(item.type).name)}" data-state="${escape(stateOf(item))}" ` +
+        `data-tags="${escape(shownTags.join('\u001f'))}" data-title="${escape(item.title)}">` +
         `<td>${escape(item.id)}</td>` +
         `<td class="title-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}">${toggle}` +
         `<button class="link" data-open="${escape(item.id)}"><span class="type">${escape(typeLook(item.type).name)}</span>${escape(item.title)}</button></td>` +
         `<td>${escape(stateOf(item))}</td><td>${tags(item)}</td></tr>`
     })
     .join('')
-  return '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
-    `<table class="backlog"><thead><tr><th>ID</th><th>Title</th><th>State</th><th>Tags</th></tr></thead><tbody>${body}</tbody></table>`
+  const options = (values: Iterable<string>) =>
+    [...new Set(values)].sort().map((v) => `<option value="${escape(v)}">${escape(v)}</option>`).join('')
+  const filters = '<div class="filters">' +
+    '<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title">' +
+    `<select id="f-type" aria-label="Type"><option value="">Any type</option>${options(items.map((i) => typeLook(i.type).name))}</select>` +
+    `<select id="f-state" aria-label="State"><option value="">Any state</option>${options(items.map(stateOf))}</select>` +
+    `<select id="f-tag" aria-label="Tag"><option value="">Any tag</option>${options(items.flatMap((i) => [...(isProposal(i) ? ['Proposal'] : []), ...i.labels.filter((l) => l !== 'proposed')]))}</select>` +
+    '</div>'
+  const th = (key: string, label: string) => `<th data-sort="${key}" aria-sort="none">${label}</th>`
+  return filters + '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
+    `<table class="backlog"><thead><tr>${th('id', 'ID')}${th('title', 'Title')}${th('state', 'State')}${th('tags', 'Tags')}</tr></thead>` +
+    `<tbody>${body}<tr id="no-match" hidden><td colspan="4">No items match this filter.</td></tr></tbody></table>`
 }
 
 const FIELDS: ReadonlyArray<{ key: keyof Rendered; title: string }> = [
@@ -219,7 +281,8 @@ export function boardPage(input: {
     '</nav>',
     `<div data-view="board" class="columns">${board}</div>`,
     `<div data-view="backlog" hidden>${backlog(items)}</div>`,
-    `<div id="detail" hidden>${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</div>`,
+    `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
+      `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
   ].join('\n')
   return shell(nonce, body, SCRIPT)
 }
