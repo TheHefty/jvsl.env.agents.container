@@ -72,6 +72,14 @@ check "claude is handed the shared list, unmodified" \
 #
 # Asserted by name rather than through the prefix comparison above, so a removal
 # names what was removed instead of printing two lists to diff by eye.
+# **bd's usage metrics stay off inside the sandbox too.** bd ships them on, and
+# honours DO_NOT_TRACK. The image sets it, but ai-jail --clearenv's the sandbox
+# and replants only an allowlist, so without this the agent's own `bd` reports
+# every command it runs. Measured inside a jailed session on 2026-10-07: no
+# DO_NOT_TRACK there. Decided by the operator: nothing leaves without a decision.
+check "the sandbox is told not to track, whatever the caller's environment" \
+    "$(argv claude -u DO_NOT_TRACK | count '^DO_NOT_TRACK=1$')" "1"
+
 for flag in --no-display --no-docker; do
     check "the shared list pins $flag rather than relying on the default" \
         "$({ printf '%s\n' "$common" | grep -cx -- "$flag" || true; })" "1"
