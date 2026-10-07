@@ -122,7 +122,7 @@ and runs that stack's own checks inside it.
 ## Documentation
 
 - [`docs/CHARTER.md`](docs/CHARTER.md): what the project is for and what it deliberately does not do
-- [`docs/srs/`](docs/srs/): requirements, epics and stories
+- [`docs/SRS/`](docs/SRS/): requirements, epics and stories
 - [`docs/agent/`](docs/agent/): how work is done here, and in every project that uses the image
 
 ## Licence

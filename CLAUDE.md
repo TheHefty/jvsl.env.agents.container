@@ -8,8 +8,8 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
   session until someone says otherwise.
 - **The documentation language is English.** Every file written from here on inherits it, including
   the commit messages.
-- **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/srs/` — one
-  file per section, indexed at `docs/srs/README.md`. Both agreed at their gates. The chain
+- **Initialization is done.** The charter is `docs/CHARTER.md` and the SRS is `docs/SRS/` — one
+  file per section, indexed at `docs/SRS/README.md`. Both agreed at their gates. The chain
   continues at `docs/agent/en/WORKFLOW.md`, one story and one task at a time.
 
 ## The rules are not imported, and that is the decision rather than an omission

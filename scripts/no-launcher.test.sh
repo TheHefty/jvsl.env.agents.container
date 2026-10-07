@@ -72,8 +72,8 @@ fi
 # `src/limits.ts` and its test both carry "Ported from `start/src/main.rs`,
 # which is the behaviour being replaced" — which is the record of the
 # replacement having happened, not the launcher coming back. What matters is
-# what runs. `docs/srs/` joins the documentation exclusions for the same reason
-# `docs/PLANNING/` is there; the template had no `docs/srs/`.
+# what runs. `docs/SRS/` joins the documentation exclusions for the same reason
+# `docs/PLANNING/` is there; the template had no `docs/SRS/`.
 #
 # planning documents are excluded: they are the record of the launcher having
 # existed and of it being removed, and erasing that is not the point.
@@ -101,7 +101,7 @@ check_absent() {
     hits="$(grep -rnE "$pattern" -- "${tracked[@]}" 2>/dev/null \
         | { [ -n "$only" ] && grep -E "$only" || cat; } \
         | grep -v '^docs/PLANNING/' \
-        | grep -v '^docs/srs/' \
+        | grep -v '^docs/SRS/' \
         | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|\*|#)' \
         | grep -v '^CHANGELOG.md:' \
         | grep -v '^docs/agent/' \
