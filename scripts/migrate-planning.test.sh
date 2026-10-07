@@ -73,11 +73,21 @@ case "${1:-}" in
   close)
     id="$2"; shift 2
     [ "${1:-}" = "--reason" ] || { echo "fake bd: close without --reason" >&2; exit 2; }
+    # Measured on 2026-10-07, in a rehearsal against the real binary: bd will
+    # not close an issue while a child is open ("close children first").
+    for child in "$store/$id".*.body; do
+      [ -e "$child" ] || continue
+      c="$(basename "$child" .body)"
+      [ -f "$store/$c.closed" ] || { echo "cannot close $id: open child issue(s); close children first" >&2; exit 1; }
+    done
     printf '%s' "$2" > "$store/$id.closed"
     ;;
   show)
     id="$2"
-    printf '{"id":"%s","description":%s}\n' "$id" \
+    # **A list with the item in it**, as the real bd prints: measured on
+    # 2026-10-07, when the first real migration stopped at this read-back
+    # because the stand-in had returned a bare object.
+    printf '[{"id":"%s","description":%s}]\n' "$id" \
       "$(python3 -c 'import json,sys;print(json.dumps(open(sys.argv[1]).read()))' "$store/$id.body")"
     ;;
   *) exit 0 ;;
@@ -213,6 +223,14 @@ check "a debt missing from the map stops the run" "$([ "$(run_state)" = "0" ] &&
 check "before anything is created" "$(ls "$work/store" 2>/dev/null | wc -l)" "0"
 check "and it is named" "$(grep -c 'debt-unmapped' "$work/out")" "1"
 check "and nothing is deleted" "$(find "$work/tree" "$work/debts" -name '*.md' | wc -l)" "11"
+
+make_state_tree
+# story-done is Shipped; give it a task whose row is not finished.
+printf '# d\n' > "$work/tree/epic-one/story-done/tasks/task-d.md"
+printf '| 3 | [`tasks/task-d.md`](tasks/task-d.md) | extension | Draft |\n' >> "$work/tree/epic-one/story-done/OVERVIEW.md"
+check "a finished story with an unfinished task stops the run" "$([ "$(run_state)" = "0" ] && echo no || echo yes)" "yes"
+check "before anything is created" "$(ls "$work/store" 2>/dev/null | wc -l)" "0"
+check "naming both" "$(grep -c 'story-done is finished but its task task-d is not' "$work/out")" "1"
 
 echo
 if [ "$failures" -eq 0 ]; then
