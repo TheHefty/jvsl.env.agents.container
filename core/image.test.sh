@@ -157,6 +157,17 @@ docs_present="$(docker run --rm --entrypoint sh "$IMAGE" -c \
 /opt/jvsl/docs/agent/en, expected at least 12. The boot hook that writes the agent's rules copies \
 from there and would refuse, saying the image is incomplete — which it would be"
 
+# **Node.js 22, from nodesource's source signed by the vendored key.** The
+# fragment writes that source by hand since 2026-10-07, instead of piping
+# setup_22.x into bash as root. A source that drifted would install Debian's
+# own older nodejs, and the Claude Code CLI needs 22.
+node_major="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'node --version 2>/dev/null' | sed -E 's/^v([0-9]+).*/\1/')"
+[ "$node_major" = "22" ] || fail "$IMAGE has node major '${node_major:-absent}', expected 22: \
+core/Dockerfile.frag writes /etc/apt/sources.list.d/nodesource.sources by hand, and it did not deliver node_22.x"
+node_signed="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c \
+    'grep -c "^Signed-By: /usr/share/keyrings/nodesource.asc$" /etc/apt/sources.list.d/nodesource.sources' || true)"
+[ "$node_signed" = "1" ] || fail "$IMAGE's nodesource source is not signed by /usr/share/keyrings/nodesource.asc"
+
 # **bd's usage metrics are off.** bd ships them on: the name of every command
 # run, the version and the platform, keyed by a machine-derived id. Measured on
 # 2026-10-07, after dozens of commands had already reported. The operator

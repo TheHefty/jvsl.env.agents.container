@@ -113,6 +113,8 @@ jobs:
         run: bash scripts/tracker-rules-are-conditional.test.sh
       - name: the board runs one bd command, and it only reads
         run: bash scripts/board-only-reads.test.sh
+      - name: no image fragment runs code it downloaded without verifying it
+        run: bash scripts/no-fetch-runs-unverified.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
