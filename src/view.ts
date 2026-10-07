@@ -135,5 +135,16 @@ export function viewItems(state: ViewState): Row[] {
     rows.push({ kind: 'build', label: 'last build', detail: state.lastBuild })
   }
 
+  // **Only a project that asked for a tracker has one to show** (FR-101), so
+  // the entry appears with the opt-in and not before.
+  if (state.manifest['beads'] === true) {
+    rows.push({
+      kind: 'entry',
+      label: 'Show the work',
+      detail: "the project's tracker, read from its container",
+      command: 'jvsl.agentContainer.showWork',
+    })
+  }
+
   return rows
 }
