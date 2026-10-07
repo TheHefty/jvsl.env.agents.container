@@ -41,10 +41,14 @@ test('a ready container with the planning still on disk and an empty tracker mov
   assert.equal(migrationStep(ready).step, 'planning')
 })
 
-test('a tracker that already holds items refuses the planning, because a second run duplicates everything', () => {
-  const s = migrationStep({ ...ready, container: { ...ready.container, items: 287 } as MigrationFacts['container'] })
-  assert.equal(s.step, 'refuse')
-  assert.ok(s.step === 'refuse' && /287/.test(s.why) && /duplicate/.test(s.why))
+test('a tracker that already holds items offers the planning again, carried on from where it stopped (FR-128)', () => {
+  // Found on fahrenheit404: the run stopped after 18 of 28 items, and the
+  // refusal that used to stand here kept the project stuck for good.
+  const s = migrationStep({ ...ready, container: { ...ready.container, items: 18 } as MigrationFacts['container'] })
+  assert.equal(s.step, 'planning')
+  assert.ok(s.step === 'planning' && /18/.test(s.resuming ?? '') && /carries on/.test(s.resuming ?? ''))
+  const fresh = migrationStep(ready)
+  assert.ok(fresh.step === 'planning' && fresh.resuming === undefined)
 })
 
 test('a project with nothing left to move is done, whatever its container', () => {

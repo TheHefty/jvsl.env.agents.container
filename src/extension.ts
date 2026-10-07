@@ -457,7 +457,7 @@ async function migrate(write: (lines: string[]) => void): Promise<void> {
         if (running) {
           probe = (await dockerBounded([
             'exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', choice.id, 'sh', '-c',
-            'command -v migrate-planning >/dev/null && echo M; test -d .beads/embeddeddolt && echo T && bd list --all --json 2>/dev/null | jq length',
+            'command -v migrate-planning >/dev/null && echo M; test -d .beads/embeddeddolt && echo T && bd list --all --limit 0 --json 2>/dev/null | jq length',
           ], 15000)).stdout
         }
         const lines = probe.split('\n').map((l) => l.trim())
@@ -538,7 +538,8 @@ async function migrate(write: (lines: string[]) => void): Promise<void> {
     void vscode.window.showErrorMessage(`Migrate: the planning's plan could not be read in the container: ${String(error)}`)
     return
   }
-  await showPlan(['# Migrate from code-server: the planning', '', '```', preview.trim(), '```', '',
+  await showPlan(['# Migrate from code-server: the planning', '', ...(step.resuming ? [step.resuming, ''] : []),
+    '```', preview.trim(), '```', '',
     'docs/PLANNING and docs/DEBTS are removed once every item reads back whole. Nothing is committed.', ''].join('\n'))
   const apply = 'Apply'
   const chosen = await vscode.window.showWarningMessage('Move the planning into the tracker?', {
