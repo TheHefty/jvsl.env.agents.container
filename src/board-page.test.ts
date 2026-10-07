@@ -69,7 +69,10 @@ test('nothing on the page offers to change the tracker', () => {
   const html = boardPage({ nonce: NONCE, items: [item({})], rendered: new Map() })
   const sent = [...html.matchAll(/postMessage\(\{\s*type:\s*'([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual([...new Set(sent)].sort(), ['refresh'])
-  assert.ok(!/<(form|input|textarea)\b/.test(html))
+  // No form and no textarea; the one input is the backlog's keyword search,
+  // which filters the page and writes nothing.
+  assert.ok(!/<(form|textarea)\b/.test(html))
+  for (const input of html.match(/<input\b[^>]*>/g) ?? []) assert.match(input, /type="search"/)
 })
 
 test('a page that only says something carries the same policy', () => {
@@ -124,7 +127,7 @@ test('a debt\'s kind and a proposal are tags', () => {
 test('the backlog is a grid with ID, Title, State and Tags, open and collapsible', () => {
   const items = [item({ id: 'e-1', type: 'epic', title: 'Epic <one>' }), item({ id: 's-1', type: 'feature', title: 'Story', parent: 'e-1' })]
   const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
-  for (const h of ['<th>ID</th>', '<th>Title</th>', '<th>State</th>', '<th>Tags</th>']) assert.ok(html.includes(h), h)
+  for (const h of ['ID', 'Title', 'State', 'Tags']) assert.match(html, new RegExp(`<th[^>]*>${h}</th>`), h)
   assert.ok(html.includes('id="expand-all"') && html.includes('id="collapse-all"'))
   assert.ok(html.includes('data-toggle="e-1"'))
   assert.ok(!/<tr[^>]*data-row="s-1"[^>]*hidden/.test(html), 'the grid opens expanded')
@@ -155,4 +158,62 @@ test('no element carries a style attribute, because the policy would drop it sil
   const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
   assert.equal((html.match(/\sstyle="/g) ?? []).length, 0)
   for (const c of ['type-epic', 'type-feature', 'type-other', 'depth-1']) assert.ok(html.includes(c), c)
+})
+
+// --- filter, sort and the dialog (task: the-backlog-filters-sorts-and-opens-a-dialog)
+
+import { orderedIds, visibleIds } from './board-filter.ts'
+import vm from 'node:vm'
+
+const tree = [
+  item({ id: 'e-1', type: 'epic', title: 'Epic' }),
+  item({ id: 's-1', type: 'feature', title: 'Story', parent: 'e-1', labels: ['ux'] }),
+  item({ id: 't-1', type: 'task', title: 'Task <b>', parent: 's-1', status: 'closed' }),
+]
+
+test('the backlog has a keyword box and type, state and tag filters built from the items present', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  assert.match(html, /<input id="f-text" type="search"/)
+  for (const id of ['f-type', 'f-state', 'f-tag']) assert.ok(html.includes(`<select id="${id}"`), id)
+  assert.ok(html.includes('<option value="User Story">User Story</option>'))
+  assert.ok(html.includes('<option value="Closed">Closed</option>'))
+  assert.ok(html.includes('<option value="ux">ux</option>'))
+})
+
+test('each backlog row carries what the filter reads, escaped', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const row = html.match(/<tr data-row="t-1"[^>]*>/)?.[0] ?? ''
+  assert.ok(row.includes('data-parent="s-1"') && row.includes('data-type="Task"') && row.includes('data-state="Closed"'))
+  assert.ok(row.includes('data-title="Task &lt;b&gt;"'))
+})
+
+test('the column headers sort, and say how', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  for (const c of ['id', 'title', 'state', 'tags']) assert.ok(html.includes(`data-sort="${c}"`), c)
+  assert.ok(html.includes('id="no-match"'))
+})
+
+test('the page runs the same filter and sort the tests prove', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`) + `<script nonce="${NONCE}">`.length, html.lastIndexOf('</script>'))
+  const embedded = script.slice(0, script.indexOf('// -- page --'))
+  // const declarations do not become properties of a vm context, so the
+  // embedded source is asked to hand both functions back.
+  const ctx = vm.runInContext(`${embedded}; ({ visibleIds, orderedIds })`, vm.createContext({})) as {
+    visibleIds: typeof visibleIds
+    orderedIds: typeof orderedIds
+  }
+  const rows = tree.map((i) => ({ id: i.id, parent: i.parent, type: 'x', state: 'Open', tags: [], title: i.title }))
+  assert.deepEqual([...ctx.orderedIds(rows, 'title', 'desc')], orderedIds(rows, 'title', 'desc'))
+  assert.deepEqual([...ctx.visibleIds(rows, { text: 'task', type: '', state: '', tag: '' }).shown],
+    [...visibleIds(rows, { text: 'task', type: '', state: '', tag: '' }).shown])
+})
+
+test('every form is inside one dialog, opened over the view and closed with a button', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const dialog = html.slice(html.indexOf('<dialog id="detail"'), html.indexOf('</dialog>'))
+  assert.ok(dialog.length > 0, 'a dialog')
+  for (const id of ['e-1', 's-1', 't-1']) assert.ok(dialog.includes(`data-detail="${id}"`), id)
+  assert.ok(dialog.includes('id="close-detail"'))
+  assert.ok(html.includes('showModal()') && html.includes('.close()'))
 })
