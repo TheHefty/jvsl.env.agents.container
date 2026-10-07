@@ -71,7 +71,7 @@ as an account of what happened.
 | Order | Task | Status |
 |---|---|---|
 | 1 | [`tasks/the-rules-say-how-to-work-from-the-tracker.md`](tasks/the-rules-say-how-to-work-from-the-tracker.md) | Shipped in #120. Its "drafts live in the conversation" is superseded |
-| 2 | the rules say how a proposal is made and agreed | Not yet designed |
+| 2 | [`tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md`](tasks/the-rules-say-how-a-proposal-is-made-and-agreed.md) | Designed, at its gate |
 
 ## Outcome
 

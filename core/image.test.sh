@@ -160,6 +160,8 @@ from there and would refuse, saying the image is incomplete — which it would b
 # **Every `bd` command the rules name exists in the bd this image carries.**
 # The rules tell an agent which commands to run, and a bump that renames a flag
 # would leave it running one that fails mid-session, then improvising another.
+# A word after a `<placeholder>` is an argument, not a subcommand:
+# `bd label remove <id> proposed` is the command `bd label remove`.
 # `--help` alone proves nothing: measured, `bd dolt nonexistent --help` exits 0
 # and prints `bd dolt`'s help. So the Usage line has to name exactly the
 # command, and each flag has to appear in that help. BD_DOCS lets the same
@@ -168,12 +170,13 @@ BD_COMMANDS_CHECK='
 docs="${BD_DOCS:-/opt/jvsl/docs/agent}"
 cat "$docs"/en/*.md "$docs"/pt-BR/*.md | grep -oE "\`bd [^\`]*\`" | tr -d "\`" | sort -u |
 while read -r cmd; do
-    words=""; flags=""
+    words=""; flags=""; args=""
     for w in $cmd; do
         case "$w" in
             bd) ;;
             --*) flags="$flags $w" ;;
-            [a-z]*) [ -n "$flags" ] || words="$words $w" ;;
+            "<"*) args=1 ;;
+            [a-z]*) [ -n "$flags$args" ] || words="$words $w" ;;
         esac
     done
     help="$(bd $words --help 2>&1)" || { echo "\`$cmd\`: bd$words --help exits non-zero"; continue; }
