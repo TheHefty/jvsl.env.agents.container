@@ -15,7 +15,7 @@ import * as vscode from 'vscode'
 import { containerFor, projectOnHost, type Running } from './board-locate.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
-import { MANIFEST } from './stack-manifest.ts'
+import { MANIFEST } from './shared/stack-manifest.ts'
 
 type Docker = (args: string[], ms?: number) => Promise<{ stdout: string; stderr: string }>
 
