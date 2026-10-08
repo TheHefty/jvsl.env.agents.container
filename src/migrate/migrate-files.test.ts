@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { planFileMigration, type ProjectFiles } from './migrate-files.ts'
-import { projectNames } from './devcontainer.ts'
+import { projectNames } from '../build/devcontainer.ts'
 
 // The pre-commit fahrenheit404 and gosnip carry, byte for byte (measured on
 // 2026-10-07: the two are identical).

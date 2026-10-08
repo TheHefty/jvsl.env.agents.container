@@ -1,8 +1,8 @@
-import { buildConfiguration, isOurs, projectNames, type Configuration } from './devcontainer.ts'
-import { isAtLeast, parseVersion } from './template.ts'
-import { readLimits } from './limits.ts'
-import { MANIFEST } from './stack-manifest.ts'
-import type { HostFacts } from './host.ts'
+import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
+import { isAtLeast, parseVersion } from '../build/template.ts'
+import { readLimits } from '../build/limits.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
+import type { HostFacts } from '../host/host.ts'
 
 export const REOPEN_COMMAND = 'remote-containers.reopenInContainer'
 export const CONFIG_PATH = '.devcontainer/devcontainer.json'

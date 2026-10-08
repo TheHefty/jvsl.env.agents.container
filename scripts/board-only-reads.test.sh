@@ -5,7 +5,7 @@
 # the project's container, and every bd subcommand but a few changes the
 # tracker. A board that grew a `bd update` to "help" would be a page that writes,
 # with nothing in its tests saying so, because its tests are about what it
-# shows. So the bd subcommands named anywhere in src/board*.ts are listed, and
+# shows. So the bd subcommands named anywhere in the board's source are listed, and
 # the list must be exactly `export`.
 #
 # BOARD_GUARD_ROOT points this at another tree, which is how a write was first
@@ -16,7 +16,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${BOARD_GUARD_ROOT:-$(cd "$HERE/.." && pwd)}"
 cd "$ROOT"
 
-mapfile -t sources < <(ls src/board*.ts 2>/dev/null | grep -vE '\.test\.ts$' || true)
+# git ls-files, not a shell glob: it sees the board's files wherever under src/
+# they sit (scripts/every-source-is-read.test.sh).
+mapfile -t sources < <(git ls-files 'src/board*.ts' 'src/board/*.ts' | grep -vE '\.test\.ts$' | sort -u || true)
 if [ "${#sources[@]}" -lt 3 ]; then
     echo "board-only-reads: FAIL: found ${#sources[@]} board source file(s); this check is not reading \
 the tree it thinks it is and would pass vacuously." >&2

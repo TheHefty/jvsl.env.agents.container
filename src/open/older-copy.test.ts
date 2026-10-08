@@ -33,7 +33,7 @@ test('the id it names is never this extension itself', () => {
   // actively harmful. Asserted against the manifest rather than against the
   // literal above, so the two cannot drift.
   const pkg: { name?: unknown; publisher?: unknown } = JSON.parse(
-    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
   )
   const own = `${String(pkg.publisher)}.${String(pkg.name)}`
   assert.equal(own, CURRENT)
