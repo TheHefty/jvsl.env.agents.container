@@ -179,6 +179,28 @@ case "$md_check" in
 from PATH (FR-127); core/Dockerfile.frag must install core/bin/check-md-size.sh at /usr/local/bin/check-md-size" ;;
 esac
 
+# **A browser a project downloads finds every library it loads** (issue #154,
+# debt the-image-carries-none-of-chromes-libraries). kotodori's WebdriverIO
+# suite was green in the template's image and failed on every spec in this
+# one, "libnspr4.so: cannot open shared object file", because the libraries
+# arrived by accident with the code-server base that ad2e9ee replaced. The
+# list is what `ldd` reported missing for Chrome for Testing 155.0.8059.39 and
+# its chromedriver in this image on 2026-10-08. Asked of the loader cache, not
+# of a downloaded Chrome: `chrome --version` exits before most of them load,
+# and a download here would be one more unpinned fetch.
+CHROME_SONAMES=(libX11.so.6 libXcomposite.so.1 libXdamage.so.1 libXext.so.6 libXfixes.so.3
+    libXrandr.so.2 libasound.so.2 libatk-1.0.so.0 libatk-bridge-2.0.so.0 libatspi.so.0 libcairo.so.2
+    libcups.so.2 libgbm.so.1 libnspr4.so libnss3.so libnssutil3.so libpango-1.0.so.0 libsmime3.so
+    libxcb.so.1 libxkbcommon.so.0)
+loader="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'ldconfig -p' 2>/dev/null || true)"
+missing=()
+for so in "${CHROME_SONAMES[@]}"; do
+    printf '%s\n' "$loader" | grep -qE "^[[:space:]]+${so//./\\.} " || missing+=("$so")
+done
+[ "${#missing[@]}" -eq 0 ] || fail "$IMAGE lacks ${#missing[@]} of the libraries Chrome for Testing \
+loads: ${missing[*]}. A project's browser suite would fail on every spec before a step runs; \
+core/Dockerfile.frag installs them (issue #154)"
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships
@@ -246,5 +268,5 @@ $bd_missing"
 
 echo "image.test: $IMAGE declares remoteUser $USER_NAME, declares no containerUser, gives \
 $USER_NAME a usable login shell ($shell), installs none of the launcher's libraries, and still \
-has a rust toolchain ($toolchain), carries $docs_present normative documents, and its bd has every \
+has a rust toolchain ($toolchain), carries Chrome's ${#CHROME_SONAMES[@]} runtime libraries, carries $docs_present normative documents, and its bd has every \
 command they name."

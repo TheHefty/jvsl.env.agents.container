@@ -128,6 +128,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
+# 1.0.1 The libraries a browser a project downloads loads (issue #154).
+#
+# **In every image, not in a stack, and that was the operator's decision on
+# 2026-10-08.** A browser suite that cannot load its browser fails on every spec
+# before a step runs, which reads as a broken change rather than a missing
+# library: kotodori's WebdriverIO suite did, after moving to this image. A stack
+# would carry the same silent failure for every project that forgot to select
+# it; the cost of this way is roughly 100 MB of X11, audio and printing in
+# images that never start a browser.
+#
+# **They used to arrive by accident**, with the code-server base that ad2e9ee
+# replaced, the way libx11-xcb1 once did for the android stack. The list is what
+# `ldd` reported missing for Chrome for Testing 155.0.8059.39 and its
+# chromedriver in this image on 2026-10-08; core/image.test.sh asks the loader
+# for each of their sonames. The t64 names are trixie's, after the 64-bit
+# time_t transition.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libasound2t64 \
+    libatk-bridge2.0-0t64 \
+    libatk1.0-0t64 \
+    libatspi2.0-0t64 \
+    libcairo2 \
+    libcups2t64 \
+    libgbm1 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libx11-6 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # 1.1 Installs Rust (stable, via rustup) system-wide, so the CLI/agent and
 # user 'abc' both have `cargo`.
 #
