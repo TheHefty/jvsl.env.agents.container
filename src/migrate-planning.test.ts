@@ -109,6 +109,9 @@ const put = (root: string, rel: string, text: string) => {
   writeFileSync(join(root, rel), text)
 }
 
+/** What bd init writes, measured on this repository's own tracker. */
+const META = JSON.stringify({ database: 'dolt', backend: 'dolt', dolt_mode: 'embedded', dolt_database: 'a_project' })
+
 /** A project in the shapes the template produced, measured on three projects. */
 function project(): string {
   const root = mkdtempSync(join(work, 'p-'))
@@ -128,6 +131,7 @@ function project(): string {
   put(root, 'docs/DEBTS/a-hotfix/OVERVIEW.md', '# Debt\n\n| | |\n|---|---|\n| **Status** | Paid |\n| **Kind** | hotfix |\n')
   put(root, 'docs/DEBTS/free-text.md', '# Debt\n\n| | |\n|---|---|\n| **Status** | Open |\n| **Kind** | bug (found in production) |\n')
   execFileSync('git', ['init', '-q'], { cwd: root })
+  put(root, '.beads/metadata.json', META)
   return root
 }
 
@@ -330,6 +334,7 @@ test('two items that both look like one row are not guessed between', () => {
 test('more than fifty items already in the tracker are all seen, not created again', () => {
   const root = mkdtempSync(join(work, 'many-'))
   execFileSync('git', ['init', '-q'], { cwd: root })
+  put(root, '.beads/metadata.json', META)
   for (let i = 0; i < 60; i++) put(root, `docs/DEBTS/d${String(i).padStart(2, '0')}.md`, '# Debt\n\n| | |\n|---|---|\n| **Status** | Open |\n')
   migrateWith({ BD_FAKE_FAIL_AT: '56' }, root)
   assert.equal(items(root).length, 55)
@@ -407,4 +412,37 @@ test('a workspace that is not a git repository is refused, since what reads the 
   assert.notEqual(r.code, 0)
   assert.match(r.out, /not a git repository/)
   assert.ok(existsSync(join(root, 'docs/PLANNING')))
+})
+
+// --- the tracker's configuration (debt bd-without-metadata-uses-an-empty-database)
+
+test('a tracker without its metadata.json is refused before bd is asked anything', () => {
+  // Measured with bd 1.3.1 on 2026-10-08: without .beads/metadata.json, bd
+  // lists 0 items where there were 95, and creates a database named "beads"
+  // beside the real one. Every item would be created there, in the wrong one.
+  const root = project()
+  rmSync(join(root, '.beads/metadata.json'))
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /\.beads\/metadata\.json is missing/)
+  assert.match(r.out, /git checkout -- \.beads\/metadata\.json/)
+  assert.ok(!existsSync(join(root, '.fake-bd')), 'bd was never run, so it created nothing anywhere')
+  assert.ok(existsSync(join(root, 'docs/PLANNING')))
+})
+
+test('a metadata.json that names no database is refused the same way', () => {
+  const root = project()
+  put(root, '.beads/metadata.json', '{"backend":"dolt"}')
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /names no dolt_database/)
+  assert.ok(!existsSync(join(root, '.fake-bd')))
+})
+
+test('the plan refuses too, so the preview never shows an empty tracker as the truth', () => {
+  const root = project()
+  rmSync(join(root, '.beads/metadata.json'))
+  const r = migrate(root, '--plan')
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /\.beads\/metadata\.json is missing/)
 })

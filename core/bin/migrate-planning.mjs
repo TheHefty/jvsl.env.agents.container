@@ -171,6 +171,30 @@ const bd = (args) => execFileSync('bd', args, { encoding: 'utf8', maxBuffer: 64 
 const strip = (s) => (s ?? '').replace(/\n+$/, '')
 
 /**
+ * The tracker's configuration, read before bd is asked anything (debt
+ * bd-without-metadata-uses-an-empty-database). Measured with bd 1.3.1 on
+ * 2026-10-08: without .beads/metadata.json, bd does not fail. It warns, opens a
+ * new database named "beads" beside the real one, and lists 0 items where
+ * there were 95, so this run would create every item there and report success.
+ * On fahrenheit404 the file went missing between container recreations.
+ */
+export function trackerConfig(root) {
+  const path = join(root, '.beads/metadata.json')
+  const restore = 'Restore it with `git checkout -- .beads/metadata.json` (bd init writes it, and it is tracked), then run this again. Nothing was written.'
+  if (!existsSync(path)) {
+    throw new Error(`.beads/metadata.json is missing, so bd would open a new, empty database beside this project's tracker and every item would be created there. ${restore}`)
+  }
+  let meta
+  try { meta = JSON.parse(read(path)) } catch (e) {
+    throw new Error(`.beads/metadata.json does not parse (${e.message}), so which database bd opens is not known. ${restore}`)
+  }
+  if (typeof meta.dolt_database !== 'string' || meta.dolt_database === '') {
+    throw new Error(`.beads/metadata.json names no dolt_database, so bd would fall back to a new, empty one. ${restore}`)
+  }
+  return meta
+}
+
+/**
  * What reads the folders from outside them, before they go (debt
  * the-migration-deletes-files-another-tool-reads). fahrenheit404's Playwright
  * ran six .feature files from docs/PLANNING, and kotodori's wdio, Gradle build
@@ -266,6 +290,7 @@ export function main(argv, root = process.cwd()) {
   }
   say(rows, listed)
   const dry = argv.includes('--plan')
+  trackerConfig(root)
 
   const { reads, cites } = readers(root)
   if (cites.length > 0) {
