@@ -2,9 +2,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { aiMemoryMarker } from './location.ts'
-import { CONFIG_PATH } from './open/open.ts'
-import { MANIFEST } from './shared/stack-manifest.ts'
-import { nextManifest, type Answers } from './configure/questions.ts'
+import { CONFIG_PATH } from '../open/open.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
+import { nextManifest, type Answers } from '../configure/questions.ts'
 
 export interface ScaffoldInput {
   root: string

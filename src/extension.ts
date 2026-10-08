@@ -20,9 +20,9 @@ import {
   type HostChecks,
 } from './build/build.ts'
 import { configureOutcome, type ConfigureResult } from './configure/configure.ts'
-import { decideCreate, type Applied } from './create.ts'
-import { aiMemoryMarker, checkLocation } from './location.ts'
-import { scaffoldPlan } from './scaffold.ts'
+import { decideCreate, type Applied } from './create/create.ts'
+import { aiMemoryMarker, checkLocation } from './create/location.ts'
+import { scaffoldPlan } from './create/scaffold.ts'
 import { projectNames } from './build/devcontainer.ts'
 import { formatDetected } from './host/diagnostics.ts'
 import { hostFacts } from './host/host.ts'
