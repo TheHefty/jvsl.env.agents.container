@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
 
 import { hostProcessTerminal } from './host-terminal.ts'
+import { shippedSources } from './test-support/sources.ts'
 
 /**
  * Found on 2026-10-07, from a fresh clone of fahrenheit404: the migration's
@@ -59,9 +59,9 @@ test('closing the terminal stops the process', async () => {
 })
 
 test('no terminal is created on the remote side: nothing passes shellPath to createTerminal', () => {
-  const dir = new URL('.', import.meta.url).pathname
-  for (const f of readdirSync(dir).filter((n) => n.endsWith('.ts') && !n.endsWith('.test.ts'))) {
-    const src = readFileSync(dir + f, 'utf8')
+  const sources = shippedSources()
+  assert.ok(sources.some((s) => s.path.endsWith('extension.ts')), 'the scan reaches the entry point')
+  for (const { path: f, text: src } of sources) {
     for (const m of src.matchAll(/createTerminal\(\{[\s\S]*?\}\)/g)) {
       assert.doesNotMatch(m[0], /^\s*shellPath\s*[,:}]/m, `${f}: ${m[0].slice(0, 120)}`)
     }

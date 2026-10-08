@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { buildConfiguration } from './devcontainer.ts'
+import { shippedSources as allSources } from './test-support/sources.ts'
 
 /**
  * Workspace Trust stays enabled, and nothing here writes it.
@@ -66,12 +66,8 @@ function keysUnderTrust(value: unknown, at = '$'): string[] {
   return found
 }
 
-function shippedSources(): Source[] {
-  const dir = import.meta.dirname
-  return readdirSync(dir)
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-    .map((name) => ({ path: name, text: readFileSync(join(dir, name), 'utf8') }))
-}
+// The whole of src/, not this file's folder: see test-support/sources.ts.
+const shippedSources = (): Source[] => allSources()
 
 const input = {
   projectRoot: '/home/me/code/myrepo',
