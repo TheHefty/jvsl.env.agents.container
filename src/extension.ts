@@ -33,7 +33,7 @@ import { applyFileMigration, carriesTemplateSubmodule, planFileMigration, textsW
 import { migrationStep, planMarkdown, type MigrationFacts } from './migrate/migrate-step.ts'
 import { containerFor, projectOnHost, type ProjectOnHost } from './host/locate.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, type OpenContext, type ImageState } from './open/open.ts'
-import { viewItems, type Row, type ViewState } from './view.ts'
+import { viewItems, type Row, type ViewState } from './view/view.ts'
 import {
   limitDefaults,
   missingDependencies,
