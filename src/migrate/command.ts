@@ -10,7 +10,7 @@ import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { applyFileMigration, carriesTemplateSubmodule, planFileMigration, textsWorthReading } from './migrate-files.ts'
-import { migrationStep, planMarkdown, type MigrationFacts } from './migrate-step.ts'
+import { migrationStep, planMarkdown, planningPreview, type MigrationFacts } from './migrate-step.ts'
 import { MANIFEST, LEGACY_MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -144,9 +144,13 @@ export async function migrate(write: (lines: string[]) => void): Promise<void> {
     void vscode.window.showErrorMessage(`Migrate: the planning's plan could not be read in the container: ${String(error)}`)
     return
   }
-  await showPlan(['# Migrate from code-server: the planning', '', ...(step.resuming ? [step.resuming, ''] : []),
-    '```', preview.trim(), '```', '',
-    'docs/PLANNING and docs/DEBTS are removed once every item reads back whole. Nothing is committed.', ''].join('\n'))
+  const shown = planningPreview(preview, step.resuming)
+  await showPlan(shown.markdown)
+  if (!shown.apply) {
+    write(['migrate: the planning step would refuse; nothing to apply. The reason is at the top of the plan.'])
+    void vscode.window.showWarningMessage('Migrate: the planning step would refuse. The reason is at the top of the plan; nothing was changed.')
+    return
+  }
   const apply = 'Apply'
   const chosen = await vscode.window.showWarningMessage('Move the planning into the tracker?', {
     modal: true, detail: 'It runs inside the container, in a terminal you can read.',

@@ -288,34 +288,59 @@ export function main(argv, root = process.cwd()) {
     console.log('migrate-planning: nothing to migrate: no docs/PLANNING or docs/DEBTS here.')
     return 0
   }
-  say(rows, listed)
   const dry = argv.includes('--plan')
   trackerConfig(root)
 
+  // **A refusal is decided before anything is printed, and printed first**
+  // (debt a-refusal-is-gone-before-it-can-be-read). kotodori's plan listed it
+  // after 18 notes and 108 citations, where nobody reads.
   const { reads, cites } = readers(root)
-  if (cites.length > 0) {
+  let refusal = null
+  let existing = []
+  let placed = new Map()
+  let recognised = []
+  if (reads.length > 0) {
+    refusal = {
+      what: `${reads.length} line(s) outside the folders read from docs/PLANNING or docs/DEBTS`,
+      lines: reads,
+      then: 'Move what they read (a .feature a runner executes belongs with its suite) and point them at it, then run this again.',
+    }
+  } else {
+    // --limit 0: bd lists 50 items unless told otherwise (measured, bd 1.3.1),
+    // and an item it did not list would be created a second time.
+    existing = JSON.parse(bd(['list', '--all', '--limit', '0', '--json']) || '[]')
+    const placing = place(rows, existing)
+    placed = placing.placed
+    recognised = placing.recognised
+    if (placing.unplaced.length > 0) {
+      refusal = {
+        what: `the tracker holds ${placing.unplaced.length} item(s) the folders do not describe`,
+        lines: placing.unplaced,
+        then: 'Close or move them, or migrate by hand.',
+      }
+    }
+  }
+
+  const listCites = () => {
+    if (cites.length === 0) return
     console.log(`\n== citations of the folders that go stale (${cites.length}); listed, not rewritten`)
     for (const c of cites) console.log(`  ${c}`)
   }
-  if (reads.length > 0) {
+
+  if (refusal !== null) {
     const out = dry ? console.log : console.error
-    out(`\nmigrate-planning: ${reads.length} line(s) outside the folders read from docs/PLANNING or docs/DEBTS, so ${dry ? 'the run will refuse' : 'nothing was written'}:`)
-    for (const r of reads) out(`  ${r}`)
-    out('Move what they read (a .feature a runner executes belongs with its suite) and point them at it, then run this again.')
-    return dry ? 0 : 1
+    out(`migrate-planning: REFUSES: ${refusal.what}, so ${dry ? 'the run will refuse' : 'nothing was written'}:`)
+    for (const l of refusal.lines) out(`  ${l}`)
+    out(refusal.then)
+    if (!dry) return 1
+    console.log('\n== the rest of the plan, for when it no longer refuses\n')
+    say(rows, listed)
+    listCites()
+    return 0
   }
 
-  // --limit 0: bd lists 50 items unless told otherwise (measured, bd 1.3.1),
-  // and an item it did not list would be created a second time.
-  const existing = JSON.parse(bd(['list', '--all', '--limit', '0', '--json']) || '[]')
-  const { placed, unplaced, recognised } = place(rows, existing)
-  if (unplaced.length > 0) {
-    const say = dry ? console.log : console.error
-    say(`\nmigrate-planning: the tracker holds ${unplaced.length} item(s) the folders do not describe, so ${dry ? 'the run will refuse' : 'nothing was written'}:`)
-    for (const u of unplaced) say(`  ${u}`)
-    say('Close or move them, or migrate by hand.')
-    return dry ? 0 : 1
-  }
+  say(rows, listed)
+  listCites()
   if (existing.length > 0) {
     console.log(`migrate-planning: ${existing.length} already in the tracker from an earlier run; ${rows.length - placed.size} to create.`)
   }

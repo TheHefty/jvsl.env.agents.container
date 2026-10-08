@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { migrationStep, planMarkdown, type MigrationFacts } from './migrate-step.ts'
+import { migrationStep, planMarkdown, planningPreview, type MigrationFacts } from './migrate-step.ts'
 
 const ready: MigrationFacts = {
   oldFormat: false,
@@ -69,4 +69,13 @@ test('the plan is Markdown that names every operation and every mention, and how
   for (const s of ['/home/jv/p', 'CLAUDE.md', '.code-server.stack.json', 'README.md:3', 'git restore', 'Nothing is committed']) {
     assert.ok(md.includes(s), s)
   }
+})
+
+test('a planning preview that will refuse offers no Apply, and says why first (debt 1r9)', () => {
+  const refusing = 'migrate-planning: REFUSES: 30 line(s) outside the folders read from docs/PLANNING or docs/DEBTS.\n  a.js:1: x\n'
+  const v = planningPreview(refusing)
+  assert.equal(v.apply, false)
+  assert.match(v.markdown, /^# Migrate from code-server: the planning\n\n\*\*The run would refuse/)
+  const fine = 'migrate-planning: 28 item(s): 3 epic(s), 9 story(ies), 16 task(s), 0 debt(s); 2 closed.\n'
+  assert.equal(planningPreview(fine).apply, true)
 })

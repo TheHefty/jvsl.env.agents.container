@@ -138,10 +138,8 @@ export async function buildInTerminal(
   const stacks = compose.stacks
   const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
   const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
-  const terminal = vscode.window.createTerminal({
-    name: 'Agent Container: build',
-    pty: hostProcessTerminal(shellPath, shellArgs),
-  })
+  const pty = hostProcessTerminal(shellPath, shellArgs)
+  const terminal = vscode.window.createTerminal({ name: 'Agent Container: build', pty })
   terminal.show()
   write([
     `build: composing from ${compose.script}`,
@@ -149,13 +147,11 @@ export async function buildInTerminal(
     `build: image ${compose.image}, context ${compose.context}`,
   ])
 
-  return await new Promise((resolve) => {
-    const listener = vscode.window.onDidCloseTerminal((closed) => {
-      if (closed !== terminal) return
-      listener.dispose()
-      const outcome = buildOutcome(closed.exitStatus?.code)
-      write([`build: ${outcome}`])
-      resolve(outcome)
-    })
-  })
+  // **The process's end, not the terminal's closing.** The terminal stays open
+  // after the build so its output can be read (debt
+  // a-refusal-is-gone-before-it-can-be-read); a run closed mid-way ends with no
+  // code, which buildOutcome calls cancelled.
+  const outcome = buildOutcome(await pty.exited)
+  write([`build: ${outcome}`])
+  return outcome
 }

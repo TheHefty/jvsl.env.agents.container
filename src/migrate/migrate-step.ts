@@ -93,3 +93,30 @@ export function planMarkdown(hostPath: string, plan: Plan & { kind: 'plan' }): s
     '',
   ].join('\n')
 }
+
+/**
+ * The planning step's preview, and whether to offer Apply.
+ *
+ * **A plan that will refuse offers no Apply**, and says so before the plan
+ * itself (debt a-refusal-is-gone-before-it-can-be-read). Applying it could only
+ * run to the same refusal, and on kotodori that refusal then vanished with its
+ * terminal. migrate-planning prints `REFUSES:` on its first line when it will.
+ */
+export function planningPreview(output: string, resuming?: string): { apply: boolean; markdown: string } {
+  const refuses = /^migrate-planning: REFUSES:/m.test(output)
+  return {
+    apply: !refuses,
+    markdown: [
+      '# Migrate from code-server: the planning',
+      '',
+      ...(refuses
+        ? ['**The run would refuse, so there is nothing to apply.** The reason is at the top of the plan below; fix it in the project, then run Migrate again.', '']
+        : resuming ? [resuming, ''] : []),
+      '```',
+      output.trim(),
+      '```',
+      '',
+      ...(refuses ? [] : ['docs/PLANNING and docs/DEBTS are removed once every item reads back whole. Nothing is committed.', '']),
+    ].join('\n'),
+  }
+}
