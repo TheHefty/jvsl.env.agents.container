@@ -48,13 +48,13 @@ echo "ok      the search mechanism finds a docker call that is really there"
 # The helper itself is the one call that may be direct — it is what applies the
 # limit. Exempted by being inside its body rather than by a pattern: a pattern
 # would exempt the next function that happened to look like it.
-helper_line="$(grep -n 'async function dockerBounded' src/extension.ts | cut -d: -f1)"
+helper_line="$(grep -n 'async function dockerBounded' src/host/docker.ts | cut -d: -f1)"
 helper_end=$(( ${helper_line:-0} + 8 ))
 
 hits="$(grep -nE "(^|[^a-zA-Z])run\('docker'" -- "${sources[@]}" \
     | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' \
     | awk -F: -v s="${helper_line:-0}" -v e="$helper_end" \
-        '!($1 == "src/extension.ts" && $2 > s && $2 < e)' || true)"
+        '!($1 == "src/host/docker.ts" && $2 > s && $2 < e)' || true)"
 
 if [ -n "$hits" ]; then
     echo "no-unbounded-docker-call: FAIL: these call docker without a time limit. If the daemon \

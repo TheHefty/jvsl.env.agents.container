@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { containerFor, hostPathFromAuthority } from './board-locate.ts'
+import { containerFor, hostPathFromAuthority } from './locate.ts'
 
 const hex = (s: string) => Buffer.from(s, 'utf8').toString('hex')
 
@@ -66,7 +66,7 @@ test('two containers for one project are refused by name, never guessed between'
 
 // --- every command finds the project on the host (debt: the-panel-reads-the-containers-path)
 
-import { projectOnHost } from './board-locate.ts'
+import { projectOnHost } from './locate.ts'
 
 test('a local window\'s project is its folder', () => {
   assert.deepEqual(projectOnHost({ remoteName: undefined, folder: { fsPath: '/home/jv/demo', authority: '' } }),

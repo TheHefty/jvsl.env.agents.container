@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { decideOpen } from '../src/open.ts'
+import { decideOpen } from '../src/open/open.ts'
 
 /**
  * Brings a container up from a configuration this extension generated, using

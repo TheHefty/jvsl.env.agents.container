@@ -45,9 +45,13 @@ echo "ok      activate() awaits nothing"
 # replacement matched the indented copy of the line it was aimed at. Typecheck,
 # every guard and twenty-nine CI jobs passed, and the notice appeared only when
 # somebody asked to see what was detected.
-sstart="$(grep -n '^async function startup' "$FILE" | head -1 | cut -d: -f1)"
-send="$(awk -v s="${sstart:-0}" 'NR > s && /^}/ { print NR; exit }' "$FILE")"
-if [ -z "$sstart" ] || ! awk -v s="$sstart" -v e="$send" 'NR > s && NR < e' "$FILE" | grep -q 'olderCopyNotice('; then
+# startup() left the entry point with the other command bodies (story
+# the-commands-leave-the-hub); activate() still starts it, and this reads it
+# where it lives.
+STARTUP_FILE="${ACTIVATE_GUARD_STARTUP_FILE:-src/open/startup.ts}"
+sstart="$(grep -nE '^(export )?async function startup' "$STARTUP_FILE" | head -1 | cut -d: -f1)"
+send="$(awk -v s="${sstart:-0}" 'NR > s && /^}/ { print NR; exit }' "$STARTUP_FILE")"
+if [ -z "$sstart" ] || ! awk -v s="$sstart" -v e="$send" 'NR > s && NR < e' "$STARTUP_FILE" | grep -q 'olderCopyNotice('; then
     echo "activate-returns-promptly: FAIL: the older-copy notice is not called from startup(), so \
 it does not run when the extension starts — it runs wherever it ended up instead." >&2
     exit 1

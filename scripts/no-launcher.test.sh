@@ -69,7 +69,7 @@ fi
 # Each pattern is checked separately so a failure names which one, and the
 # **Comment lines are excluded, for the reason this file already gives
 # elsewhere: a grep cannot tell a recollection from an instruction.**
-# `src/limits.ts` and its test both carry "Ported from `start/src/main.rs`,
+# `src/build/limits.ts` and its test both carry "Ported from `start/src/main.rs`,
 # which is the behaviour being replaced" — which is the record of the
 # replacement having happened, not the launcher coming back. What matters is
 # what runs. `docs/SRS/` joins the documentation exclusions for the same reason

@@ -268,6 +268,18 @@ and its planning and debts in its own tracker, with its container state intact.
 | 3 | the command carries a project across | FR-122 — the plan, the confirmation, the container recreated, the migration run inside it, and the folders deleted |
 | 4 | the rules describe planning in the tracker | FR-129 — where epics, stories, tasks and an executable `.feature` live once the planning is in the tracker, in both languages |
 
+## Epic: the extension is organised by what it does
+
+**Each command of the extension lives with its feature, and `src/extension.ts` only registers them.**
+
+Agreed on 2026-10-08, at the operator's request, over folders alone or a split between pure modules
+and the editor's adapters. No requirement changes: every command behaves as it did. The epic closes
+when the entry point holds no command's body and no check reads fewer files than `src/` holds.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the commands leave the hub | no FR — behaviour is unchanged; the guards and the test runner learn to read subfolders first, then each command moves |
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,

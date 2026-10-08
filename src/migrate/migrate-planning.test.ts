@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path'
  * measured to: `show --json` prints a list, and a parent with an open child
  * cannot be closed.
  */
-const SCRIPT = new URL('../core/bin/migrate-planning.mjs', import.meta.url).pathname
+const SCRIPT = new URL('../../core/bin/migrate-planning.mjs', import.meta.url).pathname
 
 interface Api {
   stateFrom(text: string | undefined): { state: string; reason: string; known: boolean }

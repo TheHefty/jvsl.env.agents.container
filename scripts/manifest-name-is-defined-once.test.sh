@@ -25,7 +25,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${MANIFEST_NAME_GUARD_ROOT:-$(cd "$HERE/.." && pwd)}"
 cd "$ROOT"
 
-DEF_FILE="src/stack-manifest.ts"
+DEF_FILE="src/shared/stack-manifest.ts"
 
 mapfile -t sources < <(git ls-files 'src/*.ts' 'tools/*.ts' | grep -vE '\.test\.ts$' | sort)
 
