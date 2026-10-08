@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { hostProcessTerminal } from './host-terminal.ts'
-import { shippedSources } from './test-support/sources.ts'
+import { shippedSources } from '../test-support/sources.ts'
 
 /**
  * Found on 2026-10-07, from a fresh clone of fahrenheit404: the migration's

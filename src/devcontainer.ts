@@ -1,7 +1,7 @@
 import { basename } from 'node:path'
 
 import { cpusetRange, type Limits } from './limits.ts'
-import type { HostFacts } from './host.ts'
+import type { HostFacts } from './host/host.ts'
 
 /**
  * The property that marks a configuration as this extension's.

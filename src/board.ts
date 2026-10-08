@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { containerFor, projectOnHost, type Running } from './board-locate.ts'
+import { containerFor, projectOnHost, type Running } from './host/locate.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
 import { MANIFEST } from './shared/stack-manifest.ts'
