@@ -9,13 +9,14 @@
 # which is what `npm test` ran. A test moved into a folder would have stopped
 # running with every job green.
 #
-# Three claims:
+# Four claims:
 #   1. the test runner's glob reaches a test in a subfolder, and every test file
 #      git knows under src/ is one it runs;
 #   2. no guard lists the extension's source with a shell glob;
 #   3. nothing under src/ imports src/extension.ts, whose registrations must run
 #      before anything they import is evaluated: a cycle back into it leaves a
-#      command undefined in the bundle, the "Activating…" class of failure.
+#      command undefined in the bundle, the "Activating…" class of failure;
+#   4. src/extension.ts declares no function or class but activate and deactivate.
 #
 # EVERY_SOURCE_ROOT points this at another tree, which is how each claim is
 # shown to fail.
@@ -84,10 +85,25 @@ way: a cycle leaves a registration undefined in the bundle"
 done < <(git ls-files 'src/*.ts' | grep -vxF src/extension.ts \
     | xargs -r grep -nE "from '(\./|(\.\./)+)extension(\.ts)?'" 2>/dev/null || true)
 
+# --- 4. the entry point only wires --------------------------------------------
+
+# Story the-commands-leave-the-hub: src/extension.ts registers the commands, the
+# view and the startup, and holds no command's body. So the only functions or
+# classes it declares at the top level are activate and deactivate.
+entry="src/extension.ts"
+if [ -f "$entry" ]; then
+    while IFS= read -r decl; do
+        [ -n "$decl" ] || continue
+        fail "$entry declares $decl at its top level. The entry point only wires: a command's body \
+and its helpers live in the command's folder under src/"
+    done < <(grep -nE '^(export )?(async )?(function|class) ' "$entry" \
+        | grep -vE '^[0-9]+:export (async )?function (activate|deactivate)\(' | cut -d'(' -f1 | sed -E 's/ *\{.*//' || true)
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "every-source-is-read.test: npm test reaches every test under src/ (${#tests[@]}), no guard reads \
-the source with a shell glob, and nothing imports the entry point."
+the source with a shell glob, and nothing imports the entry point, which only wires."
 else
     echo "every-source-is-read.test: $failures failure(s)." >&2
     exit 1
