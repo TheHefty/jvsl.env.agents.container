@@ -8,7 +8,7 @@ import { carried } from './template.ts'
  * What building is, as functions over what the host looks like.
  *
  * **The editor's API is a shell over these.** `createTerminal` is handed what
- * `composeAndBuildCommand` returns and `onDidCloseTerminal` is handed to `buildOutcome`;
+ * `composeAndBuildCommand` returns and the terminal's `exited` is handed to `buildOutcome`;
  * nothing in here knows about the editor, which is why all of it is tested
  * without one.
  */

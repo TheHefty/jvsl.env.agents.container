@@ -446,3 +446,27 @@ test('the plan refuses too, so the preview never shows an empty tracker as the t
   assert.notEqual(r.code, 0)
   assert.match(r.out, /\.beads\/metadata\.json is missing/)
 })
+
+// --- a refusal is read first (debt a-refusal-is-gone-before-it-can-be-read)
+
+test('a plan that will refuse says so on its first line, before the notes and citations', () => {
+  // kotodori's plan put its refusal after 18 notes and 108 citations.
+  const root = project()
+  put(root, 'web/playwright.config.ts', "featuresRoot: '../docs/PLANNING',\n")
+  put(root, 'src/cites.ts', '// docs/DEBTS/a-debt-cited-in-a-comment\n')
+  const r = migrate(root, '--plan')
+  assert.equal(r.code, 0, r.out)
+  const first = r.out.split('\n').find((l) => l.trim() !== '')
+  assert.match(first ?? '', /^migrate-planning: REFUSES:/)
+  assert.ok(r.out.indexOf('web/playwright.config.ts:1') < r.out.indexOf('src/cites.ts:1'), 'what refuses comes before what is only cited')
+})
+
+test('a plan for an item the tracker cannot place says so first too', () => {
+  const root = project()
+  migrateWith({ BD_FAKE_FAIL_AT: '7', BD_FAKE_NO_REF: '1' }, root)
+  const db = items(root)
+  db.push({ id: 'x-99', title: 'somebody-elses-work', issue_type: 'task', status: 'open', labels: [], external_ref: null })
+  writeFileSync(join(root, '.fake-bd/db.json'), JSON.stringify(db))
+  const r = migrate(root, '--plan')
+  assert.match(r.out.split('\n').find((l) => l.trim() !== '') ?? '', /^migrate-planning: REFUSES:/)
+})
