@@ -73,7 +73,7 @@ skips the image half and finishes in under a minute — `scripts/changed-scope.s
 
 - **`core/` and `stacks/` are at the repository root on purpose.** `join(extensionPath, 'core')` is
   the same expression in a checkout and in an installed extension only because the names were kept
-  rather than moved under a prefix. `src/template.test.ts` pins the expression and
+  rather than moved under a prefix. `src/build/template.test.ts` pins the expression and
   `tools/vsix.test.ts` reads the artifact; neither alone is the claim.
 - **What ships in the `.vsix` is an allowlist, not a blocklist.** A list of exclusions cannot see a
   directory nobody thought of: merging the image's content in once took the package from 6 files to

@@ -204,7 +204,7 @@ test('a file that is executable in the repository is executable in the package',
 /**
  * The other half of `carried()`.
  *
- * `src/template.test.ts` pins the expression; this reads the artifact. Neither
+ * `src/build/template.test.ts` pins the expression; this reads the artifact. Neither
  * alone is the claim, because the claim is about two different filesystems:
  * a checkout, where `extensionPath` is the repository root, and an
  * installation, where it is wherever the editor extracted `extension/` to.
