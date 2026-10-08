@@ -170,6 +170,48 @@ function say(rows, listed) {
 const bd = (args) => execFileSync('bd', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 const strip = (s) => (s ?? '').replace(/\n+$/, '')
 
+/**
+ * What reads the folders from outside them, before they go (debt
+ * the-migration-deletes-files-another-tool-reads). fahrenheit404's Playwright
+ * ran six .feature files from docs/PLANNING, and kotodori's wdio, Gradle build
+ * and guards read it too; removing the folders would have broken each.
+ *
+ * A line **reads** the folders when it names the folder itself, a glob in it,
+ * or a .feature in it, outside Markdown: that stops the run, and the project
+ * moves what is read and rewires its tools, which no rewrite here could do
+ * safely. Anything else (a comment citing a debt, a Markdown link) is a
+ * **citation**: it goes stale, it breaks nothing, and it is listed. Files not
+ * yet committed count, since the operator may have just moved the features.
+ */
+export const READS = /docs\/(PLANNING|DEBTS)(\/?(?=$|[\s"'`),\]};])|\/[^\s"'`]*[*?]|\/[^\s"'`]*\.feature\b)/
+const MENTION = /docs\/(PLANNING|DEBTS)\b/
+
+export function readers(root) {
+  let files
+  try {
+    files = execFileSync('git', ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 })
+      .split('\0').filter((f) => f !== '')
+  } catch {
+    throw new Error(`${root} is not a git repository, so what reads docs/PLANNING and docs/DEBTS cannot be listed; nothing was written`)
+  }
+  const reads = []
+  const cites = []
+  for (const f of [...new Set(files)]) {
+    if (/^docs\/(PLANNING|DEBTS)\//.test(f) || f === 'CHANGELOG.md' || f.startsWith('.beads/')) continue
+    let text
+    try { text = readFileSync(join(root, f), 'utf8') } catch { continue }
+    if (text.includes('\0') || !MENTION.test(text)) continue
+    const markdown = /\.md$/i.test(f)
+    text.split('\n').forEach((line, i) => {
+      if (!MENTION.test(line)) return
+      const at = `${f}:${i + 1}: ${line.trim().slice(0, 160)}`
+      if (!markdown && READS.test(line)) reads.push(at)
+      else cites.push(at)
+    })
+  }
+  return { reads, cites }
+}
+
 const one = (out) => { const v = JSON.parse(out); return Array.isArray(v) ? v[0] : v }
 
 /**
@@ -224,6 +266,19 @@ export function main(argv, root = process.cwd()) {
   }
   say(rows, listed)
   const dry = argv.includes('--plan')
+
+  const { reads, cites } = readers(root)
+  if (cites.length > 0) {
+    console.log(`\n== citations of the folders that go stale (${cites.length}); listed, not rewritten`)
+    for (const c of cites) console.log(`  ${c}`)
+  }
+  if (reads.length > 0) {
+    const out = dry ? console.log : console.error
+    out(`\nmigrate-planning: ${reads.length} line(s) outside the folders read from docs/PLANNING or docs/DEBTS, so ${dry ? 'the run will refuse' : 'nothing was written'}:`)
+    for (const r of reads) out(`  ${r}`)
+    out('Move what they read (a .feature a runner executes belongs with its suite) and point them at it, then run this again.')
+    return dry ? 0 : 1
+  }
 
   // --limit 0: bd lists 50 items unless told otherwise (measured, bd 1.3.1),
   // and an item it did not list would be created a second time.
