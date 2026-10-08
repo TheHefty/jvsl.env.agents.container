@@ -120,3 +120,26 @@ export function planningPreview(output: string, resuming?: string): { apply: boo
     ].join('\n'),
   }
 }
+
+/**
+ * What a failed step says, read from all of its output (debt
+ * a-failed-planning-step-shows-one-line). execFile's error starts "Command
+ * failed: docker exec …", and the notification showed that line alone, so
+ * fahrenheit404's real cause, an incomplete database bd could not open, only
+ * surfaced when the operator ran the command by hand.
+ *
+ * `lines` is every non-empty line of stderr, or of the message when there is
+ * none, for the output channel. `cause` is the last line migrate-planning
+ * wrote, since it names what stopped it; failing that, the last line that is
+ * not bd's routine noise.
+ */
+export function stepFailure(error: unknown): { cause: string; lines: string[] } {
+  const e = error as { message?: unknown; stderr?: unknown }
+  const stderr = typeof e?.stderr === 'string' ? e.stderr : ''
+  const message = typeof e?.message === 'string' ? e.message : String(error)
+  const lines = (stderr.trim() !== '' ? stderr : message).split('\n').map((l) => l.trimEnd()).filter((l) => l.trim() !== '')
+  const NOISE = /^(warning: beads\.role|\s+(Fix|Or):|Warning: .* has permissions|time=".*" level=warning)/
+  const ours = [...lines].reverse().find((l) => l.startsWith('migrate-planning:'))
+  const meaningful = [...lines].reverse().find((l) => !NOISE.test(l))
+  return { cause: ours ?? meaningful ?? message.split('\n')[0] ?? String(error), lines }
+}
