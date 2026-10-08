@@ -1,4 +1,4 @@
-import { MANIFEST } from './shared/stack-manifest.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
  * What to do with the folder a picker came back with.

@@ -19,7 +19,7 @@ import {
   type DockerState,
   type HostChecks,
 } from './build/build.ts'
-import { configureOutcome, type ConfigureResult } from './configure.ts'
+import { configureOutcome, type ConfigureResult } from './configure/configure.ts'
 import { decideCreate, type Applied } from './create.ts'
 import { aiMemoryMarker, checkLocation } from './location.ts'
 import { scaffoldPlan } from './scaffold.ts'
@@ -42,9 +42,9 @@ import {
   stacksAvailable,
   versionsOf,
   type Answers,
-} from './questions.ts'
-import { instructionWrites } from './instructions.ts'
-import { decidePick } from './pick.ts'
+} from './configure/questions.ts'
+import { instructionWrites } from './configure/instructions.ts'
+import { decidePick } from './configure/pick.ts'
 import { carried } from './build/template.ts'
 import { hostProcessTerminal } from './host/host-terminal.ts'
 
