@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { composeAndBuildCommand, composeCommand, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
+import { composeAndBuildCommand, composeForProject, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
 import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { run, dockerBounded } from '../host/docker.ts'
@@ -10,7 +10,6 @@ import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { SelectionView } from '../view/selection-view.ts'
-import { readManifestStacks } from '../view/state.ts'
 
 /**
  * Builds the image, in a terminal whose process is `setup` itself.
@@ -135,8 +134,8 @@ export async function buildInTerminal(
   extensionPath: string,
   write: (lines: string[]) => void,
 ): Promise<'ok' | 'failed' | 'cancelled'> {
-  const stacks = Object.keys(readManifestStacks(root))
-  const compose = composeCommand(extensionPath, root, stacks)
+  const compose = composeForProject(extensionPath, root)
+  const stacks = compose.stacks
   const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
   const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
   const terminal = vscode.window.createTerminal({

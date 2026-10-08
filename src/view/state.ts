@@ -9,26 +9,6 @@ import { carriesTemplateSubmodule } from '../migrate/migrate-files.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { type ViewState } from './view.ts'
 
-/**
- * The stacks a project asked for, from its manifest.
- *
- * An unreadable manifest means no stacks rather than an error: the build
- * composes core alone, which is a working image, and the alternative is
- * refusing to build because a file this function could not parse might have
- * named something. The questions are what refuse an unreadable manifest, and
- * they refuse it rather than overwriting it.
- */
-export function readManifestStacks(root: string): Record<string, unknown> {
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
-    if (typeof parsed !== 'object' || parsed === null) return {}
-    const stacks = (parsed as Record<string, unknown>)['stacks']
-    return typeof stacks === 'object' && stacks !== null ? (stacks as Record<string, unknown>) : {}
-  } catch {
-    return {}
-  }
-}
-
 export function readViewState(root: string, extensionPath: string): ViewState {
   let manifest: Record<string, unknown> | null = null
   try {
