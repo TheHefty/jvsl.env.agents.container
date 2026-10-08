@@ -29,7 +29,12 @@ ROOT="${TRACKER_RULES_ROOT:-$HERE/../docs/agent}"
 declare -A CONDITION=([en]='has a tracker' [pt-BR]='tem rastreador')
 # What the story agreed the rules must say, as the commands that say it.
 REQUIRED=('bd ready' 'bd update --claim' 'bd close --reason' 'bd create --type bug --labels defect' 'bd dolt push'
-    'bd create --labels proposed --status deferred --parent' 'bd undefer' 'bd label remove proposed')
+    'bd create --labels proposed --status deferred --parent' 'bd undefer' 'bd label remove proposed'
+    # The story the-rules-describe-planning-in-the-tracker: epics, stories and
+    # tasks are items, a story's scenarios its acceptance criteria, and a
+    # .feature a runner executes is pointed to from the story.
+    'bd create --type epic' 'bd create --type feature --parent' 'bd create --type task --parent'
+    'bd update --acceptance' 'bd update --spec-id')
 
 failures=0
 fail() { echo "FAIL $*" >&2; failures=$((failures + 1)); }
@@ -113,6 +118,27 @@ done
 if grep -rnF '`bd delete' "$ROOT"/en "$ROOT"/pt-BR >/dev/null 2>&1; then
     fail "the normative documents name \`bd delete\`: $(grep -rnF '`bd delete' "$ROOT"/en "$ROOT"/pt-BR | head -2 | tr '\n' ' ')"
 fi
+
+# **The chain's table cannot keep winning.** It says where a story lives as
+# docs/PLANNING/<epic>/<story>/, and an agent in a project with a tracker that
+# reads only the table writes there anyway. So the table's own section, before
+# its first subsection, sends that project to the tracker's section, and the
+# section exists. Story the-rules-describe-planning-in-the-tracker.
+declare -A PLANNING_SECTION=([en]='Planning in a project that has a tracker' [pt-BR]='Planejamento num projeto que tem rastreador')
+for lang in en pt-BR; do
+    wf="$ROOT/$lang/WORKFLOW.md"
+    [ -f "$wf" ] || continue
+    heading="${PLANNING_SECTION[$lang]}"
+    anchor="$(printf '%s' "$heading" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
+    grep -qE "^#{2,4} $heading$" "$wf" \
+        || fail "$lang: WORKFLOW.md has no section '$heading'"
+    chain_intro="$(awk '/^## / { n++ } n == 1 && /^### / { exit } n == 1 { print }' "$wf")"
+    case "$chain_intro" in
+        *"](#$anchor)"*) ;;
+        *) fail "$lang: the chain's table in WORKFLOW.md does not send a project with a tracker to #$anchor; \
+an agent reading only the table writes to docs/PLANNING" ;;
+    esac
+done
 
 if [ "${SETS[en]:-}" != "${SETS[pt-BR]:-}" ]; then
     fail "English and Portuguese name different bd commands:"

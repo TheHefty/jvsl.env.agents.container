@@ -100,7 +100,10 @@ order.
   `docs/PLANNING/<epic>/<story>/<story>.feature`, and they are agreed with the user at the story
   gate, before any task under the story is written. The image ships a Gherkin extension for exactly
   this reason — feature files are how acceptance criteria get written and reviewed, whatever the
-  project is built in.
+  project is built in. In a project that has a tracker they are the story's acceptance criteria in
+  the tracker instead, and a `.feature` a runner executes lives beside the suite that runs it, with
+  the story pointing to it — "Planning in a project that has a tracker" in
+  [Workflow](WORKFLOW.md) says how.
 - **They are documentation first, and are not executable by default.** The tests that hold the
   code to them are normally written test-first in the project's own suite. A task may instead
   choose and wire a Gherkin runner so the same `.feature` becomes the acceptance test; in that

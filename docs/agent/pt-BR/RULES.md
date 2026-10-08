@@ -101,7 +101,10 @@ Não testes escritos ao lado, e não testes escritos depois e commitados numa or
   `docs/PLANNING/<epico>/<estoria>/<estoria>.feature`, e são acordados com o usuário no gate da
   estória, antes de qualquer task sob a estória ser escrita. A imagem entrega uma extensão de
   Gherkin exatamente por isso — arquivos `.feature` são como critérios de aceite são escritos e
-  revisados, seja lá em que o projeto for construído.
+  revisados, seja lá em que o projeto for construído. Num projeto que tem rastreador, eles são em
+  vez disso os critérios de aceite da estória no rastreador, e um `.feature` que um runner executa
+  mora ao lado da suíte que o executa, com a estória apontando para ele — "Planejamento num projeto
+  que tem rastreador", em [Fluxo de trabalho](WORKFLOW.md), diz como.
 - **Eles são documentação primeiro, e não são executáveis por padrão.** Os testes que prendem o
   código a eles normalmente são escritos test-first na suíte do próprio projeto. Uma task pode em
   vez disso escolher e ligar um runner Gherkin para que o mesmo `.feature` vire o teste de aceite;

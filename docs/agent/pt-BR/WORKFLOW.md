@@ -28,6 +28,11 @@ conduzido até o ponto em que toda questão em aberto tem resposta e a redação
 aprovar. Cada documento é seu próprio pull request, então cada gate é um merge e cada camada tem um
 diff revisável grudado na discussão que o produziu.
 
+A tabela é onde um projeto sem rastreador guarda o seu planejamento. Um projeto que tem rastreador
+mantém os mesmos elos e os mesmos gates, mas cada estória e cada task é um item em vez de um
+arquivo: veja
+[Planejamento num projeto que tem rastreador](#planejamento-num-projeto-que-tem-rastreador).
+
 ### Termo de abertura
 
 Os termos de referência do projeto: para que ele serve, para quem, o que está no escopo e o que
@@ -81,6 +86,27 @@ piores formas de quebrar — veja [o processo de task](TASKS.md) e
 Uma task é nomeada por um slug, nunca por um número: duas tasks começadas em paralelo em duas
 branches não podem colidir, porque não há contador compartilhado para elas colidirem. A ordem que um
 número costumava implicar mora no índice de tasks da estória e no `depends-on` de cada task.
+
+### Planejamento num projeto que tem rastreador
+
+Isto vale só para um projeto que tem rastreador. Nele, o épico, a estória e a task são itens, não
+arquivos, e `docs/PLANNING/` não é usado. Os elos e os seus gates não mudam: cada um continua
+acordado com o usuário antes do próximo ser escrito, e fica como proposta no rastreador até ser,
+como diz "O rastreador de trabalho", em [Regras](RULES.md).
+
+- **Um épico** é `bd create --type epic`, com a sua frase única como descrição.
+- **Uma estória** é `bd create --type feature --parent <epico>`. O que o `OVERVIEW.md` dela
+  carregaria é a sua descrição; o índice de tasks são os seus filhos.
+- **Os cenários de uma estória são os seus critérios de aceite**, em Gherkin, escritos com
+  `bd update <id> --acceptance "…"` e acordados no gate da estória como o arquivo que substituem.
+- **Uma task** é `bd create --type task --parent <estoria>`, e o seu desenho — o problema, a
+  proposta, as alternativas rejeitadas, as três piores formas de quebrar — é a sua descrição.
+- **Um `.feature` que um runner executa mora ao lado da suíte que o executa**, não numa pasta de
+  planejamento: a configuração do runner é onde os arquivos dele são achados, e uma pasta de
+  documentos não é lugar onde um build deva ir buscar coisas. A estória aponta para ele com
+  `bd update <id> --spec-id <caminho>`, e os critérios de aceite dela e o arquivo mudam juntos, no
+  mesmo pull request, pelo motivo que "Os cenários de uma estória e seu `OVERVIEW.md` mudam
+  juntos" dá em [Regras](RULES.md).
 
 ## Os gates, e a regra de autonomia
 

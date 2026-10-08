@@ -27,6 +27,10 @@ the point where every open question has an answer and the write-up is the user's
 document is its own pull request, so each gate is a merge and each layer has a reviewable diff
 attached to the discussion that produced it.
 
+The table is where a project without a tracker keeps its planning. A project that has one keeps the
+same links and the same gates, but each story and task is an item instead of a file: see
+[Planning in a project that has a tracker](#planning-in-a-project-that-has-a-tracker).
+
 ### Charter
 
 The project's terms of reference: what it is for, who it is for, what is in scope and what is
@@ -79,6 +83,26 @@ the three worst ways it can break — see [the task process](TASKS.md) and
 story's. A task is named by a slug, never a number: two tasks started in parallel on two branches
 cannot collide, because there is no shared counter for them to collide on. The ordering a number
 used to imply lives in the story's task index and in each task's `depends-on`.
+
+### Planning in a project that has a tracker
+
+This applies only to a project that has a tracker. In one, the epic, the story and the task are
+items, not files, and `docs/PLANNING/` is not used. The links and their gates do not change: each
+is still agreed with the user before the next is written, and is proposed in the tracker until it
+is, as "The work tracker" in [Rules](RULES.md) says.
+
+- **An epic** is `bd create --type epic`, with its one sentence as its description.
+- **A story** is `bd create --type feature --parent <epic>`. What its `OVERVIEW.md` would carry
+  is its description; its index of tasks is its children.
+- **A story's scenarios are its acceptance criteria**, in Gherkin, written with
+  `bd update <id> --acceptance "…"` and agreed at the story gate like the file they replace.
+- **A task** is `bd create --type task --parent <story>`, and its design — the problem, the
+  proposal, the alternatives rejected, the three worst ways it breaks — is its description.
+- **A `.feature` a runner executes lives beside the suite that runs it**, not in a planning folder:
+  the runner's configuration is where its files are found, and a folder of documents is not a
+  place a build should reach into. The story points to it with `bd update <id> --spec-id <path>`,
+  and its acceptance criteria and the file change together, in the same pull request, for the
+  reason "A story's scenarios and its `OVERVIEW.md` change together" gives in [Rules](RULES.md).
 
 ## The gates, and the autonomy rule
 
