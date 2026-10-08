@@ -478,4 +478,10 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   parents, and marked; an item the plan cannot place stops the run before anything is written. Found on
   fahrenheit404 on 2026-10-07: the run stopped after 18 of 28 items, and the command then refused it for
   good, since a rerun would have duplicated them.
+- **FR-129** — **The shipped rules say where planning lives in a project that has a tracker.** Epics,
+  stories and tasks are items there, and docs/PLANNING is not used; a story's scenarios are its
+  acceptance criteria; a `.feature` a runner executes lives beside the suite that runs it, and the story
+  points to it with `--spec-id`. Found migrating fahrenheit404 and measuring kotodori on 2026-10-08: the
+  rules still placed stories and their `.feature` under the folder the migration removes. The operator
+  chose the suite's side over one fixed folder in every project.
 
