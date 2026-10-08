@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { decideOpen, type OpenContext } from './open.ts'
-import { GENERATED_BY } from './devcontainer.ts'
+import { GENERATED_BY } from '../devcontainer.ts'
 
 const base: OpenContext = {
   projectRoot: '/home/me/code/myrepo',

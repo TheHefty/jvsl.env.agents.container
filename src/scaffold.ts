@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { aiMemoryMarker } from './location.ts'
-import { CONFIG_PATH } from './open.ts'
+import { CONFIG_PATH } from './open/open.ts'
 import { MANIFEST } from './shared/stack-manifest.ts'
 import { nextManifest, type Answers } from './questions.ts'
 

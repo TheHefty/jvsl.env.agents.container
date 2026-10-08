@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { scaffoldPlan, type ScaffoldInput } from './scaffold.ts'
-import { ignoresGeneratedConfig } from './open.ts'
+import { ignoresGeneratedConfig } from './open/open.ts'
 
 const assets = join(process.cwd(), 'assets', 'project')
 const base: ScaffoldInput = {
