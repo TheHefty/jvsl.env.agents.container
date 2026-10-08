@@ -76,6 +76,27 @@ fi
 # database under it is ignored by bd's own .gitignore, so a clone has the first
 # and not the second.
 if [ -d "$WORKSPACE/.beads/embeddeddolt" ]; then
+    # **A database that is there is not one that works.** On fahrenheit404 a
+    # database directory without .dolt/repo_state.json passed as initialised on
+    # every boot, and every bd command failed after it (debt
+    # the-boot-hook-takes-a-broken-tracker-for-healthy). **Checked by its files,
+    # never by running bd**: without metadata.json, bd does not fail, it creates
+    # a new, empty database beside the real one. **And never repaired here**:
+    # an incomplete database may still hold the only copy of items not yet
+    # pushed, so this says what is wrong once and leaves everything in place.
+    meta="$WORKSPACE/.beads/metadata.json"
+    db="$(jq -r '.dolt_database // empty' "$meta" 2>/dev/null || true)"
+    if [ ! -f "$meta" ]; then
+        say "the tracker is broken: .beads/metadata.json is missing, so bd would open a new, empty \
+database beside this project's. Restore it with \`git checkout -- .beads/metadata.json\`. Nothing was changed."
+    elif [ -z "$db" ]; then
+        say "the tracker is broken: .beads/metadata.json names no dolt_database. Restore it with \
+\`git checkout -- .beads/metadata.json\`. Nothing was changed."
+    elif [ ! -f "$WORKSPACE/.beads/embeddeddolt/$db/.dolt/repo_state.json" ]; then
+        say "the tracker is broken: .beads/embeddeddolt/$db has no .dolt/repo_state.json, so bd cannot \
+open it. If everything in it was pushed, move .beads/embeddeddolt aside and run \`bd bootstrap\` to restore \
+it from the project's remote. Nothing was changed."
+    fi
     exit 0
 fi
 

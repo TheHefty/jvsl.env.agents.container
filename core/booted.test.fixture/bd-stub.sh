@@ -14,6 +14,9 @@
 # - A second `bd init` exits 1, unless `--init-if-missing` is passed.
 # - `bd bootstrap` restores or creates a database and **never commits**.
 # - `-C` refuses a directory that is not already a project.
+# - The database is a directory named by metadata.json's `dolt_database`,
+#   under .beads/embeddeddolt/, and is whole when it has .dolt/repo_state.json
+#   (measured on this repository's own tracker, 2026-10-08).
 #
 # STUB_BOOTSTRAP=hang or STUB_BOOTSTRAP=fail makes bootstrap do that, for the
 # hook's network failure scenario.
@@ -45,12 +48,13 @@ case "$cmd" in
             [ "$1" = "--prefix" ] && prefix="$(printf '%s' "$2" | tr . _)"
             shift
         done
-        mkdir -p .beads/embeddeddolt
+        mkdir -p ".beads/embeddeddolt/$prefix/.dolt"
+        printf '{}\n' > ".beads/embeddeddolt/$prefix/.dolt/repo_state.json"
         printf '*.db\nembeddeddolt/\n' > .beads/.gitignore
         printf 'issue-prefix: "%s"\n' "$prefix" > .beads/config.yaml
         origin="$(git remote get-url origin 2>/dev/null || true)"
         [ -n "$origin" ] && printf 'sync:\n    remote: %s\n' "$origin" >> .beads/config.yaml
-        printf '{"database":"%s"}\n' "$prefix" > .beads/metadata.json
+        printf '{"database":"dolt","backend":"dolt","dolt_mode":"embedded","dolt_database":"%s"}\n' "$prefix" > .beads/metadata.json
         printf '# Beads / Dolt files (added by bd init)\n.dolt/\n*.db\n.beads-credential-key\n.beads/proxieddb/\n*.gate.lock*\n' >> .gitignore
         FLAG=--skip-agents
         if ! has $ALL_ARGS; then
@@ -73,7 +77,9 @@ case "$cmd" in
             echo "fatal: unable to access the remote: Could not resolve host: example.invalid" >&2
             exit 1
         fi
-        mkdir -p .beads/embeddeddolt
+        db="$(sed -n 's/.*"dolt_database": *"\([^"]*\)".*/\1/p' .beads/metadata.json 2>/dev/null)"
+        mkdir -p ".beads/embeddeddolt/${db:-beads}/.dolt"
+        printf '{}\n' > ".beads/embeddeddolt/${db:-beads}/.dolt/repo_state.json"
         ;;
     create)
         [ -d .beads/embeddeddolt ] || { echo "bd: no beads database found" >&2; exit 1; }

@@ -156,6 +156,36 @@ check "and beads.role" "$(git -C "$ws" config beads.role || echo unset)" "mainta
 # checkout gives it. A tracker that warns on every command is scenario 3.
 check "and .beads/ is 0700, so bd does not warn on every command" "$(stat -c %a "$ws/.beads")" "700"
 
+# --- a tracker that is there but broken is said, and left alone -------------
+#
+# The debt the-boot-hook-takes-a-broken-tracker-for-healthy: on fahrenheit404 a
+# database directory without .dolt/repo_state.json passed as initialised on
+# every boot, and every bd command failed after it. Checked by its files, never
+# by running bd: without metadata.json, bd creates a new, empty database.
+
+db_dir="$(ls -d "$ws"/.beads/embeddeddolt/*/ | head -1)"
+mv "$db_dir.dolt/repo_state.json" "$work/repo_state.json"
+before="$(find "$ws/.beads" | sort | sha256sum)"
+boot
+check "an incomplete database: the boot continues" "$(cat "$work/rc")" "0"
+check "an incomplete database: bd is never called" "$(grep -c '^bd ' "$CALLS" || true)" "0"
+check "an incomplete database: the boot says the tracker is broken, naming what is missing" \
+    "$(grep -c 'tracker is broken.*repo_state.json' "$work/out" || true)" "1"
+check "an incomplete database: and how to restore it" "$(grep -c 'bd bootstrap' "$work/out" || true)" "1"
+check "an incomplete database: nothing under .beads/ is moved or removed" "$(find "$ws/.beads" | sort | sha256sum)" "$before"
+mv "$work/repo_state.json" "$db_dir.dolt/repo_state.json"
+
+mv "$ws/.beads/metadata.json" "$work/metadata.json"
+boot
+check "no metadata.json: bd is never called, since it would create an empty database" "$(grep -c '^bd ' "$CALLS" || true)" "0"
+check "no metadata.json: the boot says the tracker is broken, naming the file" \
+    "$(grep -c 'tracker is broken.*metadata.json' "$work/out" || true)" "1"
+check "no metadata.json: and how to restore it" "$(grep -c 'git checkout -- .beads/metadata.json' "$work/out" || true)" "1"
+mv "$work/metadata.json" "$ws/.beads/metadata.json"
+
+boot
+check "a whole tracker boots silently" "$(grep -c 'broken' "$work/out" || true)" "0"
+
 # --- a bootstrap that hangs or fails does not take the boot with it ----------
 
 for mode in hang fail; do
