@@ -46,6 +46,7 @@ import {
 import { instructionWrites } from './instructions.ts'
 import { decidePick } from './pick.ts'
 import { carried } from './template.ts'
+import { hostProcessTerminal } from './host-terminal.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'
 const SHOW_DETECTED = 'jvsl.agentContainer.showDetected'
@@ -546,10 +547,11 @@ async function migrate(write: (lines: string[]) => void): Promise<void> {
     modal: true, detail: 'It runs inside the container, in a terminal you can read.',
   }, apply)
   if (chosen !== apply) return
+  // On the host, where docker is, in either kind of window: see host-terminal.ts.
   const terminal = vscode.window.createTerminal({
     name: 'Migrate the planning',
-    shellPath: 'docker',
-    shellArgs: ['exec', '-it', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId, 'migrate-planning'],
+    pty: hostProcessTerminal('docker',
+      ['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId, 'migrate-planning']),
   })
   terminal.show()
 }
@@ -1139,8 +1141,7 @@ async function buildInTerminal(
   const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
   const terminal = vscode.window.createTerminal({
     name: 'Agent Container: build',
-    shellPath,
-    shellArgs,
+    pty: hostProcessTerminal(shellPath, shellArgs),
   })
   terminal.show()
   write([
