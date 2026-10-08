@@ -1,5 +1,9 @@
-import { carried } from './template.ts'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { stacksAvailable } from '../configure/questions.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
+import { carried } from './template.ts'
 /**
  * What building is, as functions over what the host looks like.
  *
@@ -212,6 +216,39 @@ export function composeCommand(
     context: extensionPath,
     image: `${basename}-dev`,
   }
+}
+
+/**
+ * The project's manifest as an object, or {} when it is absent or unreadable.
+ *
+ * An unreadable manifest composes core alone, which is a working image; the
+ * questions are what refuse an unreadable manifest, and they refuse it rather
+ * than overwriting it.
+ */
+function readManifest(root: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * What the build composes for a project: its manifest's stacks, through the
+ * one composer. The editor's build terminal runs exactly this (see
+ * buildInTerminal), so a test can drive the path a real build takes.
+ */
+export function composeForProject(extensionPath: string, root: string): Compose {
+  // **The stacks are the manifest's top-level keys that name a stack the
+  // extension carries**: the shape the configure command writes and the
+  // composer reads versions from. This read a `stacks` field no manifest has,
+  // so every image built here from 2ad91a3 on was core alone, and kotodori's
+  // had no JDK (issue #158, debt the-build-composes-no-stack). `limits`,
+  // `beads` and anything else are not stacks and never reach the composer.
+  const carriedStacks = new Set(stacksAvailable(carried(extensionPath, 'stacks')))
+  const stacks = Object.keys(readManifest(root)).filter((key) => carriedStacks.has(key))
+  return composeCommand(extensionPath, root, stacks)
 }
 
 /** Single-quote for `sh`, which is what makes a path with a space survive. */
