@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 
-import { LEGACY_MANIFEST, MANIFEST } from './shared/stack-manifest.ts'
+import { LEGACY_MANIFEST, MANIFEST } from '../shared/stack-manifest.ts'
 
 const run = promisify(execFile)
 
