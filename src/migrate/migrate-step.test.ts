@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { migrationStep, planMarkdown, planningPreview, type MigrationFacts } from './migrate-step.ts'
+import { migrationStep, planMarkdown, planningPreview, stepFailure, type MigrationFacts } from './migrate-step.ts'
 
 const ready: MigrationFacts = {
   oldFormat: false,
@@ -78,4 +78,31 @@ test('a planning preview that will refuse offers no Apply, and says why first (d
   assert.match(v.markdown, /^# Migrate from code-server: the planning\n\n\*\*The run would refuse/)
   const fine = 'migrate-planning: 28 item(s): 3 epic(s), 9 story(ies), 16 task(s), 0 debt(s); 2 closed.\n'
   assert.equal(planningPreview(fine).apply, true)
+})
+
+test('a failed step names its cause from the whole output, not the command line (debt ba8)', () => {
+  // As fahrenheit404's plan failed on 2026-10-07: execFile's error, whose
+  // message starts "Command failed: docker exec ...", and the notification
+  // showed only that first line.
+  const stderr = [
+    'warning: no beads configuration found in /config/workspace/.beads; using default database name "beads"',
+    'time="2026-10-07T22:44:46Z" level=warning msg="skipping incomplete database directory" path=/config/workspace/.beads/embeddeddolt/beads',
+    'Error: failed to open database: embeddeddolt: init schema: embeddeddolt: creating database: Error 1105: cannot create database beads: incomplete database directory from an interrupted create already exists; remove the directory and try again',
+    'migrate-planning: stopped: Command failed: bd list --all --limit 0 --json',
+    'warning: beads.role not configured (GH#2950).',
+    '  Fix: git config beads.role maintainer',
+    '',
+  ].join('\n')
+  const error = Object.assign(new Error(`Command failed: docker exec -u abc 1d40c5ba364b migrate-planning --plan\n${stderr}`), { stderr, stdout: '' })
+  const f = stepFailure(error)
+  assert.equal(f.cause, 'migrate-planning: stopped: Command failed: bd list --all --limit 0 --json')
+  assert.ok(f.lines.some((l) => l.includes('incomplete database directory')), 'every line reaches the channel')
+  assert.ok(!f.lines.includes(''), 'without the empty ones')
+})
+
+test('without a line from migrate-planning, the cause is the last meaningful one', () => {
+  const stderr = 'Error response from daemon: container 94d4 is not running\n'
+  assert.equal(stepFailure(Object.assign(new Error('Command failed: docker exec x'), { stderr })).cause,
+    'Error response from daemon: container 94d4 is not running')
+  assert.equal(stepFailure(new Error('timeout')).cause, 'timeout')
 })

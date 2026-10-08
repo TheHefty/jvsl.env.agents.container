@@ -10,7 +10,7 @@ import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { applyFileMigration, carriesTemplateSubmodule, planFileMigration, textsWorthReading } from './migrate-files.ts'
-import { migrationStep, planMarkdown, planningPreview, type MigrationFacts } from './migrate-step.ts'
+import { migrationStep, planMarkdown, planningPreview, stepFailure, type MigrationFacts } from './migrate-step.ts'
 import { MANIFEST, LEGACY_MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -20,7 +20,7 @@ import { MANIFEST, LEGACY_MANIFEST } from '../shared/stack-manifest.ts'
  * it continues. Every change waits for an explicit Apply, and nothing is
  * committed.
  */
-export async function migrate(write: (lines: string[]) => void): Promise<void> {
+export async function migrate(write: (lines: string[]) => void, showOutput: () => void = () => {}): Promise<void> {
   const project = hostProject()
   if (project.kind === 'none') {
     void vscode.window.showErrorMessage(`Migrate: ${project.reason}.`)
@@ -141,7 +141,14 @@ export async function migrate(write: (lines: string[]) => void): Promise<void> {
     preview = (await dockerBounded(['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId,
       'migrate-planning', '--plan'], 60000)).stdout
   } catch (error) {
-    void vscode.window.showErrorMessage(`Migrate: the planning's plan could not be read in the container: ${String(error)}`)
+    // The whole output to the channel and its cause in the notification: the
+    // first line alone was the command that failed, never why (debt
+    // a-failed-planning-step-shows-one-line).
+    const failure = stepFailure(error)
+    write([`migrate: the planning's plan could not be read in the container: ${failure.cause}`, ...failure.lines.map((l) => `  ${l}`)])
+    const show = 'Show output'
+    void vscode.window.showErrorMessage(`Migrate: the planning's plan could not be read in the container: ${failure.cause}`, show)
+      .then((chosen) => { if (chosen === show) showOutput() })
     return
   }
   const shown = planningPreview(preview, step.resuming)
