@@ -127,6 +127,7 @@ function project(): string {
   put(root, 'docs/PLANNING/bare-epic/held/OVERVIEW.md', '# Story\n\n| | |\n|---|---|\n| **Status** | On hold |\n')
   put(root, 'docs/DEBTS/a-hotfix/OVERVIEW.md', '# Debt\n\n| | |\n|---|---|\n| **Status** | Paid |\n| **Kind** | hotfix |\n')
   put(root, 'docs/DEBTS/free-text.md', '# Debt\n\n| | |\n|---|---|\n| **Status** | Open |\n| **Kind** | bug (found in production) |\n')
+  execFileSync('git', ['init', '-q'], { cwd: root })
   return root
 }
 
@@ -328,6 +329,7 @@ test('two items that both look like one row are not guessed between', () => {
 
 test('more than fifty items already in the tracker are all seen, not created again', () => {
   const root = mkdtempSync(join(work, 'many-'))
+  execFileSync('git', ['init', '-q'], { cwd: root })
   for (let i = 0; i < 60; i++) put(root, `docs/DEBTS/d${String(i).padStart(2, '0')}.md`, '# Debt\n\n| | |\n|---|---|\n| **Status** | Open |\n')
   migrateWith({ BD_FAKE_FAIL_AT: '56' }, root)
   assert.equal(items(root).length, 55)
@@ -344,4 +346,65 @@ test('the plan says what is already in the tracker, and writes nothing', () => {
   assert.equal(r.code, 0, r.out)
   assert.match(r.out, /6 already in the tracker/)
   assert.equal(readFileSync(join(root, '.fake-bd/db.json'), 'utf8'), before)
+})
+
+// --- what other tools read from the folders (debt the-migration-deletes-files-another-tool-reads)
+
+test('a configuration that reads a .feature from the folders stops the run before anything is written', () => {
+  // fahrenheit404's playwright.config.ts, as measured on 2026-10-08.
+  const root = project()
+  put(root, 'web/playwright.config.ts', "export default {\n  features: [\n    '../docs/PLANNING/study/done-story/done-story.feature',\n  ],\n}\n")
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /web\/playwright\.config\.ts:3/)
+  assert.match(r.out, /read from docs\/PLANNING or docs\/DEBTS/)
+  assert.ok(!existsSync(join(root, '.fake-bd/db.json')), 'nothing created')
+  assert.ok(existsSync(join(root, 'docs/PLANNING/study/done-story/done-story.feature')))
+})
+
+test('a glob or the folder itself counts as reading it, as kotodori does in four places', () => {
+  const root = project()
+  put(root, 'app/wdio.conf.js', "  specs: ['./docs/SCENARIOS/**/*.feature', '../../../docs/PLANNING/**/*.feature'],\n")
+  put(root, 'build/conventions.gradle.kts', '    from(rootDir.resolve("../../docs/PLANNING")) {\n')
+  put(root, 'scripts/guard', "for ov in $(git ls-files -- 'docs/PLANNING/*/*/OVERVIEW.md'); do :; done\n")
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  for (const f of ['app/wdio.conf.js:1', 'build/conventions.gradle.kts:1', 'scripts/guard:1']) assert.match(r.out, new RegExp(f.replace(/[./]/g, '\\$&')))
+})
+
+test('a citation in a comment or in Markdown is listed, and does not stop the run', () => {
+  const root = project()
+  put(root, 'src/SecondFactor.tsx', '  /* docs/DEBTS/a-pending-enrolment-cannot-be-restarted. */\n')
+  put(root, 'README.md', 'Planning lives in [docs/PLANNING](docs/PLANNING/README.md).\n')
+  const r = migrate(root)
+  assert.equal(r.code, 0, r.out)
+  assert.match(r.out, /src\/SecondFactor\.tsx:1/)
+  assert.match(r.out, /README\.md:1/)
+  assert.ok(!existsSync(join(root, 'docs/PLANNING')))
+})
+
+test('a file not yet committed counts too: the operator may have just moved the features', () => {
+  const root = project()
+  put(root, 'web/playwright.config.ts', "featuresRoot: '../docs/PLANNING',\n")
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /web\/playwright\.config\.ts:1/)
+})
+
+test('the plan lists what reads the folders and says the run will refuse, and exits clean', () => {
+  const root = project()
+  put(root, 'web/playwright.config.ts', "featuresRoot: '../docs/PLANNING',\n")
+  const r = migrate(root, '--plan')
+  assert.equal(r.code, 0, r.out)
+  assert.match(r.out, /web\/playwright\.config\.ts:1/)
+  assert.match(r.out, /the run will refuse/)
+})
+
+test('a workspace that is not a git repository is refused, since what reads the folders cannot be listed', () => {
+  const root = project()
+  rmSync(join(root, '.git'), { recursive: true, force: true })
+  const r = migrate(root)
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /not a git repository/)
+  assert.ok(existsSync(join(root, 'docs/PLANNING')))
 })
