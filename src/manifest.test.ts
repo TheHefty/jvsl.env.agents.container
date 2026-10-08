@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { parseVersion } from './template.ts'
+import { parseVersion } from './build/template.ts'
 
 /**
  * The manifest is a contract, and three of its fields are the kind that fail

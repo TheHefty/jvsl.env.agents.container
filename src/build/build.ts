@@ -1,5 +1,5 @@
 import { carried } from './template.ts'
-import { MANIFEST } from './shared/stack-manifest.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 /**
  * What building is, as functions over what the host looks like.
  *

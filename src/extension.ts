@@ -18,12 +18,12 @@ import {
   type SandboxConditions,
   type DockerState,
   type HostChecks,
-} from './build.ts'
+} from './build/build.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decideCreate, type Applied } from './create.ts'
 import { aiMemoryMarker, checkLocation } from './location.ts'
 import { scaffoldPlan } from './scaffold.ts'
-import { projectNames } from './devcontainer.ts'
+import { projectNames } from './build/devcontainer.ts'
 import { formatDetected } from './host/diagnostics.ts'
 import { hostFacts } from './host/host.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from './shared/stack-manifest.ts'
@@ -45,7 +45,7 @@ import {
 } from './questions.ts'
 import { instructionWrites } from './instructions.ts'
 import { decidePick } from './pick.ts'
-import { carried } from './template.ts'
+import { carried } from './build/template.ts'
 import { hostProcessTerminal } from './host/host-terminal.ts'
 
 const CHANNEL_NAME = 'Dev Container Projects'

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { join } from 'node:path'
 
 import { buildConfiguration } from './devcontainer.ts'
-import { shippedSources as allSources } from './test-support/sources.ts'
+import { shippedSources as allSources } from '../test-support/sources.ts'
 
 /**
  * Workspace Trust stays enabled, and nothing here writes it.
