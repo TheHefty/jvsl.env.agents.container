@@ -12,10 +12,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { containerFor, projectOnHost, type Running } from './host/locate.ts'
+import { containerFor, projectOnHost, type Running } from '../host/locate.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
-import { MANIFEST } from './shared/stack-manifest.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 
 type Docker = (args: string[], ms?: number) => Promise<{ stdout: string; stderr: string }>
 
