@@ -201,3 +201,9 @@ test('neither the location nor the ai-memory choice reaches the manifest', () =>
   assert.doesNotMatch(serialised, /a-new-project/)
   assert.doesNotMatch(serialised, /aiMemory|ai-memory/i)
 })
+
+test('a cpus written as an object is not offered back as a default (it would read [object Object])', () => {
+  // Found by the lint (no-base-to-string) on 2026-10-09.
+  assert.equal(limitDefaults({ limits: { cpus: { count: 4 } } }).cpus, '')
+  assert.equal(limitDefaults({ limits: { cpus: 4 } }).cpus, '4')
+})

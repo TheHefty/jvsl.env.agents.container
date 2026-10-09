@@ -140,7 +140,9 @@ export function viewItems(state: ViewState): Row[] {
   for (const key of LIMIT_ORDER) {
     const value = limits[key]
     if (value !== undefined && value !== null) {
-      rows.push({ kind: 'limit', label: key, detail: String(value) })
+      // A value that is not a scalar is shown as what it holds, never as
+      // "[object Object]" (found by the lint, 2026-10-09).
+      rows.push({ kind: 'limit', label: key, detail: typeof value === 'string' ? value : JSON.stringify(value) })
     }
   }
 
