@@ -119,6 +119,8 @@ jobs:
         run: bash scripts/no-container-is-removed.test.sh
       - name: every source and test under src/ is read, wherever it sits
         run: bash scripts/every-source-is-read.test.sh
+      - name: a release gets its own package, checked and read back
+        run: bash scripts/attach-release-package.test.sh
       - name: the planning stays in the tracker, and the charter and SRS carry no state
         run: bash scripts/the-guard-holds-the-split.test.sh
 
