@@ -126,7 +126,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     file \
     libssl-dev \
     procps \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# 1.0.2 shellcheck, the shell half of the lint this repository and its projects
+# run before a commit (story lint-and-hooks-guard-every-change). The hook
+# refuses rather than skipping when it is absent, and this repository is
+# developed inside this image.
+#
+# **Pinned by version and digest, not taken from Debian's archive.** CI's
+# runner had 0.9.0 and trixie packages another, and two versions disagree about
+# what is a finding, so a hook would pass what CI refuses. core/shellcheck.pin
+# is the one place the version and its sha256 are written; CI reads the same
+# file, and scripts/lint-shell.sh refuses any other version. xz-utils, above,
+# is what unpacks the release.
+COPY core/shellcheck.pin /tmp/shellcheck.pin
+RUN read -r version sha < /tmp/shellcheck.pin \
+    && curl -fL --no-progress-meter --proto '=https' --tlsv1.2 \
+         --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 \
+         "https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz \
+    && echo "${sha}  /tmp/shellcheck.tar.xz" | sha256sum -c - \
+    && tar -xJf /tmp/shellcheck.tar.xz -C /tmp \
+    && install -m 0755 "/tmp/shellcheck-v${version}/shellcheck" /usr/local/bin/shellcheck \
+    && rm -rf /tmp/shellcheck.tar.xz "/tmp/shellcheck-v${version}" /tmp/shellcheck.pin
 
 # 1.0.1 The libraries a browser a project downloads loads (issue #154).
 #

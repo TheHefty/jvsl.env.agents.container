@@ -1,6 +1,5 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { join } from 'node:path'
 
 import { buildConfiguration } from './devcontainer.ts'
 import { shippedSources as allSources } from '../test-support/sources.ts'

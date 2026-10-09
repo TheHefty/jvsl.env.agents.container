@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { build } from '../build/command.ts'
 import { carried } from '../build/template.ts'
 import { stacksAvailable } from '../configure/questions.ts'
 import { readOrNull } from '../host/project.ts'

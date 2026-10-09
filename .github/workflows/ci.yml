@@ -505,6 +505,36 @@ jobs:
   # required check that stops reporting (blocking every merge) and would not cover a
   # newly added stack. This name never changes and stands for all of them.
 
+  lint:
+    # Story lint-and-hooks-guard-every-change. The git hooks run this before a
+    # commit, but a hook is enabled per clone and skipped with --no-verify:
+    # this job is the gate. Skipped for a change that touches only Markdown,
+    # which neither linter reads.
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: shellcheck, the pinned version (core/shellcheck.pin), not the runner's
+        run: |
+          read -r version sha < core/shellcheck.pin
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/sc.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
+          echo "${sha}  /tmp/sc.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/sc.tar.xz -C /tmp
+          echo "SHELLCHECK=/tmp/shellcheck-v${version}/shellcheck" >> "$GITHUB_ENV"
+          "/tmp/shellcheck-v${version}/shellcheck" --version
+      - run: npm run lint
+      - name: both linters read every file they are meant to
+        run: bash scripts/lint-covers-everything.test.sh
+      - name: the git hooks refuse what fails, and a missing tool
+        run: bash .githooks/hooks.test.sh
+
   typecheck:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -647,7 +677,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, beads, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, beads, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -19,7 +19,7 @@ trap 'chmod -R u+rwX "$work" 2>/dev/null; rm -rf "$work"' EXIT
 # Each case gets its own tree, so one case cannot leave state for the next.
 tree() {
     local name="$1"
-    rm -rf "$work/$name"
+    rm -rf "${work:?}/${name:?}"
     mkdir -p "$work/$name"
     printf '%s' "$work/$name"
 }

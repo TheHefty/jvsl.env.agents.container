@@ -197,6 +197,8 @@ export function limitDefaults(manifest: Record<string, unknown> | null): {
   return {
     memory: typeof limits.memory === 'string' ? limits.memory : '6g',
     memorySwap: typeof limits.memorySwap === 'string' ? limits.memorySwap : '',
-    cpus: limits.cpus === undefined || limits.cpus === null ? '' : String(limits.cpus),
+    // Only a number or a string is a count to offer back; anything else would
+    // read "[object Object]" in the input box (found by the lint, 2026-10-09).
+    cpus: typeof limits.cpus === 'number' || typeof limits.cpus === 'string' ? String(limits.cpus) : '',
   }
 }

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Before a commit: Markdown under 50 KiB (FR-127), then the lint.
+#
+# **A reminder for the author, not a gate.** It is enabled per clone (npm's
+# `prepare` sets core.hooksPath) and skipped with --no-verify; CI's lint job is
+# what stops a merge. Story lint-and-hooks-guard-every-change.
+#
+# **A missing tool refuses, it never skips.** A hook that passes because it
+# could not run its check reports the change clean, which is worse than no hook.
+# HOOKS_ROOT points it at another tree, which is how .githooks/hooks.test.sh
+# drives it.
+set -euo pipefail
+
+ROOT="${HOOKS_ROOT:-$(git rev-parse --show-toplevel)}"
+refuse() { echo "pre-commit: refused: $*" >&2; exit 1; }
+
+[ -d "$ROOT/node_modules" ] \
+    || refuse "node_modules is missing, so the lint cannot run. Run \`npm ci\` in $ROOT, then commit again."
+
+# check-md-size ships in the agent container's image, on its PATH (FR-127). In
+# a window connected to the container the editor's git runs inside it.
+command -v check-md-size >/dev/null 2>&1 \
+    || refuse "check-md-size is not on PATH. It ships in the agent container's image: commit from a window connected to the container, or rebuild its image."
+check-md-size --root "$ROOT" || refuse "check-md-size failed: a Markdown file is over 50 KiB (above)."
+
+npm --prefix "$ROOT" run --silent lint || refuse "lint failed: fix the findings above, each named by file, line and rule."

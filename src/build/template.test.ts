@@ -1,8 +1,5 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 
 import {isAtLeast, parseVersion, carried} from './template.ts'
 

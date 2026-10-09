@@ -4,16 +4,16 @@ import { formatDetected } from './diagnostics.ts'
 import { hostFacts } from './host.ts'
 import { hostProject } from './project.ts'
 
-export async function showDetected(
+export function showDetected(
   context: vscode.ExtensionContext,
   channel: vscode.OutputChannel,
   write: (lines: string[]) => void,
-): Promise<void> {
-  write(await describe(context))
+): void {
+  write(describe(context))
   channel.show(true)
 }
 
-export async function describe(context: vscode.ExtensionContext): Promise<string[]> {
+export function describe(context: vscode.ExtensionContext): string[] {
   const project = hostProject()
   if (project.kind === 'none') return [`no project to describe: ${project.reason}`]
   return [

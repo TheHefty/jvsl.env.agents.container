@@ -173,3 +173,10 @@ test('a project still on the code-server template offers to migrate, above its s
   assert.equal(entry.label, 'Migrate from code-server')
   assert.equal(viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } }).find((r) => r.command === 'jvsl.agentContainer.migrate'), undefined)
 })
+
+test('a limit written as an object shows what it holds, never [object Object]', () => {
+  // Found by the lint (no-base-to-string) on 2026-10-09: String() of an object.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21', limits: { memory: '6g', cpus: { count: 4 } } } })
+  const cpus = rows.find((r) => r.kind === 'limit' && r.label === 'cpus')
+  assert.equal(cpus?.detail, '{"count":4}')
+})

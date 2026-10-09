@@ -72,6 +72,8 @@ test('siblings are sorted by the column, and the second direction reverses them'
   assert.deepEqual(orderedIds(ROWS, 'title', 'desc'), ['o1', 'e1', 's1', 't1', 't2', 's2'])
 })
 
+/* eslint-disable @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call --
+   rebuilding each function from its own source is the claim under test: the page runs it that way. */
 test('the functions are self-contained, so the page can run the same source', () => {
   for (const f of [visibleIds, orderedIds]) {
     const again = new Function(`return (${f.toString()})`)() as typeof f
@@ -80,3 +82,4 @@ test('the functions are self-contained, so the page can run the same source', ()
   const again = new Function(`return (${orderedIds.toString()})`)() as typeof orderedIds
   assert.deepEqual(again(ROWS, 'id', 'asc'), orderedIds(ROWS, 'id', 'asc'))
 })
+/* eslint-enable @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call */

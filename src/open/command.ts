@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { handsOver } from '../build/build.ts'
-import { build, buildInTerminal } from '../build/command.ts'
+import { buildInTerminal } from '../build/command.ts'
 import { projectNames } from '../build/devcontainer.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'

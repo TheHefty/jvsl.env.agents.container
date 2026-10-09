@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Before a push: the typecheck, the unit tests, then the build and the bundle's
+# own tests. The image and integration suites need docker and run in CI.
+#
+# **Each step is its own command, checked on its own**, and a failure names the
+# step: a pipe or a chained `&&` under a missing `set -e` is how a failing step
+# lets a push through. Story lint-and-hooks-guard-every-change; a reminder, with
+# CI as the gate. HOOKS_ROOT points it at another tree for .githooks/hooks.test.sh.
+set -euo pipefail
+
+ROOT="${HOOKS_ROOT:-$(git rev-parse --show-toplevel)}"
+refuse() { echo "pre-push: refused: $*" >&2; exit 1; }
+
+[ -d "$ROOT/node_modules" ] \
+    || refuse "node_modules is missing, so nothing can be checked. Run \`npm ci\` in $ROOT, then push again."
+
+for step in typecheck test test:bundle; do
+    echo "pre-push: npm run $step"
+    npm --prefix "$ROOT" run --silent "$step" || refuse "npm run $step failed (above). Nothing was pushed."
+done

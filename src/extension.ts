@@ -30,6 +30,10 @@ const CHANNEL_NAME = 'Dev Container Projects'
  * anything inside it never fires — in exactly the case a project most needs to
  * be told something.
  */
+// activate() awaits nothing by design (activate-returns-promptly.test.sh holds
+// it to that), and stays async because that guard and commands-register-first
+// read this exact shape.
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const channel = vscode.window.createOutputChannel(CHANNEL_NAME)
   context.subscriptions.push(channel)

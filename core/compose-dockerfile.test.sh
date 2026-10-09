@@ -12,7 +12,6 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE="$HERE/compose-dockerfile.sh"
-VERSIONS="$HERE/versions.json"
 
 failures=0
 check() {
