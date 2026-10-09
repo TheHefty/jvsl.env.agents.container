@@ -52,6 +52,8 @@ Open the Command Palette and run one of:
 | **Agent Container: Build the Image** | Composes and builds the image in a terminal, without reopening the window |
 | **Agent Container: Configure Stacks and Limits** | Changes the project's stacks and resource limits |
 | **Agent Container: Show What Was Detected** | Reports what the extension read about the host and the project |
+| **Agent Container: Show the Work** | Opens the project's tracker as a board, read-only, when the manifest turns the tracker on |
+| **Agent Container: Migrate from code-server** | Moves a project built on the old code-server template to this format, one step per run: the files, then a rebuild, then the planning into the tracker. Each step shows its plan and waits for Apply |
 
 The same entries are available from the **Agent Container** view in the Explorer.
 
@@ -92,14 +94,16 @@ every project.
 | **Work tracker** | [`beads`](https://github.com/steveyegge/beads), enabled per project with `"beads": true` in the manifest |
 | **Working agreements** | The normative documents in [`docs/agent/`](docs/agent/), in English and Portuguese, installed where the agents read them |
 
-Tools downloaded from release pages (`ai-jail`, `ai-memory` and `beads`) are pinned to a version
-and verified against a checksum. The agent CLIs are deliberately unpinned and install their latest
+Tools downloaded from release pages (`ai-jail`, `ai-memory`, `beads` and `shellcheck`) are pinned to
+a version and verified against a checksum. The agent CLIs are deliberately unpinned and install their latest
 release on each build.
 
 ## Security model
 
-- **Nothing from the host's identity crosses into the container.** The SSH agent, the GPG agent,
-  X11, the host's git credential helper and the host's `~/.gitconfig` are never forwarded.
+- **The host's identity stays out of the agents' reach.** The SSH agent, the host's git credential
+  helper and the host's `~/.gitconfig` never reach the container. The editor itself forwards a GPG
+  agent and an X11 socket when it attaches, and no setting disables that; the agents' sandbox keeps
+  both out of the agents' reach, but other processes in the container can see them.
 - **Workspace Trust stays on.** The extension never disables it.
 - **The agents' sandbox can be tightened by a project, never widened.** A project's `.ai-jail` file
   may restrict it further. Anything that grants more is decided in the image.
@@ -113,7 +117,11 @@ npm test             # unit tests
 npm run typecheck    # type checking (the test runner strips types without checking them)
 npm run test:bundle  # builds the bundle and checks what the package contains
 npm run package      # builds the .vsix
+npm run lint         # ESLint with type-aware rules, and shellcheck over every shell script
 ```
+
+`npm ci` enables the git hooks in [`.githooks/`](.githooks/): the pre-commit runs the lint, the
+pre-push the type check, the unit tests and the bundle. CI runs the same lint as a required job.
 
 Shell scripts are tested by a `*.test.sh` beside each one. Every test has a job in
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml), and CI also builds an image for each stack

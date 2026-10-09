@@ -77,9 +77,9 @@ the container's workload, not the container from code somebody chose to run in i
 
 Everything above is in the repository rather than only in this file:
 
-- `src/devcontainer.ts` — what the generated configuration contains, and its tests
-- `src/open.ts` — every refusal, as a pure function over what the host looks like
-- `src/instructions.ts` — the rule that a file this extension did not write is somebody's work
+- `src/build/devcontainer.ts` — what the generated configuration contains, and its tests
+- `src/open/open.ts` — every refusal, as a pure function over what the host looks like
+- `src/configure/instructions.ts` — the rule that a file this extension did not write is somebody's work
 - `core/Dockerfile.frag` — what is installed. **Two of its five third-party fetches verify a
   digest and three do not**, which is a recorded debt rather than an oversight: a tag can be
   repointed and its assets replaced, so an unverified fetch means the image can change under a

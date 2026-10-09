@@ -9,8 +9,8 @@
   connection onward. No state directory the editor creates (`/config/.vscode-server`,
   `/config/.gnupg`) is left owned by another user.
 - **FR-13** — The container is created with the CPU, memory and swap limits the project's
-  `.code-server.stack.json` declares, and with the defaults the launcher used when the manifest is
-  silent.
+  manifest declares — `.code-server.stack.json` when this was written, `.agent-container.stack.json`
+  since FR-110 — and with the defaults the launcher used when the manifest is silent.
 - **FR-14** — The CPU limit is expressed as affinity, not as a quota, so that tooling reading the
   CPU count inside the container observes the limit rather than oversubscribing against it.
 - **FR-15** — A device is passed through only when the host actually has it. A host without

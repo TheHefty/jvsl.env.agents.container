@@ -70,10 +70,10 @@ a test nothing runs reports nothing rather than failing, which is indistinguisha
 
 ## What CI does here, and why it takes seven minutes
 
-Twenty-six jobs: the extension's typecheck, unit, package and integration, plus an image build per
-stack with each stack's own in-image assertions, plus the guards. A change touching only Markdown
-skips the image half and finishes in under a minute — `scripts/changed-scope.sh` decides, and
-`scripts/ci-green.sh` is what lets a skipped job count as green.
+About thirty jobs: the extension's lint, typecheck, unit, package and integration, plus an image
+build per stack with each stack's own in-image assertions, plus the guards. A change touching only
+Markdown skips the image half and finishes in under a minute — `scripts/changed-scope.sh` decides,
+and `scripts/ci-green.sh` is what lets a skipped job count as green.
 
 ## Two things that are easy to get wrong here
 
@@ -81,6 +81,7 @@ skips the image half and finishes in under a minute — `scripts/changed-scope.s
   the same expression in a checkout and in an installed extension only because the names were kept
   rather than moved under a prefix. `src/build/template.test.ts` pins the expression and
   `tools/vsix.test.ts` reads the artifact; neither alone is the claim.
-- **What ships in the `.vsix` is an allowlist, not a blocklist.** A list of exclusions cannot see a
-  directory nobody thought of: merging the image's content in once took the package from 6 files to
+- **What ships in the `.vsix` is held to an allowlist, not only to `.vscodeignore`'s exclusions.**
+  `tools/vsix.test.ts` names every file allowed to ship; a list of exclusions cannot see a directory
+  nobody thought of: merging the image's content in once took the package from 6 files to
   108 with every test passing.
