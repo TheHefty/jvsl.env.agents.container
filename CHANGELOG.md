@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.0.0...v1.1.0) (2026-10-09)
+
+
+### Features
+
+* every release carries its own package, checked against its tag ([a8856ff](https://github.com/TheHefty/jvsl.env.agents.container/commit/a8856ffd9c483814b27ce55c9bffad5e3d38d379))
+* every release carries its own package, checked against its tag ([838f87e](https://github.com/TheHefty/jvsl.env.agents.container/commit/838f87e15cebfe99a7238db6fa0a520db26d73d8))
+
 ## [1.0.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v0.3.0...v1.0.0) (2026-10-09)
 
 
