@@ -2,7 +2,7 @@
   "name": "jvsl-env-agents-container",
   "displayName": "Agent Containers",
   "description": "Builds a project's dev container image and opens it in this editor, carrying the image's content so a project needs nothing else installed.",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "type": "module",
   "license": "MIT",
   "publisher": "thehefty",
