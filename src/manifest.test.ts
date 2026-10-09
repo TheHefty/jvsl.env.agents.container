@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { parseVersion } from './build/template.ts'
 
 /**
  * The manifest is a contract, and three of its fields are the kind that fail
@@ -195,7 +194,7 @@ test('packaging without building what it packages is rejected', () => {
     { prepublish: 'npm run build' },
     { 'vscode:prepublish': 42 },
   ]) {
-    const found = problems({ ...good, scripts: scripts as Record<string, unknown> | undefined })
+    const found = problems({ ...good, scripts: scripts })
     assert.ok(
       found.some((p) => p.includes('vscode:prepublish')),
       JSON.stringify(scripts),

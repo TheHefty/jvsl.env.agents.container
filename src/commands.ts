@@ -1,4 +1,3 @@
-import { run } from './host/docker.ts'
 
 /** The command ids, in one place so a command module never imports the entry point. */
 export const SHOW_DETECTED = 'jvsl.agentContainer.showDetected'

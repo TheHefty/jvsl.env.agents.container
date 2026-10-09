@@ -34,7 +34,7 @@ internals._load = function (this: unknown, request, parent, isMain) {
     }
   }
   return original.call(this, request, parent, isMain)
-} as Loader
+}
 
 test('the bundle loads and exposes the activation entry point', () => {
   const require = createRequire(import.meta.url)
@@ -70,8 +70,8 @@ test('activation registers every contributed command, each under its own id', as
         window: {
           createOutputChannel: () => ({ appendLine() {}, show() {}, dispose() {} }),
           registerTreeDataProvider: () => noop,
-          showWarningMessage: async () => undefined,
-          showInformationMessage: async () => undefined,
+          showWarningMessage: () => Promise.resolve(undefined),
+          showInformationMessage: () => Promise.resolve(undefined),
         },
         workspace: {
           workspaceFolders: undefined,
@@ -84,7 +84,7 @@ test('activation registers every contributed command, each under its own id', as
             registered.add(id)
             return noop
           },
-          executeCommand: async () => undefined,
+          executeCommand: () => Promise.resolve(undefined),
         },
         extensions: { all: [] },
         env: { remoteName: undefined },
@@ -96,12 +96,12 @@ test('activation registers every contributed command, each under its own id', as
       }
     }
     return original.call(this, request, parent, isMain)
-  } as Loader
+  }
 
   const require = createRequire(import.meta.url)
   delete require.cache[BUNDLE]
   const loaded = require(BUNDLE) as { activate: (context: unknown) => Promise<void> }
-  const context = { subscriptions: [], extensionPath: join(import.meta.dirname, '..'), globalState: { get: () => undefined, update: async () => undefined } }
+  const context = { subscriptions: [], extensionPath: join(import.meta.dirname, '..'), globalState: { get: () => undefined, update: () => Promise.resolve(undefined) } }
   await loaded.activate(context)
 
   const manifest = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')) as {

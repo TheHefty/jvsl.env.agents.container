@@ -32,9 +32,9 @@ test('the id it names is never this extension itself', () => {
   // tell somebody to uninstall the thing showing it — authoritative and
   // actively harmful. Asserted against the manifest rather than against the
   // literal above, so the two cannot drift.
-  const pkg: { name?: unknown; publisher?: unknown } = JSON.parse(
+  const pkg = JSON.parse(
     readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
-  )
+  ) as { name?: unknown; publisher?: unknown }
   const own = `${String(pkg.publisher)}.${String(pkg.name)}`
   assert.equal(own, CURRENT)
   assert.notEqual(SUPERSEDED_EXTENSION, own)

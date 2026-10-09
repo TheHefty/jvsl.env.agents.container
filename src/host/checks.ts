@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 
 import { detectManager, type SandboxConditions, type DockerState, type HostChecks } from '../build/build.ts'
-import { build } from '../build/command.ts'
 import { run, dockerBounded } from './docker.ts'
 
 /**

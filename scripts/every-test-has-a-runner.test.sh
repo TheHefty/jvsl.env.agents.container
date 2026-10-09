@@ -90,7 +90,8 @@ orphans=()
 for t in "${tests[@]}"; do
     covered=no
     for p in "${patterns[@]}"; do
-        # shellcheck disable=SC2254 -- $p is a glob on purpose.
+        # $p is a glob on purpose.
+        # shellcheck disable=SC2254
         case "$t" in $p) covered=yes; break ;; esac
     done
     [ "$covered" = no ] && orphans+=("$t")

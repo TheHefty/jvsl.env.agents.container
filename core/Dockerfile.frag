@@ -126,7 +126,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     file \
     libssl-dev \
     procps \
+    shellcheck \
     && rm -rf /var/lib/apt/lists/*
+
+# shellcheck, above, is the shell half of the lint this repository and its
+# projects run before a commit (story lint-and-hooks-guard-every-change): the
+# hook refuses rather than skipping when it is absent, and the repository is
+# developed inside this image. From Debian's archive, so the version is the
+# distribution's.
 
 # 1.0.1 The libraries a browser a project downloads loads (issue #154).
 #

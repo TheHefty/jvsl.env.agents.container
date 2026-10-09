@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { carried } from '../build/template.ts'
-import { configure, ask, askAnswers } from '../configure/command.ts'
+import { askAnswers } from '../configure/command.ts'
 import { stacksAvailable } from '../configure/questions.ts'
 import { decideCreate, type Applied } from './create.ts'
 import { checkLocation } from './location.ts'

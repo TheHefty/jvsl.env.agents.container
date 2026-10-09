@@ -56,7 +56,13 @@ npm test             # unit tests, TypeScript run directly, no build
 npm run typecheck    # the only thing that verifies the types — node --test strips them
 npm run test:bundle  # builds, then loads the bundle and checks what ships
 npm run package      # the .vsix
+npm run lint         # ESLint (type-aware) and shellcheck: for defects, not style
 ```
+
+**The git hooks are in `.githooks/`**, enabled by `npm ci` (its `prepare` sets
+`core.hooksPath`): the pre-commit runs check-md-size and the lint, the pre-push the typecheck, the
+unit tests and the bundle. A missing tool refuses rather than skipping. They are a reminder; CI's
+`lint` job is the gate.
 
 Shell tests are `*.test.sh` beside what they exercise, each with a job in
 `.github/workflows/ci.yml`. **`scripts/every-test-has-a-runner.test.sh` fails if one has no job** —

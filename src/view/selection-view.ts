@@ -1,6 +1,5 @@
 import * as vscode from 'vscode'
 
-import { build } from '../build/command.ts'
 import { carried } from '../build/template.ts'
 import { CONFIGURE } from '../commands.ts'
 import { stacksAvailable } from '../configure/questions.ts'

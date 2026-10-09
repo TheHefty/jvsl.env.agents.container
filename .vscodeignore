@@ -90,6 +90,10 @@ dist/**/*.map
 .vscodeignore
 release-please-config.json
 tsconfig.json
+# The repository's own discipline: lint config and git hooks (story
+# lint-and-hooks-guard-every-change). Nothing the extension runs.
+eslint.config.mjs
+.githooks/**
 package-lock.json
 CLAUDE.md
 *.vsix

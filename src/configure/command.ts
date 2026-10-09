@@ -7,9 +7,6 @@ import { carried } from '../build/template.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
-import { create } from '../create/command.ts'
-import { scaffoldPlan } from '../create/scaffold.ts'
-import { run } from '../host/docker.ts'
 import { hostProject } from '../host/project.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
@@ -220,7 +217,7 @@ export async function askAnswers(
 
   const stacks: Record<string, string> = {}
   for (const stack of picked) {
-    const recorded = typeof current[stack] === 'string' ? (current[stack] as string) : undefined
+    const recorded = typeof current[stack] === 'string' ? (current[stack]) : undefined
     const version = await vscode.window.showQuickPick(
       orderedVersions(versionsOf(stacksDir, stack), recorded),
       { title: `Which version of ${stack}?` },

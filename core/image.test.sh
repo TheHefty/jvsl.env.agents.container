@@ -201,6 +201,15 @@ done
 loads: ${missing[*]}. A project's browser suite would fail on every spec before a step runs; \
 core/Dockerfile.frag installs them (issue #154)"
 
+# **shellcheck runs**: the pre-commit's shell lint refuses without it, and this
+# repository is developed inside this image (story
+# lint-and-hooks-guard-every-change).
+sc="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'shellcheck --version 2>&1' || true)"
+case "$sc" in
+    *"version:"*) ;;
+    *) fail "shellcheck does not run in $IMAGE: '$sc'. core/Dockerfile.frag installs it from Debian's archive" ;;
+esac
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships

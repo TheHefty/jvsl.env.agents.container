@@ -22,7 +22,7 @@ trap 'rm -rf "$tmp"' EXIT
 # A source with the documents, and a mounts file that claims the target is one.
 setup() {
     local n="$1"
-    rm -rf "$tmp/$n"
+    rm -rf "${tmp:?}/${n:?}"
     mkdir -p "$tmp/$n/src" "$tmp/$n/target"
     printf '# modes\n' > "$tmp/$n/src/MODES.md"
     printf '# rules\n' > "$tmp/$n/src/RULES.md"

@@ -36,7 +36,7 @@ export async function startup(
     write([`older copy: could not be checked: ${String(error)}`])
   }
 
-  write(await describe(context))
+  write(describe(context))
 
   // **Activation runs in every window on this host**, because the panel has to
   // exist before anybody asks for it. What keeps the cost the SRS accepted is
@@ -59,7 +59,7 @@ export async function startup(
   // **Before `prepare`, and that is the whole of "resolved once".** Adoption
   // renames the file, so every read after this point finds one name on disk.
   const project = hostProject()
-  if (project.kind === 'host') await adoptManifest(project.path, write)
+  if (project.kind === 'host') adoptManifest(project.path, write)
 
   await prepare(context, channel, write, { handOver: false })
 }
@@ -76,7 +76,7 @@ export async function startup(
  * The decision itself is `resolveManifest`, which is pure and tested without a
  * filesystem. Everything dangerous is here.
  */
-export async function adoptManifest(root: string, write: (lines: string[]) => void): Promise<void> {
+export function adoptManifest(root: string, write: (lines: string[]) => void): void {
   const currentPath = join(root, MANIFEST)
   const legacyPath = join(root, LEGACY_MANIFEST)
   const resolution = resolveManifest({
