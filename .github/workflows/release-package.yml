@@ -1,0 +1,45 @@
+name: release-package
+
+# Every release carries its own .vsix (story
+# the-release-workflow-attaches-the-package). v1.0.0 was cut with none, and the
+# first manual attach picked up another run's 0.3.0 artifact.
+#
+# **Its own workflow, on `release: published`**, rather than a step behind
+# release-please's `release_created` output: with a manifest config that
+# output's name depends on the package path, and a condition that never comes
+# true skips the step and stays green. Releases are created by
+# RELEASE_PLEASE_TOKEN, a PAT, so this event fires; one created with the
+# GITHUB_TOKEN would not trigger it.
+#
+# **Built from the tag, not downloaded from CI**: CI for the release commit can
+# still be running when the release is published, which is the race the manual
+# attach lost. The same checks CI's package job runs come first.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: the bundle loads, and only the bundle ships
+        run: npm run test:bundle && node --test 'tools/vsix.test.ts'
+      - name: it packages
+        run: npm run package
+      - name: attach it, checked against the tag and read back
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/attach-release-package.sh "${{ github.event.release.tag_name }}"
