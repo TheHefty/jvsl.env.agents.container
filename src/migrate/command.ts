@@ -167,7 +167,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
   const terminal = vscode.window.createTerminal({
     name: 'Migrate the planning',
     pty: hostProcessTerminal('docker',
-      ['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId, 'migrate-planning']),
+      ['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId, 'migrate-planning', '--apply']),
   })
   terminal.show()
 }
