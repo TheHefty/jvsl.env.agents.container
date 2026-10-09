@@ -282,13 +282,42 @@ export function place(rows, existing) {
   return { placed, unplaced, recognised: recognised.filter((r) => placed.get(r.row.key)?.id === r.id) }
 }
 
+const USAGE = `usage: migrate-planning [--plan | --apply | --help]
+  (no argument)  show the plan; nothing is written
+  --plan         the same
+  --apply        migrate: create the items, close them, and remove docs/PLANNING and docs/DEBTS
+  --help         this text`
+
+/**
+ * **The migration runs only when asked for by name** (debt
+ * migrate-planning-runs-for-any-argument). This read `--plan` and ignored
+ * everything else, so its default was to act: in kotodori an agent ran
+ * `migrate-planning --help` to read the usage, and it created 289 items and
+ * deleted both folders with nobody's approval. So no argument plans, `--apply`
+ * is the only way to write, and an argument this does not know refuses before
+ * anything is read.
+ */
 export function main(argv, root = process.cwd()) {
+  const known = new Set(['--plan', '--apply', '--help'])
+  const unknown = argv.find((a) => !known.has(a))
+  if (unknown !== undefined) {
+    console.error(`migrate-planning: unknown argument: ${unknown}. Nothing was written.\n${USAGE}`)
+    return 2
+  }
+  if (argv.includes('--help')) {
+    console.log(USAGE)
+    return 0
+  }
+  if (argv.includes('--apply') && argv.includes('--plan')) {
+    console.error(`migrate-planning: --apply and --plan contradict each other. Nothing was written.\n${USAGE}`)
+    return 2
+  }
   const { rows, listed } = plan(root)
   if (rows.length === 0) {
     console.log('migrate-planning: nothing to migrate: no docs/PLANNING or docs/DEBTS here.')
     return 0
   }
-  const dry = argv.includes('--plan')
+  const dry = !argv.includes('--apply')
   trackerConfig(root)
 
   // **A refusal is decided before anything is printed, and printed first**
@@ -344,7 +373,10 @@ export function main(argv, root = process.cwd()) {
   if (existing.length > 0) {
     console.log(`migrate-planning: ${existing.length} already in the tracker from an earlier run; ${rows.length - placed.size} to create.`)
   }
-  if (dry) return 0
+  if (dry) {
+    console.log('\nmigrate-planning: this was the plan; nothing was written. Run it with --apply to migrate.')
+    return 0
+  }
 
   if (recognised.length > 0) {
     console.log(`migrate-planning: recognised ${recognised.length} item(s) an earlier run left without a mark, and marked them:`)

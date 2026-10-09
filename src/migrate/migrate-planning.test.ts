@@ -135,11 +135,21 @@ function project(): string {
   return root
 }
 
+/** A real run is asked for with --apply; with no arguments the script only plans. */
 function migrate(root: string, ...args: string[]): { code: number; out: string } {
-  return migrateWith({}, root, ...args)
+  return migrateWith({}, root, ...(args.length === 0 ? ['--apply'] : args))
 }
 
-function migrateWith(env: Record<string, string>, root: string, ...args: string[]): { code: number; out: string } {
+/** Exactly the arguments given, nothing added: what a person or an agent types. */
+function raw(root: string, ...args: string[]): { code: number; out: string } {
+  return exec({}, root, args)
+}
+
+function migrateWith(env: Record<string, string>, root: string, ...given: string[]): { code: number; out: string } {
+  return exec(env, root, given.length === 0 ? ['--apply'] : given)
+}
+
+function exec(env: Record<string, string>, root: string, args: string[]): { code: number; out: string } {
   rmSync(join(root, '.fake-bd/creates'), { force: true })
   try {
     const out = execFileSync('node', [SCRIPT, ...args], {
@@ -469,4 +479,43 @@ test('a plan for an item the tracker cannot place says so first too', () => {
   writeFileSync(join(root, '.fake-bd/db.json'), JSON.stringify(db))
   const r = migrate(root, '--plan')
   assert.match(r.out.split('\n').find((l) => l.trim() !== '') ?? '', /^migrate-planning: REFUSES:/)
+})
+
+// --- the migration runs only when asked (debt migrate-planning-runs-for-any-argument)
+
+const untouched = (root: string) => {
+  assert.ok(!existsSync(join(root, '.fake-bd/db.json')), 'no item was created')
+  assert.ok(existsSync(join(root, 'docs/PLANNING')) && existsSync(join(root, 'docs/DEBTS')), 'both folders are still there')
+}
+
+test('--help prints the usage and writes nothing (it ran the whole migration in kotodori)', () => {
+  const root = project()
+  const r = raw(root, '--help')
+  assert.equal(r.code, 0, r.out)
+  assert.match(r.out, /usage: migrate-planning/i)
+  assert.match(r.out, /--apply/)
+  untouched(root)
+})
+
+test('an argument it does not know refuses before anything', () => {
+  const root = project()
+  const r = raw(root, '--dry-run')
+  assert.notEqual(r.code, 0)
+  assert.match(r.out, /unknown argument: --dry-run/)
+  untouched(root)
+})
+
+test('no arguments shows the plan and writes nothing', () => {
+  const root = project()
+  const r = raw(root)
+  assert.equal(r.code, 0, r.out)
+  assert.match(r.out, /item\(s\):/)
+  assert.match(r.out, /--apply/, 'and says how to run it for real')
+  untouched(root)
+})
+
+test('--apply and --plan together is a contradiction, refused', () => {
+  const root = project()
+  assert.notEqual(raw(root, '--apply', '--plan').code, 0)
+  untouched(root)
 })
