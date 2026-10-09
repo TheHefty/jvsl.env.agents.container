@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck over every shell script this repository tracks.
+# Every shell script this repository tracks, through shellcheck.
 #
 # **Listed through git, never through a shell glob**, because a glob stops at
 # the first folder and a script with no extension matches no `*.sh`: both would
@@ -38,10 +38,21 @@ fi
 
 SHELLCHECK="${SHELLCHECK:-shellcheck}"
 if ! command -v "$SHELLCHECK" >/dev/null 2>&1; then
-    echo "lint-shell: shellcheck is not installed, so ${#files[@]} shell scripts would go unread. It ships in the" >&2
-    echo "lint-shell: agent container's image (rebuild it), or install it: apt-get install shellcheck." >&2
+    echo "lint-shell: shellcheck is not installed, so ${#files[@]} shell scripts would go unread. The agent" >&2
+    echo "lint-shell: container's image installs the version core/shellcheck.pin names: rebuild it." >&2
     exit 1
 fi
 
-echo "lint-shell: $("$SHELLCHECK" --version | sed -n 's/^version: //p'), ${#files[@]} scripts, --severity=warning"
+# **One version, the pinned one** (core/shellcheck.pin). The runner had 0.9.0,
+# the image would have had Debian's and a developer whatever they downloaded,
+# and two versions disagree about what is a finding: a hook passes what CI
+# refuses. Decided 2026-10-09: the image and CI both install the pin.
+pinned="$(cut -d' ' -f1 core/shellcheck.pin)"
+version="$("$SHELLCHECK" --version | sed -n 's/^version: //p')"
+if [ "$version" != "$pinned" ]; then
+    echo "lint-shell: expects shellcheck $pinned (core/shellcheck.pin), got $version at $(command -v "$SHELLCHECK")." >&2
+    echo "lint-shell: the agent container's image installs the pinned one: rebuild it." >&2
+    exit 1
+fi
+echo "lint-shell: shellcheck $version, ${#files[@]} scripts, --severity=warning"
 exec "$SHELLCHECK" --severity=warning --external-sources "${files[@]}"

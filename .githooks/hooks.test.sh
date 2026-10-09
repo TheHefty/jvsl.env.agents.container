@@ -104,6 +104,21 @@ set -e
 check "lint-shell: without shellcheck, fails rather than reporting clean" "$rc" "1"
 check "lint-shell: and says what is missing and how to get it" "$(grep -c 'shellcheck is not installed' "$work/out" || true)" "1"
 
+# A shellcheck of another version: the hook and CI would disagree about what is
+# a finding, so the lint refuses it and names the version it expects.
+pinned="$(cut -d' ' -f1 "$REPO/core/shellcheck.pin")"
+cat > "$work/bin/old-shellcheck" <<'SH'
+#!/usr/bin/env bash
+[ "${1:-}" = "--version" ] && { printf 'ShellCheck - shell script analysis tool\nversion: 0.9.0\n'; exit 0; }
+exit 0
+SH
+chmod +x "$work/bin/old-shellcheck"
+set +e
+SHELLCHECK="$work/bin/old-shellcheck" bash "$REPO/scripts/lint-shell.sh" > "$work/out" 2>&1; rc=$?
+set -e
+check "lint-shell: another shellcheck version refuses" "$rc" "1"
+check "lint-shell: and names the pinned one it expects" "$(grep -c "expects shellcheck $pinned.*got 0.9.0" "$work/out" || true)" "1"
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "hooks.test: all checks passed."

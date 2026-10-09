@@ -520,8 +520,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: the runner's shellcheck, named
-        run: shellcheck --version
+      - name: shellcheck, the pinned version (core/shellcheck.pin), not the runner's
+        run: |
+          read -r version sha < core/shellcheck.pin
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/sc.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
+          echo "${sha}  /tmp/sc.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/sc.tar.xz -C /tmp
+          echo "SHELLCHECK=/tmp/shellcheck-v${version}/shellcheck" >> "$GITHUB_ENV"
+          "/tmp/shellcheck-v${version}/shellcheck" --version
       - run: npm run lint
       - name: both linters read every file they are meant to
         run: bash scripts/lint-covers-everything.test.sh

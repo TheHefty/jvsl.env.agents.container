@@ -206,8 +206,8 @@ core/Dockerfile.frag installs them (issue #154)"
 # lint-and-hooks-guard-every-change).
 sc="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'shellcheck --version 2>&1' || true)"
 case "$sc" in
-    *"version:"*) ;;
-    *) fail "shellcheck does not run in $IMAGE: '$sc'. core/Dockerfile.frag installs it from Debian's archive" ;;
+    *"version: $(cut -d' ' -f1 "$(dirname "${BASH_SOURCE[0]}")/shellcheck.pin")"*) ;;
+    *) fail "shellcheck does not run in $IMAGE: '$sc'. core/Dockerfile.frag installs the version core/shellcheck.pin names" ;;
 esac
 
 # **ps runs, because Codex cannot start without it.** Codex records its
