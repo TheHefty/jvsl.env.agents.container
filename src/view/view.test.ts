@@ -144,7 +144,7 @@ test('a project with a tracker offers to show the work', () => {
   // FR-118: the board opens from where the project already is. Only a project
   // that asked for a tracker has one to show.
   const withTracker = viewItems({ stacksAvailable: ['java'], manifest: { java: '21', beads: true } })
-  const entry = withTracker.find((r) => r.kind === 'entry')
+  const entry = withTracker.find((r) => r.kind === 'entry' && r.command === 'jvsl.agentContainer.showWork')
   assert.ok(entry, JSON.stringify(withTracker))
   assert.equal(entry.command, 'jvsl.agentContainer.showWork')
   const without = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
@@ -179,4 +179,18 @@ test('a limit written as an object shows what it holds, never [object Object]', 
   const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21', limits: { memory: '6g', cpus: { count: 4 } } } })
   const cpus = rows.find((r) => r.kind === 'limit' && r.label === 'cpus')
   assert.equal(cpus?.detail, '{"count":4}')
+})
+
+test('a configured project offers to open it in its container (story opening-a-folder-writes-nothing)', () => {
+  // Opening the folder writes nothing any more, so the panel is where a project
+  // opened with `code <folder>` finds the way in.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
+  const open = rows.find((r) => r.kind === 'entry' && r.command === 'jvsl.agentContainer.prepare')
+  assert.ok(open, JSON.stringify(rows))
+  assert.match(open.label, /open in container/i)
+})
+
+test('a folder with no manifest offers no such entry: it has nothing to open yet', () => {
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: null })
+  assert.ok(!rows.some((r) => r.kind === 'entry' && r.command === 'jvsl.agentContainer.prepare'))
 })

@@ -29,10 +29,11 @@ test('with a folder open, a new window is used', () => {
   assert.equal(d.newWindow, true)
 })
 
-test('choosing the folder this window already has does nothing', () => {
+test('choosing the folder this window already has prepares it here (story opening-a-folder-writes-nothing)', () => {
+  // Opening a folder no longer prepares it, so Open on the folder already open
+  // is the way into its container, rather than a refusal.
   const d = decidePick({ ...base, chosen: '/work/a-project', currentFolder: '/work/a-project' })
-  assert.equal(d.action, 'nothing')
-  assert.match(d.because ?? '', /already open/i)
+  assert.equal(d.action, 'prepare')
 })
 
 test('a trailing slash is the same folder', () => {
@@ -40,7 +41,7 @@ test('a trailing slash is the same folder', () => {
   // comparison has to normalise, or re-choosing the open folder opens a second
   // window onto it.
   const d = decidePick({ ...base, chosen: '/work/a-project/', currentFolder: '/work/a-project' })
-  assert.equal(d.action, 'nothing')
+  assert.equal(d.action, 'prepare')
 })
 
 test('a folder with no manifest is asked about rather than refused', () => {

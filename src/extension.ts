@@ -9,6 +9,7 @@ import { showDetected } from './host/detected.ts'
 import { dockerBounded } from './host/docker.ts'
 import { migrate } from './migrate/command.ts'
 import { prepare } from './open/command.ts'
+import { HANDOVER_KEY } from './open/handover.ts'
 import { startup, watchManifest } from './open/startup.ts'
 import { SelectionView } from './view/selection-view.ts'
 
@@ -52,13 +53,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // For whoever dismissed the tooling's notification, or wants it again
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
-    vscode.commands.registerCommand(CREATE, () => create(write, context.extensionPath)),
-    vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath)),
+    vscode.commands.registerCommand(CREATE, () => create(write, context.extensionPath, handOver)),
+    vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath, handOver)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath)),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
     vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerBounded, write)),
     vscode.commands.registerCommand(MIGRATE, () => migrate(write, () => channel.show(true))),
   )
+
+  // Open and Create name the folder they are about to open, so that the window
+  // it opens in prepares it; activation alone writes nothing (story
+  // opening-a-folder-writes-nothing). Defined after the registrations, which
+  // the guard commands-register-first holds to: the commands only call it once
+  // run, and none runs before activate() returns.
+  const handOver = (folder: string): Thenable<void> =>
+    context.globalState.update(HANDOVER_KEY, { folder, at: Date.now() })
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW, view),

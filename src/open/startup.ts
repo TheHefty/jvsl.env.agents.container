@@ -7,6 +7,7 @@ import { hostChecks, sandboxConditions } from '../host/checks.ts'
 import { describe } from '../host/detected.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { prepare } from './command.ts'
+import { HANDOVER_KEY, startupAction } from './handover.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
@@ -58,10 +59,21 @@ export async function startup(
 
   // **Before `prepare`, and that is the whole of "resolved once".** Adoption
   // renames the file, so every read after this point finds one name on disk.
+  // **Activation writes nothing unless Open or Create asked** (story
+  // opening-a-folder-writes-nothing). `code <folder>` used to rename an old
+  // manifest and write .devcontainer, CLAUDE.md and AGENTS.md here. The record
+  // is consumed whatever it says, so a stale one cannot act later.
   const project = hostProject()
+  const handedOver = context.globalState.get(HANDOVER_KEY)
+  if (handedOver !== undefined) await context.globalState.update(HANDOVER_KEY, undefined)
+  const folder = project.kind === 'host' ? project.path : undefined
+  if (startupAction(handedOver, folder, Date.now()) !== 'prepare') {
+    write(['open flow: nothing written: this folder was opened, not asked to be prepared. Open in container, from the panel, prepares it.'])
+    return
+  }
   if (project.kind === 'host') adoptManifest(project.path, write)
 
-  await prepare(context, channel, write, { handOver: false })
+  await prepare(context, channel, write, { handOver: true })
 }
 
 /**

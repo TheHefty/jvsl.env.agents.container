@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import Module from 'node:module'
 import { join } from 'node:path'
 
@@ -109,4 +110,80 @@ test('activation registers every contributed command, each under its own id', as
   }
   const missing = manifest.contributes.commands.map((c) => c.command).filter((id) => !registered.has(id))
   assert.deepEqual(missing, [], 'contributed in package.json but never registered by activate()')
+})
+
+// --- opening a folder writes nothing (story opening-a-folder-writes-nothing) --
+//
+// `code <folder>` activated the extension on workspaceContains, and startup()
+// renamed an old manifest and wrote .devcontainer, CLAUDE.md and AGENTS.md.
+// Driven at the level it was found: the built bundle, activated in a window
+// whose folder is a real project on disk.
+
+function stubEditor(folder: string, handedOver: unknown, updates: unknown[]) {
+  const noop = { dispose() {} }
+  internals._load = function (this: unknown, request, parent, isMain) {
+    if (request === 'vscode') {
+      return {
+        window: {
+          createOutputChannel: () => ({ appendLine() {}, show() {}, dispose() {} }),
+          registerTreeDataProvider: () => noop,
+          showWarningMessage: () => Promise.resolve(undefined),
+          showInformationMessage: () => Promise.resolve(undefined),
+          showErrorMessage: () => Promise.resolve(undefined),
+        },
+        workspace: {
+          workspaceFolders: [{ uri: { fsPath: folder, authority: '' } }],
+          createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
+          getConfiguration: () => ({ get: () => undefined }),
+        },
+        commands: {
+          registerCommand: () => noop,
+          executeCommand: () => Promise.resolve(undefined),
+          getCommands: () => Promise.resolve([]),
+        },
+        extensions: { all: [] },
+        env: { remoteName: undefined },
+        EventEmitter: class { event = () => noop; fire() {} dispose() {} },
+        TreeItem: class {},
+        ThemeIcon: class {},
+        TreeItemCollapsibleState: { None: 0 },
+        Uri: { file: (p: string) => ({ fsPath: p }) },
+      }
+    }
+    return original.call(this, request, parent, isMain)
+  }
+  const require = createRequire(import.meta.url)
+  delete require.cache[BUNDLE]
+  const loaded = require(BUNDLE) as { activate: (context: unknown) => Promise<void> }
+  const context = {
+    subscriptions: [],
+    extensionPath: join(import.meta.dirname, '..'),
+    globalState: { get: () => handedOver, update: (_k: string, v: unknown) => { updates.push(v); return Promise.resolve(undefined) } },
+  }
+  return loaded.activate(context)
+}
+
+const settle = () => new Promise((r) => setTimeout(r, 1500))
+
+function legacyProject(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'opened-folder-'))
+  writeFileSync(join(dir, '.code-server.stack.json'), '{"node":"22"}\n')
+  return dir
+}
+
+test('opening a project folder writes nothing to it', async () => {
+  const dir = legacyProject()
+  const before = readdirSync(dir).sort()
+  await stubEditor(dir, undefined, [])
+  await settle()
+  assert.deepEqual(readdirSync(dir).sort(), before, 'no file written, renamed or removed by activation alone')
+})
+
+test('a folder Open or Create handed over is prepared, and the handover is consumed', async () => {
+  const dir = legacyProject()
+  const updates: unknown[] = []
+  await stubEditor(dir, { folder: dir, at: Date.now() }, updates)
+  await settle()
+  assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'prepared: the old manifest was adopted')
+  assert.ok(updates.includes(undefined), 'the handover was consumed')
 })
