@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.0...v1.3.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* the installed rules link where the documents they name are ([2e1b4a9](https://github.com/TheHefty/jvsl.env.agents.container/commit/2e1b4a93a0e20b8e566d3c2c486a36a5d364e374))
+* the installed rules link where the documents they name are ([adfbb60](https://github.com/TheHefty/jvsl.env.agents.container/commit/adfbb60f6f6100280499696bf85a55d855b66c72))
+
 ## [1.3.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.2.0...v1.3.0) (2026-10-15)
 
 
