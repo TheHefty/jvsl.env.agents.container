@@ -207,3 +207,11 @@ test('a cpus written as an object is not offered back as a default (it would rea
   assert.equal(limitDefaults({ limits: { cpus: { count: 4 } } }).cpus, '')
   assert.equal(limitDefaults({ limits: { cpus: 4 } }).cpus, '4')
 })
+
+test('configuring stacks and limits keeps the project\'s packages exactly as they were', () => {
+  // Story the-manifest-lists-packages-and-the-build-installs-them: a rewrite
+  // that dropped the list would let the next rebuild silently lose SDL2.
+  const current = { node: '20', limits: { memory: '4g' }, packages: ['libsdl2-dev', 'tree'] }
+  const next = nextManifest(current, answers, ['java', 'node', 'rust'])
+  assert.deepEqual(next.packages, ['libsdl2-dev', 'tree'])
+})

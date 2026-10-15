@@ -365,8 +365,13 @@ jobs:
         # this ran until core gained {{NAME_VERSION}} placeholders of its own.
         # Building the raw fragment now fails on the literal `{{CODEX_VERSION}}`
         # — and would have, silently, for anyone who copied this line.
+        #
+        # Composed from a manifest that lists one package core does not install,
+        # so the image test can prove a project's "packages" reach the image
+        # (story the-manifest-lists-packages-and-the-build-installs-them).
         run: |
-          core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
+          printf '{"packages":["tree"]}\n' > "$RUNNER_TEMP/manifest.json"
+          STACK_MANIFEST="$RUNNER_TEMP/manifest.json" core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
           docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
 
       # A successful build proves the RUN steps ran. It does not prove the
@@ -377,6 +382,8 @@ jobs:
       # Unlike the per-stack tests this runs on the runner rather than inside
       # the image, because a container cannot read its own image's labels.
       - name: image checks for core
+        env:
+          CORE_TEST_PACKAGES: tree
         run: bash core/image.test.sh core-ci
 
   core-booted:

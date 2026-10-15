@@ -223,3 +223,11 @@ test('applying an untrack takes the devcontainer out of the index and leaves it 
   assert.equal(g('status', '--porcelain', '--', '.devcontainer').trim().startsWith('D'), true, 'staged as removed from the index')
   assert.match(readFileSync(join(root, '.gitignore'), 'utf8'), /^\.devcontainer\/$/m)
 })
+
+test('the migration keeps a project\'s packages when it rewrites the manifest', () => {
+  // Story the-manifest-lists-packages-and-the-build-installs-them.
+  const p = planFileMigration(project({ legacyManifest: '{"cpp":"14","packages":["libsdl2-dev"]}\n' }))
+  const w = op(p, '.agent-container.stack.json')
+  assert.ok(w && w.kind === 'write')
+  assert.deepEqual((JSON.parse(w.content) as { packages?: unknown }).packages, ['libsdl2-dev'])
+})

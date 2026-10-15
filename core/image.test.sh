@@ -233,6 +233,16 @@ for probe in 'docker --version' 'docker compose version' 'docker buildx version'
         || fail "\`$probe\` does not run in $IMAGE. core/Dockerfile.frag installs docker-cli, docker-compose, docker-buildx and bind9-dnsutils by name (issue #169)"
 done
 
+# **A project's packages are installed** (story
+# the-manifest-lists-packages-and-the-build-installs-them). CORE_TEST_PACKAGES
+# names what the manifest this image was composed from listed; CI composes
+# core-ci with one, so the image proves the list reaches it, not only the
+# Dockerfile. dpkg -s, because a binary on PATH could come from elsewhere.
+for pkg in ${CORE_TEST_PACKAGES:-}; do
+    docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c "dpkg -s '$pkg' >/dev/null 2>&1" \
+        || fail "the manifest listed $pkg and $IMAGE does not have it installed. core/compose-dockerfile.sh turns \"packages\" into an install step"
+done
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships
