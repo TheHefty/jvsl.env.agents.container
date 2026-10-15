@@ -4,10 +4,11 @@ Ground rules for a monorepo built on this template. They are short on purpose: e
 because breaking it has already cost something, and the reason is given so you can tell when a rule
 stops applying.
 
-**This is the inherited half, and a project does not edit it.** It ships from the template and
-arrives with a submodule bump, which is what stops a rule changed here from reaching only the
-projects somebody remembered. A project's own rules go in its `docs/RULES.md`, below the line that
-imports this file — everything under that line is the project's, everything above it is not.
+**This is the inherited half, and a project does not edit it.** It ships with the agent container's
+image and arrives at `~/.claude/rules` on every boot, which is what stops a rule changed here from
+reaching only the projects somebody remembered. A project's own rules go in its `docs/RULES.md`,
+which holds those and nothing inherited: the two are separate files, so neither can be mistaken for
+the other.
 
 Paths outside this folder are written as code rather than as links. This file is read from two
 repositories — the template, where there is no consuming repo above it, and a project, where there

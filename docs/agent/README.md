@@ -8,18 +8,14 @@ again.
 
 ## How a project reaches them
 
-A project's `CLAUDE.md` imports what has to be resident in every session, and links the rest:
+They ship with the agent container's image, under `/opt/jvsl/docs/agent/<language>/`, and a boot
+hook installs the two that govern every turn — `MODES.md` and `RULES.md` — at `~/.claude/rules`,
+where they load with no import. A project carries no copy of them and no line importing them.
 
-```markdown
-@.code-server/docs/agent/en/MODES.md
-@docs/RULES.md
-```
-
-`docs/RULES.md` in the project is one import line followed by the project's own rules — the
-inherited rules arrive through it rather than beside it, so a reader has one file to open and the
-line is the boundary between what the template owns and what the project does.
-
-While initialization is unfinished, `CLAUDE.md` also imports `INITIALIZATION.md`. Ending
+What a project does carry is its own rules, in `docs/RULES.md`, written by the agent at
+initialization beside the charter and the SRS. Its `CLAUDE.md` imports that file, which is inside
+the project and so not an external import, and names the image's folder for everything read on
+demand. While initialization is unfinished, `CLAUDE.md` also points at `INITIALIZATION.md`; ending
 initialization is removing that one line.
 
 **An import is resident and a link is not.** Everything reached by `@path` is loaded into every
