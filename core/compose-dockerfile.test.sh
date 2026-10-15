@@ -126,17 +126,36 @@ check "every stack declares something" "$declared_count" "$stack_count"
 # muhammad-sammy.csharp is a fork that exists on Open VSX because the
 # first-party extension is licensed for Microsoft's own build of the editor —
 # which is the build this epic committed to.
-dotnet_label="$(label_of dotnet)"
-check "the .NET stack declares the vendor's extension" \
-    "$({ printf '%s' "$dotnet_label" | grep -c -F 'ms-dotnettools.csharp' || true; })" "1"
-check "and not the fork the code-server list installs" \
-    "$({ printf '%s' "$dotnet_label" | grep -c -F 'muhammad-sammy.csharp' || true; })" "0"
+#
+# **Microsoft's own extensions where Microsoft publishes one**, decided by the
+# operator on 2026-10-14: the editor is Microsoft's build, so its official
+# extensions are the ones to declare. The C/C++ pack replaces clangd, the Java
+# pack (which brings redhat.java with it) replaces redhat.java alone, and the C#
+# Dev Kit (which brings ms-dotnettools.csharp) replaces the bare C# extension.
+vendor() {
+    local stack="$1" want="$2" gone="$3" label
+    label="$(label_of "$stack")"
+    check "the $stack stack declares Microsoft's $want" \
+        "$({ printf '%s' "$label" | jq -r '[.[].customizations.vscode.extensions[]?] | index("'"$want"'") != null'; })" "true"
+    check "and no longer $gone" \
+        "$({ printf '%s' "$label" | jq -r '[.[].customizations.vscode.extensions[]?] | index("'"$gone"'") == null'; })" "true"
+}
+vendor cpp ms-vscode.cpptools-extension-pack llvm-vs-code-extensions.vscode-clangd
+# CMake Tools comes inside the C/C++ pack today; declared by name as well, so the
+# stack does not depend on what Microsoft keeps in the pack.
+check "the cpp stack declares CMake Tools by name" \
+    "$(label_of cpp | jq -r '[.[].customizations.vscode.extensions[]?] | index("ms-vscode.cmake-tools") != null')" "true"
+vendor java vscjava.vscode-java-pack redhat.java
+vendor dotnet ms-dotnettools.csdevkit ms-dotnettools.csharp
+check "and never the fork the code-server list installed" \
+    "$({ label_of dotnet | grep -c -F 'muhammad-sammy.csharp' || true; })" "0"
 
-# Core's three cross unchanged, and the Gherkin one is not decoration: the
+# Core's extensions, every project's. The Gherkin one is not decoration: the
 # inherited rules name it as the reason the image ships it, because .feature
-# files are how acceptance criteria get written and reviewed here.
+# files are how acceptance criteria get written and reviewed here. MDX joined on
+# 2026-10-14, at the operator's request.
 core_label="$(label_of)"
-for id in file-icons.file-icons CucumberOpen.cucumber-official cweijan.vscode-database-client2; do
+for id in file-icons.file-icons CucumberOpen.cucumber-official cweijan.vscode-database-client2 unifiedjs.vscode-mdx; do
     check "core declares $id" \
         "$({ printf '%s' "$core_label" | grep -c -F "$id" || true; })" "1"
 done

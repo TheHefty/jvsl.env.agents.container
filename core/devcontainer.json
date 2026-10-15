@@ -9,7 +9,8 @@
         "extensions": [
           "file-icons.file-icons",
           "CucumberOpen.cucumber-official",
-          "cweijan.vscode-database-client2"
+          "cweijan.vscode-database-client2",
+          "unifiedjs.vscode-mdx"
         ],
         "settings": {
           "workbench.iconTheme": "file-icons"
