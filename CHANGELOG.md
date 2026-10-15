@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.3.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.2.0...v1.3.0) (2026-10-15)
+
+
+### Features
+
+* a folder opened is not written to, and a project's own rules live in docs/RULES.md ([bb9d9e5](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb9d9e55dc94ee4057fd4ca93204c85de9a480c1))
+* a project lists the Debian packages it needs, and every build installs them ([4dd8b55](https://github.com/TheHefty/jvsl.env.agents.container/commit/4dd8b55cb0a941f114839dd455a6e2f57e392e2c))
+* a project lists the Debian packages it needs, and every build installs them ([a90fb9b](https://github.com/TheHefty/jvsl.env.agents.container/commit/a90fb9b1586f9654c910b22f6fad8d5374cd78e2))
+* a project's own rules live in docs/RULES.md, and nothing ships pointing at the import that is gone ([e68acb5](https://github.com/TheHefty/jvsl.env.agents.container/commit/e68acb5e7f8ff9ce69f8eea3660455f2de6b648d))
+* opening a folder writes nothing; only Open, Create or Open in container prepare a project ([06af48f](https://github.com/TheHefty/jvsl.env.agents.container/commit/06af48f0699ad3fbb4d2c57cb801e50135c1930f))
+
+
+### Bug Fixes
+
+* the image carries the docker client, so the nested daemon is reachable by name ([6ca053e](https://github.com/TheHefty/jvsl.env.agents.container/commit/6ca053ed563515308e476e9ff08d7acd5e3baf77))
+* the image carries the docker client, so the nested daemon is reachable by name ([ef0b589](https://github.com/TheHefty/jvsl.env.agents.container/commit/ef0b589f1e57ddcde7e358bdfe8156da2f7a1a66))
+
 ## [1.2.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.1.0...v1.2.0) (2026-10-15)
 
 
