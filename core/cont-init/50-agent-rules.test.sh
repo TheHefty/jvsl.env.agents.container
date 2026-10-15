@@ -85,6 +85,43 @@ run retired >/dev/null
 check "a document the image no longer carries is gone" "absent" \
     "$([ -e "$tmp/retired/target/RETIRED.md" ] && echo present || echo absent)"
 
+
+# --- every link in an installed document goes somewhere (debt
+# the-installed-rules-link-to-documents-not-beside-them) ----------------------
+#
+# Only MODES.md and RULES.md are installed, but they link WORKFLOW.md and others
+# relatively, which from ~/.claude/rules goes nowhere, silently. A link to a
+# document installed beside it stays as it is; a link to one that is not points
+# at the document in the image instead.
+setup links
+printf '# rules\nSee [Workflow](WORKFLOW.md) and [Modes](MODES.md), and [a part](WORKFLOW.md#the-chain).\n' > "$tmp/links/src/RULES.md"
+printf '# workflow\n' > "$tmp/links/src/WORKFLOW.md"
+run links >/dev/null
+installed="$(cat "$tmp/links/target/RULES.md")"
+check "a link to a document not installed beside it points at the image's copy" "1" \
+    "$(printf '%s' "$installed" | grep -cF "[Workflow]($tmp/links/src/WORKFLOW.md)" || true)"
+check "with its anchor kept" "1" \
+    "$(printf '%s' "$installed" | grep -cF "[a part]($tmp/links/src/WORKFLOW.md#the-chain)" || true)"
+check "a link to a document installed beside it is left as it is" "1" \
+    "$(printf '%s' "$installed" | grep -cF '[Modes](MODES.md)' || true)"
+check "and the source document is not changed" "0" \
+    "$(grep -c "$tmp" "$tmp/links/src/RULES.md" || true)"
+
+# The real documents: every relative link they carry, once installed, resolves
+# from where they are installed.
+real="$(cd "$HERE/../../docs/agent/en" && pwd)"
+setup real
+AGENT_DOCS_DIR="$real" AGENT_RULES_DIR="$tmp/real/target" AGENT_RULES_MOUNTS="$tmp/real/mounts" bash "$HOOK" >/dev/null 2>&1
+broken=""
+for f in "$tmp/real/target"/*.md; do
+    while IFS= read -r link; do
+        target="${link%%#*}"
+        case "$target" in /*) path="$target" ;; *) path="$tmp/real/target/$target" ;; esac
+        [ -e "$path" ] || broken="$broken $(basename "$f")->$link"
+    done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$f" | sed -E 's/^\]\(//; s/\)$//')
+done
+check "every link in the real installed documents resolves" "" "${broken# }"
+
 echo
 echo "50-agent-rules.test: $pass passed, $fail failed."
 [ "$fail" -eq 0 ]

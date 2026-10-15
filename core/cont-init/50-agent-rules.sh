@@ -68,6 +68,24 @@ for doc in "${RESIDENT[@]}"; do
 done
 
 # The agent runs as abc and reads these; root wrote them.
+# **A link to a document that is not installed beside it points at the image's
+# copy** (debt the-installed-rules-link-to-documents-not-beside-them). The
+# documents link each other relatively, which is right where they all sit side
+# by side, in the image and in the repository they come from. Here only the
+# resident ones are, so [Workflow](WORKFLOW.md) went nowhere, silently. Each
+# link to a non-resident document is rewritten to its path in $SOURCE, anchor
+# kept; links between resident documents stay relative. The source is never
+# touched.
+for doc in "$SOURCE"/*.md; do
+    name="$(basename "$doc")"
+    resident=no
+    for r in "${RESIDENT[@]}"; do [ "$r" = "$name" ] && resident=yes; done
+    [ "$resident" = yes ] && continue
+    for installed in "${RESIDENT[@]}"; do
+        sed -i -e "s#](${name})#](${SOURCE}/${name})#g" -e "s#](${name}\##](${SOURCE}/${name}\##g" "$TARGET/$installed"
+    done
+done
+
 chown -R abc:abc "$TARGET" 2>/dev/null || true
 
 # **Silent from here.** A cont-init hook runs on every boot and the healthy case
