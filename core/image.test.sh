@@ -221,6 +221,18 @@ meta_file="$(docker run --rm --network none --entrypoint /bin/cat "$IMAGE" /opt/
 docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/35-editor-extensions.sh' \
     || fail "$IMAGE does not install core/cont-init/35-editor-extensions.sh, so a stack added later would never bring its extension"
 
+# **The docker client is there, with its plugins** (issue #169, debt
+# the-image-has-a-docker-daemon-and-no-cli). The nested daemon answered on
+# DOCKER_HOST while no `docker` existed: in trixie docker.io only *recommends*
+# docker-cli, and --no-install-recommends dropped it. Every tool that asks for
+# `docker` concluded there was no Docker, and kotodori's end-to-end journeys
+# moved to CI. The plugins come from docker-compose and docker-buildx, and
+# resolve only once the client exists. dig comes from bind9-dnsutils.
+for probe in 'docker --version' 'docker compose version' 'docker buildx version' 'dig -v'; do
+    docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c "$probe" >/dev/null 2>&1 \
+        || fail "\`$probe\` does not run in $IMAGE. core/Dockerfile.frag installs docker-cli, docker-compose, docker-buildx and bind9-dnsutils by name (issue #169)"
+done
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships
