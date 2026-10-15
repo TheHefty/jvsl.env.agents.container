@@ -75,6 +75,19 @@ keeps it up to date, and it can also be edited by hand:
 
 Each stack is a key, and its value is the version to install. Limits apply to the whole container.
 
+A project that needs system packages from Debian lists them, and every build installs them:
+
+```json
+{
+  "cpp": "14",
+  "packages": ["libsdl2-dev"]
+}
+```
+
+Only package names are accepted (lower case, digits, `+`, `.` and `-`). Anything else stops the
+build before it starts, because the install runs as root. The agent cannot install packages inside
+the container, and a package installed there by hand would not survive a rebuild.
+
 ## Stacks
 
 `android` · `cpp` · `dotnet` · `golang` · `java` · `node` · `php` · `python` · `ruby` · `rust`
