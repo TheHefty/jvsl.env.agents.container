@@ -1,7 +1,9 @@
 {
   "node": "22",
   "limits": {
-    "memory": "6g"
+    "memory": "4g",
+    "memorySwap": "4g",
+    "cpus": 4
   },
   "beads": true
 }
