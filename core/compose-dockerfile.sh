@@ -160,5 +160,12 @@ which would end the LABEL's quoting early: $metadata" >&2
         ;;
 esac
 
+# **The same metadata as a file in the image**, just before the label so the
+# label stays last. A container cannot read its own image's labels, and
+# core/cont-init/35-editor-extensions.sh compares this file's extensions with
+# the last boot's, so that a stack added after a project's first container still
+# brings its extension (debt a-stack-added-later-never-brings-its-extension).
+# printf rather than echo: dash's echo would read a backslash in the JSON.
 echo
+echo "RUN mkdir -p /opt/jvsl && printf '%s\\n' '$metadata' > /opt/jvsl/devcontainer-metadata.json"
 echo "LABEL devcontainer.metadata='$metadata'"

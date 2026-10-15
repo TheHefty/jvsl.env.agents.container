@@ -392,6 +392,14 @@ RUN chmod +x /custom-cont-init.d/15-git-credential-helper.sh
 COPY core/cont-init/30-editor-leftovers.sh /custom-cont-init.d/30-editor-leftovers.sh
 RUN chmod +x /custom-cont-init.d/30-editor-leftovers.sh
 
+# A stack added after a project's first container brings its extension: the
+# editor installs the image's extensions once and marks it on the persistent
+# volume, and this removes that mark when the image's list changes. It reads
+# /opt/jvsl/devcontainer-metadata.json, which the composer writes beside the
+# label. Debt a-stack-added-later-never-brings-its-extension.
+COPY core/cont-init/35-editor-extensions.sh /custom-cont-init.d/35-editor-extensions.sh
+RUN chmod +x /custom-cont-init.d/35-editor-extensions.sh
+
 # 5.1 LinuxServer custom-cont-init.d hook, aligning the in-container 'kvm'
 # group's gid with the host device's — only acts when the caller passed
 # KVM_GID (i.e. the host exposed /dev/kvm; see stacks/android/Dockerfile.frag,
