@@ -114,8 +114,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     socat \
     libcap2-bin \
     docker.io \
+    docker-cli \
     docker-compose \
     docker-buildx \
+    bind9-dnsutils \
     uidmap \
     rootlesskit \
     slirp4netns \
@@ -149,6 +151,14 @@ RUN read -r version sha < /tmp/shellcheck.pin \
     && tar -xJf /tmp/shellcheck.tar.xz -C /tmp \
     && install -m 0755 "/tmp/shellcheck-v${version}/shellcheck" /usr/local/bin/shellcheck \
     && rm -rf /tmp/shellcheck.tar.xz "/tmp/shellcheck-v${version}" /tmp/shellcheck.pin
+
+# docker-cli, above, is named because in trixie docker.io only *recommends* it,
+# and every install here is --no-install-recommends: from the switch to this base
+# (ad2e9ee) until issue #169 the nested daemon answered on DOCKER_HOST while no
+# `docker` existed, and every tool that asked for it concluded there was no
+# Docker. docker-compose and docker-buildx install their plugins under
+# /usr/libexec/docker/cli-plugins, which the client finds once it is there.
+# bind9-dnsutils is `dig` and `nslookup` (trixie no longer has dnsutils).
 
 # 1.0.1 The libraries a browser a project downloads loads (issue #154).
 #
