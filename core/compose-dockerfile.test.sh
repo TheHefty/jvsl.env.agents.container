@@ -244,4 +244,18 @@ check "a manifest with no packages composes exactly as before" \
 check "and so does an empty list" \
     "$(with_manifest '{"packages":[]}' | sha256sum)" "$(bash "$COMPOSE" | sha256sum)"
 
+
+# **The java stack names its JDK to the editor** (debt
+# the-editor-imports-gradle-with-a-java-the-project-does-not-use). Without it the
+# Java language support imported Gradle with the JRE it bundles (25), and Gradle
+# 8.14 refused: "Can't use Java 25.0.4.1 and Gradle 8.14.3". The path is a stable
+# link the fragment makes, because Debian's directory changes with the version.
+java_settings="$(label_of java | jq -c '[.[].customizations.vscode.settings // {}] | add')"
+check "the java stack tells the editor which JDK imports Gradle" \
+    "$(printf '%s' "$java_settings" | jq -r '."java.import.gradle.java.home" // "unset"')" "/usr/lib/jvm/stack-java"
+check "and which JDK runs the language server" \
+    "$(printf '%s' "$java_settings" | jq -r '."java.jdt.ls.java.home" // "unset"')" "/usr/lib/jvm/stack-java"
+check "and the fragment makes that path and JAVA_HOME" \
+    "$(grep -c '/usr/lib/jvm/stack-java' "$HERE/../stacks/java/Dockerfile.frag" | awk '{print ($1 >= 2) ? "yes" : "no"}')" "yes"
+
 exit "$failures"
