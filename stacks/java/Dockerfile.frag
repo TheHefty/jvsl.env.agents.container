@@ -16,4 +16,14 @@
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-{{VERSION}}-jdk \
     maven \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sfn "/usr/lib/jvm/java-{{VERSION}}-openjdk-$(dpkg --print-architecture)" /usr/lib/jvm/stack-java \
+    && test -x /usr/lib/jvm/stack-java/bin/javac
+
+# **One stable path for the selected JDK, and the editor told about it** (debt
+# the-editor-imports-gradle-with-a-java-the-project-does-not-use). The Java
+# language support imports Gradle with the JRE it bundles (25) whenever nothing
+# names another, and Gradle 8.14 does not run on 25: "Can't use Java 25.0.4.1
+# and Gradle 8.14.3". Debian's directory carries the version and the
+# architecture, so the link is what this stack's devcontainer.json can name.
+ENV JAVA_HOME=/usr/lib/jvm/stack-java
