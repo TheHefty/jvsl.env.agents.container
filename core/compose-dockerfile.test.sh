@@ -150,11 +150,12 @@ vendor dotnet ms-dotnettools.csdevkit ms-dotnettools.csharp
 check "and never the fork the code-server list installed" \
     "$({ label_of dotnet | grep -c -F 'muhammad-sammy.csharp' || true; })" "0"
 
-# Core's three cross unchanged, and the Gherkin one is not decoration: the
+# Core's extensions, every project's. The Gherkin one is not decoration: the
 # inherited rules name it as the reason the image ships it, because .feature
-# files are how acceptance criteria get written and reviewed here.
+# files are how acceptance criteria get written and reviewed here. MDX joined on
+# 2026-10-14, at the operator's request.
 core_label="$(label_of)"
-for id in file-icons.file-icons CucumberOpen.cucumber-official cweijan.vscode-database-client2; do
+for id in file-icons.file-icons CucumberOpen.cucumber-official cweijan.vscode-database-client2 unifiedjs.vscode-mdx; do
     check "core declares $id" \
         "$({ printf '%s' "$core_label" | grep -c -F "$id" || true; })" "1"
 done
