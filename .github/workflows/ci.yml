@@ -213,6 +213,19 @@ jobs:
       - name: it removes what it recognises and refuses what it does not
         run: bash core/cont-init/30-editor-leftovers.test.sh
 
+  editor-extensions:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The editor installs the image's extensions once and marks it on the
+    # persistent volume; this hook removes the mark when the list changes, so a
+    # stack added later brings its extension. Guarded: it fires on a change, not
+    # on every boot, and writes only as abc.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: a changed extension list lets the editor install again, and only then
+        run: bash core/cont-init/35-editor-extensions.test.sh
+
   agent-rules:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -679,7 +692,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, ai-memory, beads, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, ai-memory, beads, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

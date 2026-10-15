@@ -210,6 +210,17 @@ case "$sc" in
     *) fail "shellcheck does not run in $IMAGE: '$sc'. core/Dockerfile.frag installs the version core/shellcheck.pin names" ;;
 esac
 
+# **The image carries its metadata as a file, equal to its label** (debt
+# a-stack-added-later-never-brings-its-extension): 35-editor-extensions.sh reads
+# the file, because a container cannot read its image's labels, and decides on
+# it whether the editor installs again. A file that differs from the label would
+# decide on something the editor never sees.
+meta_file="$(docker run --rm --network none --entrypoint /bin/cat "$IMAGE" /opt/jvsl/devcontainer-metadata.json 2>/dev/null || true)"
+[ "$(printf '%s' "$meta_file" | jq -cS . 2>/dev/null)" = "$(printf '%s' "$metadata" | jq -cS .)" ] \
+    || fail "/opt/jvsl/devcontainer-metadata.json in $IMAGE is not the devcontainer.metadata label. The composer writes both from one value; 35-editor-extensions.sh reads the file."
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/35-editor-extensions.sh' \
+    || fail "$IMAGE does not install core/cont-init/35-editor-extensions.sh, so a stack added later would never bring its extension"
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships

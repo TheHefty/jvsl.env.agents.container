@@ -166,4 +166,18 @@ check "a stack that declares one extension adds exactly it" \
     "$(fixture_label loud | jq -c '[.[].customizations.vscode.extensions[]?]')" \
     "$(fixture_label | jq -c '[.[].customizations.vscode.extensions[]?] + ["fixture.loud"]')"
 
+
+# **The image carries what it labels, as a file** (debt
+# a-stack-added-later-never-brings-its-extension). A container cannot read its
+# own image's labels, and core/cont-init/35-editor-extensions.sh compares this
+# file's extensions with the last boot's to let a stack added later bring its
+# extension. A file that drifted from the label would make that hook decide on
+# something the editor never sees.
+composed="$(bash "$COMPOSE" java node)"
+label_json="$(printf '%s\n' "$composed" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p")"
+file_json="$(printf '%s\n' "$composed" | grep '^RUN mkdir -p /opt/jvsl ' | cut -d"'" -f4 || true)"
+check "the image writes /opt/jvsl/devcontainer-metadata.json" "$([ -n "$file_json" ] && echo yes || echo no)" "yes"
+check "and it is the label, byte for byte" "$file_json" "$label_json"
+check "and the java stack's extension is in it" "$(printf '%s' "$file_json" | jq -r '[.[].customizations.vscode.extensions[]?] | index("redhat.java") != null')" "true"
+
 exit "$failures"
