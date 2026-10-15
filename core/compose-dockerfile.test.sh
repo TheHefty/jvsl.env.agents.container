@@ -197,6 +197,10 @@ label_json="$(printf '%s\n' "$composed" | sed -nE "s/^LABEL devcontainer\.metada
 file_json="$(printf '%s\n' "$composed" | grep '^RUN mkdir -p /opt/jvsl ' | cut -d"'" -f4 || true)"
 check "the image writes /opt/jvsl/devcontainer-metadata.json" "$([ -n "$file_json" ] && echo yes || echo no)" "yes"
 check "and it is the label, byte for byte" "$file_json" "$label_json"
-check "and the java stack's extension is in it" "$(printf '%s' "$file_json" | jq -r '[.[].customizations.vscode.extensions[]?] | index("redhat.java") != null')" "true"
+# What the java stack declares, read from it rather than named here: naming it
+# broke the day the stack's extension changed (#170 and #171, each green alone).
+java_ext="$(jq -r '[.[].customizations.vscode.extensions[]?][0]' "$HERE/../stacks/java/devcontainer.json")"
+check "and the java stack's extension ($java_ext) is in it" \
+    "$(printf '%s' "$file_json" | jq -r --arg e "$java_ext" '[.[].customizations.vscode.extensions[]?] | index($e) != null')" "true"
 
 exit "$failures"
