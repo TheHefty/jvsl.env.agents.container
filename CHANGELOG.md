@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.1...v1.3.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* the java stack tells the editor which JDK to import Gradle with ([eb9db7a](https://github.com/TheHefty/jvsl.env.agents.container/commit/eb9db7a9bf62574b8a0129814a744260c8d5b765))
+* the java stack tells the editor which JDK to import Gradle with ([5a49752](https://github.com/TheHefty/jvsl.env.agents.container/commit/5a4975248885e9c71f51253362dc0e6ad5f352fc))
+
 ## [1.3.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.0...v1.3.1) (2026-10-15)
 
 
