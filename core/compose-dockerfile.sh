@@ -99,6 +99,37 @@ if [ -n "$unfilled" ]; then
     echo "compose-dockerfile: nothing in $CORE_VERSIONS fills $unfilled in $CORE_FRAG." >&2
     exit 1
 fi
+# A project's own system packages, from the manifest's "packages" (story
+# the-manifest-lists-packages-and-the-build-installs-them). chip8 needed SDL2,
+# and the agent cannot apt-get in the container, by design.
+#
+# **Nothing but a Debian package name reaches the Dockerfile.** This step runs
+# as root at build, from a list in somebody's repository, so every entry must
+# match Debian's package-name rule: lower case, digits, + . -, two characters or
+# more, starting alphanumeric. That leaves no room for a space, a ;, a $(…), a
+# quote or a leading - that apt would read as an option. Anything else refuses
+# the compose before a line is written, so no Dockerfile exists to build: which
+# is why this runs here, before core is printed.
+#
+# One step, after every fragment, with no || true: apt names a package it
+# cannot locate, and the build fails on it. No list, no step, so a project that
+# lists nothing composes exactly as it did.
+packages=()
+if [ -n "${STACK_MANIFEST:-}" ] && [ -f "$STACK_MANIFEST" ] \
+    && jq -e 'has("packages")' "$STACK_MANIFEST" >/dev/null 2>&1; then
+    if ! jq -e '.packages | type == "array" and all(.[]; type == "string")' "$STACK_MANIFEST" >/dev/null 2>&1; then
+        echo "compose-dockerfile: \"packages\" in $STACK_MANIFEST must be a list of Debian package names, like [\"libsdl2-dev\"]. Nothing was composed." >&2
+        exit 1
+    fi
+    while IFS= read -r -d '' pkg; do
+        if ! [[ "$pkg" =~ ^[a-z0-9][a-z0-9+.-]+$ ]]; then
+            printf 'compose-dockerfile: %q in "packages" is not a Debian package name: lower case letters, digits, + . and -, at least two characters, starting with a letter or digit. Nothing was composed.\n' "$pkg" >&2
+            exit 1
+        fi
+        packages+=("$pkg")
+    done < <(jq -j '.packages[] | (. + "\u0000")' "$STACK_MANIFEST")
+fi
+
 printf '%s\n' "$core_text"
 for name in "${ordered[@]}"; do
     versions_file="$STACKS_DIR/$name/versions.json"
@@ -166,6 +197,11 @@ esac
 # the last boot's, so that a stack added after a project's first container still
 # brings its extension (debt a-stack-added-later-never-brings-its-extension).
 # printf rather than echo: dash's echo would read a backslash in the JSON.
+if [ "${#packages[@]}" -gt 0 ]; then
+    echo
+    echo "RUN apt-get update && apt-get install -y --no-install-recommends ${packages[*]} && rm -rf /var/lib/apt/lists/*"
+fi
+
 echo
 echo "RUN mkdir -p /opt/jvsl && printf '%s\\n' '$metadata' > /opt/jvsl/devcontainer-metadata.json"
 echo "LABEL devcontainer.metadata='$metadata'"
