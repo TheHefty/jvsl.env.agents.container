@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.1.0...v1.2.0) (2026-10-15)
+
+
+### Features
+
+* every image carries the MDX extension ([8d7c0ed](https://github.com/TheHefty/jvsl.env.agents.container/commit/8d7c0ed231ceee64feebd5ea5375275ed6140ae4))
+* Microsoft's own extensions for cpp, java and dotnet, and MDX in every image ([a52dfb2](https://github.com/TheHefty/jvsl.env.agents.container/commit/a52dfb2135a10512a95210d97d79cc3e3243cd7c))
+* the cpp, java and dotnet stacks declare Microsoft's own extensions ([3cc2573](https://github.com/TheHefty/jvsl.env.agents.container/commit/3cc2573c1b522f3d4028b7dba7594ae0d61b6603))
+
+
+### Bug Fixes
+
+* a stack added to an existing project brings its extension ([795eb04](https://github.com/TheHefty/jvsl.env.agents.container/commit/795eb04427218c0b3d219246004fe5c66d307979))
+* a stack added to an existing project brings its extension ([6c93757](https://github.com/TheHefty/jvsl.env.agents.container/commit/6c93757c16e4147bc3e39fe8e8b0e0e3d93dbce1))
+
 ## [1.1.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.0.0...v1.1.0) (2026-10-09)
 
 
