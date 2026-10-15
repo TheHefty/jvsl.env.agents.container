@@ -20,7 +20,11 @@ import { scaffoldPlan } from './scaffold.ts'
  * The handoff into the container is not here either: a scaffolded project has a
  * manifest and no image, so activation in the new window builds it and attaches.
  */
-export async function create(write: (lines: string[]) => void, extensionPath: string): Promise<void> {
+export async function create(
+  write: (lines: string[]) => void,
+  extensionPath: string,
+  handOver: (folder: string) => Thenable<void>,
+): Promise<void> {
   // **Location first**, because it is the only answer that can be refused
   // outright — asking the stacks first means answering six questions before
   // being told the directory will not do.
@@ -65,6 +69,9 @@ export async function create(write: (lines: string[]) => void, extensionPath: st
   // history is empty" is otherwise found at somebody's next `git log`.
   if (!plan.commit) void vscode.window.showInformationMessage(decision.message)
 
+  // The new window prepares the project because this asked: activation alone
+  // writes nothing (story opening-a-folder-writes-nothing).
+  await handOver(root)
   await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), {
     forceNewWindow: vscode.workspace.workspaceFolders !== undefined,
   })

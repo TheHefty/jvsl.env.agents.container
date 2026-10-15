@@ -7,8 +7,9 @@ answers are carried into the charter and SRS grillings that follow — the chart
 about *purpose*, the SRS takes the ones that are *constraints*. This file produces no document of
 its own.
 
-It is imported by a project's `CLAUDE.md` while initialization is unfinished, and the import line
-is removed when it is done — see "Ending initialization" at the bottom. Paths outside this folder
+It ships with the image at `/opt/jvsl/docs/agent/en/INITIALIZATION.md`, and a project's `CLAUDE.md`
+points at it while initialization is unfinished; that line is removed when it is done — see "Ending
+initialization" at the bottom. Paths outside this folder
 are written as code rather than as links, for the reason given in [Rules](RULES.md).
 
 **Which mode we are working in.** Ask, and let the user answer:
@@ -74,9 +75,10 @@ Portuguese, with no rule saying which is which, so every new file re-opens the q
 can grep. Conversation language is a different thing and does not need settling here — the user
 sets it by speaking.
 
-The inherited documents are not translated by the project: the template ships them in each language
-it supports, under `.code-server/docs/agent/<language>/`, and the answer here decides which folder
-the imports in `CLAUDE.md` and `docs/RULES.md` point at. Translating a copy locally is how a project
+The inherited documents are not translated by the project: the image carries them in each language
+it supports, under `/opt/jvsl/docs/agent/<language>/`. The rules it installs at `~/.claude/rules`
+are the English ones; the answer here decides which folder the project's `CLAUDE.md` points the
+agent at for everything it reads on demand. Translating a copy locally is how a project
 ends up on a rule the template retired two versions ago, with nothing saying so. If the language a
 project wants is not there, it is added in the template — which is a real cost, and one worth
 knowing before the answer is given: every normative change is then written in every language the
@@ -172,19 +174,25 @@ like an oversight forever.
 
 Once the seven questions are settled, proceed under the chosen mode into the chain in
 [Workflow](WORKFLOW.md): the charter grilling first — full for a new project, the engagement's
-terms for a sustaining one — then the SRS, then the stories. Along the way,
-update the files that belong to the project — `README.md`, `CLAUDE.md`, `docs/OVERVIEW.md`, the
-project's own rules below the import line in `docs/RULES.md`, and the stack selection in
-`.agent-container.stack.json` at the repo's root — to reflect the answers. The inherited documents
-under `.code-server/docs/agent/` are not edited: a rule that needs changing is changed in the
-template and arrives back through a bump.
+terms for a sustaining one — then the SRS, then the stories.
+
+**`docs/RULES.md` is written beside `docs/CHARTER.md` and the SRS**, agreed at the same gates. It
+holds this project's own standing rules — the ones the answers above produce, such as the legal
+baseline and how its data is kept — and nothing inherited. It opens by saying so: the inherited
+rules are at `~/.claude/rules`, loaded with no import, and this file holds only this project's. The
+project's `CLAUDE.md` imports it, so it is read in every session.
+
+Along the way, update the other files that belong to the project — `README.md`, `CLAUDE.md`,
+`docs/OVERVIEW.md`, and the stack selection in `.agent-container.stack.json` at the repo's root —
+to reflect the answers. The inherited documents in the image are not edited: a rule that needs
+changing is changed where the image is built, and arrives with the next one.
 
 ## Ending initialization
 
-**Remove the line in `CLAUDE.md` that imports this file.** It is scaffolding for a moment that
+**Remove the line in `CLAUDE.md` that points at this file.** It is scaffolding for a moment that
 happens once, and a checklist that stays after it is done gets re-run, argued with, or quietly
-ignored — and the third is the one that spreads to the sections around it. Deleting one import line
-is the whole operation; the file itself belongs to the template and is not edited.
+ignored — and the third is the one that spreads to the sections around it. Deleting that one line
+is the whole operation; the file itself belongs to the image and is not edited.
 
 Two things have to be written into `CLAUDE.md` first, because they are standing answers rather than
 one-time decisions and the rest of that file assumes them:
@@ -192,8 +200,8 @@ one-time decisions and the rest of that file assumes them:
 - **The mode**, written as a fact — "work here is Navigator Mode" — so the mode descriptions have
   something to be read against. It governs every session, not just this one.
 - **The documentation language**, for the same reason: every file written from here on inherits it,
-  and an import that was removed cannot be re-read. It also decides which language folder the other
-  imports point at.
+  and a line that was removed cannot be re-read. It also decides which language folder `CLAUDE.md`
+  points the agent at.
 
-Everything else is already recorded in the charter and the SRS, which is what makes removing the
-import safe: the answers outlive the questions.
+Everything else is already recorded in the charter, the SRS and `docs/RULES.md`, which is what
+makes removing the line safe: the answers outlive the questions.

@@ -28,6 +28,21 @@ no way to tell.
 your context, stop and say so.** Working without them is not working under a lighter process; it is
 working with no mode, no rules and no gates, and nothing failed to tell anybody.
 
+## This project's own rules, and the documents read on demand
+
+**This project's own standing rules are in `docs/RULES.md`**, imported here so they are read in every
+session. That file is inside this repository, so the import is not an external one. It holds this
+project's rules and nothing inherited. Initialization writes it beside `docs/CHARTER.md` and the
+SRS; until then the import resolves to nothing, which is expected before the charter and a gap
+after it.
+
+@docs/RULES.md
+
+The documents read when they are relevant — `INITIALIZATION.md`, `WORKFLOW.md`, the charter, SRS,
+story, task and debt templates — ship with the image at `/opt/jvsl/docs/agent/en/`, with
+`/opt/jvsl/docs/agent/pt-BR/` beside it. **While initialization is unfinished, read
+`/opt/jvsl/docs/agent/en/INITIALIZATION.md` first**, and delete this sentence when it is done.
+
 ## The gates, which are in this file on purpose
 
 They are written here rather than loaded from anywhere, because they have to survive everything

@@ -322,6 +322,31 @@ package name from the manifest reaches the Dockerfile.
 |---|---|---|
 | 1 | the manifest lists packages and the build installs them | no FR yet — the composer reads and validates the list; Configure keeps it |
 
+## Epic: the extension changes a project only when asked
+
+**Opening a folder writes nothing to the project; only Open and Create prepare it.**
+
+Agreed on 2026-10-15: `code <folder>` wrote `.devcontainer`, `CLAUDE.md` and `AGENTS.md` and renamed
+an old manifest, because activation ran the open flow. The extension still activates — the panel
+and the older-copy notice need it — but writes nothing until asked. The epic closes when opening a
+project's folder leaves its tree untouched.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | opening a folder writes nothing | amends the activation behaviour the open flow was built around |
+
+## Epic: a project keeps its own rules in docs
+
+**A project's own rules live in `docs/RULES.md`, written by the agent beside the charter and the SRS.**
+
+Agreed on 2026-10-15: nothing created `docs/RULES.md`, and the shipped `INITIALIZATION.md` and
+`RULES.md` still described an import from `.code-server/docs/agent/` that no longer exists. The
+agent writes it at initialization; Create writes nothing new.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the agent writes the project's rules | normative documents, both languages |
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,

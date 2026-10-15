@@ -4,10 +4,11 @@ Regras de base para um monorepo construído sobre este template. São curtas de 
 existe porque quebrá-la já custou alguma coisa, e o motivo é dado para você conseguir perceber
 quando uma regra deixa de valer.
 
-**Esta é a metade herdada, e um projeto não a edita.** Ela vem do template e chega por um bump de
-submódulo, que é o que impede uma regra alterada aqui de alcançar apenas os projetos de que alguém
-se lembrou. As regras próprias de um projeto vão no `docs/RULES.md` dele, abaixo da linha que
-importa este arquivo — tudo abaixo daquela linha é do projeto, tudo acima não é.
+**Esta é a metade herdada, e um projeto não a edita.** Ela vem com a imagem do agent container e
+chega em `~/.claude/rules` a cada boot, que é o que impede uma regra alterada aqui de alcançar
+apenas os projetos de que alguém se lembrou. As regras próprias de um projeto vão no `docs/RULES.md`
+dele, que guarda essas e nada herdado: são arquivos separados, então um não pode ser confundido com
+o outro.
 
 Caminhos fora desta pasta são escritos como código e não como link. Este arquivo é lido a partir de
 dois repositórios — o template, onde não há repo consumidor acima dele, e um projeto, onde há — e um

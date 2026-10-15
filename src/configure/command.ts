@@ -4,6 +4,7 @@ import * as vscode from 'vscode'
 
 import { build } from '../build/command.ts'
 import { carried } from '../build/template.ts'
+import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
@@ -127,6 +128,7 @@ export async function pick(
   write: (lines: string[]) => void,
   view: SelectionView,
   extensionPath: string,
+  handOver: (folder: string) => Thenable<void>,
 ): Promise<void> {
   const picked = await vscode.window.showOpenDialog({
     canSelectFiles: false,
@@ -146,6 +148,13 @@ export async function pick(
       write([`open: ${decision.because}`])
       void vscode.window.showInformationMessage(decision.because)
     }
+    return
+  }
+  if (decision.action === 'prepare') {
+    // The folder this window already has: prepare it here, since opening it
+    // wrote nothing (story opening-a-folder-writes-nothing).
+    write(['open: this window\'s folder, prepared here'])
+    await vscode.commands.executeCommand(OPEN)
     return
   }
   if (decision.action === 'refuse') {
@@ -168,6 +177,9 @@ export async function pick(
   }
 
   write([`open: ${decision.folder}${decision.newWindow ? ' in a new window' : ''}`])
+  // The window that opens the folder prepares it only because this asked:
+  // activation alone writes nothing (story opening-a-folder-writes-nothing).
+  await handOver(decision.folder)
   await vscode.commands.executeCommand(
     'vscode.openFolder',
     vscode.Uri.file(decision.folder),

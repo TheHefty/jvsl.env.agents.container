@@ -125,6 +125,15 @@ export function viewItems(state: ViewState): Row[] {
       command: 'jvsl.agentContainer.migrate',
     })
   }
+  // **The way in, now that opening the folder writes nothing** (story
+  // opening-a-folder-writes-nothing): preparing the project is something asked
+  // for, here or through Open.
+  rows.push({
+    kind: 'entry',
+    label: 'Open in container',
+    detail: 'write the configuration and reopen this folder in its container',
+    command: 'jvsl.agentContainer.prepare',
+  })
   const stackRowsFrom = rows.length
   for (const stack of state.stacksAvailable) {
     const version = state.manifest[stack]

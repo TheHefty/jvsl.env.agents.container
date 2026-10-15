@@ -7,8 +7,9 @@ como fatos aqui e agora, e o resto das respostas é levado para os grillings de 
 SRS que vêm a seguir — o termo de abertura pega as que são sobre *propósito*, a SRS pega as que são
 *restrições*. Este arquivo não produz um documento próprio.
 
-Ele é importado pelo `CLAUDE.md` de um projeto enquanto a inicialização não terminou, e a linha de
-import é removida quando ela termina — veja "Encerrando a inicialização" no fim. Caminhos fora desta
+Ele vem com a imagem em `/opt/jvsl/docs/agent/pt-BR/INITIALIZATION.md`, e o `CLAUDE.md` de um projeto
+aponta para ele enquanto a inicialização não terminou; essa linha é removida quando ela termina — veja
+"Encerrando a inicialização" no fim. Caminhos fora desta
 pasta são escritos como código e não como link, pelo motivo dado em [Regras](RULES.md).
 
 **Em que modo estamos trabalhando.** Pergunte, e deixe o usuário responder:
@@ -77,9 +78,10 @@ sem regra dizendo qual é qual, então todo arquivo novo reabre a questão e nin
 grep. O idioma da conversa é outra coisa e não precisa ser resolvido aqui — o usuário define
 falando.
 
-Os documentos herdados não são traduzidos pelo projeto: o template os entrega em cada idioma que
-suporta, sob `.code-server/docs/agent/<idioma>/`, e a resposta aqui decide para qual pasta os
-imports em `CLAUDE.md` e `docs/RULES.md` apontam. Traduzir uma cópia localmente é como um projeto
+Os documentos herdados não são traduzidos pelo projeto: a imagem os carrega em cada idioma que
+suporta, sob `/opt/jvsl/docs/agent/<idioma>/`. As regras que ela instala em `~/.claude/rules` são as
+em inglês; a resposta aqui decide para qual pasta o `CLAUDE.md` do projeto aponta o agente para tudo
+o que ele lê sob demanda. Traduzir uma cópia localmente é como um projeto
 acaba seguindo uma regra que o template aposentou duas versões atrás, sem nada dizendo isso. Se o
 idioma que o projeto quer não estiver lá, ele é adicionado no template — o que é um custo real, e
 que vale saber antes de a resposta ser dada: toda mudança normativa passa então a ser escrita em
@@ -178,18 +180,24 @@ para sempre.
 Uma vez que as sete perguntas estão resolvidas, prossiga no modo escolhido para dentro da cadeia em
 [Fluxo de trabalho](WORKFLOW.md): o grilling do termo de abertura primeiro — completo para um
 projeto novo, os termos do engajamento para um de sustentação — depois a SRS, depois as estórias.
-Pelo caminho, atualize os arquivos que pertencem ao projeto — `README.md`, `CLAUDE.md`,
-`docs/OVERVIEW.md`, as regras próprias do projeto abaixo da linha de import no `docs/RULES.md`, e a
-seleção de stacks em `.agent-container.stack.json` na raiz do repo — para refletir as respostas. Os
-documentos herdados sob `.code-server/docs/agent/` não são editados: uma regra que precisa mudar é
-mudada no template e volta por um bump.
+
+**O `docs/RULES.md` é escrito ao lado do `docs/CHARTER.md` e da SRS**, acordado nos mesmos gates.
+Ele guarda as regras permanentes deste projeto — as que as respostas acima produzem, como a base
+legal e como os dados dele são guardados — e nada herdado. Ele começa dizendo isso: as regras
+herdadas estão em `~/.claude/rules`, carregadas sem import, e este arquivo guarda só as deste
+projeto. O `CLAUDE.md` do projeto o importa, então ele é lido em toda sessão.
+
+Pelo caminho, atualize os outros arquivos que pertencem ao projeto — `README.md`, `CLAUDE.md`,
+`docs/OVERVIEW.md`, e a seleção de stacks em `.agent-container.stack.json` na raiz do repo — para
+refletir as respostas. Os documentos herdados na imagem não são editados: uma regra que precisa mudar
+é mudada onde a imagem é construída, e chega com a próxima.
 
 ## Encerrando a inicialização
 
-**Remova a linha do `CLAUDE.md` que importa este arquivo.** É andaime para um momento que acontece
-uma vez, e um checklist que fica depois de pronto é rerodado, discutido ou silenciosamente
-ignorado — e o terceiro é o que se espalha para as seções em volta. Apagar uma linha de import é a
-operação inteira; o arquivo em si pertence ao template e não é editado.
+**Remova a linha do `CLAUDE.md` que aponta para este arquivo.** É andaime para um momento que
+acontece uma vez, e um checklist que fica depois de pronto é rerodado, discutido ou silenciosamente
+ignorado — e o terceiro é o que se espalha para as seções em volta. Apagar essa linha é a operação
+inteira; o arquivo em si pertence à imagem e não é editado.
 
 Duas coisas têm que ser escritas no `CLAUDE.md` antes, porque são respostas permanentes e não
 decisões de uma vez só, e o resto daquele arquivo as pressupõe:
@@ -197,8 +205,8 @@ decisões de uma vez só, e o resto daquele arquivo as pressupõe:
 - **O modo**, escrito como fato — "o trabalho aqui é Modo Navigator" — para que as descrições dos
   modos tenham contra o que ser lidas. Ele governa toda sessão, não só esta.
 - **O idioma da documentação**, pelo mesmo motivo: todo arquivo escrito daqui para frente o herda,
-  e um import que foi removido não pode ser relido. Ele também decide para qual pasta de idioma os
-  outros imports apontam.
+  e uma linha que foi removida não pode ser relida. Ele também decide para qual pasta de idioma o
+  `CLAUDE.md` aponta o agente.
 
-Todo o resto já está registrado no termo de abertura e na SRS, que é o que torna remover o import
-seguro: as respostas sobrevivem às perguntas.
+Todo o resto já está registrado no termo de abertura, na SRS e no `docs/RULES.md`, que é o que torna
+remover a linha seguro: as respostas sobrevivem às perguntas.

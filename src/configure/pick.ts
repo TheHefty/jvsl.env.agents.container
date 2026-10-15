@@ -24,6 +24,13 @@ export interface Pick {
 
 export type PickDecision =
   | { action: 'nothing'; because?: string }
+  /**
+   * The folder this window already has: prepare it here and reopen in its
+   * container. Opening a folder writes nothing any more (story
+   * opening-a-folder-writes-nothing), so this is how a project opened with
+   * `code <folder>` gets in, where it used to be a refusal.
+   */
+  | { action: 'prepare' }
   | { action: 'open'; folder: string; newWindow: boolean; because?: string }
   /**
    * Ask the five questions about this folder, then carry on.
@@ -47,7 +54,7 @@ export function decidePick(pick: Pick): PickDecision {
   if (pick.chosen === undefined) return { action: 'nothing' }
 
   if (pick.currentFolder !== undefined && same(pick.chosen, pick.currentFolder)) {
-    return { action: 'nothing', because: `${pick.chosen} is already open in this window.` }
+    return { action: 'prepare' }
   }
 
   if (!pick.hasManifest) {

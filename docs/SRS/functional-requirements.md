@@ -484,4 +484,11 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   points to it with `--spec-id`. Found migrating fahrenheit404 and measuring kotodori on 2026-10-08: the
   rules still placed stories and their `.feature` under the folder the migration removes. The operator
   chose the suite's side over one fixed folder in every project.
+- **FR-130** — **Opening a folder writes nothing to it.** The extension still activates — the panel
+  and the older-copy notice need it — but only Open, Create, or the panel's "Open in container"
+  prepares a project: writes its configuration and instruction files and adopts an old manifest.
+  Open and Create hand the folder over to the window that opens it; that window prepares it only
+  for a record naming its own folder from the last two minutes, and consumes the record either way.
+  Found on 2026-10-15: `code <folder>` wrote `.devcontainer`, `CLAUDE.md` and `AGENTS.md` into
+  projects nobody had asked to prepare. Follows FR-88: a project is opened from the extension.
 
