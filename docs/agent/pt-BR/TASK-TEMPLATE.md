@@ -75,6 +75,32 @@ inteira quando alguém repropõe a mesma coisa daqui a um ano. Inclua a opção 
 O que foi de fato executado, e o que imprimiu. Não intenções — comandos e resultados. Depois, o que
 não pôde ser verificado localmente, e qual job de CI cobre no lugar.
 
+## Depois do código
+
+Preenchida quando o código já existe, não junto com o resto deste documento: uma task acordada com
+esta seção vazia não é uma lacuna. Responda as cinco contra o diff, enquanto quem escreveu ainda tem
+a mudança inteira na cabeça.
+
+Estas são as categorias que nenhum outro gate vê. Um linter vê estilo; um teste vê comportamento
+nas condições que alguém escreveu. Nenhum dos dois vê volume, isolamento entre donos,
+irreversibilidade ou dinheiro, e uma mudança pode passar em todas as checagens carregando os quatro.
+
+| # | Checagem | Onde no diff | Ou "nenhum", e o que foi olhado |
+|---|---|---|---|
+| 1 | Onde dado de fora entra: o limite de tamanho, a validação, o que uma entrada inesperada faz | | |
+| 2 | Cada query: filtrada por dono, limitada, servida por um índice que existe | | |
+| 3 | Escritas e deleções: o que aqui não pode ser desfeito | | |
+| 4 | Multiplicadores de custo: um laço que chama uma API ou o banco uma vez por item | | |
+| 5 | Caminhos que os testes não tocaram: os ramos que esta mudança criou e que nada exercita | | |
+
+"Nenhum" só é resposta junto com o que foi olhado. Cinco "nenhum" sozinhos são a seção pulada
+parecendo preenchida.
+
+Quando uma destas morde depois de publicado, a pergunta não é se devia ter sido lido mais. É qual
+gate faltou — e construir esse gate tira a linha desta lista de vez: uma contagem de queries
+afirmada na suíte aposenta a linha de custo, uma validação de tamanho aposenta a linha de entrada. A
+lista existe para encolher.
+
 ## Questões em aberto
 
 O que continua indefinido, e o que resolveria. Vazio é resposta válida; uma pergunta estacionada

@@ -77,6 +77,10 @@ carrega são os **três piores cenários de falha**: as formas específicas de *
 cada uma com o teste que a pega. Esses são os primeiros testes escritos — veja "Test-first" em
 [Regras](RULES.md).
 
+Uma seção do template não é escrita com o resto: **Depois do código**, cinco checagens respondidas
+contra o diff quando o código já existe. Uma task é acordada sem ela; ela é preenchida antes de a
+task terminar, e uma vazia numa task acordada é o processo funcionando, não uma lacuna.
+
 ## Status
 
 | Status | Significado |

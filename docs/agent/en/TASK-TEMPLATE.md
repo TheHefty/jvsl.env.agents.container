@@ -74,6 +74,32 @@ proposal itself when someone re-proposes it in a year. Include the option of doi
 What was actually run, and what it printed. Not intentions — commands and results. Then what could
 not be verified locally, and which CI job covers it instead.
 
+## After the code
+
+Filled once the code exists, not with the rest of this document: an agreed task with this section
+empty is not a gap. Answer the five against the diff, while the author still holds the whole change
+in their head.
+
+These are the categories no other gate sees. A linter sees style; a test sees behaviour under the
+conditions someone wrote down. Neither sees volume, isolation between owners, irreversibility or
+money, and a change can be green on every check and carry all four.
+
+| # | Check | Where in the diff | Or "none", and what was looked at |
+|---|---|---|---|
+| 1 | Where outside data enters: its size limit, its validation, what unexpected input does | | |
+| 2 | Every query: filtered by owner, bounded, served by an index that exists | | |
+| 3 | Writes and deletes: what here cannot be undone | | |
+| 4 | Cost multipliers: a loop that calls an API or the database once per item | | |
+| 5 | Paths the tests did not touch: the branches this change created that nothing exercises | | |
+
+"None" is an answer only together with what was looked at. Five bare "none"s is the section skipped
+while appearing to be filled.
+
+When one of these bites after shipping, the question is not whether more should have been read. It
+is which gate was missing — and building that gate takes the line off this list for good: a query
+count asserted in the suite retires the cost line, a size validation retires the entry line. The
+list is meant to shrink.
+
 ## Open questions
 
 What is still unsettled, and what would settle it. Empty is a valid answer; a question parked here

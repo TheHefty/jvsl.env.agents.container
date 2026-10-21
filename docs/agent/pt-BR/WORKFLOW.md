@@ -101,6 +101,9 @@ como diz "O rastreador de trabalho", em [Regras](RULES.md).
   `bd update <id> --acceptance "…"` e acordados no gate da estória como o arquivo que substituem.
 - **Uma task** é `bd create --type task --parent <estoria>`, e o seu desenho — o problema, a
   proposta, as alternativas rejeitadas, as três piores formas de quebrar — é a sua descrição.
+- **As checagens de "Depois do código" de uma task são registradas nela quando o código existe**,
+  com `bd update <id> --append-notes "…"`, antes de ela ser fechada. `--append-notes` e não
+  `--notes`: o segundo substitui o que o item já carrega.
 - **Um `.feature` que um runner executa mora ao lado da suíte que o executa**, não numa pasta de
   planejamento: a configuração do runner é onde os arquivos dele são achados, e uma pasta de
   documentos não é lugar onde um build deva ir buscar coisas. A estória aponta para ele com
