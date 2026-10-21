@@ -599,6 +599,9 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-reaper/run \
 # The reaper's browser-tests kind, in core because browser tests are not one
 # stack's: a dead WebdriverIO run's Chrome, chromedriver, runner and Vite server,
 # found by their process group, and the Chrome profiles in /tmp nothing holds.
+# Beside reapers.d and not in it: it is sourced by the kinds that stop
+# processes, so the start-time check before each signal is written once.
+COPY core/reapers/reaper-lib.sh /usr/local/lib/jvsl/reaper-lib.sh
 COPY core/reapers/browser-tests /usr/local/lib/jvsl/reapers.d/browser-tests
 RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/browser-tests
 

@@ -17,6 +17,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$HERE/browser-tests"
+LIB="$HERE/reaper-lib.sh"
 
 failures=0
 check() {
@@ -80,7 +81,7 @@ reap() {
     local code=0
     PROC="$proc" SIGNALS="$work/signals" STUBBORN="$work/stubborn" \
         REAPER_PROC="$proc" REAPER_TMP="$tmp" REAPER_KILL="$work/kill" REAPER_GRACE=1 \
-        REAPER_NOW="$NOW" REAPER_UID="$ME" REAPER_BETWEEN="${BETWEEN:-}" \
+        REAPER_NOW="$NOW" REAPER_UID="$ME" REAPER_BETWEEN="${BETWEEN:-}" REAPER_LIB="$LIB" \
         timeout 60 bash "$SCRIPT" > "$work/out" 2> "$work/err" || code=$?
     echo "$code" > "$work/rc"
 }

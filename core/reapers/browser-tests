@@ -21,7 +21,7 @@
 #
 # **A pid can be reused** between reading /proc and sending a signal, so each
 # start time is read again just before the signal and a changed one is left
-# alone.
+# alone — reaper_stop, in core/reapers/reaper-lib.sh, shared with the jvms kind.
 #
 # **Profiles**: directories directly under /tmp with Chrome's and Puppeteer's
 # names, owned by this user, not symlinks, older than ten minutes — a browser
@@ -31,19 +31,12 @@ set -uo pipefail
 
 PROC="${REAPER_PROC:-/proc}"
 TMPROOT="${REAPER_TMP:-/tmp}"
-GRACE="${REAPER_GRACE:-5}"
 NOW="${REAPER_NOW:-$(date +%s)}"
 ME="${REAPER_UID:-$(id -u)}"
 PROFILE_MIN_AGE=600
 
-signal() {
-    if [ -n "${REAPER_KILL:-}" ]; then "$REAPER_KILL" "-$1" "$2"; else kill "-$1" "$2"; fi
-}
-
-# Fields after the command name's closing parenthesis, which can itself hold
-# spaces: 1 state, 2 ppid, 3 pgrp, ... 20 starttime.
-field() { local stat="$1"; awk -v n="$2" '{print $n}' <<<"${stat##*) }"; }
-starttime() { local s; s="$(cat "$PROC/$1/stat" 2>/dev/null)" || return 1; field "$s" 20; }
+# shellcheck source=core/reapers/reaper-lib.sh
+. "${REAPER_LIB:-/usr/local/lib/jvsl/reaper-lib.sh}"
 
 # chrome | chromedriver | wdio | vite, or nothing.
 kind_of() {
@@ -78,13 +71,13 @@ for dir in "$PROC"/[0-9]*; do
         sed -n 's/^--user-data-dir=//p' <<<"$cmd")
     uid="$(awk '/^Uid:/ {print $2}' "$dir/status" 2>/dev/null)"
     [ "$uid" = "$ME" ] || continue
-    pgrp="$(field "$stat" 3)"
+    pgrp="$(reaper_field "$stat" 3)"
     [ -d "$PROC/$pgrp" ] && continue          # the run's leader is alive
     comm="${stat#*(}"; comm="${comm%)*}"
     kind="$(kind_of "$comm" "$cmd")"
     [ -n "$kind" ] || continue
     marks_automation "$kind" "$cmd" && marked[$pgrp]=1
-    candidates+=("$pid $(field "$stat" 20) $pgrp $kind")
+    candidates+=("$pid $(reaper_field "$stat" 20) $pgrp $kind")
 done
 
 # A seam for the test, to change /proc between the scan and the signals.
@@ -93,15 +86,7 @@ done
 for c in "${candidates[@]}"; do
     read -r pid start pgrp kind <<<"$c"
     [ -n "${marked[$pgrp]:-}" ] || continue
-    [ "$(starttime "$pid")" = "$start" ] || continue
-    signal TERM "$pid" 2>/dev/null || continue
-    for _ in $(seq $((GRACE * 10))); do
-        [ -d "$PROC/$pid" ] || break
-        sleep 0.1
-    done
-    if [ -d "$PROC/$pid" ] && [ "$(starttime "$pid")" = "$start" ]; then
-        signal KILL "$pid" 2>/dev/null || true
-    fi
+    reaper_stop "$pid" "$start" || continue
     echo "$kind pid $pid (its run is gone: group $pgrp lost its leader and drove a browser)"
 done
 

@@ -47,6 +47,8 @@ rm -rf "$scratch"
 # for the clock tick, timeout, jq.
 kind=/usr/local/lib/jvsl/reapers.d/testcontainers
 [ -x "$kind" ] || fail "$kind is not installed, so dead test runs' containers are never reaped"
+[ -x /usr/local/lib/jvsl/reapers.d/jvms ] \
+    || fail "/usr/local/lib/jvsl/reapers.d/jvms is not installed, so orphaned Kotlin daemons and language servers are never reaped"
 for tool in getconf timeout jq; do
     command -v "$tool" >/dev/null || fail "$tool is missing; $kind needs it"
 done

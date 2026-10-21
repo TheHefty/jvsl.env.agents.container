@@ -46,3 +46,8 @@ RUN chmod 0644 /etc/jvsl/gradle.properties && chmod +x /custom-cont-init.d/60-gr
 # it never touches. core/services/svc-reaper runs it every five minutes.
 COPY stacks/java/reapers/testcontainers /usr/local/lib/jvsl/reapers.d/testcontainers
 RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/testcontainers
+
+# And the jvms kind: a Kotlin compile daemon once no Gradle daemon is left, and
+# a Java language server once no editor is above it (#187). No other JVM.
+COPY stacks/java/reapers/jvms /usr/local/lib/jvsl/reapers.d/jvms
+RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/jvms
