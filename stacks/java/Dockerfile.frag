@@ -38,3 +38,11 @@ ENV JAVA_HOME=/usr/lib/jvm/stack-java
 COPY stacks/java/gradle.properties /etc/jvsl/gradle.properties
 COPY stacks/java/cont-init/60-gradle-defaults.sh /custom-cont-init.d/60-gradle-defaults.sh
 RUN chmod 0644 /etc/jvsl/gradle.properties && chmod +x /custom-cont-init.d/60-gradle-defaults.sh
+
+# **The reaper's Testcontainers kind** (#186). Ryuk cannot work under the nested
+# rootless daemon, so nothing else removes what a dead test JVM started. The
+# kind removes a Testcontainers container only when no live JVM that could own
+# it started before it did; see the script for what "could own" means and what
+# it never touches. core/services/svc-reaper runs it every five minutes.
+COPY stacks/java/reapers/testcontainers /usr/local/lib/jvsl/reapers.d/testcontainers
+RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/testcontainers

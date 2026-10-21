@@ -42,6 +42,16 @@ grep -qx 'org.gradle.daemon.idletimeout=600000' "$scratch/gradle.properties" \
     && [ "$(tail -c 6 "$scratch/gradle.properties")" = "mine=1" ] \
     || fail "$hook did not merge the defaults above an existing file in this image"
 rm -rf "$scratch"
+# The reaper's Testcontainers kind is installed where the reaper looks, and the
+# tools it leans on are the ones this image has: GNU find's -printf, getconf
+# for the clock tick, timeout, jq.
+kind=/usr/local/lib/jvsl/reapers.d/testcontainers
+[ -x "$kind" ] || fail "$kind is not installed, so dead test runs' containers are never reaped"
+for tool in getconf timeout jq; do
+    command -v "$tool" >/dev/null || fail "$tool is missing; $kind needs it"
+done
+find /proc/self/fd/ -maxdepth 1 -type l -printf '%l\n' >/dev/null 2>&1 \
+    || fail "find has no -printf here; $kind reads open files with it"
 
 [ "$failures" -eq 0 ] && echo "ok   $link is a JDK $got, and JAVA_HOME names it; the Gradle defaults are installed and the hook merges them"
 exit "$failures"

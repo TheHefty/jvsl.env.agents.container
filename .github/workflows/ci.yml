@@ -300,6 +300,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: each reap is said once in a bounded log, and only "reaper": false turns it off
         run: bash core/services/svc-reaper/run.test.sh
+      - name: a Testcontainers container is reaped only when no live JVM could own it
+        run: bash stacks/java/reapers/testcontainers.test.sh
 
   jail-wrappers:
     needs: changes
