@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Reaper kind (see core/services/svc-reaper/run): stops what a dead browser-test
+# run left running, and removes the Chrome profiles nothing uses.
+#
+# **Why** (#186). A WebdriverIO run interrupted above its own tree leaves
+# Chrome, chromedriver, the runner and the Vite server running. They hold
+# their ports (kotodori: 5174, 8787, 4173, 4174) and their profiles in /tmp,
+# which is tmpfs and so memory, and the next run fails on a port in use.
+#
+# **A run is its process group.** Whatever starts a run — a shell job, npm, the
+# agent's tool shell — leads a group its processes keep when they are
+# re-parented. A group whose leader is gone and which carries an automation
+# marker (a chromedriver, a Chrome with --enable-automation, a WebdriverIO
+# worker) is a dead browser-test run. Of it, only the kinds named here are
+# stopped: TERM, then KILL after a grace period.
+#
+# **Not PPID 1.** Inside the agent's sandbox an orphan is re-parented to the
+# sandbox's init, so that test would miss every run the agent started; and a
+# dev server somebody disowned with `vite preview &` has PPID 1 too. That one
+# leads its own group and drove no browser, so it is never a candidate here.
+#
+# **A pid can be reused** between reading /proc and sending a signal, so each
+# start time is read again just before the signal and a changed one is left
+# alone.
+#
+# **Profiles**: directories directly under /tmp with Chrome's and Puppeteer's
+# names, owned by this user, not symlinks, older than ten minutes — a browser
+# that is starting has made its directory before it opens anything in it —
+# and held by no live process's fd, cwd or --user-data-dir.
+set -uo pipefail
+
+PROC="${REAPER_PROC:-/proc}"
+TMPROOT="${REAPER_TMP:-/tmp}"
+GRACE="${REAPER_GRACE:-5}"
+NOW="${REAPER_NOW:-$(date +%s)}"
+ME="${REAPER_UID:-$(id -u)}"
+PROFILE_MIN_AGE=600
+
+signal() {
+    if [ -n "${REAPER_KILL:-}" ]; then "$REAPER_KILL" "-$1" "$2"; else kill "-$1" "$2"; fi
+}
+
+# Fields after the command name's closing parenthesis, which can itself hold
+# spaces: 1 state, 2 ppid, 3 pgrp, ... 20 starttime.
+field() { local stat="$1"; awk -v n="$2" '{print $n}' <<<"${stat##*) }"; }
+starttime() { local s; s="$(cat "$PROC/$1/stat" 2>/dev/null)" || return 1; field "$s" 20; }
+
+# chrome | chromedriver | wdio | vite, or nothing.
+kind_of() {
+    local comm="$1" cmd="$2" argv0
+    argv0="$(basename "$(head -n 1 <<<"$cmd")")"
+    case "$comm $argv0" in
+        *chromedriver*) echo chromedriver; return ;;
+        chrome*|*" chrome"|*" google-chrome"*|*" chromium"*|*" chrome-headless-shell") echo chrome; return ;;
+    esac
+    if grep -qE '(^|/)(@wdio/|\.bin/wdio$|wdio$)' <<<"$cmd"; then echo wdio
+    elif grep -qE '(^|/)(\.bin/vite$|vite/bin/vite\.js$|vite$)' <<<"$cmd"; then echo vite
+    fi
+}
+marks_automation() {
+    local kind="$1" cmd="$2"
+    [ "$kind" = chromedriver ] && return 0
+    [ "$kind" = chrome ] && grep -qx -- '--enable-automation' <<<"$cmd" && return 0
+    grep -q '@wdio/local-runner' <<<"$cmd"
+}
+
+declare -A marked=()
+candidates=()
+held=()
+for dir in "$PROC"/[0-9]*; do
+    pid="${dir##*/}"
+    stat="$(cat "$dir/stat" 2>/dev/null)" || continue
+    cmd="$(tr '\0' '\n' < "$dir/cmdline" 2>/dev/null)" || cmd=""
+    # Everything a live process holds, whoever it is, for the profile check.
+    while IFS= read -r l; do [ -n "$l" ] && held+=("$l"); done < <(
+        find "$dir/fd/" -maxdepth 1 -type l -printf '%l\n' 2>/dev/null
+        readlink "$dir/cwd" 2>/dev/null
+        sed -n 's/^--user-data-dir=//p' <<<"$cmd")
+    uid="$(awk '/^Uid:/ {print $2}' "$dir/status" 2>/dev/null)"
+    [ "$uid" = "$ME" ] || continue
+    pgrp="$(field "$stat" 3)"
+    [ -d "$PROC/$pgrp" ] && continue          # the run's leader is alive
+    comm="${stat#*(}"; comm="${comm%)*}"
+    kind="$(kind_of "$comm" "$cmd")"
+    [ -n "$kind" ] || continue
+    marks_automation "$kind" "$cmd" && marked[$pgrp]=1
+    candidates+=("$pid $(field "$stat" 20) $pgrp $kind")
+done
+
+# A seam for the test, to change /proc between the scan and the signals.
+[ -n "${REAPER_BETWEEN:-}" ] && eval "$REAPER_BETWEEN"
+
+for c in "${candidates[@]}"; do
+    read -r pid start pgrp kind <<<"$c"
+    [ -n "${marked[$pgrp]:-}" ] || continue
+    [ "$(starttime "$pid")" = "$start" ] || continue
+    signal TERM "$pid" 2>/dev/null || continue
+    for _ in $(seq $((GRACE * 10))); do
+        [ -d "$PROC/$pid" ] || break
+        sleep 0.1
+    done
+    if [ -d "$PROC/$pid" ] && [ "$(starttime "$pid")" = "$start" ]; then
+        signal KILL "$pid" 2>/dev/null || true
+    fi
+    echo "$kind pid $pid (its run is gone: group $pgrp lost its leader and drove a browser)"
+done
+
+for d in "$TMPROOT"/.org.chromium.Chromium.* "$TMPROOT"/.com.google.Chrome.* "$TMPROOT"/puppeteer_dev_chrome_profile-*; do
+    [ -d "$d" ] && [ ! -L "$d" ] || continue
+    [ "$(stat -c %u "$d")" = "$(id -u)" ] || continue
+    [ $((NOW - $(stat -c %Y "$d"))) -ge "$PROFILE_MIN_AGE" ] || continue
+    inuse=""
+    for h in "${held[@]}"; do
+        case "$h" in "$d"|"$d"/*) inuse=yes; break ;; esac
+    done
+    [ -z "$inuse" ] || continue
+    size="$(du -sh -- "$d" 2>/dev/null | cut -f1)"
+    rm -rf -- "$d" && echo "$d (${size:-?}, no process has it open)"
+done
+exit 0

@@ -302,6 +302,8 @@ jobs:
         run: bash core/services/svc-reaper/run.test.sh
       - name: a Testcontainers container is reaped only when no live JVM could own it
         run: bash stacks/java/reapers/testcontainers.test.sh
+      - name: a dead browser-test run is stopped by its group, and a live one or a dev server never is
+        run: bash core/reapers/browser-tests.test.sh
 
   jail-wrappers:
     needs: changes

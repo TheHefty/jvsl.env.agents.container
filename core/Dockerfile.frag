@@ -596,6 +596,12 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-reaper/run \
     && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper \
     && mkdir -p /usr/local/lib/jvsl/reapers.d
 
+# The reaper's browser-tests kind, in core because browser tests are not one
+# stack's: a dead WebdriverIO run's Chrome, chromedriver, runner and Vite server,
+# found by their process group, and the Chrome profiles in /tmp nothing holds.
+COPY core/reapers/browser-tests /usr/local/lib/jvsl/reapers.d/browser-tests
+RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/browser-tests
+
 # 7.3 Installs beads (steveyegge/beads), the work tracker, and the boot hook
 # that initialises one for a project that asked. Pinned and digest-checked for
 # the same reason ai-jail and ai-memory are, above.
