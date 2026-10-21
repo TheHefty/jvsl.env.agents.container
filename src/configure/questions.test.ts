@@ -104,6 +104,18 @@ test('an unknown key survives being written', () => {
   assert.deepEqual(next.teamNotes, { why: 'kept by hand, on purpose' })
 })
 
+test('the keys the image reads survive a rerun, the reaper\'s off switch among them', () => {
+  // These are read at boot or at build, not by this command: losing one
+  // changes what the container does with nothing on screen to say so. A
+  // project that switched the reaper off would have it back on after the next
+  // Configure.
+  const current = { node: '20', beads: true, packages: ['libsdl2-dev'], reaper: false }
+  const next = nextManifest(current, answers, ['java', 'node', 'rust'])
+  assert.equal(next.beads, true)
+  assert.deepEqual(next.packages, ['libsdl2-dev'])
+  assert.equal(next.reaper, false)
+})
+
 test('a deselected stack is removed', () => {
   // The other half of the same mechanism, and the reason keys are stripped by
   // name rather than the file being rebuilt from what was selected.

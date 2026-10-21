@@ -586,6 +586,16 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-ai-memory/run \
 COPY core/cont-init/40-ai-memory.sh /custom-cont-init.d/40-ai-memory.sh
 RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 
+# The reaper (#186): every five minutes, as abc, it runs each kind in
+# /usr/local/lib/jvsl/reapers.d and logs what each reaped, to docker logs and
+# to /config/.local/state/jvsl/reaper.log. The kinds come with their own
+# stories; the directory exists from the start so a kind is one COPY. A project
+# switches it off with "reaper": false in its manifest. See its run script.
+COPY core/services/svc-reaper /etc/s6-overlay/s6-rc.d/svc-reaper
+RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-reaper/run \
+    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper \
+    && mkdir -p /usr/local/lib/jvsl/reapers.d
+
 # 7.3 Installs beads (steveyegge/beads), the work tracker, and the boot hook
 # that initialises one for a project that asked. Pinned and digest-checked for
 # the same reason ai-jail and ai-memory are, above.

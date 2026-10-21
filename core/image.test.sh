@@ -123,6 +123,7 @@ base="$(docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
     printf "hooks=%s\n" "$([ -d /custom-cont-init.d ] && echo yes || echo no)"
     printf "adduser=%s\n" "$([ -d /etc/s6-overlay/s6-rc.d/init-adduser ] && echo yes || echo no)"
     printf "editor=%s\n" "$(command -v code-server >/dev/null 2>&1 && echo present || echo absent)"
+    printf "reaper=%s\n" "$([ -x /etc/s6-overlay/s6-rc.d/svc-reaper/run ] && [ -e /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper ] && [ -d /usr/local/lib/jvsl/reapers.d ] && command -v jq >/dev/null && echo registered || echo missing)"
 ' 2>/dev/null || true)"
 
 field() { printf '%s' "$base" | sed -n "s/^$1=//p"; }
@@ -136,6 +137,10 @@ layout — the per-project volume, CLAUDE_CONFIG_DIR, the bind-mounted workspace
 
 [ "$(field s6)" = "yes" ] || fail "no /etc/s6-overlay/s6-rc.d/user/contents.d in this image, so \
 the nested Docker daemon and ai-memory are registered nowhere and nothing would say so"
+
+[ "$(field reaper)" = "registered" ] || fail "the reaper service is not registered with s6, its run \
+script is not executable, its kinds directory is missing, or jq is absent. Nothing would reap what dead \
+test runs leave behind, and the first sign would be an OOM kill hours later"
 
 [ "$(field hooks)" = "yes" ] || fail "no /custom-cont-init.d in this image, so every boot hook \
 silently never runs — the ownership repair and the git credential helper among them"

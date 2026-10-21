@@ -338,6 +338,20 @@ grep -q '\[45-beads\] the tracker is empty: bd bootstrap' <<<"$boot_log" \
 tracker is empty and why. core/cont-init/45-beads.sh must report a failed or timed-out bd bootstrap \
 in one line of the boot log"; }
 
+# --- the reaper is running ------------------------------------------------
+#
+# Registered is not running: a longrun s6 never starts, or one that died and is
+# being restarted, passes the image test. This asks the booted container. The
+# stand-in has no s6, so there it is skipped, saying so.
+if docker exec "$NAME" test -d /etc/s6-overlay/s6-rc.d/svc-reaper; then
+    docker exec "$NAME" pgrep -u "$USER_NAME" -f 'svc-reaper/run' >/dev/null \
+        || fail "the reaper service is registered but not running as $USER_NAME after boot. \
+Its output is in docker logs, prefixed with a timestamp"
+    echo "booted.test: the reaper runs as $USER_NAME"
+else
+    echo "booted.test: SKIPPED the reaper check, not passed: $IMAGE has no svc-reaper (the stand-in has no s6)"
+fi
+
 # --- the agent's sandbox actually opens -------------------------------------
 #
 # **The image can build, boot and pass every check above while `claude` cannot
