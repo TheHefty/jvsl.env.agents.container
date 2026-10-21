@@ -15,6 +15,7 @@ const base: OpenContext = {
   reopenCommandAvailable: true,
   image: 'present' as const,
   gitignore: '.devcontainer/devcontainer.json\n',
+  gradleBuilds: [],
 }
 
 const refusal = (c: Partial<OpenContext>): string => {
@@ -224,4 +225,40 @@ test('a local window prepares, as before', () => {
 
 test('another remote does not prepare either: the project is not on this machine', () => {
   assert.equal(prepareHere('ssh-remote').act, false)
+})
+
+const wrapper = (v: string): string =>
+  `distributionUrl=https\\://services.gradle.org/distributions/gradle-${v}-bin.zip\n`
+
+test('a wrapperless Gradle build opens with the wrappers\' version, and says so only in the log', () => {
+  const d = decideOpen({
+    ...base,
+    gradleBuilds: [
+      { dir: 'build-logic', wrapper: null },
+      { dir: 'core', wrapper: wrapper('8.14.3') },
+    ],
+  })
+  assert.equal(d.action, 'open')
+  if (d.action === 'open') {
+    assert.equal(d.configuration.customizations?.vscode.settings['java.import.gradle.version'], '8.14.3')
+    assert.deepEqual(d.notes, [])
+    assert.ok(d.log.some((l) => l.includes('build-logic')), d.log.join('\n'))
+  }
+})
+
+test('diverging wrappers open without a version and warn, rather than refusing the open', () => {
+  const d = decideOpen({
+    ...base,
+    gradleBuilds: [
+      { dir: 'build-logic', wrapper: null },
+      { dir: 'core', wrapper: wrapper('8.14.3') },
+      { dir: 'iam', wrapper: wrapper('9.1.0') },
+    ],
+  })
+  assert.equal(d.action, 'open')
+  if (d.action === 'open') {
+    assert.equal(d.configuration.customizations, undefined)
+    assert.equal(d.notes.length, 1)
+    assert.ok(d.notes[0]?.includes('9.1.0'), d.notes[0])
+  }
 })

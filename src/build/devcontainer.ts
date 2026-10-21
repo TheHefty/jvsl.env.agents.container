@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
 
+import { IMPORT_SETTING } from './gradle.ts'
 import { cpusetRange, type Limits } from './limits.ts'
 import type { HostFacts } from '../host/host.ts'
 
@@ -27,6 +28,8 @@ export interface Configuration {
   /** Always false. See buildConfiguration. */
   overrideCommand: boolean
   runArgs: string[]
+  /** Only when there is something to say. See buildConfiguration. */
+  customizations?: { vscode: { settings: Record<string, string> } }
   [GENERATED_BY]: { extension: string }
 }
 
@@ -36,6 +39,8 @@ export interface BuildInput {
   extensionVersion: string
   limits: Limits
   facts: HostFacts
+  /** From gradle.ts: the version wrapperless Gradle builds are imported with. */
+  gradleVersion?: string | null
 }
 
 export interface ProjectNames {
@@ -145,6 +150,14 @@ export function buildConfiguration(input: BuildInput): Configuration {
     // exists.
     overrideCommand: false,
     runArgs,
+    // **Absent rather than empty when there is no version.** The tooling hashes
+    // this file, so a key every project gained would recreate every container
+    // on its next open. Settings here reach the editor in the container per
+    // project, which the stack's image label cannot: it is baked per stack and
+    // has never seen this project's wrapper.
+    ...(input.gradleVersion
+      ? { customizations: { vscode: { settings: { [IMPORT_SETTING]: input.gradleVersion } } } }
+      : {}),
     [GENERATED_BY]: { extension: extensionVersion },
   }
 }

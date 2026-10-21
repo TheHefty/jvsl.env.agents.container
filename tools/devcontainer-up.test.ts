@@ -108,6 +108,7 @@ test('a container brought up from our configuration got the machine the manifest
       // exercises is the container the configuration produces and not the
       // refusals around it — those are open.test.ts's.
       gitignore: '.devcontainer/\n',
+      gradleBuilds: [],
     })
     assert.equal(decision.action, 'open')
     if (decision.action !== 'open') return

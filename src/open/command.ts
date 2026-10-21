@@ -6,6 +6,7 @@ import * as vscode from 'vscode'
 import { handsOver } from '../build/build.ts'
 import { buildInTerminal } from '../build/command.ts'
 import { projectNames } from '../build/devcontainer.ts'
+import { findGradleBuilds } from '../build/gradle.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
@@ -66,6 +67,7 @@ export async function prepare(
     ...decision.configuration.runArgs.length > 0
       ? [`runArgs: ${decision.configuration.runArgs.join(' ')}`]
       : [],
+    ...decision.log,
     ...decision.notes.map((n) => `note: ${n}`),
   ])
 
@@ -121,6 +123,8 @@ export async function gather(
   context: vscode.ExtensionContext,
   write: (lines: string[]) => void,
 ): Promise<OpenContext> {
+  const gradle = findGradleBuilds(root)
+  write(gradle.log)
   return {
     projectRoot: root,
     homeDir: homedir(),
@@ -132,6 +136,7 @@ export async function gather(
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
     image: await imageState(projectNames(root).image, write),
+    gradleBuilds: gradle.builds,
   }
 }
 

@@ -231,3 +231,20 @@ test('the generated configuration forwards nothing of the host but the two paths
   // every assertion above passes over nothing.
   assert.equal(hostPaths.length, 2, serialised)
 })
+
+test('a Gradle version, when there is one, reaches the editor as the import version', () => {
+  // Buildship and the Build Server both use a build's own wrapper where it has
+  // one; this is what they fall back to where it has none.
+  const config = buildConfiguration({ ...input, gradleVersion: '8.14.3' })
+  assert.deepEqual(config.customizations, {
+    vscode: { settings: { 'java.import.gradle.version': '8.14.3' } },
+  })
+})
+
+test('with no Gradle version the configuration is what it was before there was one', () => {
+  // Byte-identical, because the tooling hashes this file: a key that appeared
+  // on every project would recreate every project's container on its next open.
+  const before = JSON.stringify(buildConfiguration(input))
+  assert.equal(JSON.stringify(buildConfiguration({ ...input, gradleVersion: null })), before)
+  assert.ok(!before.includes('customizations'), before)
+})
