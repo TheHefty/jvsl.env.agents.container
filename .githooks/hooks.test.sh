@@ -119,6 +119,74 @@ set -e
 check "lint-shell: another shellcheck version refuses" "$rc" "1"
 check "lint-shell: and names the pinned one it expects" "$(grep -c "expects shellcheck $pinned.*got 0.9.0" "$work/out" || true)" "1"
 
+# --- run by git, from a worktree -----------------------------------------------
+#
+# Debt the-pre-push-hook-lets-tests-write-into-the-real-repository-from-a-worktree,
+# found on 2026-10-21. In a plain checkout git exports no GIT_DIR to a hook; in
+# a worktree it exports the absolute path of the worktree's git directory. The
+# hooks ran the unit tests with it, and every test that makes a scratch
+# repository — `git init` in a temporary directory — made it in the real one:
+# commits on the branch being pushed, the index replaced, and `core.bare=true`
+# in the main checkout's config, which then refused `git status`.
+#
+# So this is driven the way it was found: a real `git commit` and a real
+# `git push` from a real worktree, with the real hooks, and an npm stand-in that
+# does what those tests do. HOOKS_ROOT is not set, so the hooks find their root
+# the way they do for a person.
+wt_case() {
+    local base="$work/wt-case"
+    rm -rf "$base"; mkdir -p "$base"
+    git init -q --bare "$base/origin.git"
+    git init -q "$base/main"
+    mkdir -p "$base/main/.githooks"
+    cp "$HERE/pre-commit" "$HERE/pre-push" "$base/main/.githooks/"
+    git -C "$base/main" add .githooks
+    git -C "$base/main" -c user.name=t -c user.email=t@t commit -q -m root
+    git -C "$base/main" config core.hooksPath .githooks
+    git -C "$base/main" remote add origin "$base/origin.git"
+    git -C "$base/main" worktree add -q "$base/wt" -b topic
+    mkdir -p "$base/wt/node_modules"
+
+    # What a scratch-repository test does, through whatever GIT_* it inherited.
+    cat > "$base/npm" <<'SH'
+#!/usr/bin/env bash
+d="$(mktemp -d)"
+env | grep '^GIT_DIR=' >> "$LEAKED" || true
+git -C "$d" init -q
+git -C "$d" config core.bare true
+git -C "$d" -c user.name=t -c user.email=t@t commit -q --allow-empty -m scratch
+rm -rf "$d"
+exit 0
+SH
+    chmod +x "$base/npm"
+    cp "$work/bin/check-md-size" "$base/check-md-size"
+
+    : > "$work/leaked"
+    local tip_before; tip_before="$(git -C "$base/wt" rev-parse HEAD)"
+    set +e
+    ( cd "$base/wt" \
+        && echo change > file && git add file \
+        && LEAKED="$work/leaked" CALLS="$work/calls" PATH="$base:$PATH" \
+            git -c user.name=t -c user.email=t@t commit -q -m change \
+        && LEAKED="$work/leaked" CALLS="$work/calls" PATH="$base:$PATH" \
+            git push -q origin topic ) > "$work/out" 2>&1
+    echo $? > "$work/rc"
+    set -e
+
+    check "worktree: the commit and the push both went through the hooks and succeeded" \
+        "$(cat "$work/rc")" "0"
+    check "worktree: the main checkout's config was not made bare" \
+        "$(git -C "$base/main" config --bool core.bare)" "false"
+    check "worktree: the branch carries the one commit made, and no scratch commit" \
+        "$(git -C "$base/wt" log --format=%s "$tip_before"..HEAD | tr '\n' ' ')" "change "
+    check "worktree: what was pushed is that commit too" \
+        "$(git -C "$base/origin.git" log --format=%s -1 topic)" "change"
+    check "worktree: no step the hooks ran saw a GIT_DIR" "$(wc -l < "$work/leaked")" "0"
+    check "worktree: and git status still works in the main checkout" \
+        "$(git -C "$base/main" status --porcelain >/dev/null 2>&1 && echo yes || echo no)" "yes"
+}
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 wt_case
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "hooks.test: all checks passed."

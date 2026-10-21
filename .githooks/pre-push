@@ -9,6 +9,16 @@
 set -euo pipefail
 
 ROOT="${HOOKS_ROOT:-$(git rev-parse --show-toplevel)}"
+
+# **What git exported to this hook goes before anything else runs.** From a
+# worktree git sets GIT_DIR to the worktree's absolute git directory (from a
+# plain checkout it sets none), and every step below inherits it: a unit test
+# that makes a scratch repository with `git init` in a temporary directory
+# then makes it in this one. Measured on 2026-10-21 — commits on the branch
+# being pushed, and core.bare=true in the main checkout's config. git names
+# its own list, so this does not have to keep one in step with it.
+# shellcheck disable=SC2046 # one variable name per word is the point
+unset $(git rev-parse --local-env-vars)
 refuse() { echo "pre-push: refused: $*" >&2; exit 1; }
 
 [ -d "$ROOT/node_modules" ] \
