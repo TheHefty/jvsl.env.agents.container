@@ -258,4 +258,24 @@ check "and which JDK runs the language server" \
 check "and the fragment makes that path and JAVA_HOME" \
     "$(grep -c '/usr/lib/jvm/stack-java' "$HERE/../stacks/java/Dockerfile.frag" | awk '{print ($1 >= 2) ? "yes" : "no"}')" "yes"
 
+# **One Java language server, with a ceiling** (#187, story
+# the-java-language-server-runs-one-generation-with-its-own-ceiling). redhat.java
+# defaults to Hybrid, which starts a syntax-server JVM before the standard one,
+# and to -Xmx2G. java.jdt.ls.vmargs replaces the whole default string, so the
+# stack's value is that string with only the heap changed: the other flags are
+# the extension's GC tuning, and losing them would be a change nobody chose.
+# Read from redhat.java 1.59's package.json on 2026-10-21.
+jdtls_default='-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable'
+for stack in java android; do
+    settings="$(label_of "$stack" | jq -c '[.[].customizations.vscode.settings // {}] | add')"
+    check "$stack: the language server starts in Standard mode, with no separate syntax server" \
+        "$(printf '%s' "$settings" | jq -r '."java.server.launchMode" // "unset"')" "Standard"
+    vmargs="$(printf '%s' "$settings" | jq -r '."java.jdt.ls.vmargs" // ""')"
+    check "$stack: the language server's heap has exactly one -Xmx, and it is the stack's bound" \
+        "$(printf '%s\n' $vmargs | grep '^-Xmx' | tr '\n' ' ')" "-Xmx1536m "
+    check "$stack: every other flag of the extension's default is kept, in order" \
+        "$(printf '%s\n' $vmargs | grep -v '^-Xmx' | tr '\n' ' ')" \
+        "$(printf '%s\n' $jdtls_default | grep -v '^-Xmx' | tr '\n' ' ')"
+done
+
 exit "$failures"
