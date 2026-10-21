@@ -382,6 +382,27 @@ in both languages. Tracked as `jvsl_env_agents_container-cig`.
 | 1 | the task records five checks against the diff after the code | #184; one section in the template, the safety net |
 | 2 | the agent states the implementation's shape before writing it | #185; extends the mode's pre-code step rather than adding a second one (decided 2026-10-22) |
 
+## Epic: the container reaps what dead runs leave behind
+
+**The container reaps what dead test runs and dead language servers leave behind, and never touches
+a live one.**
+
+Agreed on 2026-10-21, from #186 and the orphaned JVMs in #187. Testcontainers runs with Ryuk
+disabled here, because Ryuk cannot work under the nested rootless daemon, so a test JVM that dies
+leaves its containers running. One Postgres held 7.16 GiB of an 8 GiB container, and the next build
+was OOM-killed. An interrupted browser-test run leaves Chrome, chromedriver, the runner and vite
+running under PID 1, holding ports and `/tmp` profiles. A Kotlin daemon whose Gradle daemon was
+killed lives on. The epic closes when each kind is reaped once its run is provably dead, each reap
+is logged with what and why, a live run is never touched, and a project can switch the reaper off.
+Tracked as `jvsl_env_agents_container-66p`.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the reaper runs, says what it reaped, and can be switched off | the frame every kind plugs into, shipped with no kind |
+| 2 | orphaned Testcontainers containers are reaped | the largest leftover: one held 7 GiB and caused the OOM kill |
+| 3 | orphaned browser-test processes and their profiles are reaped | ports and memory held by dead WebdriverIO runs |
+| 4 | orphaned JVMs are reaped | the backstop: after the Java stack's short idle times, a Kotlin orphan already exits in ten minutes |
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
