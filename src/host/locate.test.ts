@@ -216,3 +216,49 @@ test('a project window inside its container is located through projectOnHost', (
   const r = projectOnHost({ remoteName: 'dev-container', folder: { fsPath: '/config/workspace', authority: `dev-container+${hex('/home/jv/p')}@wsl+Ubuntu` } })
   assert.equal(r.kind, 'wsl')
 })
+
+// --- a stopped leftover is not a second owner (debt a-stopped-leftover-container-makes-the-project-ambiguous)
+
+test('of several containers claiming the project, the one running is the project\'s', () => {
+  // 2026-10-22: sharp_cohen running (UNC label), gallant_brown exited since the
+  // day before (Linux label). The recreate offer refused to choose.
+  const p = { kind: 'wsl', distro: 'archlinux', path: '\\\\wsl.localhost\\archlinux\\home\\h\\p', linux: '/home/h/p' } as const
+  const rows = [
+    { id: 'a', name: 'sharp_cohen', localFolder: '\\\\wsl.localhost\\archlinux\\home\\h\\p', state: 'running' },
+    { id: 'b', name: 'gallant_brown', localFolder: '/home/h/p', state: 'exited' },
+  ]
+  assert.deepEqual(containerFor(folderNames(p), rows), { kind: 'one', id: 'a' })
+})
+
+test('two running containers are still refused by name, never guessed between', () => {
+  const rows = [
+    { id: 'a', name: 'one', localFolder: '/home/h/p', state: 'running' },
+    { id: 'b', name: 'two', localFolder: '/home/h/p', state: 'running' },
+  ]
+  assert.deepEqual(containerFor('/home/h/p', rows), { kind: 'many', names: ['one', 'two'] })
+})
+
+test('several stopped and none running is still ambiguous; one stopped alone is still the one', () => {
+  const stopped = [
+    { id: 'a', name: 'one', localFolder: '/home/h/p', state: 'exited' },
+    { id: 'b', name: 'two', localFolder: '/home/h/p', state: 'exited' },
+  ]
+  assert.equal(containerFor('/home/h/p', stopped).kind, 'many')
+  assert.deepEqual(containerFor('/home/h/p', [stopped[0]!]), { kind: 'one', id: 'a' })
+})
+
+test('rows that carry no state behave as before: more than one is refused', () => {
+  const rows = [
+    { id: 'a', name: 'one', localFolder: '/home/h/p' },
+    { id: 'b', name: 'two', localFolder: '/home/h/p' },
+  ]
+  assert.equal(containerFor('/home/h/p', rows).kind, 'many')
+})
+
+test('a container created but never started is not the running one', () => {
+  const rows = [
+    { id: 'a', name: 'one', localFolder: '/home/h/p', state: 'created' },
+    { id: 'b', name: 'two', localFolder: '/home/h/p', state: 'exited' },
+  ]
+  assert.equal(containerFor('/home/h/p', rows).kind, 'many')
+})

@@ -83,11 +83,13 @@ export async function offerRecreate(
   try {
     const { stdout } = await docker([
       'ps', '-a', '--filter', 'label=devcontainer.local_folder',
-      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}',
+      // The state, so a stopped leftover is not read as a second owner of the
+      // project (debt a-stopped-leftover-container-makes-the-project-ambiguous).
+      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.State}}',
     ])
     const rows = stdout.split('\n').filter((l) => l.trim() !== '').map((l) => {
-      const [id = '', name = '', localFolder = ''] = l.split('\t')
-      return { id, name, localFolder }
+      const [id = '', name = '', localFolder = '', state = ''] = l.split('\t')
+      return { id, name, localFolder, state }
     })
     const choice = containerFor(folderNames(project), rows)
     if (choice.kind === 'many') container = choice
