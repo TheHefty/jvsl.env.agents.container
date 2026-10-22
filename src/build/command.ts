@@ -6,6 +6,7 @@ import { composeAndBuildCommand, composeForProject, buildOutcome, hostProblems, 
 import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
+import { mountPath } from '../host/locate.ts'
 import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
@@ -55,7 +56,7 @@ export async function build(
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
   // dismissed before the useful text can be read.
-  if (outcome === 'ok') await offerRecreate(project.path, write, docker)
+  if (outcome === 'ok') await offerRecreate(mountPath(project), write, docker)
 }
 
 /**

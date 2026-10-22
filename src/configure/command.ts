@@ -12,7 +12,7 @@ import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stac
 import { findGradleBuilds } from '../build/gradle.ts'
 import { dockerFor } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
-import type { ProjectOnHost } from '../host/locate.ts'
+import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -307,7 +307,7 @@ async function regenerate(
   }
   write(measured.notes.map((n) => `facts: ${n}`))
   const r = regenerateConfiguration({
-    projectRoot: root,
+    projectRoot: mountPath(location),
     homeDir: homedir(),
     extensionVersion,
     facts: measured.facts,

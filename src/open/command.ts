@@ -12,7 +12,7 @@ import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
 import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
-import type { ProjectOnHost } from '../host/locate.ts'
+import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -136,7 +136,9 @@ export async function gather(
   })
   write(measured.notes.map((n) => `facts: ${n}`))
   return {
-    projectRoot: root,
+    // What docker mounts and names the image after: the Linux path in a distro.
+    // Files are read through `root`, which is where this machine reaches them.
+    projectRoot: mountPath(project),
     homeDir: homedir(),
     extensionVersion: extensionVersion(context),
     facts: measured.facts,
@@ -146,7 +148,7 @@ export async function gather(
     runningContainers: await runningContainers(write, docker),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
-    image: await imageState(projectNames(root).image, write, docker),
+    image: await imageState(projectNames(mountPath(project)).image, write, docker),
     gradleBuilds: gradle.builds,
   }
 }

@@ -63,11 +63,13 @@ export function containerFor(hostPath: string, running: readonly Running[]): Cho
 export type ProjectOnHost =
   | { kind: 'host'; path: string }
   /**
-   * A project inside a WSL distro, seen from an editor on Windows. `path` is
-   * the Linux path inside the distro; `unc` is the same folder as Windows
-   * reaches it, `\\wsl.localhost\<distro>\...`.
+   * A project inside a WSL distro, seen from an editor on Windows. **`path` is
+   * where this machine reads and writes its files**, as it is for a local
+   * project — here `\\wsl.localhost\<distro>\...` — so every file access
+   * goes on reading `path`. `linux` is the same folder inside the distro, which
+   * is what the distro's docker mounts: see mountPath.
    */
-  | { kind: 'wsl'; distro: string; path: string; unc: string }
+  | { kind: 'wsl'; distro: string; path: string; linux: string }
   | { kind: 'none'; reason: string }
 
 /**
@@ -88,7 +90,7 @@ export function onThisMachine(project: ProjectOnHost): ProjectOnHost {
   return {
     kind: 'none',
     reason:
-      `this window's project is in the WSL distro "${project.distro}" (${project.path}). ` +
+      `this window's project is in the WSL distro "${project.distro}" (${project.linux}). ` +
       `Opening projects that live in WSL is not supported yet; it arrives with the epic ` +
       `a-windows-editor-opens-a-project-that-lives-in-wsl`,
   }
@@ -150,5 +152,29 @@ function wslProject(authority: string, path: string | undefined): ProjectOnHost 
     return { kind: 'none', reason: `this WSL window's folder has no Linux path (${path ?? 'none'})` }
   }
   const unc = `\\\\wsl.localhost\\${distro}${path.replace(/\//g, '\\')}`
-  return { kind: 'wsl', distro, path, unc }
+  return { kind: 'wsl', distro, path: unc, linux: path }
+}
+
+/**
+ * The folder as docker sees it, for the workspace mount and the configuration:
+ * the Linux path inside a distro, and the folder itself anywhere else.
+ */
+export function mountPath(project: Exclude<ProjectOnHost, { kind: 'none' }>): string {
+  return project.kind === 'wsl' ? project.linux : project.path
+}
+
+/**
+ * A WSL project whose files this machine cannot reach — the distro stopped,
+ * removed, or renamed — is refused here, by name. Left alone, every read would
+ * return null, which the open flow takes for "no manifest" and fills with
+ * defaults.
+ */
+export function reachable(project: ProjectOnHost, exists: (path: string) => boolean): ProjectOnHost {
+  if (project.kind !== 'wsl' || exists(project.path)) return project
+  return {
+    kind: 'none',
+    reason:
+      `the WSL distro "${project.distro}" does not answer at ${project.path} for ${project.linux}. ` +
+      `Start it (wsl -d ${project.distro}) and try again`,
+  }
 }
