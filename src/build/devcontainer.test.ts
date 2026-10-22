@@ -272,3 +272,29 @@ test('Linux paths are untouched', () => {
   const config = buildConfiguration(input)
   assert.equal(config.workspaceMount, 'source=/home/me/code/myrepo,target=/config/workspace,type=bind')
 })
+
+// --- names docker accepts (debt an-image-name-with-capitals-is-refused-by-docker)
+
+test('an image name is lower case: docker refuses capitals in a repository name', () => {
+  assert.equal(projectNames('/home/a/MyProject').image, 'myproject-dev')
+})
+
+test('characters a name may not hold become dashes, in the image and the volume alike', () => {
+  const n = projectNames('/home/a/my project (2)')
+  assert.match(n.image, /^[a-z0-9][a-z0-9._-]*$/)
+  assert.match(n.volume, /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/)
+  assert.equal(n.image, 'my-project-2-dev')
+})
+
+test('a volume keeps its capitals: they are allowed, and renaming it would leave its state behind', () => {
+  assert.equal(projectNames('/home/a/MyProject').volume, 'MyProject-code-server-data')
+})
+
+test('every name that is valid today comes out exactly as before', () => {
+  // The volume holds a project's /config. A name that changes is a container
+  // that comes up empty, with its state still there under the old name.
+  for (const folder of ['kotodori', 'jvsl.ai.agents.kotodori', 'gosnip', 'chip8', 'fahrenheit404', 'my_proj-2', 'trailing-', 'a..b']) {
+    const n = projectNames(`/home/a/${folder}`)
+    assert.deepEqual(n, { repo: folder, image: `${folder}-dev`, volume: `${folder}-code-server-data`, launcherContainer: `${folder}-app` })
+  }
+})
