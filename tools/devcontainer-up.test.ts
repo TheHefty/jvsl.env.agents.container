@@ -1,11 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { decideOpen } from '../src/open/open.ts'
+import { decideOpen, regenerateConfiguration } from '../src/open/open.ts'
 
 /**
  * Brings a container up from a configuration this extension generated, using
@@ -169,6 +169,40 @@ test('a container brought up from our configuration got the machine the manifest
     // sleep loop. In the real image that command is s6-overlay; without it the
     // container comes up with none of its services and nothing says so.
     sh('docker', ['exec', containerId, 'test', '-f', MARKER])
+
+    // **Configure, then Rebuild Container** — the flow the operator reported on
+    // 2026-10-22 (debt configure-changes-the-limits-but-the-container-keeps-the-
+    // old-ones): the memory was raised, the container rebuilt, and it still had
+    // the old limit, because only opening wrote this file. What Configure does
+    // after writing the manifest is regenerateConfiguration; a rebuild is
+    // `up --remove-existing-container`. Asserted on the running container, for
+    // the reason this whole test exists.
+    const raised = JSON.stringify({ limits: { memory: '768m', cpus: 1 } })
+    writeFileSync(join(root, '.code-server.stack.json'), raised)
+    const configPath = join(root, '.devcontainer', 'devcontainer.json')
+    const regenerated = regenerateConfiguration({
+      projectRoot: root,
+      homeDir: homedir(),
+      extensionVersion: '0.0.0-test',
+      facts: { cpuCount: 8, devicesPresent: ['/dev/fuse'], devicesAbsent: ['/dev/kvm'] },
+      manifest: raised,
+      existingConfig: readFileSync(configPath, 'utf8'),
+      gradleBuilds: [],
+    })
+    assert.equal(regenerated.action, 'write', JSON.stringify(regenerated))
+    if (regenerated.action !== 'write') return
+    writeFileSync(configPath, regenerated.serialised)
+
+    const rebuilt = sh('npx', [
+      '--no-install', 'devcontainer', 'up', '--workspace-folder', root, '--remove-existing-container',
+    ])
+    const again = JSON.parse(rebuilt.trim().split('\n').at(-1) ?? '{}') as { containerId?: string }
+    assert.notEqual(again.containerId ?? '', '', rebuilt)
+    containerId = again.containerId ?? ''
+    const reinspected = JSON.parse(sh('docker', ['inspect', containerId])) as Array<{
+      HostConfig: Record<string, unknown>
+    }>
+    assert.equal(reinspected[0]?.HostConfig['Memory'], 768 * 1024 * 1024, 'the rebuilt container kept the old memory')
   } finally {
     if (containerId !== '') {
       try { sh('docker', ['rm', '-f', containerId]) } catch { /* already gone */ }

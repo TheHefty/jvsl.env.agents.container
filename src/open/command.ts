@@ -13,7 +13,7 @@ import { extensionVersion } from '../host/detected.ts'
 import { dockerBounded } from '../host/docker.ts'
 import { hostFacts } from '../host/host.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
-import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, type OpenContext, type ImageState } from './open.ts'
+import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -48,7 +48,7 @@ export async function prepare(
   }
 
   const target = join(root, CONFIG_PATH)
-  const serialised = `${JSON.stringify(decision.configuration, null, 2)}\n`
+  const serialised = serialise(decision.configuration)
   try {
     // Before the file, because a bind source that does not exist fails the
     // mount rather than being created — see Decision.ensureHostDirs.
