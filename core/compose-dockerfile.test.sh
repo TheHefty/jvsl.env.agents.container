@@ -253,8 +253,6 @@ check "and so does an empty list" \
 java_settings="$(label_of java | jq -c '[.[].customizations.vscode.settings // {}] | add')"
 check "the java stack tells the editor which JDK imports Gradle" \
     "$(printf '%s' "$java_settings" | jq -r '."java.import.gradle.java.home" // "unset"')" "/usr/lib/jvm/stack-java"
-check "and which JDK runs the language server" \
-    "$(printf '%s' "$java_settings" | jq -r '."java.jdt.ls.java.home" // "unset"')" "/usr/lib/jvm/stack-java"
 check "and the fragment makes that path and JAVA_HOME" \
     "$(grep -c '/usr/lib/jvm/stack-java' "$HERE/../stacks/java/Dockerfile.frag" | awk '{print ($1 >= 2) ? "yes" : "no"}')" "yes"
 
@@ -276,6 +274,34 @@ for stack in java android; do
     check "$stack: every other flag of the extension's default is kept, in order" \
         "$(printf '%s\n' $vmargs | grep -v '^-Xmx' | tr '\n' ' ')" \
         "$(printf '%s\n' $jdtls_default | grep -v '^-Xmx' | tr '\n' ' ')"
+done
+
+# **The java stack names its runtime by version** (debt
+# the-java-21-stack-points-the-language-server-at-a-jdk-it-refuses).
+# redhat.java runs its server only on Java 25 or newer, and said so on every
+# open of a Java 21 project, because java.jdt.ls.java.home named the stack's
+# JDK. The stack now names that JDK as the project's runtime instead, which
+# needs the version in the editor settings: {{VERSION}} is filled in a stack's
+# devcontainer.json as it is in its Dockerfile fragment.
+label_with() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" bash "$COMPOSE" "${@:2}" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
+for v in $(jq -r '.[]' "$HERE/../stacks/java/versions.json"); do
+    for stack in java android; do
+        label="$(label_with "{\"java\": \"$v\"}" "$stack")"
+        check "$stack with java $v: the label parses" "$(jq -e 'type == "array"' <<<"$label" >/dev/null 2>&1 && echo yes || echo no)" "yes"
+        check "$stack with java $v: no placeholder is left unfilled" "$(grep -c '{{' <<<"$label" || true)" "0"
+        settings="$(jq -c '[.[].customizations.vscode.settings // {}] | add' <<<"$label")"
+        check "$stack with java $v: the stack's JDK is the project's default runtime, named for its version" \
+            "$(jq -c '."java.configuration.runtimes"' <<<"$settings")" \
+            "[{\"name\":\"JavaSE-$v\",\"path\":\"/usr/lib/jvm/stack-java\",\"default\":true}]"
+        check "$stack with java $v: the language server is not pointed at a JDK it may refuse" \
+            "$(jq -r '."java.jdt.ls.java.home" // "unset"' <<<"$settings")" "unset"
+    done
+done
+check "a version with JSON's own characters cannot break the label" \
+    "$(label_with '{"java": "21\"x"}' java | jq -e 'type == "array"' >/dev/null 2>&1 && echo parses || echo broken)" "parses"
+for dir in "$HERE"/../stacks/*/; do
+    stack="$(basename "$dir")"
+    check "$stack: composed alone, no placeholder is left in its label" "$(label_of "$stack" | grep -c '{{' || true)" "0"
 done
 
 exit "$failures"

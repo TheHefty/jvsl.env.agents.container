@@ -131,6 +131,7 @@ if [ -n "${STACK_MANIFEST:-}" ] && [ -f "$STACK_MANIFEST" ] \
 fi
 
 printf '%s\n' "$core_text"
+declare -A stack_version=()
 for name in "${ordered[@]}"; do
     versions_file="$STACKS_DIR/$name/versions.json"
     version=''
@@ -140,6 +141,7 @@ for name in "${ordered[@]}"; do
     if [ -z "$version" ]; then
         version="$(jq -r '.[0]' "$versions_file")"
     fi
+    stack_version[$name]="$version"
     echo
     sed "s/{{VERSION}}/$version/g" "$STACKS_DIR/$name/Dockerfile.frag"
 done
@@ -177,7 +179,21 @@ back to the image's USER, which is root." >&2
     fi
 done
 
-metadata="$(jq -s -c 'add' "${metadata_files[@]}")"
+# **{{VERSION}} is filled in a stack's metadata too**, as in its fragment —
+# the java stack names its runtime JavaSE-<version> (debt
+# the-java-21-stack-points-the-language-server-at-a-jdk-it-refuses). Inside
+# string values only, and through jq rather than sed: the version comes from
+# the manifest, and a quote or a backslash in it must not be able to change the
+# JSON around it.
+metadata="$({
+    jq -c . "$CORE_DEVCONTAINER"
+    for name in "${ordered[@]}"; do
+        f="$STACKS_DIR/$name/devcontainer.json"
+        [ -f "$f" ] || continue
+        jq -c --arg v "${stack_version[$name]}" \
+            'walk(if type == "string" then gsub("\\{\\{VERSION\\}\\}"; $v) else . end)' "$f"
+    done
+} | jq -s -c 'add')"
 
 # The value is single-quoted below. No `publisher.name` extension identifier
 # contains a single quote, so this never fires in practice — but if it ever
