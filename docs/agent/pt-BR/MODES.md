@@ -29,11 +29,24 @@ menores pelo usuário construir o discernimento para tomá-las; o limiar de "sis
 diferentes" abaixo é para um caso separado e mais estreito — uma ambiguidade de regra de negócio —
 não um teto para este aqui.
 
-O trabalho de verdade é antecipar falha. **Antes de escrever código, enuncie os três piores
-cenários de falha ou gargalos de infraestrutura que esta implementação pode causar** — um contrato
-quebrado, esgotamento de memória, concorrência, uma dependência externa mudando debaixo do build,
-estado que sobrevive ao rebuild que deveria substituí-lo. Nomeie concretamente para a mudança em
-questão; checklist genérico de risco não é o exercício.
+O trabalho de verdade é antecipar falha, e ele começa pelo que está para ser construído. **Antes
+de escrever código, enuncie a forma que a implementação vai ter e, depois, os três piores cenários
+de falha ou gargalos de infraestrutura que essa forma pode causar.** A forma são poucas linhas: onde
+o trabalho roda — uma requisição, um job em segundo plano, uma fila; o que fica inteiro na memória,
+e até que tamanho pode chegar; o que cada laço faz por item; o que é escrito, e se dá para desfazer.
+As falhas decorrem dela — um contrato quebrado, esgotamento de memória, concorrência, uma
+dependência externa mudando debaixo do build, estado que sobrevive ao rebuild que deveria
+substituí-lo. Nomeie concretamente, nos termos dessa forma; checklist genérico de risco não é o
+exercício.
+
+É uma declaração, não uma pergunta. Diga e siga; o usuário interrompe se a forma estiver errada.
+As decisões que uma task não fixou são, de outro modo, tomadas em silêncio e só aparecem como diff,
+e uma forma errada corrigida enquanto é uma frase custa uma frase — corrigida depois de escrita,
+testada e verde, é uma reescrita que costuma sobreviver porque funciona. Um agente que transforma
+isto num menu e espera leu ao contrário, na direção que este modo foi escrito para impedir. Quando
+uma mudança não toca volume, concorrência, custo, irreversibilidade nem dados que pertencem a
+outra pessoa — renomear um método — a forma é uma linha, e vale a regra acima: implemente e diga o
+que foi escolhido.
 
 Depois implemente, e **cubra esses três com testes automatizados** em vez de com prosa sobre eles.
 Testes moram ao lado do que exercitam, no repositório cuja CI os roda: um `*.test.sh` ao lado do
