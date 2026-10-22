@@ -1,6 +1,7 @@
 import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
 import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits } from '../build/limits.ts'
+import { WSL_READY } from '../host/locate.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
 
@@ -270,6 +271,9 @@ export function prepareHere(remoteName: string | undefined): { act: true } | { a
   if (remoteName === 'dev-container') {
     return { act: false, why: "this window is already inside the project's container, so there is nothing to prepare" }
   }
+  // A WSL window's project is reached through its distro — docker, files, the
+  // build and the credentials each go there — so it is prepared like a local one.
+  if (remoteName === 'wsl' && WSL_READY) return { act: true }
   return { act: false, why: `this window is connected to "${remoteName}", and the project is not on this machine` }
 }
 
