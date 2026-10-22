@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# s6 longrun: every five minutes, runs each reaper kind and says what it reaped.
+#
+# **Why it exists** (#186, #187). Testcontainers runs here with Ryuk disabled,
+# because Ryuk cannot work under the nested rootless daemon, so a test JVM that
+# dies leaves its containers running: one Postgres held 7.16 GiB of an 8 GiB
+# container on 2026-10-21 and the next build was OOM-killed with nothing saying
+# why. Interrupted browser tests leave Chrome and vite holding ports; a Kotlin
+# daemon whose Gradle daemon was killed lives on for two hours. Each of those is
+# a *kind*, an executable in $REAPER_KINDS_DIR owned by its own story, because
+# what counts as orphaned is different for each and is the part that must never
+# be wrong: a live run is never touched.
+#
+# **The contract with a kind.** It prints one line per thing it reaped, as
+# `<what> (<why it counted as orphaned>)`, and nothing else on stdout, and exits
+# 0. Exiting non-zero means it could not do its work; its last stderr line is
+# the reason.
+#
+# **What this frame owns.** Each reap is one timestamped line, on stdout for
+# `docker logs` and in $REAPER_LOG for whoever is in a terminal wondering why
+# the container is slow — a file in the persistent volume, bounded to two
+# rotations of $REAPER_LOG_MAX. A pass that reaps nothing writes nothing. A
+# failing kind is said once and again when it recovers, never every pass, and
+# never by exiting: s6 restarts a longrun that exits, and the restarts would
+# bury the line that explains them.
+#
+# **Off is `"reaper": false` in the project's manifest, and only that.** Read at
+# every pass, so it takes effect without a restart. Anything else — no key, no
+# manifest, a manifest that does not parse — leaves it on, because the
+# leftovers it exists for are the ones that OOM a container hours later.
+set -uo pipefail
+
+# Every leftover belongs to abc, and so does the rootless daemon's socket; a
+# kind with a bug should not be able to kill what root owns.
+if [ "${REAPER_AS_ABC:-}" != 1 ]; then
+    REAPER_AS_ABC=1 exec s6-setuidgid abc bash "$0"
+fi
+
+KINDS="${REAPER_KINDS_DIR:-/usr/local/lib/jvsl/reapers.d}"
+LOG="${REAPER_LOG:-/config/.local/state/jvsl/reaper.log}"
+MANIFEST="${REAPER_MANIFEST:-/config/workspace/.agent-container.stack.json}"
+INTERVAL="${REAPER_INTERVAL:-300}"
+LOG_MAX="${REAPER_LOG_MAX:-262144}"
+PASSES="${REAPER_PASSES:-}"
+
+mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
+
+say() {
+    local line
+    line="$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"
+    echo "$line"
+    # Rotated before the line that would cross the bound, so neither file ever
+    # holds more than LOG_MAX. One rotation is kept: enough to read back the
+    # last incident, not a history.
+    if [ -f "$LOG" ] && [ $(( $(stat -c %s "$LOG" 2>/dev/null || echo 0) + ${#line} + 1 )) -gt "$LOG_MAX" ]; then
+        mv -f "$LOG" "$LOG.1" 2>/dev/null || true
+    fi
+    printf '%s\n' "$line" >> "$LOG" 2>/dev/null || true
+}
+
+declare -A failing=()
+switch=""
+
+# on | off | unreadable, and said only when it changes.
+read_switch() {
+    local now value
+    if [ ! -f "$MANIFEST" ]; then
+        now=on
+    elif ! value="$(jq -c '.reaper' "$MANIFEST" 2>/dev/null)"; then
+        now=unreadable
+    elif [ "$value" = false ]; then
+        now=off
+    else
+        now=on
+    fi
+    if [ "$now" != "$switch" ]; then
+        case "$now" in
+            off) say "reaper: off. $MANIFEST says \"reaper\": false, so nothing is reaped until it says otherwise." ;;
+            unreadable) say "reaper: could not read $MANIFEST as JSON, so reaping stays on." ;;
+            on) [ -n "$switch" ] && say "reaper: on again." ;;
+        esac
+        switch="$now"
+    fi
+}
+
+one_pass() {
+    read_switch
+    [ "$switch" = off ] && return
+    [ -d "$KINDS" ] || return
+    local kind name out err rc
+    err="$(mktemp)"
+    for kind in "$KINDS"/*; do
+        [ -f "$kind" ] && [ -x "$kind" ] || continue
+        name="$(basename "$kind")"
+        rc=0
+        out="$("$kind" 2>"$err")" || rc=$?
+        if [ "$rc" -ne 0 ]; then
+            if [ -z "${failing[$name]:-}" ]; then
+                say "$name: could not run: $(tail -n 1 "$err")"
+                failing[$name]=1
+            fi
+            continue
+        fi
+        if [ -n "${failing[$name]:-}" ]; then
+            say "$name: running again."
+            unset "failing[$name]"
+        fi
+        while IFS= read -r line; do
+            [ -n "$line" ] && say "$name: reaped $line"
+        done <<<"$out"
+    done
+    rm -f "$err"
+}
+
+pass=0
+while :; do
+    one_pass
+    pass=$((pass + 1))
+    if [ -n "$PASSES" ] && [ "$pass" -ge "$PASSES" ]; then
+        exit 0
+    fi
+    sleep "$INTERVAL"
+done

@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Reaper kind (see core/services/svc-reaper/run): removes Testcontainers
+# containers that no live JVM could own.
+#
+# **Why** (#186). Ryuk cannot work under this image's nested rootless daemon,
+# so projects set TESTCONTAINERS_RYUK_DISABLED=true and nothing removes what a
+# test JVM started once that JVM is gone. On 2026-10-21 a killed build's
+# Postgres held 7.16 GiB of an 8 GiB container, and the next build was
+# OOM-killed seventeen minutes in.
+#
+# **Who owns a container cannot be read; who could have, can.** Testcontainers
+# labels each container with a session id that exists only in the owning JVM's
+# memory (DockerClientFactory.SESSION_ID, a random UUID; read in 2.0.5). So a
+# container is orphaned when no live JVM that *could* have created it started
+# before it was created: a JVM that started afterwards cannot be its owner. A
+# JVM could have created it when it holds a Testcontainers jar open, when its
+# command line is a test runner's, or when its open files cannot be read —
+# that last one because it cannot be ruled out, and leaving an orphan for one
+# more pass costs five minutes of memory where removing a live run's database
+# costs a build that fails naming nothing.
+#
+# **Not touched, whatever their state:** anything without
+# org.testcontainers=true — compose stacks included — and reusable containers,
+# which carry org.testcontainers.hash and are kept alive on purpose. The labels
+# are checked here as well as in docker's filter.
+#
+# Residual risk, said rather than hidden: a test JVM that loads Testcontainers
+# from a jar named otherwise (shaded into a fat jar) and is not one of the
+# runners below would not be seen.
+set -uo pipefail
+
+DOCKER="${REAPER_DOCKER:-docker}"
+PROC="${REAPER_PROC:-/proc}"
+T="${REAPER_DOCKER_TIMEOUT:-30}"
+NOW="${REAPER_NOW:-$(date +%s)}"
+# s6 services do not inherit the container's ENV; this is the image's socket,
+# the same fallback core/bin/jail-common.sh uses.
+export DOCKER_HOST="${DOCKER_HOST:-unix:///config/.docker/run/docker.sock}"
+
+RUNNERS='Gradle Test Executor|surefirebooter|com\.intellij\.rt\.junit|org\.eclipse\.jdt\.internal\.junit'
+
+err="$(mktemp)"
+trap 'rm -f "$err"' EXIT
+
+dock() {
+    local rc=0
+    timeout "$T" "$DOCKER" "$@" 2>"$err" || rc=$?
+    if [ "$rc" -eq 124 ]; then
+        echo "docker did not answer within ${T}s at $DOCKER_HOST" >&2
+        return 1
+    fi
+    if [ "$rc" -ne 0 ]; then
+        cat "$err" >&2
+        return 1
+    fi
+}
+
+ids="$(dock ps -a --filter label=org.testcontainers=true --format '{{.ID}}')" || exit 1
+[ -n "$ids" ] || exit 0
+# shellcheck disable=SC2086 # one id per word
+details="$(dock inspect $ids)" || exit 1
+
+# When each JVM that could own a Testcontainers container started, in epoch
+# seconds. Field 22 of /proc/<pid>/stat, counted after the command name's
+# closing parenthesis, because the name itself can hold spaces.
+hz="$(getconf CLK_TCK)"
+btime="$(awk '$1 == "btime" {print $2}' "$PROC/stat")"
+owners=()
+for dir in "$PROC"/[0-9]*; do
+    [ -r "$dir/cmdline" ] || continue
+    cmd="$(tr '\0' '\n' < "$dir/cmdline" 2>/dev/null)" || continue
+    case "$(basename "$(head -n 1 <<<"$cmd")")" in java) ;; *) continue ;; esac
+    could=""
+    if grep -qE "$RUNNERS" <<<"$cmd"; then
+        could=yes
+    elif ! links="$(find "$dir/fd/" -maxdepth 1 -type l -printf '%l\n' 2>/dev/null)" || [ ! -x "$dir/fd" ]; then
+        could=yes
+    elif grep -qE '/org\.testcontainers/|/testcontainers[^/]*\.jar$' <<<"$links"; then
+        could=yes
+    fi
+    [ -n "$could" ] || continue
+    stat="$(cat "$dir/stat" 2>/dev/null)" || { owners+=(0); continue; }
+    ticks="$(awk '{print $20}' <<<"${stat##*) }")"
+    owners+=($(( btime + ticks / hz )))
+done
+
+age() {
+    local s=$1
+    if [ "$s" -ge 3600 ]; then echo "$((s / 3600))h"
+    elif [ "$s" -ge 60 ]; then echo "$((s / 60))m"
+    else echo "${s}s"; fi
+}
+epoch() { date -u -d "$1" +%s 2>/dev/null || echo 0; }
+
+rc=0
+while IFS=$'\t' read -r id status image created started finished tc hash; do
+    [ "$tc" = true ] && [ -z "$hash" ] || continue
+    c="$(epoch "$created")"
+    [ "$c" -gt 0 ] || continue
+    owned=""
+    for o in "${owners[@]}"; do
+        [ "$o" -le "$c" ] && { owned=yes; break; }
+    done
+    [ -n "$owned" ] && continue
+    case "$status" in
+        running) why="running $(age $((NOW - $(epoch "$started"))))" ;;
+        created) why="never started, created $(age $((NOW - c))) ago" ;;
+        exited|dead) why="exited $(age $((NOW - $(epoch "$finished")))) ago" ;;
+        *) continue ;;
+    esac
+    if dock rm -f "$id" >/dev/null; then
+        echo "$image container ${id:0:12} ($why, no live JVM could own it)"
+    else
+        echo "could not remove $image container ${id:0:12}" >&2
+        rc=1
+    fi
+done < <(jq -r '.[] | [.Id, .State.Status, .Config.Image, .Created, .State.StartedAt, .State.FinishedAt,
+                        (.Config.Labels["org.testcontainers"] // ""), (.Config.Labels["org.testcontainers.hash"] // "")] | @tsv' <<<"$details")
+exit "$rc"

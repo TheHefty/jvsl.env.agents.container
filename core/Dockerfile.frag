@@ -586,6 +586,25 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-ai-memory/run \
 COPY core/cont-init/40-ai-memory.sh /custom-cont-init.d/40-ai-memory.sh
 RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 
+# The reaper (#186): every five minutes, as abc, it runs each kind in
+# /usr/local/lib/jvsl/reapers.d and logs what each reaped, to docker logs and
+# to /config/.local/state/jvsl/reaper.log. The kinds come with their own
+# stories; the directory exists from the start so a kind is one COPY. A project
+# switches it off with "reaper": false in its manifest. See its run script.
+COPY core/services/svc-reaper /etc/s6-overlay/s6-rc.d/svc-reaper
+RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-reaper/run \
+    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper \
+    && mkdir -p /usr/local/lib/jvsl/reapers.d
+
+# The reaper's browser-tests kind, in core because browser tests are not one
+# stack's: a dead WebdriverIO run's Chrome, chromedriver, runner and Vite server,
+# found by their process group, and the Chrome profiles in /tmp nothing holds.
+# Beside reapers.d and not in it: it is sourced by the kinds that stop
+# processes, so the start-time check before each signal is written once.
+COPY core/reapers/reaper-lib.sh /usr/local/lib/jvsl/reaper-lib.sh
+COPY core/reapers/browser-tests /usr/local/lib/jvsl/reapers.d/browser-tests
+RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/browser-tests
+
 # 7.3 Installs beads (steveyegge/beads), the work tracker, and the boot hook
 # that initialises one for a project that asked. Pinned and digest-checked for
 # the same reason ai-jail and ai-memory are, above.
