@@ -1,4 +1,5 @@
 import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
+import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits } from '../build/limits.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
@@ -33,6 +34,8 @@ export interface OpenContext {
    */
   image: ImageState
   gitignore: string | null
+  /** The project's Gradle builds, sorted, from gradle.ts's bounded scan. */
+  gradleBuilds: GradleBuild[]
   /**
    * `.code-server/version.txt`'s contents, or null when it could not be read.
    *
@@ -55,6 +58,8 @@ export type Decision =
       action: 'open'
       configuration: Configuration
       notes: string[]
+      /** For the output channel only: decided, and nothing anyone has to act on. */
+      log: string[]
       /**
        * Host directories the configuration's mounts need to already exist.
        *
@@ -81,6 +86,7 @@ export type Decision =
       cause: string
       configuration: Configuration
       notes: string[]
+      log: string[]
       ensureHostDirs: string[]
     }
 
@@ -178,8 +184,14 @@ export function decideOpen(context: OpenContext): Decision {
     }
   }
 
+  // A warning, never a refusal: a project whose wrappers disagree still opens,
+  // and is told what the editor will do about its wrapperless builds.
+  const gradle = gradleVersion(context.gradleBuilds)
+  notes.push(...gradle.warnings)
+
   const payload = {
     notes,
+    log: gradle.log,
     ensureHostDirs: [`${context.homeDir}/.claude`],
     configuration: buildConfiguration({
       projectRoot: context.projectRoot,
@@ -187,6 +199,7 @@ export function decideOpen(context: OpenContext): Decision {
       extensionVersion: context.extensionVersion,
       limits,
       facts: context.facts,
+      gradleVersion: gradle.version,
     }),
   }
 
