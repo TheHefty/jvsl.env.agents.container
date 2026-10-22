@@ -80,14 +80,15 @@ export type ProjectOnHost =
 /**
  * Whether a WSL project is used, rather than only located.
  *
- * **False until every story of the epic a-windows-editor-opens-a-project-that-
- * lives-in-wsl has landed.** Each goes through the distro in its own pull
- * request — docker and the machine's facts, the files, the build, the
- * credentials — and a WSL project accepted before all of them would run
- * Windows' docker against a Linux path, or bind the Windows home into a Linux
- * container. Locating comes first; using is switched on last, in one place.
+ * **Switched on on 2026-10-22**, once each story of the epic a-windows-editor-
+ * opens-a-project-that-lives-in-wsl that the flow needs had landed — docker and
+ * the machine's facts, the files, the build and the credentials, each through
+ * the distro — at the operator's request, before the story about container
+ * windows opened from WSL: inside such a window the panel and the board still
+ * refuse, naming the address, until that story decodes it. One switch, in one
+ * place, so turning it off again is one line.
  */
-export const WSL_READY = false
+export const WSL_READY = true
 
 /** The location as the commands may use it: a WSL one only once the epic is complete. */
 export function onThisMachine(project: ProjectOnHost): ProjectOnHost {

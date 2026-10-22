@@ -209,6 +209,7 @@ test('a refusal comes before a build, because building would not help', () => {
 // --- the open flow inside the container (debt: the-panel-reads-the-containers-path)
 
 import { prepareHere } from './open.ts'
+import { WSL_READY } from '../host/locate.ts'
 
 test('a window already connected to the project\'s container has nothing to prepare', () => {
   // Observed on 2026-10-07: on every connection the open flow tried to write
@@ -366,4 +367,11 @@ test('on Windows, a daemon that does not answer is refused as Docker Desktop not
 test('on Linux the refusals keep their words, and a missing client is its own', () => {
   assert.match(refusal({ image: 'unknown' }), /the docker daemon did not answer/)
   assert.match(refusal({ image: 'no-docker' }), /docker is not installed/)
+})
+
+test('a WSL window is prepared, once WSL projects are switched on', () => {
+  // The extension runs on Windows; the project, its docker and its files are
+  // reached through the distro (epic a-windows-editor-opens-a-project-that-lives-in-wsl).
+  assert.equal(prepareHere('wsl').act, WSL_READY)
+  assert.equal(prepareHere('ssh-remote').act, false)
 })
