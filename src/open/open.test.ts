@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { decideOpen, type OpenContext } from './open.ts'
+import { configurationFor, decideOpen, regenerateConfiguration, serialise, type OpenContext, type Regeneration, type RegenerationInputs } from './open.ts'
 import { GENERATED_BY } from '../build/devcontainer.ts'
 
 const base: OpenContext = {
@@ -260,5 +260,67 @@ test('diverging wrappers open without a version and warn, rather than refusing t
     assert.equal(d.configuration.customizations, undefined)
     assert.equal(d.notes.length, 1)
     assert.ok(d.notes[0]?.includes('9.1.0'), d.notes[0])
+  }
+})
+
+// --- Configure regenerates the configuration (debt
+// configure-changes-the-limits-but-the-container-keeps-the-old-ones) -----------
+
+const regen = (c: Partial<RegenerationInputs> = {}): Regeneration =>
+  regenerateConfiguration({
+    projectRoot: base.projectRoot,
+    homeDir: base.homeDir,
+    extensionVersion: base.extensionVersion,
+    facts: base.facts,
+    manifest: '{"limits":{"memory":"12g"}}',
+    existingConfig: null,
+    gradleBuilds: [],
+    ...c,
+  })
+
+test('Configure writes the limits it was just given into the configuration', () => {
+  const r = regen()
+  assert.equal(r.action, 'write')
+  if (r.action === 'write') {
+    const runArgs = (JSON.parse(r.serialised) as { runArgs: string[] }).runArgs
+    assert.equal(runArgs[runArgs.indexOf('--memory') + 1], '12g')
+    assert.equal(runArgs[runArgs.indexOf('--memory-swap') + 1], '14g')
+  }
+})
+
+test('a configuration this extension did not write is kept, and the reason is given', () => {
+  // Gitignored, so there is no history to recover a hand-written one from.
+  const r = regen({ existingConfig: '{"image": "mine"}' })
+  assert.equal(r.action, 'keep')
+  if (r.action === 'keep') assert.match(r.why, /not written by this extension/)
+})
+
+test('one of ours is replaced', () => {
+  const ours = serialise(configurationFor({ ...base, manifest: '{"limits":{"memory":"6g"}}' }).configuration)
+  assert.equal(regen({ existingConfig: ours }).action, 'write')
+})
+
+test('an unreadable manifest regenerates nothing, rather than writing default limits nobody asked for', () => {
+  for (const manifest of ['{"limits": {', null]) {
+    const r = regen({ manifest })
+    assert.equal(r.action, 'keep', String(manifest))
+    if (r.action === 'keep') assert.match(r.why, /manifest/)
+  }
+})
+
+test('open and Configure write byte-identical files from the same inputs', () => {
+  // The tooling hashes this file: two writers that disagree would recreate the
+  // container on every open, killing whatever ran in it.
+  const manifest = '{"limits":{"memory":"12g","cpus":2}}'
+  const gradleBuilds = [
+    { dir: 'build-logic', wrapper: null },
+    { dir: 'core', wrapper: 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip\n' },
+  ]
+  const opened = decideOpen({ ...base, manifest, gradleBuilds })
+  assert.equal(opened.action, 'open')
+  const r = regen({ manifest, gradleBuilds })
+  assert.equal(r.action, 'write')
+  if (opened.action === 'open' && r.action === 'write') {
+    assert.equal(r.serialised, serialise(opened.configuration))
   }
 })

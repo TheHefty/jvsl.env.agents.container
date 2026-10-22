@@ -145,7 +145,8 @@ export function decideOpen(context: OpenContext): Decision {
   // than that its window will not open. But the launcher fell back to defaults
   // in silence, and opening with 6 GiB when the file asked for 8 without a word
   // is what turns this into an unexplained OOM hours later.
-  const limits = readLimits(context.manifest ?? '{}')
+  const built = configurationFor(context)
+  const limits = built.limits
   if (limits.usedDefaults) {
     notes.push(
       `the project manifest \`${MANIFEST}\` could not be read, so the default limits ` +
@@ -186,21 +187,13 @@ export function decideOpen(context: OpenContext): Decision {
 
   // A warning, never a refusal: a project whose wrappers disagree still opens,
   // and is told what the editor will do about its wrapperless builds.
-  const gradle = gradleVersion(context.gradleBuilds)
-  notes.push(...gradle.warnings)
+  notes.push(...built.warnings)
 
   const payload = {
     notes,
-    log: gradle.log,
+    log: built.log,
     ensureHostDirs: [`${context.homeDir}/.claude`],
-    configuration: buildConfiguration({
-      projectRoot: context.projectRoot,
-      homeDir: context.homeDir,
-      extensionVersion: context.extensionVersion,
-      limits,
-      facts: context.facts,
-      gradleVersion: gradle.version,
-    }),
+    configuration: built.configuration,
   }
 
   if (context.image === 'absent') {
@@ -246,4 +239,95 @@ export function prepareHere(remoteName: string | undefined): { act: true } | { a
     return { act: false, why: "this window is already inside the project's container, so there is nothing to prepare" }
   }
   return { act: false, why: `this window is connected to "${remoteName}", and the project is not on this machine` }
+}
+
+/** What a configuration is made from: the project, this host, and nothing else. */
+export interface ConfigurationInputs {
+  projectRoot: string
+  homeDir: string
+  extensionVersion: string
+  facts: HostFacts
+  manifest: string | null
+  gradleBuilds: GradleBuild[]
+}
+
+/**
+ * The configuration for this project now, and what was decided on the way.
+ *
+ * **One function for both writers.** Opening writes this file and, since the
+ * debt configure-changes-the-limits-but-the-container-keeps-the-old-ones,
+ * Configure does too. The tooling identifies a container by a hash of the
+ * file, so two writers that disagreed about it would recreate the container on
+ * every open — they share this rather than each assembling their own.
+ */
+export function configurationFor(inputs: ConfigurationInputs): {
+  configuration: Configuration
+  limits: ReturnType<typeof readLimits>
+  warnings: string[]
+  log: string[]
+} {
+  const limits = readLimits(inputs.manifest ?? '{}')
+  const gradle = gradleVersion(inputs.gradleBuilds)
+  return {
+    limits,
+    warnings: gradle.warnings,
+    log: gradle.log,
+    configuration: buildConfiguration({
+      projectRoot: inputs.projectRoot,
+      homeDir: inputs.homeDir,
+      extensionVersion: inputs.extensionVersion,
+      limits,
+      facts: inputs.facts,
+      gradleVersion: gradle.version,
+    }),
+  }
+}
+
+/** The file's bytes. Shared so that "the same configuration" means the same bytes. */
+export function serialise(configuration: Configuration): string {
+  return `${JSON.stringify(configuration, null, 2)}\n`
+}
+
+export interface RegenerationInputs extends ConfigurationInputs {
+  existingConfig: string | null
+}
+
+export type Regeneration =
+  | { action: 'write'; serialised: string; notes: string[]; log: string[] }
+  | { action: 'keep'; why: string }
+
+/**
+ * What Configure does to the configuration after writing the manifest.
+ *
+ * **Why it exists.** The limits reach the container only as runArgs in this
+ * file, and only opening wrote it — so Configure, then Rebuild Container, came
+ * back with the old memory (reported 2026-10-22). Configure already rebuilds
+ * the image, which also takes effect only when the container is recreated, so
+ * the limits now change at the same moment as everything else.
+ *
+ * **What it refuses**, each for a cost the open flow already names: a file this
+ * extension did not write, because it is gitignored and nothing could recover
+ * it; and a manifest that cannot be read, because writing defaults nobody asked
+ * for is how a project ends up with 6 GiB and no explanation.
+ */
+export function regenerateConfiguration(inputs: RegenerationInputs): Regeneration {
+  if (inputs.existingConfig !== null && !isOurs(inputs.existingConfig)) {
+    return {
+      action: 'keep',
+      why:
+        `\`${CONFIG_PATH}\` was not written by this extension, so it was left as it is and the new ` +
+        `limits are not in it. Move it aside and open the project to have it generated.`,
+    }
+  }
+  if (inputs.manifest === null) {
+    return { action: 'keep', why: `there is no manifest \`${MANIFEST}\` to take the limits from.` }
+  }
+  const built = configurationFor(inputs)
+  if (built.limits.usedDefaults) {
+    return {
+      action: 'keep',
+      why: `the manifest \`${MANIFEST}\` could not be read, so \`${CONFIG_PATH}\` was left as it is.`,
+    }
+  }
+  return { action: 'write', serialised: serialise(built.configuration), notes: built.warnings, log: built.log }
 }

@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { build } from '../build/command.ts'
@@ -8,7 +9,10 @@ import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
-import { hostProject } from '../host/project.ts'
+import { findGradleBuilds } from '../build/gradle.ts'
+import { hostFacts } from '../host/host.ts'
+import { hostProject, readOrNull } from '../host/project.ts'
+import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
@@ -37,6 +41,7 @@ export async function configure(
   write: (lines: string[]) => void,
   view: SelectionView,
   extensionPath: string,
+  extensionVersion: string,
   forRoot?: string,
 ): Promise<ConfigureResult> {
   let root = forRoot
@@ -97,6 +102,7 @@ export async function configure(
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
     `  stacks after:  ${picked.join(' ') || '(none)'}`,
   ])
+  regenerate(root, extensionVersion, write)
 
   // **Confirming builds, even when nothing changed.** `docker build` against an
   // unchanged manifest is a cache hit, and "I answered the questions and nothing
@@ -128,6 +134,7 @@ export async function pick(
   write: (lines: string[]) => void,
   view: SelectionView,
   extensionPath: string,
+  extensionVersion: string,
   handOver: (folder: string) => Thenable<void>,
 ): Promise<void> {
   const picked = await vscode.window.showOpenDialog({
@@ -165,7 +172,7 @@ export async function pick(
 
   if (decision.action === 'configure') {
     write([`open: ${decision.because}`])
-    const outcome = configureOutcome(await configure(write, view, extensionPath, decision.folder))
+    const outcome = configureOutcome(await configure(write, view, extensionPath, extensionVersion, decision.folder))
     write([`open: ${outcome.message}`])
     if (!outcome.proceed) {
       void vscode.window.showInformationMessage(outcome.message)
@@ -259,4 +266,54 @@ export async function askAnswers(
   }
 
   return answers
+}
+
+/**
+ * The container configuration, brought in line with the manifest just written.
+ *
+ * **Why** (debt configure-changes-the-limits-but-the-container-keeps-the-old-
+ * ones, reported 2026-10-22): the limits reach the container only as runArgs in
+ * this file, and only opening wrote it, so raising the memory here and
+ * rebuilding the container kept the old memory. Said once on screen when the
+ * file changed, because the new limits — like the image this command rebuilds —
+ * apply only when the container is recreated.
+ */
+function regenerate(root: string, extensionVersion: string, write: (lines: string[]) => void): void {
+  const target = join(root, CONFIG_PATH)
+  const existingConfig = readOrNull(target)
+  const scan = findGradleBuilds(root)
+  write(scan.log)
+  const r = regenerateConfiguration({
+    projectRoot: root,
+    homeDir: homedir(),
+    extensionVersion,
+    facts: hostFacts(),
+    manifest: readOrNull(join(root, MANIFEST)),
+    existingConfig,
+    gradleBuilds: scan.builds,
+  })
+  if (r.action === 'keep') {
+    write([`configure: ${CONFIG_PATH} not regenerated: ${r.why}`])
+    void vscode.window.showWarningMessage(`The new limits are not in ${CONFIG_PATH}: ${r.why}`)
+    return
+  }
+  write([...r.log, ...r.notes.map((n) => `note: ${n}`)])
+  if (r.serialised === existingConfig) {
+    write([`configure: ${CONFIG_PATH} already matches the manifest`])
+    return
+  }
+  try {
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, r.serialised, 'utf8')
+  } catch (error) {
+    const cause = `could not write ${CONFIG_PATH}: ${String(error)}`
+    write([`configure: ${cause}`])
+    void vscode.window.showErrorMessage(cause)
+    return
+  }
+  write([`configure: wrote ${CONFIG_PATH} from the manifest`])
+  void vscode.window.showInformationMessage(
+    `${CONFIG_PATH} now carries the new limits. They apply when the container is rebuilt ` +
+      `(Dev Containers: Rebuild Container), as the rebuilt image does.`,
+  )
 }
