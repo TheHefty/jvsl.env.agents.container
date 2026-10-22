@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.4](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.3...v1.6.4) (2026-10-22)
+
+
+### Bug Fixes
+
+* **java:** the reaper no longer kills a live editor's Java language server ([7e9af91](https://github.com/TheHefty/jvsl.env.agents.container/commit/7e9af91a277d9ef235a90e3a37098b1cd95d583d))
+* **java:** the reaper no longer kills a live editor's Java language server ([8aac258](https://github.com/TheHefty/jvsl.env.agents.container/commit/8aac258282d1d6c45149a2cedd17fe4d950fbfe2))
+
 ## [1.6.3](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.2...v1.6.3) (2026-10-22)
 
 
