@@ -25,7 +25,7 @@ test('a WSL project runs the distro\'s docker through wsl.exe, never through a s
 
 test('the location decides where docker runs', () => {
   assert.deepEqual(whereFor({ kind: 'host', path: '/home/a/p' }), { kind: 'local' })
-  assert.deepEqual(whereFor({ kind: 'wsl', distro: 'Ubuntu', path: '/home/a/p', unc: '\\\\wsl.localhost\\Ubuntu\\home\\a\\p' }), {
+  assert.deepEqual(whereFor({ kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\home\\a\\p', linux: '/home/a/p' }), {
     kind: 'wsl',
     distro: 'Ubuntu',
   })
@@ -67,7 +67,7 @@ test('on native Linux the facts are read from this machine, as before, and docke
 
 test('for a WSL project the facts are what the distro\'s docker sees, not this machine\'s', async () => {
   const { docker, calls } = fakeDocker({ info: '8\n', run: '/dev/fuse\n/dev/net/tun\n' })
-  const f = await factsFor({ kind: 'wsl', distro: 'Ubuntu', path: '/p', unc: 'u' }, docker, 'win32', linuxProbe)
+  const f = await factsFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, docker, 'win32', linuxProbe)
   assert.deepEqual(f.facts, { cpuCount: 8, devicesPresent: ['/dev/fuse', '/dev/net/tun'], devicesAbsent: ['/dev/kvm'] })
   const run = calls.find((c) => c[0] === 'run') ?? []
   assert.ok(run.includes('/dev:/host-dev:ro') && run.includes(PROBE_IMAGE), JSON.stringify(run))
@@ -82,7 +82,7 @@ test('on Windows a local project is asked of docker too: Windows has no /dev', a
 
 test('a probe that fails passes no devices and says so, never a guess', async () => {
   const { docker } = fakeDocker({ info: '8\n', run: new Error('pull access denied: offline') })
-  const f = await factsFor({ kind: 'wsl', distro: 'Ubuntu', path: '/p', unc: 'u' }, docker, 'win32', linuxProbe)
+  const f = await factsFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, docker, 'win32', linuxProbe)
   assert.deepEqual(f.facts.devicesPresent, [])
   assert.equal(f.facts.devicesAbsent.length, 3)
   assert.ok(f.notes.some((n) => /devices/.test(n) && /offline/.test(n)), f.notes.join('\n'))
@@ -91,7 +91,7 @@ test('a probe that fails passes no devices and says so, never a guess', async ()
 test('a core count docker cannot give is refused, not invented', async () => {
   const { docker } = fakeDocker({ info: new Error('Cannot connect to the Docker daemon'), run: '' })
   await assert.rejects(
-    factsFor({ kind: 'wsl', distro: 'Ubuntu', path: '/p', unc: 'u' }, docker, 'win32', linuxProbe),
+    factsFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, docker, 'win32', linuxProbe),
     /Docker daemon/,
   )
 })
@@ -99,7 +99,7 @@ test('a core count docker cannot give is refused, not invented', async () => {
 test('a docker info that answers no number is refused too, not read as NaN cores', async () => {
   const { docker } = fakeDocker({ info: '\n', run: '/dev/fuse\n' })
   await assert.rejects(
-    factsFor({ kind: 'wsl', distro: 'Ubuntu', path: '/p', unc: 'u' }, docker, 'win32', linuxProbe),
+    factsFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, docker, 'win32', linuxProbe),
     /core count/,
   )
 })

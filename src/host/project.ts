@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import * as vscode from 'vscode'
 
-import { onThisMachine, projectOnHost, type ProjectOnHost } from './locate.ts'
+import { onThisMachine, projectOnHost, reachable, type ProjectOnHost } from './locate.ts'
 
 /**
  * The project's folder for this window, as the commands may use it. See
@@ -9,12 +9,12 @@ import { onThisMachine, projectOnHost, type ProjectOnHost } from './locate.ts'
  */
 export function hostProject(): ProjectOnHost {
   const folder = vscode.workspace.workspaceFolders?.[0]
-  return onThisMachine(projectOnHost({
+  return reachable(onThisMachine(projectOnHost({
     remoteName: vscode.env.remoteName,
     folder: folder === undefined
       ? undefined
       : { fsPath: folder.uri.fsPath, authority: folder.uri.authority, path: folder.uri.path },
-  }))
+  })), existsSync)
 }
 
 export function readOrNull(path: string): string | null {
