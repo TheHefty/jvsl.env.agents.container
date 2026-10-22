@@ -40,7 +40,7 @@ export async function build(
   const docker = dockerFor(project)
 
   const checks = await hostChecks(docker)
-  const problems = hostProblems(checks)
+  const problems = hostProblems(checks, process.platform)
   for (const problem of problems) {
     write([`build: ${problem.blocking ? 'refused' : 'warning'}: ${problem.message}`])
   }

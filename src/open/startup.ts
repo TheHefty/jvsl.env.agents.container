@@ -52,7 +52,7 @@ export async function startup(
   })
 
   if (vscode.workspace.workspaceFolders === undefined) {
-    const blocker = hostProblems(await hostChecks()).find((p) => p.blocking)
+    const blocker = hostProblems(await hostChecks(), process.platform).find((p) => p.blocking)
     view.recordHostProblem(blocker?.message)
     return
   }

@@ -335,3 +335,35 @@ test('the credentials directory is created where this machine reaches it, and bo
     assert.ok(d.configuration.mounts.some((m) => m.startsWith('source=/home/jv/.claude,')), d.configuration.mounts.join('\n'))
   }
 })
+
+// --- without Docker Desktop (story without-docker-desktop-opening-is-refused-naming-what-is-missing)
+
+import { imageStateFrom } from './open.ts'
+
+const enoent = Object.assign(new Error('spawn docker ENOENT'), { code: 'ENOENT' })
+
+test('the image\'s state tells a missing docker apart from a daemon that does not answer', () => {
+  assert.equal(imageStateFrom('ok', undefined), 'present')
+  assert.equal(imageStateFrom(new Error('No such image'), 'ok'), 'absent')
+  assert.equal(imageStateFrom(enoent, enoent), 'no-docker')
+  assert.equal(imageStateFrom(new Error('x'), new Error('Cannot connect to the Docker daemon')), 'unknown')
+  assert.equal(imageStateFrom(new Error('x'), new Error('timeout')), 'unknown')
+})
+
+test('on Windows, no docker at all is refused as Docker Desktop not installed, with where to get it', () => {
+  const cause = refusal({ image: 'no-docker', platform: 'win32' })
+  assert.match(cause, /Docker Desktop is not installed/)
+  assert.match(cause, /https:\/\/docs\.docker\.com\/desktop\//)
+  assert.match(cause, /Nothing was written/)
+})
+
+test('on Windows, a daemon that does not answer is refused as Docker Desktop not running', () => {
+  const cause = refusal({ image: 'unknown', platform: 'win32' })
+  assert.match(cause, /Docker Desktop is installed but its engine is not answering/)
+  assert.match(cause, /Nothing was written/)
+})
+
+test('on Linux the refusals keep their words, and a missing client is its own', () => {
+  assert.match(refusal({ image: 'unknown' }), /the docker daemon did not answer/)
+  assert.match(refusal({ image: 'no-docker' }), /docker is not installed/)
+})

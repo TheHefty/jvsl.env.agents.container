@@ -15,7 +15,7 @@ import { factsFor } from '../host/host.ts'
 import { homeFor, type Home } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
-import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
+import { CONFIG_PATH, decideOpen, imageStateFrom, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -162,6 +162,7 @@ export async function gather(
     gitignore: readOrNull(join(root, '.gitignore')),
     image: await imageState(projectNames(mountPath(project)).image, write, docker),
     gradleBuilds: gradle.builds,
+    platform: process.platform,
   }
 }
 
@@ -191,19 +192,23 @@ export async function imageState(
   write: (lines: string[]) => void,
   docker: Docker = localDocker,
 ): Promise<ImageState> {
+  let inspect: 'ok' | Error = 'ok'
+  let version: 'ok' | Error | undefined
   try {
     await docker(['image', 'inspect', image])
-    return 'present'
-  } catch {
+  } catch (error) {
+    inspect = error as Error
     try {
       await docker(['version', '--format', '{{.Server.Version}}'])
-      write([`image ${image}: not present`])
-      return 'absent'
-    } catch (error) {
-      write([`image ${image}: could not be determined — ${String(error)}`])
-      return 'unknown'
+      version = 'ok'
+    } catch (e) {
+      version = e as Error
     }
   }
+  const state = imageStateFrom(inspect, version)
+  if (state === 'absent') write([`image ${image}: not present`])
+  if (state === 'unknown' || state === 'no-docker') write([`image ${image}: could not be determined — ${String(version)}`])
+  return state
 }
 
 export async function runningContainers(

@@ -12,7 +12,7 @@ export const CONFIG_PATH = '.devcontainer/devcontainer.json'
  * decision can be tested without a host, a container runtime or an editor.
  * `null` means "not there", which for most of these is the normal case.
  */
-export type ImageState = 'present' | 'absent' | 'unknown'
+export type ImageState = 'present' | 'absent' | 'unknown' | 'no-docker'
 
 export interface OpenContext {
   projectRoot: string
@@ -41,6 +41,8 @@ export interface OpenContext {
   gitignore: string | null
   /** The project's Gradle builds, sorted, from gradle.ts's bounded scan. */
   gradleBuilds: GradleBuild[]
+  /** Where this extension runs, for refusals that name what to install or start. */
+  platform?: NodeJS.Platform
   /** What measuring the machine had to say, such as a device probe that could not run. */
   factNotes?: string[]
   /**
@@ -181,6 +183,28 @@ export function decideOpen(context: OpenContext): Decision {
   // the daemon is unreachable as well as when the image is absent, and reading
   // one as the other turns a host problem into a build that fails for a third
   // reason.
+  const windows = context.platform === 'win32'
+  if (context.image === 'no-docker') {
+    return {
+      action: 'refuse',
+      notes,
+      cause: windows
+        ? `Docker Desktop is not installed, or docker.exe is not on the PATH the editor starts with. ` +
+          `Install it from https://docs.docker.com/desktop/ and open the project again. Nothing was written.`
+        : `docker is not installed, or not on the PATH the editor starts with, so ${names.image} cannot be ` +
+          `checked or built. Install docker and open the project again. Nothing was written.`,
+    }
+  }
+  if (context.image === 'unknown' && windows) {
+    return {
+      action: 'refuse',
+      notes,
+      cause:
+        `Docker Desktop is installed but its engine is not answering, so whether ${names.image} exists ` +
+        `could not be determined. Start Docker Desktop, wait until it says the engine is running, and open ` +
+        `the project again. Nothing was written.`,
+    }
+  }
   if (context.image === 'unknown') {
     return {
       action: 'refuse',
@@ -343,4 +367,22 @@ export function regenerateConfiguration(inputs: RegenerationInputs): Regeneratio
 /** The credentials directory under a home, in that home's own separator. */
 function credentialsDir(home: string): string {
   return home.startsWith('\\\\') ? `${home}\\.claude` : `${home}/.claude`
+}
+
+/**
+ * The image's state from the two questions imageState asks docker: inspect the
+ * image, and when that fails, whether a daemon answers at all.
+ *
+ * **A docker that cannot be started is its own state** (story
+ * without-docker-desktop-opening-is-refused-naming-what-is-missing): "install
+ * it" and "start it" are different instructions, and collapsing them is how a
+ * person is told to start something they do not have.
+ */
+export function imageStateFrom(inspect: 'ok' | Error, version: 'ok' | Error | undefined): ImageState {
+  if (inspect === 'ok') return 'present'
+  if (version === 'ok') return 'absent'
+  const missing = (e: unknown) =>
+    e instanceof Error && ((e as NodeJS.ErrnoException).code === 'ENOENT' || /not found|No such file/i.test(e.message))
+  if (missing(inspect) && missing(version)) return 'no-docker'
+  return 'unknown'
 }
