@@ -125,13 +125,22 @@ is named there as one of the things it explicitly does not dissolve.
 The chain is not only an initialization ritual. The charter and the SRS are written once and
 amended rarely; stories and tasks are the ongoing unit of work.
 
+**A round of work is planned whole before any of it is built.** When the user brings work — a set
+of issues, a request — every epic it gives rise to, and every story under each with its scenarios,
+is written and agreed before the first task of any of them. Only then do tasks and code follow,
+story by story, each task still agreed at its own gate. Planned one story at a time, the first
+story's code is written before the last story's scenarios exist, and the later stories end up
+fitted to what was already built rather than to what was wanted. Work found along the way — a
+defect, a debt, a story nobody saw — is planned whole in the same way before its own code, and does
+not unplan what was already agreed.
+
 - **A new story** in an existing epic: a story grilling, its `OVERVIEW.md` and `.feature`, its own
   pull request, the story gate. The SRS's epic section gains a line for it; the rest of the SRS is
   not re-grilled.
 - **A new epic**: a grilling that amends the SRS's epic section, its own pull request, agreed
   before its first story. This is the closest thing to re-opening the SRS, and it is deliberately
   the same procedure as writing it the first time.
-- **A new task** in an agreed story: a task grilling, the task document, its pull request, the task
+- **A new task** in an agreed story, once every story of the round is agreed: a task grilling, the task document, its pull request, the task
   gate — then the code, test-first from the failure scenarios and the story's `.feature`.
 
 ## Releases
