@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process'
 import { constants } from 'node:os'
 
+import { run } from './docker.ts'
+
 /**
  * A terminal whose process runs **where this extension runs, on the host**.
  *
@@ -122,10 +124,65 @@ export function hostProcessTerminal(
         ended = true
         settle(undefined)
         if (child?.pid && child.exitCode === null) {
-          try { process.kill(-child.pid, 'SIGTERM') } catch { child.kill('SIGTERM') }
+          const stop = stopTree(child.pid, process.platform)
+          if (stop.kind === 'group') {
+            try { process.kill(-stop.pid, 'SIGTERM') } catch { child.kill('SIGTERM') }
+          } else {
+            spawn(stop.command, stop.args, { stdio: 'ignore' }).on('error', () => child?.kill())
+          }
         }
       }
       closed = true
     },
   }
+}
+
+/**
+ * How to stop everything a terminal's process started. **A process group on
+ * Linux**, as it always was: a `docker build` started by a shell would
+ * otherwise go on holding the output. **taskkill /T on Windows**, which has no
+ * process groups — `process.kill(-pid)` throws there, and killing wsl.exe or
+ * docker.exe alone is not a guarantee that what they started stops.
+ */
+export function stopTree(
+  pid: number,
+  platform: NodeJS.Platform,
+): { kind: 'group'; pid: number } | { kind: 'spawn'; command: string; args: string[] } {
+  if (platform === 'win32') return { kind: 'spawn', command: 'taskkill', args: ['/pid', String(pid), '/T', '/F'] }
+  return { kind: 'group', pid }
+}
+
+/** The distro's own translation of a Windows path, as an argument array. */
+export function wslpathArgv(distro: string, windowsPath: string): { command: string; args: string[] } {
+  return { command: 'wsl.exe', args: ['-d', distro, '--exec', 'wslpath', '-u', windowsPath] }
+}
+
+type Runner = (command: string, args: string[]) => Promise<{ stdout: string; stderr: string }>
+
+const boundedRun: Runner = (command, args) => run(command, args, { timeout: 10_000 })
+
+/**
+ * Where a folder on Windows is inside a distro — the extension's own folder,
+ * which a WSL project's build reads core/ and stacks/ from (story
+ * the-build-runs-in-a-terminal-inside-the-distro). Asked of the distro, because
+ * its mount points are its own (/mnt/c by default, configurable). Anything but
+ * an absolute Linux path is a refusal naming the folder: a wrong context builds
+ * nothing, or whatever happens to be there.
+ */
+export async function distroPath(
+  distro: string,
+  windowsPath: string,
+  runner: Runner = boundedRun,
+): Promise<{ ok: true; path: string } | { ok: false; reason: string }> {
+  const { command, args } = wslpathArgv(distro, windowsPath)
+  let out: string
+  try {
+    out = (await runner(command, args)).stdout.trim()
+  } catch (error) {
+    return { ok: false, reason: `the WSL distro "${distro}" could not translate ${windowsPath}: ${String(error)}` }
+  }
+  if (!out.startsWith('/') || out.includes('\n')) {
+    return { ok: false, reason: `the WSL distro "${distro}" translated ${windowsPath} to "${out}", which is not a path inside it` }
+  }
+  return { ok: true, path: out }
 }

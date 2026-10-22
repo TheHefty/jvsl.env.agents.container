@@ -6,7 +6,7 @@ import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { dockerFor, localDocker, whereFor, type Docker, type DockerHost } from '../host/docker.ts'
 import { mountPath } from '../host/locate.ts'
-import { hostProcessTerminal } from '../host/host-terminal.ts'
+import { distroPath, hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { SelectionView } from '../view/selection-view.ts'
@@ -152,14 +152,27 @@ export async function buildInTerminal(
     void vscode.window.showErrorMessage(composed.message)
     return 'failed'
   }
-  const { command, args, input } = buildInvocation(plan, composed.dockerfile, where)
+  // The context is the extension's folder, on this machine. A distro's docker
+  // reads it at the distro's own path for it (/mnt/c/... by default), so it is
+  // translated by the distro, and a folder it cannot reach is said here.
+  let context = plan.context
+  if (where.kind === 'wsl') {
+    const translated = await distroPath(where.distro, plan.context)
+    if (!translated.ok) {
+      write([`build: refused — ${translated.reason}`])
+      void vscode.window.showErrorMessage(translated.reason)
+      return 'failed'
+    }
+    context = translated.path
+  }
+  const { command, args, input } = buildInvocation({ ...plan, context }, composed.dockerfile, where)
   const pty = hostProcessTerminal(command, args, { input })
   const terminal = vscode.window.createTerminal({ name: 'Agent Container: build', pty })
   terminal.show()
   write([
     `build: composed in the extension from ${plan.root}`,
     `build: ${stacks.length} stack(s): ${stacks.join(', ') || '(none)'}`,
-    `build: image ${plan.image}, context ${plan.context}`,
+    `build: image ${plan.image}, context ${context}`,
   ])
 
   // **The process's end, not the terminal's closing.** The terminal stays open
