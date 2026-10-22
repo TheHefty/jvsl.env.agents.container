@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.1...v1.6.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* a WSL project's files go through the distro, not through \\wsl.localhost ([0f4d411](https://github.com/TheHefty/jvsl.env.agents.container/commit/0f4d4119876f3701c672309bfcb461814d386112))
+* a WSL project's files go through the distro, not through \\wsl.localhost ([37e6f32](https://github.com/TheHefty/jvsl.env.agents.container/commit/37e6f32356e15e93f37cad83d7957e7747133142))
+
 ## [1.6.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.0...v1.6.1) (2026-10-22)
 
 
