@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.0...v1.6.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* a project's image and volume names are ones docker accepts, and valid ones never change ([3f412c6](https://github.com/TheHefty/jvsl.env.agents.container/commit/3f412c6a2e81fda3fbdb6df04312a892d2ea124a))
+* a project's image and volume names are ones docker accepts, and valid ones never change ([dd1132f](https://github.com/TheHefty/jvsl.env.agents.container/commit/dd1132f7573d41ada39f3b6ef5b0a52321fcbda7))
+
 ## [1.6.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.5.0...v1.6.0) (2026-10-22)
 
 
