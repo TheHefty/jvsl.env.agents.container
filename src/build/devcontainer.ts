@@ -57,7 +57,8 @@ export interface ProjectNames {
  * is how the refusal in open.ts finds it.
  */
 export function projectNames(projectRoot: string): ProjectNames {
-  const repo = basename(projectRoot)
+  // Either separator, so a Windows folder is named the same on any platform.
+  const repo = projectRoot.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? basename(projectRoot)
   return {
     repo,
     image: `${repo}-dev`,
@@ -87,7 +88,9 @@ export function projectNames(projectRoot: string): ProjectNames {
  * honoured in full.
  */
 export function buildConfiguration(input: BuildInput): Configuration {
-  const { projectRoot, homeDir, extensionVersion, limits, facts } = input
+  const { extensionVersion, limits, facts } = input
+  const projectRoot = dockerPath(input.projectRoot)
+  const homeDir = dockerPath(input.homeDir)
   const names = projectNames(projectRoot)
 
   const runArgs = [
@@ -181,4 +184,14 @@ export function isOurs(raw: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * A path as a mount source. **A Windows path with forward slashes**
+ * (`C:/Users/...`), which Docker Desktop accepts and which keeps a backslash
+ * from reading as an escape anywhere the spec is passed on (story
+ * with-docker-desktop-a-project-on-windows-opens). Anything else is untouched.
+ */
+export function dockerPath(path: string): string {
+  return /^[A-Za-z]:[\\/]/.test(path) ? path.replace(/\\/g, '/') : path
 }
