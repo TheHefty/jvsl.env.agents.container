@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.2...v1.4.0) (2026-10-22)
+
+
+### Features
+
+* a reaper service runs every five minutes, says what it reaped, and a project can switch it off ([81c57b7](https://github.com/TheHefty/jvsl.env.agents.container/commit/81c57b769bd219b4cef86386e5c281e0cfcf3390)), closes [#186](https://github.com/TheHefty/jvsl.env.agents.container/issues/186)
+* a task records five checks against the diff once its code exists ([706974e](https://github.com/TheHefty/jvsl.env.agents.container/commit/706974e6185c1bd2b67309cbea286ef5b3e47c8e))
+* a task records five checks against the diff once its code exists ([cc1b6bd](https://github.com/TheHefty/jvsl.env.agents.container/commit/cc1b6bd130fbb8037be5554e4cdca8f871f5d58b)), closes [#184](https://github.com/TheHefty/jvsl.env.agents.container/issues/184)
+* before writing code, the agent states the implementation's shape, then the failures that follow from it ([47a0c79](https://github.com/TheHefty/jvsl.env.agents.container/commit/47a0c79209fc3bcb908213eb84f29f579c28ebaf))
+* before writing code, the agent states the implementation's shape, then the failures that follow from it ([36aec44](https://github.com/TheHefty/jvsl.env.agents.container/commit/36aec44d870ddd204bbe9df4baf12fd0cb4bf074)), closes [#185](https://github.com/TheHefty/jvsl.env.agents.container/issues/185)
+* the container reaps what dead runs leave behind ([527650c](https://github.com/TheHefty/jvsl.env.agents.container/commit/527650c27c84a89efc123b23a3f6eb99b55b6d41))
+* the reaper removes Testcontainers containers that no live JVM could own ([1ab1d97](https://github.com/TheHefty/jvsl.env.agents.container/commit/1ab1d970c5c3f2197460c59914fb906af773bf3c)), closes [#186](https://github.com/TheHefty/jvsl.env.agents.container/issues/186)
+* the reaper stops Kotlin daemons with no Gradle left and language servers with no editor ([bc1ae0b](https://github.com/TheHefty/jvsl.env.agents.container/commit/bc1ae0bcc188d6a714fa8d53c90c0121eecdcbcd)), closes [#187](https://github.com/TheHefty/jvsl.env.agents.container/issues/187)
+* the reaper stops what a dead browser-test run left running, and removes unused Chrome profiles ([0a74c49](https://github.com/TheHefty/jvsl.env.agents.container/commit/0a74c498c2f51409cb4c0a8a417ac8c53822c56a)), closes [#186](https://github.com/TheHefty/jvsl.env.agents.container/issues/186)
+
+
+### Bug Fixes
+
+* idle Gradle and Kotlin daemons live ten minutes, in the editor, a terminal and the sandbox ([c04da24](https://github.com/TheHefty/jvsl.env.agents.container/commit/c04da24ff513e10574ec5cb442d40390264b8dd3))
+* idle Gradle and Kotlin daemons live ten minutes, in the editor, a terminal and the sandbox ([8aad896](https://github.com/TheHefty/jvsl.env.agents.container/commit/8aad896b888a3a3d1a335d3f9897d60167afe2f7)), closes [#187](https://github.com/TheHefty/jvsl.env.agents.container/issues/187)
+* the editor imports a wrapperless Gradle build with the version its wrappers name ([6b5c90c](https://github.com/TheHefty/jvsl.env.agents.container/commit/6b5c90c7989a1d60bfde75aef868873566860d40))
+* the editor imports a wrapperless Gradle build with the version its wrappers name ([dd62327](https://github.com/TheHefty/jvsl.env.agents.container/commit/dd62327b1731a42f8a3dd1c516dd48dec82c7995)), closes [#183](https://github.com/TheHefty/jvsl.env.agents.container/issues/183)
+* the git hooks no longer let tests write into the real repository from a worktree ([f1e7e0a](https://github.com/TheHefty/jvsl.env.agents.container/commit/f1e7e0af17bf2b7a32d89cf29bbf03b7a063c2e8))
+* the git hooks no longer let tests write into the real repository from a worktree ([aba638d](https://github.com/TheHefty/jvsl.env.agents.container/commit/aba638dcbb115c737af5249d953c68dbf0038f6e))
+* the Java stack starts one language server, with a 1.5 GB heap ([363c95b](https://github.com/TheHefty/jvsl.env.agents.container/commit/363c95b30c150b44d09da500e1991daf562b1f8b))
+* the Java stack starts one language server, with a 1.5 GB heap ([f0800c1](https://github.com/TheHefty/jvsl.env.agents.container/commit/f0800c1a1cd520bfa093798df287cabe6580f691)), closes [#187](https://github.com/TheHefty/jvsl.env.agents.container/issues/187)
+
 ## [1.3.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.1...v1.3.2) (2026-10-15)
 
 
