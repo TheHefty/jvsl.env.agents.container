@@ -13,7 +13,7 @@ import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import type { Docker } from '../host/docker.ts'
-import { containerFor, type ProjectOnHost, type Running } from '../host/locate.ts'
+import { containerFor, folderNames, type ProjectOnHost, type Running } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
@@ -105,7 +105,7 @@ async function render(
     return
   }
 
-  const choice = containerFor(hostPath, running)
+  const choice = containerFor(folderNames(project), running)
   if (choice.kind === 'none') {
     say(
       "The project's container is not running",

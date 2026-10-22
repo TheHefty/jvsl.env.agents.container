@@ -5,7 +5,7 @@ import { compose } from './compose.ts'
 import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { dockerFor, localDocker, whereFor, type Docker, type DockerHost } from '../host/docker.ts'
-import { mountPath } from '../host/locate.ts'
+import { folderNames, mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { distroPath, hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
@@ -55,7 +55,7 @@ export async function build(
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
   // dismissed before the useful text can be read.
-  if (outcome === 'ok') await offerRecreate(mountPath(project), write, docker)
+  if (outcome === 'ok') await offerRecreate(project, write, docker)
 }
 
 /**
@@ -65,11 +65,11 @@ export async function build(
  * rebuild, when the person clicks it.
  */
 export async function offerRecreate(
-  hostPath: string,
+  project: Exclude<ProjectOnHost, { kind: 'none' }>,
   write: (lines: string[]) => void,
   docker: Docker = localDocker,
 ): Promise<void> {
-  const image = projectNames(hostPath).image
+  const image = projectNames(mountPath(project)).image
   let built: string | undefined
   try {
     built = (await docker(['image', 'inspect', '-f', '{{.Id}}', image])).stdout.trim() || undefined
@@ -87,7 +87,7 @@ export async function offerRecreate(
       const [id = '', name = '', localFolder = ''] = l.split('\t')
       return { id, name, localFolder }
     })
-    const choice = containerFor(hostPath, rows)
+    const choice = containerFor(folderNames(project), rows)
     if (choice.kind === 'many') container = choice
     if (choice.kind === 'one') {
       const row = rows.find((r) => r.id === choice.id)!

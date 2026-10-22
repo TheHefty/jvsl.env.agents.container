@@ -22,19 +22,70 @@ const PREFIX = 'dev-container+'
  * project's work.
  */
 export function hostPathFromAuthority(authority: string): string | undefined {
+  const located = locationFromAuthority(authority)
+  return located?.kind === 'host' ? located.path : undefined
+}
+
+/**
+ * The project a container window was opened for, from its authority.
+ *
+ * **The shape, read from Dev Containers' own encoder** (2026-09 build, story
+ * a-container-window-opened-from-wsl-is-recognised-as-that-projects):
+ * `dev-container+<hex of hostPath, or of {hostPath, ...}>[@<parent>]`, where
+ * the parent is the window it was opened from. So:
+ *
+ * - **`@wsl+<distro>`**: opened from a WSL window, and hostPath is the Linux
+ *   path in that distro;
+ * - **a UNC hostPath** (`\\wsl.localhost\<distro>\...`, or `\\wsl$\...`, the
+ *   forms Dev Containers itself tests for): a distro's folder opened from a
+ *   local Windows window;
+ * - **an absolute or drive-letter hostPath**: a folder on this machine.
+ *
+ * Anything else is undefined, never a guess.
+ */
+export function locationFromAuthority(authority: string): Exclude<ProjectOnHost, { kind: 'none' }> | undefined {
   if (!authority.startsWith(PREFIX)) return undefined
-  const payload = authority.slice(PREFIX.length).split('@')[0] ?? ''
+  const [payload = '', parent] = authority.slice(PREFIX.length).split(/@(.*)/s)
   if (!/^(?:[0-9a-fA-F]{2})+$/.test(payload)) return undefined
   const decoded = Buffer.from(payload, 'hex').toString('utf8')
-  let path: unknown = decoded
+  let hostPath: unknown = decoded
   if (decoded.startsWith('{')) {
     try {
-      path = (JSON.parse(decoded) as Record<string, unknown>)['hostPath']
+      hostPath = (JSON.parse(decoded) as Record<string, unknown>)['hostPath']
     } catch {
       return undefined
     }
   }
-  return typeof path === 'string' && path.startsWith('/') ? path : undefined
+  if (typeof hostPath !== 'string') return undefined
+
+  const wslParent = /^wsl\+(.+)$/.exec(parent ?? '')
+  if (wslParent?.[1] !== undefined) {
+    let distro: string
+    try {
+      distro = decodeURIComponent(wslParent[1])
+    } catch {
+      return undefined
+    }
+    if (!hostPath.startsWith('/')) return undefined
+    return { kind: 'wsl', distro, path: uncFor(distro, hostPath), linux: hostPath }
+  }
+  const unc = /^\\\\wsl(?:\.localhost|\$)?\\([^\\]+)(\\.*)?$/i.exec(hostPath)
+  if (unc?.[1] !== undefined) {
+    const linux = (unc[2] ?? '\\').replace(/\\/g, '/')
+    return { kind: 'wsl', distro: unc[1], path: uncFor(unc[1], linux), linux }
+  }
+  if (hostPath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(hostPath)) return { kind: 'host', path: hostPath }
+  return undefined
+}
+
+/**
+ * Every form of a project's folder a container's `devcontainer.local_folder`
+ * label may carry: Dev Containers writes the folder as the window had it, so a
+ * WSL project's container is labelled with its Linux path when opened from a
+ * WSL window, and with its UNC path when opened from a local one.
+ */
+export function folderNames(project: Exclude<ProjectOnHost, { kind: 'none' }>): string[] {
+  return project.kind === 'wsl' ? [project.linux, project.path] : [project.path]
 }
 
 export interface Running {
@@ -57,9 +108,9 @@ const trim = (p: string) => {
  * another project's path is that other project. Two matches are refused by
  * name rather than chosen between.
  */
-export function containerFor(hostPath: string, running: readonly Running[]): Choice {
-  const want = trim(hostPath)
-  const matches = running.filter((r) => trim(r.localFolder) === want)
+export function containerFor(hostPath: string | readonly string[], running: readonly Running[]): Choice {
+  const want = new Set((typeof hostPath === 'string' ? [hostPath] : hostPath).map(trim))
+  const matches = running.filter((r) => want.has(trim(r.localFolder)))
   if (matches.length === 0) return { kind: 'none' }
   if (matches.length === 1) return { kind: 'one', id: matches[0]!.id }
   return { kind: 'many', names: matches.map((m) => m.name) }
@@ -124,10 +175,8 @@ export function projectOnHost(input: {
   if (folder === undefined) return { kind: 'none', reason: 'no folder is open' }
   if (remoteName === undefined) return { kind: 'host', path: folder.fsPath }
   if (remoteName === 'dev-container') {
-    const path = hostPathFromAuthority(folder.authority)
-    return path === undefined
-      ? { kind: 'none', reason: `this window's address (${folder.authority}) did not decode to a folder on this machine` }
-      : { kind: 'host', path }
+    const located = locationFromAuthority(folder.authority)
+    return located ?? { kind: 'none', reason: `this window's address (${folder.authority}) did not decode to a folder this extension can reach` }
   }
   if (remoteName === 'wsl') return wslProject(folder.authority, folder.path)
   return {
