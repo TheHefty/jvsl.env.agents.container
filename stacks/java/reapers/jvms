@@ -10,11 +10,13 @@
 # in its sandbox included, which is visible from here — keeps every one.
 #
 # **A Java language server with no editor above it.** Its parent is the
-# editor's extension host, a node process; when the window goes away it is
-# re-parented to the container's init. So it is orphaned when no node process
-# is in its ancestor chain. VS Code's --type=extensionHost marker is not used
-# on purpose: if it changed, every live language server would look orphaned
-# and lose a person their editor's Java support every five minutes.
+# editor's extension host; when the window goes away it is re-parented to the
+# container's init. So it is orphaned when its parent is PID 1, and nothing
+# else decides it: no process name is read. Names were the first rule here —
+# a node ancestor — and the extension host's comm is MainThread, so every live
+# language server looked orphaned and lost its editor's Java support every five
+# minutes (debt 6r9). A wrapper that outlived the editor would keep one alive;
+# that costs memory, never somebody's editor.
 #
 # Any other JVM, orphaned or not, is not this kind's business: an application
 # somebody left running with `&` has PPID 1 too.
@@ -28,15 +30,13 @@ ME="${REAPER_UID:-$(id -u)}"
 KOTLIN=org.jetbrains.kotlin.daemon.KotlinCompileDaemon
 GRADLE=org.gradle.launcher.daemon.bootstrap.GradleDaemon
 
-declare -A ppid_of=() comm_of=()
+declare -A ppid_of=()
 gradle_alive=""
 candidates=()
 for dir in "$PROC"/[0-9]*; do
     pid="${dir##*/}"
     stat="$(cat "$dir/stat" 2>/dev/null)" || continue
-    comm="${stat#*(}"; comm="${comm%)*}"
     ppid_of[$pid]="$(reaper_field "$stat" 2)"
-    comm_of[$pid]="$comm"
     cmd="$(tr '\0' '\n' < "$dir/cmdline" 2>/dev/null)" || continue
     grep -qx "$GRADLE" <<<"$cmd" && gradle_alive=yes
     [ "$(awk '/^Uid:/ {print $2}' "$dir/status" 2>/dev/null)" = "$ME" ] || continue
@@ -47,16 +47,8 @@ for dir in "$PROC"/[0-9]*; do
     fi
 done
 
-# True when a node process is somewhere between pid and init.
-editor_above() {
-    local p="${ppid_of[$1]:-0}" hops=0
-    while [ "$p" -gt 1 ] && [ "$hops" -lt 64 ]; do
-        [ "${comm_of[$p]:-}" = node ] && return 0
-        p="${ppid_of[$p]:-0}"
-        hops=$((hops + 1))
-    done
-    return 1
-}
+# True unless pid was re-parented to init.
+editor_above() { [ "${ppid_of[$1]:-1}" != 1 ]; }
 rss() { awk '/^VmRSS:/ {printf "%dM", $2 / 1024}' "$PROC/$1/status" 2>/dev/null; }
 
 # A seam for the test, to change /proc between the scan and the signals.

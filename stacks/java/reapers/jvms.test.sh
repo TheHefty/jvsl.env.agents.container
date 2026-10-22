@@ -51,7 +51,9 @@ init() { p 1 s6-svscan 0 0 1000 /package/admin/s6/command/s6-svscan /run/service
 kotlin() { p "$1" java "$2" $ME 693248 /usr/lib/jvm/stack-java/bin/java -Xmx512m -cp k.jar org.jetbrains.kotlin.daemon.KotlinCompileDaemon --daemon-autoshutdownIdleSeconds=600; }
 gradle() { p "$1" java "$2" $ME 600000 /usr/lib/jvm/stack-java/bin/java -Xmx512m -cp g.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 8.14.3; }
 jdtls() { p "$1" java "$2" $ME 427008 /config/.vscode-server/extensions/redhat.java-1.59.0/jre/bin/java -Djava.import.generatesMetadataFilesAtProjectRoot=false -jar /config/.vscode-server/extensions/redhat.java-1.59.0/server/plugins/org.eclipse.equinox.launcher_1.7.0.jar -configuration /config/.vscode-server/data/User/globalStorage/redhat.java/1.59.0/config_linux -data /config/.vscode-server/data/User/workspaceStorage/x/redhat.java/jdt_ws; }
-exthost() { p "$1" node "$2" $ME 300000 /config/.vscode-server/bin/abc/node --dns-result-order=ipv4first /config/.vscode-server/bin/abc/out/bootstrap-fork --type=extensionHost; }
+# The extension host as the kernel shows it: node names its main thread, so its
+# comm is MainThread, not node (seen in kotodori on 2026-10-22, debt 6r9).
+exthost() { p "$1" MainThread "$2" $ME 300000 /config/.vscode-server/bin/abc/node --dns-result-order=ipv4first /config/.vscode-server/bin/abc/out/bootstrap-fork --type=extensionHost; }
 
 reset() { rm -rf "$proc" "$work/signals" "$work/stubborn"; mkdir -p "$proc"; : > "$work/signals"; init; }
 reap() {
@@ -97,9 +99,13 @@ reset; exthost 765 1; p 800 bash 765 $ME 4000 /bin/bash -c launch; jdtls 100989 
 reap
 check "a shell between it and the editor does not make it an orphan" "$(signalled)" ""
 
+reset; exthost 1312 785; p 785 MainThread 769 $ME 200000 /config/.vscode-server/bin/abc/node server-main.js; p 769 sh 1 $ME 2000 sh -c server; jdtls 95200 1312
+reap
+check "a language server under the server's real process chain is kept (debt 6r9)" "$(signalled)" ""
+
 reset; p 50 s6-supervise 1 0 1000 s6-supervise svc-x; jdtls 3737 50
 reap
-check "a chain that reaches init through non-node processes is an orphan" "$(signalled)" "3737 "
+check "one whose parent is anything but init is kept: no name decides an orphan" "$(signalled)" ""
 
 # --- everything else -----------------------------------------------------------------
 
