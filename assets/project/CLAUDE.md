@@ -53,6 +53,10 @@ code.** Each is agreed with the user before the next is written. A design settle
 exists is a justification, and scenarios written after the implementation describe what was built
 rather than what was wanted.
 
+**A round of work is planned whole before any of it is built.** Every epic the user's request gives
+rise to, and every story under each with its scenarios, is agreed before the first task of any of
+them; work found along the way is planned whole too, before its own code.
+
 ## This project
 
 Replace this section. It is where what makes this repository different belongs — what it is, what

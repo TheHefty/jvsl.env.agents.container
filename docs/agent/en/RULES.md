@@ -225,6 +225,9 @@ person debugging it at three in the morning finds out why it stopped.
   one is load-bearing: a design settled after the code exists is a justification, and scenarios
   written after the implementation describe what was built rather than what was wanted. The whole
   chain is in [Workflow](WORKFLOW.md).
+- **A round of work is planned whole before any of it is built.** Every epic the user's request
+  gives rise to, and every story under each with its scenarios, is agreed before the first task of
+  any of them. Work found along the way is planned whole too, before its own code.
 - **The epic does not hold a release.** release-please cuts releases incrementally from the commits
   as they land; the epic is the changelog's sentence and the planning unit, not a merge gate. The
   only mechanical gate on a merge is CI. The release that makes an epic's sentence true is the one

@@ -227,6 +227,10 @@ pessoa depurando às três da manhã descobre por que parou.
   todo um deles sustenta: um desenho fechado depois que o código existe é uma justificativa, e
   cenários escritos depois da implementação descrevem o que foi construído em vez do que era
   querido. A cadeia inteira está em [Fluxo de trabalho](WORKFLOW.md).
+- **Uma rodada de trabalho é planejada inteira antes de qualquer parte dela ser construída.** Todo
+  épico que o pedido do usuário gera, e toda estória de cada um com seus cenários, é acordado antes
+  da primeira task de qualquer um deles. Trabalho encontrado no caminho também é planejado inteiro,
+  antes do próprio código.
 - **O épico não segura uma release.** O release-please corta releases incrementalmente a partir dos
   commits conforme eles entram; o épico é a frase do changelog e a unidade de planejamento, não um
   gate de merge. O único gate mecânico num merge é a CI. A release que torna a frase de um épico

@@ -129,13 +129,24 @@ ela ao contrário: a regra dissolve *parar para perguntar o óbvio*, e um gate d
 A cadeia não é só um ritual de inicialização. O termo de abertura e a SRS são escritos uma vez e
 emendados raramente; estórias e tasks são a unidade contínua de trabalho.
 
+**Uma rodada de trabalho é planejada inteira antes de qualquer parte dela ser construída.** Quando
+o usuário traz trabalho — um conjunto de issues, um pedido — todo épico que ele gera, e toda
+estória de cada um com seus cenários, é escrito e acordado antes da primeira task de qualquer um
+deles. Só então vêm tasks e código, estória por estória, cada task ainda acordada no seu próprio
+gate. Planejado uma estória por vez, o código da primeira estória é escrito antes de os cenários da
+última existirem, e as estórias seguintes acabam ajustadas ao que já foi construído em vez de ao
+que era querido. Trabalho encontrado no caminho — um defeito, uma dívida, uma estória que ninguém
+viu — é planejado inteiro do mesmo jeito antes do próprio código, e não desfaz o planejamento do
+que já foi acordado.
+
 - **Uma estória nova** num épico existente: um grilling de estória, seu `OVERVIEW.md` e `.feature`,
   seu próprio pull request, o gate da estória. A seção de épicos da SRS ganha uma linha para ela; o
   resto da SRS não é re-grilado.
 - **Um épico novo**: um grilling que emenda a seção de épicos da SRS, seu próprio pull request,
   acordado antes da primeira estória dele. É a coisa mais próxima de reabrir a SRS, e é
   deliberadamente o mesmo procedimento de escrevê-la a primeira vez.
-- **Uma task nova** numa estória acordada: um grilling de task, o documento da task, seu pull
+- **Uma task nova** numa estória acordada, depois de todas as estórias da rodada acordadas: um
+  grilling de task, o documento da task, seu pull
   request, o gate da task — depois o código, test-first a partir dos cenários de falha e do
   `.feature` da estória.
 
