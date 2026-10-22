@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.5.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.4.0...v1.5.0) (2026-10-22)
+
+
+### Features
+
+* a project on Windows gets mount sources Docker Desktop accepts, and its container is found ([858a049](https://github.com/TheHefty/jvsl.env.agents.container/commit/858a04986790f80f0b1ec35dfab5f88657a56dae))
+* a project on Windows gets mount sources Docker Desktop accepts, and its container is found ([fb69234](https://github.com/TheHefty/jvsl.env.agents.container/commit/fb69234c1900c461655841e6eab573006d477aa9))
+* a round of work is planned whole, every epic and story with its scenarios, before any of it is built ([0bcfc3a](https://github.com/TheHefty/jvsl.env.agents.container/commit/0bcfc3a026231de6bf54b70a30f8a06837cf4836))
+* a round of work is planned whole, every epic and story with its scenarios, before any of it is built ([5817a23](https://github.com/TheHefty/jvsl.env.agents.container/commit/5817a23347dfdfacf1692bf2e4f276294a9c1055))
+* a WSL project's container gets the distro user's .claude ([3df6a69](https://github.com/TheHefty/jvsl.env.agents.container/commit/3df6a697780945b00212b43c592bd8b91cff19f2))
+* a WSL project's container gets the distro user's .claude ([3f93d7a](https://github.com/TheHefty/jvsl.env.agents.container/commit/3f93d7a58192b2c98b1f363d61769578fd04ca69))
+* a WSL project's files are read and written where this machine reaches them ([ae80446](https://github.com/TheHefty/jvsl.env.agents.container/commit/ae80446088290dc12654eecb4e4cab5ded3dae2f))
+* a WSL project's files are read and written where this machine reaches them ([f81061a](https://github.com/TheHefty/jvsl.env.agents.container/commit/f81061af61d3646d0a048be9bb28338be724fe32))
+* a WSL project's image is built by the distro's docker, and the build works from Windows ([f8b7734](https://github.com/TheHefty/jvsl.env.agents.container/commit/f8b7734a60d530fb748002f075fe6067172a0f52))
+* a WSL project's image is built by the distro's docker, and the build works from Windows ([99bf2bf](https://github.com/TheHefty/jvsl.env.agents.container/commit/99bf2bf6d108e0e81876211b6a7865fb971fcf7c))
+* a WSL window's project is located as its distro and Linux path ([cfb9315](https://github.com/TheHefty/jvsl.env.agents.container/commit/cfb931502a3ebd75f229de195b6054a426a46194))
+* a WSL window's project is located as its distro and Linux path ([9f47114](https://github.com/TheHefty/jvsl.env.agents.container/commit/9f47114e0c8bc4e07c34d222ec8da313af22f473))
+* docker and the machine's facts are asked of where the project's containers run ([8d97a02](https://github.com/TheHefty/jvsl.env.agents.container/commit/8d97a02c7560f8cff92d8ad8d2574ba0f6011e7e))
+* docker and the machine's facts are asked of where the project's containers run ([714f13e](https://github.com/TheHefty/jvsl.env.agents.container/commit/714f13e4c4782d0dc8bca138feae878ef8b2b68d))
+* projects in WSL open from a Windows editor ([d0664de](https://github.com/TheHefty/jvsl.env.agents.container/commit/d0664de4aef6b260846922cfd73ea4a8e1d7ac97))
+* projects in WSL open from a Windows editor ([96c32ea](https://github.com/TheHefty/jvsl.env.agents.container/commit/96c32ea97cbf577be80332632b0de6a0b826c537))
+* the composer is TypeScript, and a build needs neither bash nor jq ([6bdb231](https://github.com/TheHefty/jvsl.env.agents.container/commit/6bdb2317e433ab60e9d11d3839c341f04e510965))
+* the composer is TypeScript, and a build needs neither bash nor jq ([5550d9b](https://github.com/TheHefty/jvsl.env.agents.container/commit/5550d9bf817a302c20f0f8bff86540cfc222c08b))
+* without Docker Desktop, opening and building are refused by cause, naming what to install or start ([8898594](https://github.com/TheHefty/jvsl.env.agents.container/commit/8898594bba5fa83663f051d34ffe169043547061))
+* without Docker Desktop, opening and building are refused by cause, naming what to install or start ([2b9ceea](https://github.com/TheHefty/jvsl.env.agents.container/commit/2b9ceeaf40d976f2e431831ecb6c397c35456392))
+
+
+### Bug Fixes
+
+* Configure brings the container configuration in line with the limits it writes ([2c214be](https://github.com/TheHefty/jvsl.env.agents.container/commit/2c214be3a975e101868dfe9dd971d54120387ad6))
+* Configure brings the container configuration in line with the limits it writes ([b35f8a3](https://github.com/TheHefty/jvsl.env.agents.container/commit/b35f8a3e95b07fb43c84ba74cf14fac7fcafc2e2))
+* the java stack names its JDK as the project's runtime, not as the language server's ([43acdb4](https://github.com/TheHefty/jvsl.env.agents.container/commit/43acdb46b12ed8ef2f0a3ee769b43bd7c10ffd82))
+* the java stack names its JDK as the project's runtime, not as the language server's ([9450658](https://github.com/TheHefty/jvsl.env.agents.container/commit/9450658533e0f7ffc96fcd103b5c07f50aaa6ff8))
+
 ## [1.4.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.3.2...v1.4.0) (2026-10-22)
 
 
