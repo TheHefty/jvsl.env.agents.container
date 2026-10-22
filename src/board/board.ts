@@ -12,7 +12,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { containerFor, projectOnHost, type Running } from '../host/locate.ts'
+import { containerFor, type Running } from '../host/locate.ts'
+import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -58,11 +59,7 @@ async function render(target: vscode.WebviewPanel, docker: Docker, write: (lines
 
   // **The same resolver every command uses**, so the board and the panel can
   // never disagree about which folder is the project.
-  const folder = vscode.workspace.workspaceFolders?.[0]
-  const project = projectOnHost({
-    remoteName: vscode.env.remoteName,
-    folder: folder === undefined ? undefined : { fsPath: folder.uri.fsPath, authority: folder.uri.authority },
-  })
+  const project = hostProject()
   if (project.kind === 'none') {
     say('This window could not be traced to a project on this machine', `${project.reason}. The board reads the ` +
       "tracker through the project's container, found by that folder.")

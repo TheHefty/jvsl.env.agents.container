@@ -60,7 +60,39 @@ export function containerFor(hostPath: string, running: readonly Running[]): Cho
   return { kind: 'many', names: matches.map((m) => m.name) }
 }
 
-export type ProjectOnHost = { kind: 'host'; path: string } | { kind: 'none'; reason: string }
+export type ProjectOnHost =
+  | { kind: 'host'; path: string }
+  /**
+   * A project inside a WSL distro, seen from an editor on Windows. `path` is
+   * the Linux path inside the distro; `unc` is the same folder as Windows
+   * reaches it, `\\wsl.localhost\<distro>\...`.
+   */
+  | { kind: 'wsl'; distro: string; path: string; unc: string }
+  | { kind: 'none'; reason: string }
+
+/**
+ * Whether a WSL project is used, rather than only located.
+ *
+ * **False until every story of the epic a-windows-editor-opens-a-project-that-
+ * lives-in-wsl has landed.** Each goes through the distro in its own pull
+ * request — docker and the machine's facts, the files, the build, the
+ * credentials — and a WSL project accepted before all of them would run
+ * Windows' docker against a Linux path, or bind the Windows home into a Linux
+ * container. Locating comes first; using is switched on last, in one place.
+ */
+export const WSL_READY = false
+
+/** The location as the commands may use it: a WSL one only once the epic is complete. */
+export function onThisMachine(project: ProjectOnHost): ProjectOnHost {
+  if (project.kind !== 'wsl' || WSL_READY) return project
+  return {
+    kind: 'none',
+    reason:
+      `this window's project is in the WSL distro "${project.distro}" (${project.path}). ` +
+      `Opening projects that live in WSL is not supported yet; it arrives with the epic ` +
+      `a-windows-editor-opens-a-project-that-lives-in-wsl`,
+  }
+}
 
 /**
  * The project's folder **on the host**, where this extension runs
@@ -77,7 +109,8 @@ export type ProjectOnHost = { kind: 'host'; path: string } | { kind: 'none'; rea
  */
 export function projectOnHost(input: {
   remoteName: string | undefined
-  folder: { fsPath: string; authority: string } | undefined
+  /** `path` is the URI's path, which is the Linux path in a WSL window. */
+  folder: { fsPath: string; authority: string; path?: string } | undefined
 }): ProjectOnHost {
   const { remoteName, folder } = input
   if (folder === undefined) return { kind: 'none', reason: 'no folder is open' }
@@ -88,8 +121,34 @@ export function projectOnHost(input: {
       ? { kind: 'none', reason: `this window's address (${folder.authority}) did not decode to a folder on this machine` }
       : { kind: 'host', path }
   }
+  if (remoteName === 'wsl') return wslProject(folder.authority, folder.path)
   return {
     kind: 'none',
     reason: `this window is connected to "${remoteName}", whose files are not on this machine, where the extension runs`,
   }
+}
+
+/**
+ * A WSL window's folder: the distro from the authority (`wsl+<distro>`,
+ * percent-encoded) and the Linux path from the URI's path. **Never from
+ * fsPath**, which on Windows reads `\\home\\...` for a remote URI. Anything that
+ * does not decode is none, with what was seen: a wrong distro or path is a
+ * write into somebody else's folder.
+ */
+function wslProject(authority: string, path: string | undefined): ProjectOnHost {
+  const match = /^wsl\+(.+)$/.exec(authority)
+  let distro: string | undefined
+  try {
+    distro = match?.[1] === undefined ? undefined : decodeURIComponent(match[1])
+  } catch {
+    distro = undefined
+  }
+  if (distro === undefined || distro === '') {
+    return { kind: 'none', reason: `this WSL window's address (${authority}) names no distro` }
+  }
+  if (path === undefined || !path.startsWith('/')) {
+    return { kind: 'none', reason: `this WSL window's folder has no Linux path (${path ?? 'none'})` }
+  }
+  const unc = `\\\\wsl.localhost\\${distro}${path.replace(/\//g, '\\')}`
+  return { kind: 'wsl', distro, path, unc }
 }
