@@ -24,5 +24,24 @@ want="$(basename "$target" | sed -nE 's/^java-([0-9]+)-openjdk.*/\1/p')"
 got="$("$link/bin/java" -version 2>&1 | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1)"
 [ -n "$want" ] && [ "$got" = "$want" ] || fail "$link runs Java '$got', and the JDK it points at is '$want'"
 
-[ "$failures" -eq 0 ] && echo "ok   $link is a JDK $got, and JAVA_HOME names it"
+# The Gradle defaults (#187): the image's file is there and nobody but root can
+# change it, the hook is installed, and the hook works with what *this* image
+# has — perl, chown --reference, an 'abc' to own the file — which the unit test
+# beside it cannot know.
+defaults=/etc/jvsl/gradle.properties
+[ "$(stat -c '%U %a' "$defaults" 2>/dev/null)" = "root 644" ] \
+    || fail "$defaults is '$(stat -c '%U %a' "$defaults" 2>&1)', not 'root 644'; the agent's sandbox maps it as the stack's defaults"
+! grep -q '^org.gradle.jvmargs' "$defaults" 2>/dev/null \
+    || fail "$defaults sets org.gradle.jvmargs, which would override a project's own bound"
+hook=/custom-cont-init.d/60-gradle-defaults.sh
+[ -x "$hook" ] || fail "$hook is not installed, so nothing applies the Gradle defaults at boot"
+scratch="$(mktemp -d)"
+printf 'mine=1' > "$scratch/gradle.properties"
+GRADLE_USER_PROPS="$scratch/gradle.properties" bash "$hook" >/dev/null 2>&1
+grep -qx 'org.gradle.daemon.idletimeout=600000' "$scratch/gradle.properties" \
+    && [ "$(tail -c 6 "$scratch/gradle.properties")" = "mine=1" ] \
+    || fail "$hook did not merge the defaults above an existing file in this image"
+rm -rf "$scratch"
+
+[ "$failures" -eq 0 ] && echo "ok   $link is a JDK $got, and JAVA_HOME names it; the Gradle defaults are installed and the hook merges them"
 exit "$failures"

@@ -246,4 +246,25 @@ check "a missing jail-common stops the wrapper rather than weakening it" \
     "$(JAIL_COMMON="$work/gone.sh" PATH="$work/bin:$PATH" \
         env -u CLAUDE_JAILED bash "$HERE/claude.sh" >/dev/null 2>&1; echo $?)" "1"
 
+# The Java stack's Gradle defaults reach the sandbox as the image's own file,
+# mapped read-only over the user-home path — never the person's file, which is
+# where repository tokens and signing keys live. A map ai-jail cannot make is
+# the failure that stops the agent starting at all, so it is passed only when
+# its source is there. See stacks/java/cont-init/60-gradle-defaults.sh.
+gdefaults="$work/gradle-defaults.properties"
+gmap="$gdefaults:/config/.gradle/gradle.properties"
+printf 'org.gradle.daemon.idletimeout=600000\n' > "$gdefaults"
+for agent in claude codex; do
+    args="$(argv "$agent" "GRADLE_DEFAULTS=$gdefaults")"
+    check "$agent: the image's Gradle defaults are mapped over the user-home file" \
+        "$(printf '%s\n' "$args" | grep -B1 -x -- "$gmap" | head -1)" "--map"
+    check "$agent: read-only, never read-write" \
+        "$(printf '%s\n' "$args" | grep -B1 -x -- "$gmap" | grep -c -- '--rw-map' || true)" "0"
+    check "$agent: the person's own gradle.properties is never a source" \
+        "$(printf '%s\n' "$args" | grep -c '^/config/.gradle/gradle.properties' || true)" "0"
+done
+args="$(argv claude "GRADLE_DEFAULTS=$work/absent.properties")"
+check "an image without the defaults passes no map, so the jail has nothing to fail on" \
+    "$(printf '%s\n' "$args" | grep -c 'gradle.properties' || true)" "0"
+
 exit "$failures"

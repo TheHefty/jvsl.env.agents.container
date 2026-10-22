@@ -250,3 +250,22 @@ if [[ -d /config/.docker ]]; then
     --env "DOCKER_HOST=${DOCKER_HOST:-unix:///config/.docker/run/docker.sock}"
   )
 fi
+
+# **The Java stack's Gradle defaults, as the image's file and never the
+# person's.** stacks/java/cont-init/60-gradle-defaults.sh writes them at the
+# top of /config/.gradle/gradle.properties for the editor and the terminal; the
+# sandbox's /config is a tmpfs that does not have that file, so without this the
+# agent's Gradle and Kotlin daemons idle for three and two hours (#187).
+#
+# SOURCE:DEST, read-only. Mapping the person's real file instead would hand the
+# agent whatever else is in it — repository tokens and signing keys are what
+# that file is usually for — which is a widening this does not make. Read-only
+# because a default the agent could edit is a default for nobody.
+#
+# Only when the source exists: ai-jail v2.6.4 skips a missing source with a
+# warning, but every other stack's image has no such file and should not print
+# one on every start.
+GRADLE_DEFAULTS="${GRADLE_DEFAULTS:-/etc/jvsl/gradle.properties}"
+if [ -f "$GRADLE_DEFAULTS" ]; then
+    JAIL_COMMON_ARGS+=(--map "$GRADLE_DEFAULTS:/config/.gradle/gradle.properties")
+fi

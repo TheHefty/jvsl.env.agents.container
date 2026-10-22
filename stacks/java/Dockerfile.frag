@@ -27,3 +27,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # and Gradle 8.14.3". Debian's directory carries the version and the
 # architecture, so the link is what this stack's devcontainer.json can name.
 ENV JAVA_HOME=/usr/lib/jvm/stack-java
+
+# **Gradle's idle daemons, bounded in time** (#187). The heaps are already
+# bounded by Gradle's own defaults (-Xmx512m, inherited by the Kotlin daemon);
+# what is not is how long an idle one lives — three hours, two for Kotlin, and
+# two for a Kotlin daemon orphaned by an OOM-killed Gradle daemon. The file is
+# the image's and read-only; the boot hook merges it at the top of the person's
+# user-home gradle.properties, and core/bin/jail-common.sh maps it, and only
+# it, into the agent's sandbox.
+COPY stacks/java/gradle.properties /etc/jvsl/gradle.properties
+COPY stacks/java/cont-init/60-gradle-defaults.sh /custom-cont-init.d/60-gradle-defaults.sh
+RUN chmod 0644 /etc/jvsl/gradle.properties && chmod +x /custom-cont-init.d/60-gradle-defaults.sh
