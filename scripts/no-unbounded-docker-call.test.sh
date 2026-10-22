@@ -34,37 +34,45 @@ not reading the tree it thinks it is and would pass vacuously." >&2
 fi
 echo "ok      ${#sources[@]} source file(s) to check"
 
-# The mechanism has to find a call that is really there.
-if ! grep -qE "run\('docker'" -- "${sources[@]}"; then
-    echo "no-unbounded-docker-call: FAIL: no call to docker anywhere under src/, which cannot be \
-true while the extension drives the host's. The mechanism is broken." >&2
+# The mechanism has to find a call that is really there. Since the epic
+# a-windows-editor-opens-a-project-that-lives-in-wsl, docker is spawned as
+# `run(command, argv)` from dockerArgv — `docker`, or `wsl.exe ... docker` —
+# so what is really there is the helper's own callers in docker.ts.
+if ! grep -qE "dockerBounded\(args, ms," src/host/docker.ts; then
+    echo "no-unbounded-docker-call: FAIL: docker.ts no longer calls dockerBounded from dockerFor and \
+localDocker. The mechanism this check reads is gone." >&2
     exit 1
 fi
-echo "ok      the search mechanism finds a docker call that is really there"
+echo "ok      the search mechanism finds the helper's real callers"
 
-# Every one must go through the helper that bounds it. Naming the helper rather
-# than looking for `Promise.race` nearby: a race three lines above a second call
-# is exactly the shape that passed review and hung anyway.
-# The helper itself is the one call that may be direct — it is what applies the
-# limit. Exempted by being inside its body rather than by a pattern: a pattern
-# would exempt the next function that happened to look like it.
-helper_line="$(grep -n 'async function dockerBounded' src/host/docker.ts | cut -d: -f1)"
-helper_end=$(( ${helper_line:-0} + 8 ))
-
+# No docker spawned directly: a literal run('docker', ...) is unbounded and runs
+# on this machine whatever the project's location.
 hits="$(grep -nE "(^|[^a-zA-Z])run\('docker'" -- "${sources[@]}" \
-    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' \
-    | awk -F: -v s="${helper_line:-0}" -v e="$helper_end" \
-        '!($1 == "src/host/docker.ts" && $2 > s && $2 < e)' || true)"
-
+    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' || true)"
 if [ -n "$hits" ]; then
-    echo "no-unbounded-docker-call: FAIL: these call docker without a time limit. If the daemon \
-does not answer, the call does not return — and the ones on the activation path leave the extension \
-in 'Activating…' with every command reporting that it does not exist:" >&2
+    echo "no-unbounded-docker-call: FAIL: these spawn docker directly, without a time limit and \
+always on this machine. If the daemon does not answer the call does not return — on the activation \
+path that leaves the extension in 'Activating…' — and a WSL project's docker is never reached:" >&2
     printf '%s\n' "$hits" | sed 's/^/        /' >&2
-    echo "        Call it through dockerBounded(), which races it against DOCKER_CHECK_MS." >&2
+    echo "        Use dockerFor(project) or localDocker from src/host/docker.ts." >&2
     exit 1
 fi
-echo "ok      every docker call goes through the bounded helper"
+echo "ok      nothing spawns docker directly"
+
+# dockerBounded itself only inside docker.ts: called raw elsewhere it takes the
+# local default, and a project in a WSL distro would be asked of Windows'
+# docker without anything failing.
+hits="$(grep -nE "(^|[^a-zA-Z])dockerBounded\(" -- "${sources[@]}" \
+    | grep -v '^src/host/docker.ts:' \
+    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' || true)"
+if [ -n "$hits" ]; then
+    echo "no-unbounded-docker-call: FAIL: these call dockerBounded directly, outside docker.ts, so \
+they run docker on this machine whatever the project's location:" >&2
+    printf '%s\n' "$hits" | sed 's/^/        /' >&2
+    echo "        Use dockerFor(project), or localDocker where no project is known." >&2
+    exit 1
+fi
+echo "ok      every docker call goes through dockerFor or localDocker"
 
 echo
-echo "no-unbounded-docker-call.test: 3 passed, 0 failed."
+echo "no-unbounded-docker-call.test: 4 passed, 0 failed."

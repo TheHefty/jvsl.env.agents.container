@@ -10,7 +10,9 @@ import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
 import { findGradleBuilds } from '../build/gradle.ts'
-import { hostFacts } from '../host/host.ts'
+import { dockerFor } from '../host/docker.ts'
+import { factsFor } from '../host/host.ts'
+import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -45,6 +47,10 @@ export async function configure(
   forRoot?: string,
 ): Promise<ConfigureResult> {
   let root = forRoot
+  // Where the project lives, for regenerating its configuration: a folder the
+  // picker chose is on this machine.
+  let location: Exclude<ProjectOnHost, { kind: 'none' }> | undefined =
+    forRoot === undefined ? undefined : { kind: 'host', path: forRoot }
   if (root === undefined) {
     const project = hostProject()
     if (project.kind === 'none') {
@@ -55,6 +61,7 @@ export async function configure(
       return { wrote: false, root: '(none)', stacks: [] }
     }
     root = project.path
+    location = project
   }
   // What the extension carries, not what the project has. A project is not
   // supposed to have a `.code-server/` at all, and one that still does carries
@@ -102,7 +109,7 @@ export async function configure(
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
     `  stacks after:  ${picked.join(' ') || '(none)'}`,
   ])
-  regenerate(root, extensionVersion, write)
+  if (location !== undefined) await regenerate(location, extensionVersion, write)
 
   // **Confirming builds, even when nothing changed.** `docker build` against an
   // unchanged manifest is a cache hit, and "I answered the questions and nothing
@@ -278,16 +285,32 @@ export async function askAnswers(
  * file changed, because the new limits — like the image this command rebuilds —
  * apply only when the container is recreated.
  */
-function regenerate(root: string, extensionVersion: string, write: (lines: string[]) => void): void {
+async function regenerate(
+  location: Exclude<ProjectOnHost, { kind: 'none' }>,
+  extensionVersion: string,
+  write: (lines: string[]) => void,
+): Promise<void> {
+  const root = location.path
   const target = join(root, CONFIG_PATH)
   const existingConfig = readOrNull(target)
   const scan = findGradleBuilds(root)
   write(scan.log)
+  let measured
+  try {
+    measured = await factsFor(location, dockerFor(location))
+  } catch (error) {
+    write([`configure: ${CONFIG_PATH} not regenerated: docker could not be asked (${String(error)})`])
+    void vscode.window.showWarningMessage(
+      `The new limits are not in ${CONFIG_PATH}: docker did not answer, so the machine's devices are unknown.`,
+    )
+    return
+  }
+  write(measured.notes.map((n) => `facts: ${n}`))
   const r = regenerateConfiguration({
     projectRoot: root,
     homeDir: homedir(),
     extensionVersion,
-    facts: hostFacts(),
+    facts: measured.facts,
     manifest: readOrNull(join(root, MANIFEST)),
     existingConfig,
     gradleBuilds: scan.builds,

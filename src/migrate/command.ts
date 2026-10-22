@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { BUILD } from '../commands.ts'
-import { run, dockerBounded } from '../host/docker.ts'
+import { dockerFor, run } from '../host/docker.ts'
 import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
@@ -25,6 +25,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
     return
   }
   const root = project.path
+  const docker = dockerFor(project)
   const read = (rel: string) => readOrNull(join(root, rel))
   let tracked: string[] = []
   try {
@@ -44,7 +45,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
   let containerId = ''
   if (!facts.oldFormat && facts.planningFolders) {
     try {
-      const { stdout } = await dockerBounded([
+      const { stdout } = await docker([
         'ps', '-a', '--filter', 'label=devcontainer.local_folder',
         '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.State}}',
       ])
@@ -59,7 +60,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
         const running = rows.find((r) => r.id === choice.id)?.state === 'running'
         let probe = ''
         if (running) {
-          probe = (await dockerBounded([
+          probe = (await docker([
             'exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', choice.id, 'sh', '-c',
             'command -v migrate-planning >/dev/null && echo M; test -d .beads/embeddeddolt && echo T && bd list --all --limit 0 --json 2>/dev/null | jq length',
           ], 15000)).stdout
@@ -136,7 +137,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
   // step.step === 'planning'
   let preview = ''
   try {
-    preview = (await dockerBounded(['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId,
+    preview = (await docker(['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', containerId,
       'migrate-planning', '--plan'], 60000)).stdout
   } catch (error) {
     // The whole output to the channel and its cause in the notification: the

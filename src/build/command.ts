@@ -5,7 +5,7 @@ import * as vscode from 'vscode'
 import { composeAndBuildCommand, composeForProject, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
 import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
-import { dockerBounded } from '../host/docker.ts'
+import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
 import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
@@ -31,7 +31,15 @@ export async function build(
     return
   }
 
-  const checks = await hostChecks()
+  const project = hostProject()
+  if (project.kind === 'none') {
+    write([`build: refused — ${project.reason}`])
+    void vscode.window.showErrorMessage(`Build: ${project.reason}.`)
+    return
+  }
+  const docker = dockerFor(project)
+
+  const checks = await hostChecks(docker)
   const problems = hostProblems(checks)
   for (const problem of problems) {
     write([`build: ${problem.blocking ? 'refused' : 'warning'}: ${problem.message}`])
@@ -42,18 +50,12 @@ export async function build(
     return
   }
 
-  const project = hostProject()
-  if (project.kind === 'none') {
-    write([`build: refused — ${project.reason}`])
-    void vscode.window.showErrorMessage(`Build: ${project.reason}.`)
-    return
-  }
   const outcome = await buildInTerminal(project.path, extensionPath, write)
   view.recordBuild(outcome)
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
   // dismissed before the useful text can be read.
-  if (outcome === 'ok') await offerRecreate(project.path, write)
+  if (outcome === 'ok') await offerRecreate(project.path, write, docker)
 }
 
 /**
@@ -62,18 +64,22 @@ export async function build(
  * **It never removes a container**: the only action is Dev Containers' own
  * rebuild, when the person clicks it.
  */
-export async function offerRecreate(hostPath: string, write: (lines: string[]) => void): Promise<void> {
+export async function offerRecreate(
+  hostPath: string,
+  write: (lines: string[]) => void,
+  docker: Docker = localDocker,
+): Promise<void> {
   const image = projectNames(hostPath).image
   let built: string | undefined
   try {
-    built = (await dockerBounded(['image', 'inspect', '-f', '{{.Id}}', image])).stdout.trim() || undefined
+    built = (await docker(['image', 'inspect', '-f', '{{.Id}}', image])).stdout.trim() || undefined
   } catch (error) {
     write([`build: could not read the image ${image} just built: ${String(error)}`])
   }
 
   let container: ContainerForImage = { kind: 'none' }
   try {
-    const { stdout } = await dockerBounded([
+    const { stdout } = await docker([
       'ps', '-a', '--filter', 'label=devcontainer.local_folder',
       '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}',
     ])
@@ -85,7 +91,7 @@ export async function offerRecreate(hostPath: string, write: (lines: string[]) =
     if (choice.kind === 'many') container = choice
     if (choice.kind === 'one') {
       const row = rows.find((r) => r.id === choice.id)!
-      const { stdout: img } = await dockerBounded(['inspect', '-f', '{{.Image}}', choice.id])
+      const { stdout: img } = await docker(['inspect', '-f', '{{.Image}}', choice.id])
       container = { kind: 'one', id: choice.id, name: row.name, image: img.trim() }
     }
   } catch (error) {
