@@ -28,11 +28,23 @@ speed on smaller decisions for the user building the judgment to make them; the 
 "materially different systems" below is for a separate, narrower case — a business-rule ambiguity —
 not a ceiling on this one.
 
-The real work is anticipating failure. **Before writing code, state the three worst failure
-scenarios or infrastructure bottlenecks this implementation can cause** — a broken contract, memory
-exhaustion, concurrency, an external dependency changing under the build, state that outlives the
-rebuild meant to replace it. Name them concretely for the change at hand; a generic risk checklist
-is not the exercise.
+The real work is anticipating failure, and it starts from what is about to be built. **Before
+writing code, state the shape the implementation will take, then the three worst failure scenarios
+or infrastructure bottlenecks that shape can cause.** The shape is a few lines: where the work runs
+— a request, a background job, a queue; what is held whole in memory, and how large it can get;
+what any loop does per item; what is written, and whether it can be undone. The failures follow
+from it — a broken contract, memory exhaustion, concurrency, an external dependency changing under
+the build, state that outlives the rebuild meant to replace it. Name them concretely, in terms of
+that shape; a generic risk checklist is not the exercise.
+
+It is a statement, not a question. Say it and proceed; the user interrupts if the shape is wrong.
+The decisions a task did not fix are otherwise made silently and surface only as a diff, and a
+wrong shape corrected while it is a sentence costs a sentence — corrected once it is written, tested
+and green, it is a rewrite that usually survives because it works. An agent that turns this into a
+menu and waits has read it backwards, in the direction this mode was written to prevent. When a
+change touches none of volume, concurrency, cost, irreversibility or data that belongs to someone
+else — renaming a method — the shape is one line, and the rule above applies: implement, and say
+what was chosen.
 
 Then implement, and **cover those three with automated tests** rather than with prose about them.
 Tests live beside what they exercise, in the repository whose CI runs them: a `*.test.sh` next to
