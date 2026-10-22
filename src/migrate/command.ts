@@ -24,6 +24,17 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
     void vscode.window.showErrorMessage(`Migrate: ${project.reason}.`)
     return
   }
+  if (project.kind === 'wsl') {
+    // The migration runs git and rewrites files on this machine's side; a WSL
+    // project's are reached only through its distro (host/files.ts), and this
+    // command has not been taken there. Said, rather than attempted through a
+    // path the extension host may refuse.
+    void vscode.window.showErrorMessage(
+      `Migrate: this project is in the WSL distro "${project.distro}". Migrating it from a Windows ` +
+        `editor is not supported; run the migration from a Linux editor or from inside the distro.`,
+    )
+    return
+  }
   const root = project.path
   const docker = dockerFor(project)
   const read = (rel: string) => readOrNull(join(root, rel))

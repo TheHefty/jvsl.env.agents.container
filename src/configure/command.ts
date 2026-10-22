@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { build } from '../build/command.ts'
@@ -8,12 +8,13 @@ import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
-import { findGradleBuilds } from '../build/gradle.ts'
+import { findGradleBuildsFor } from '../build/gradle.ts'
+import { filesFor } from '../host/files.ts'
 import { dockerFor } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { homeFor } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
-import { hostProject, readOrNull } from '../host/project.ts'
+import { hostProject } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
@@ -79,22 +80,25 @@ export async function configure(
     return { wrote: false, root, stacks: [] }
   }
 
-  const manifestPath = join(root, MANIFEST)
+  // Where the project lives: through the distro for a WSL project.
+  const files = filesFor(location ?? { kind: 'host', path: root })
   let current: Record<string, unknown> = {}
   try {
-    const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'))
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      current = parsed as Record<string, unknown>
-    }
-  } catch (error) {
     // Only a manifest that exists and cannot be read is a refusal; an absent one
     // is a project that has not been configured yet, which is the whole point.
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      void vscode.window.showErrorMessage(
-        `${MANIFEST} cannot be read, and rewriting it would lose whatever it holds. Fix it first.`,
-      )
-      return { wrote: false, root, stacks: [] }
+    const raw = files.read(MANIFEST)
+    if (raw !== null) {
+      const parsed: unknown = JSON.parse(raw)
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        current = parsed as Record<string, unknown>
+      }
     }
+  } catch (error) {
+    write([`configure: refused — ${MANIFEST} could not be read: ${String(error)}`])
+    void vscode.window.showErrorMessage(
+      `${MANIFEST} cannot be read, and rewriting it would lose whatever it holds. Fix it first. (${String(error)})`,
+    )
+    return { wrote: false, root, stacks: [] }
   }
 
   const selectedNow = available.filter((name) => name in current)
@@ -103,7 +107,13 @@ export async function configure(
   const picked = Object.keys(answers.stacks)
 
   const next = nextManifest(current, answers, available)
-  writeFileSync(manifestPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
+  try {
+    files.write(MANIFEST, `${JSON.stringify(next, null, 2)}\n`)
+  } catch (error) {
+    write([`configure: could not write ${MANIFEST}: ${String(error)}`])
+    void vscode.window.showErrorMessage(`Could not write ${MANIFEST}: ${String(error)}`)
+    return { wrote: false, root, stacks: [] }
+  }
   write([
     `configure: wrote ${MANIFEST}`,
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
@@ -290,10 +300,16 @@ async function regenerate(
   extensionVersion: string,
   write: (lines: string[]) => void,
 ): Promise<void> {
-  const root = location.path
-  const target = join(root, CONFIG_PATH)
-  const existingConfig = readOrNull(target)
-  const scan = findGradleBuilds(root)
+  const files = filesFor(location)
+  let existingConfig: string | null
+  try {
+    existingConfig = files.read(CONFIG_PATH)
+  } catch (error) {
+    write([`configure: ${CONFIG_PATH} not regenerated: ${String(error)}`])
+    void vscode.window.showWarningMessage(`The new limits are not in ${CONFIG_PATH}: ${String(error)}`)
+    return
+  }
+  const scan = findGradleBuildsFor(location, files)
   write(scan.log)
   let measured
   try {
@@ -317,7 +333,7 @@ async function regenerate(
     homeDir: home.home.mount,
     extensionVersion,
     facts: measured.facts,
-    manifest: readOrNull(join(root, MANIFEST)),
+    manifest: files.read(MANIFEST),
     existingConfig,
     gradleBuilds: scan.builds,
   })
@@ -332,8 +348,7 @@ async function regenerate(
     return
   }
   try {
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, r.serialised, 'utf8')
+    files.write(CONFIG_PATH, r.serialised)
   } catch (error) {
     const cause = `could not write ${CONFIG_PATH}: ${String(error)}`
     write([`configure: ${cause}`])

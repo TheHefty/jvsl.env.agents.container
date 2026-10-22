@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 
 import { run } from './docker.ts'
-import { uncFor, type ProjectOnHost } from './locate.ts'
+import type { ProjectOnHost } from './locate.ts'
 
 /**
  * The home whose `.claude` the container is given, as two paths to one place:
@@ -46,5 +46,5 @@ export async function homeFor(
   if (!out.startsWith('/') || out.includes('\n')) {
     return { ok: false, reason: `the WSL distro "${project.distro}" gave "${out}" as its home, which is not a path inside it` }
   }
-  return { ok: true, home: { mount: out, local: uncFor(project.distro, out) } }
+  return { ok: true, home: { mount: out, local: out } }
 }

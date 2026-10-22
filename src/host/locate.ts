@@ -217,21 +217,6 @@ export function mountPath(project: Exclude<ProjectOnHost, { kind: 'none' }>): st
   return project.kind === 'wsl' ? project.linux : project.path
 }
 
-/**
- * A WSL project whose files this machine cannot reach — the distro stopped,
- * removed, or renamed — is refused here, by name. Left alone, every read would
- * return null, which the open flow takes for "no manifest" and fills with
- * defaults.
- */
-export function reachable(project: ProjectOnHost, exists: (path: string) => boolean): ProjectOnHost {
-  if (project.kind !== 'wsl' || exists(project.path)) return project
-  return {
-    kind: 'none',
-    reason:
-      `the WSL distro "${project.distro}" does not answer at ${project.path} for ${project.linux}. ` +
-      `Start it (wsl -d ${project.distro}) and try again`,
-  }
-}
 
 /** A Linux path inside a distro, as this machine reaches it: `\\wsl.localhost\<distro>\...`. */
 export function uncFor(distro: string, linuxPath: string): string {

@@ -159,3 +159,34 @@ test('the scan stops at its directory budget and says so', () => {
 test('a project root that cannot be read yields no builds rather than an exception', () => {
   assert.deepEqual(findGradleBuilds('/nonexistent/for/sure').builds, [])
 })
+
+// --- a WSL project's builds, found by the distro (debt a-running-distro-is-reported-as-not-answering)
+
+import { buildsFromListing, GRADLE_FIND } from './gradle.ts'
+
+test('the distro lists the files that make builds, and the same builds come out as from a walk', () => {
+  const listing = [
+    './2-backend/iam/settings.gradle.kts',
+    './2-backend/iam/gradle/wrapper/gradle-wrapper.properties',
+    './2-backend/core/settings.gradle.kts',
+    './2-backend/core/app/build.gradle.kts',
+    './2-backend/core/gradle/wrapper/gradle-wrapper.properties',
+    './2-backend/build-logic/settings.gradle.kts',
+  ].join('\n')
+  const read = (rel: string) => (listing.includes(`./${rel}`) ? wrapper('8.14.3') : null)
+  const builds = buildsFromListing(listing, read)
+  assert.deepEqual(builds.map((b) => b.dir), ['2-backend/build-logic', '2-backend/core', '2-backend/iam'])
+  assert.equal(builds[0]?.wrapper, null)
+  assert.ok(builds[1]?.wrapper?.includes('8.14.3'))
+})
+
+test('a single-project build at the root is still a build, and a subproject is not', () => {
+  assert.deepEqual(buildsFromListing('./build.gradle\n./sub/build.gradle\n', () => null).map((b) => b.dir), ['.'])
+})
+
+test('the distro\'s search is bounded, prunes what the walk skips, and follows no symlink', () => {
+  assert.match(GRADLE_FIND, /-maxdepth \d+/)
+  for (const skipped of ['.git', 'node_modules', 'build', '.gradle', '.kotlin']) assert.ok(GRADLE_FIND.includes(`-name ${skipped}`), skipped)
+  assert.ok(!GRADLE_FIND.includes(' -L') && !GRADLE_FIND.includes('-follow'))
+  assert.match(GRADLE_FIND, /head -n \d+/)
+})

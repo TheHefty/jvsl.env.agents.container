@@ -66,7 +66,7 @@ test('two containers for one project are refused by name, never guessed between'
 
 // --- every command finds the project on the host (debt: the-panel-reads-the-containers-path)
 
-import { mountPath, onThisMachine, projectOnHost, reachable, WSL_READY } from './locate.ts'
+import { mountPath, onThisMachine, projectOnHost, WSL_READY } from './locate.ts'
 
 test('a local window\'s project is its folder', () => {
   assert.deepEqual(projectOnHost({ remoteName: undefined, folder: { fsPath: '/home/jv/demo', authority: '' } }),
@@ -159,20 +159,7 @@ test('what docker mounts is the path the daemon sees: the Linux one in a distro,
   assert.equal(mountPath({ kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\home\\jv\\p', linux: '/home/jv/p' }), '/home/jv/p')
 })
 
-test('a distro whose files cannot be reached is refused by name, not read as an empty project', () => {
-  // A stopped or removed distro makes every read return null, which the open
-  // flow would take for "no manifest" and fill with defaults.
-  const p = { kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\home\\jv\\p', linux: '/home/jv/p' } as const
-  const r = reachable(p, () => false)
-  assert.equal(r.kind, 'none')
-  assert.ok(r.kind === 'none' && r.reason.includes('Ubuntu') && r.reason.includes('/home/jv/p'))
-  assert.deepEqual(reachable(p, () => true), p)
-})
 
-test('a local project is not asked whether it is reachable', () => {
-  const local = { kind: 'host', path: '/gone' } as const
-  assert.deepEqual(reachable(local, () => false), local)
-})
 
 test('a Windows folder matches the container labelled with it, whatever the drive letter\'s case or the separators', () => {
   const running = [{ id: 'c1', name: 'kotodori', localFolder: 'c:\\Users\\a\\code\\kotodori' }]

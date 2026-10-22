@@ -1,20 +1,19 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { handsOver } from '../build/build.ts'
 import { buildInTerminal } from '../build/command.ts'
 import { projectNames } from '../build/devcontainer.ts'
-import { findGradleBuilds } from '../build/gradle.ts'
+import { findGradleBuildsFor } from '../build/gradle.ts'
+import { filesFor } from '../host/files.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
-import { dockerFor, localDocker, whereFor, type Docker } from '../host/docker.ts'
+import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { homeFor, type Home } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
-import { hostProject, readOrNull } from '../host/project.ts'
+import { hostProject } from '../host/project.ts'
 import { CONFIG_PATH, decideOpen, imageStateFrom, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
@@ -36,7 +35,6 @@ export async function prepare(
   }
   const project = hostProject()
   if (project.kind === 'none') return
-  const root = project.path
 
   // Whose credentials the container is given: refused here, before anything is
   // written, when a distro will not say where its home is.
@@ -58,14 +56,14 @@ export async function prepare(
     return
   }
 
-  const target = join(root, CONFIG_PATH)
+  const files = filesFor(project)
   const serialised = serialise(decision.configuration)
   try {
     // Before the file, because a bind source that does not exist fails the
-    // mount rather than being created — see Decision.ensureHostDirs.
-    for (const dir of decision.ensureHostDirs) mkdirSync(dir, { recursive: true })
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, serialised, 'utf8')
+    // mount rather than being created — see Decision.ensureHostDirs. Created
+    // where the project lives: through the distro for a WSL project.
+    for (const dir of decision.ensureHostDirs) files.mkdirAbsolute(dir)
+    files.write(CONFIG_PATH, serialised)
   } catch (error) {
     const cause = `could not write ${CONFIG_PATH}: ${String(error)}`
     write([cause])
@@ -87,13 +85,13 @@ export async function prepare(
   // writing the configuration failed, this function has already returned, and
   // leaving a project with new instruction files and no way to open it would be
   // the worst of the three outcomes.
-  for (const w of instructionWrites(root, carried(context.extensionPath, 'assets', 'project'))) {
+  for (const w of instructionWrites(files, carried(context.extensionPath, 'assets', 'project'))) {
     if (w.action === 'keep') {
       write([`${w.name}: kept — ${w.because ?? 'unchanged'}`])
       continue
     }
     try {
-      writeFileSync(join(root, w.name), w.contents ?? '', 'utf8')
+      files.write(w.name, w.contents ?? '')
       write([`wrote ${w.name}`])
     } catch (error) {
       // Not fatal. A project that cannot take its instruction files can still
@@ -110,7 +108,7 @@ export async function prepare(
 
   if (decision.action === 'build') {
     write([`open: ${decision.cause}`])
-    const outcome = await buildInTerminal(root, context.extensionPath, write, whereFor(project))
+    const outcome = await buildInTerminal(project, context.extensionPath, write)
     write([`open: build ${outcome}`])
     if (!handsOver(outcome)) {
       // Said rather than left silent: a terminal that closed is not obviously
@@ -135,9 +133,9 @@ export async function gather(
   write: (lines: string[]) => void,
   home: Home = { mount: homedir(), local: homedir() },
 ): Promise<OpenContext> {
-  const root = project.path
   const docker = dockerFor(project)
-  const gradle = findGradleBuilds(root)
+  const files = filesFor(project)
+  const gradle = findGradleBuildsFor(project, files)
   write(gradle.log)
   // Facts from where the container will run. A daemon that does not answer is
   // refused a few lines on, by the image check, so here it only must not throw.
@@ -148,18 +146,18 @@ export async function gather(
   write(measured.notes.map((n) => `facts: ${n}`))
   return {
     // What docker mounts and names the image after: the Linux path in a distro.
-    // Files are read through `root`, which is where this machine reaches them.
+    // Files are read where the project lives (host/files.ts).
     projectRoot: mountPath(project),
     homeDir: home.mount,
     localHome: home.local,
     extensionVersion: extensionVersion(context),
     facts: measured.facts,
     factNotes: measured.notes,
-    manifest: readOrNull(join(root, MANIFEST)),
-    existingConfig: readOrNull(join(root, CONFIG_PATH)),
+    manifest: files.read(MANIFEST),
+    existingConfig: files.read(CONFIG_PATH),
     runningContainers: await runningContainers(write, docker),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
-    gitignore: readOrNull(join(root, '.gitignore')),
+    gitignore: files.read('.gitignore'),
     image: await imageState(projectNames(mountPath(project)).image, write, docker),
     gradleBuilds: gradle.builds,
     platform: process.platform,

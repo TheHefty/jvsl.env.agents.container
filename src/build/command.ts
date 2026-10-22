@@ -6,7 +6,9 @@ import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { dockerFor, localDocker, whereFor, type Docker, type DockerHost } from '../host/docker.ts'
 import { folderNames, mountPath, type ProjectOnHost } from '../host/locate.ts'
+import { filesFor } from '../host/files.ts'
 import { distroPath, hostProcessTerminal } from '../host/host-terminal.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 import { containerFor } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { SelectionView } from '../view/selection-view.ts'
@@ -50,7 +52,7 @@ export async function build(
     return
   }
 
-  const outcome = await buildInTerminal(project.path, extensionPath, write, whereFor(project))
+  const outcome = await buildInTerminal(project, extensionPath, write)
   view.recordBuild(outcome)
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
@@ -136,17 +138,27 @@ export async function offerRecreate(
  * calls by name.
  */
 export async function buildInTerminal(
-  root: string,
+  project: Exclude<ProjectOnHost, { kind: 'none' }>,
   extensionPath: string,
   write: (lines: string[]) => void,
-  where: DockerHost = { kind: 'local' },
 ): Promise<'ok' | 'failed' | 'cancelled'> {
-  const plan = composeForProject(extensionPath, root)
+  const where: DockerHost = whereFor(project)
+  // The manifest, read where the project lives: through the distro for a WSL
+  // project (host/files.ts), whose files this machine may not reach by path.
+  let manifestText: string | null
+  try {
+    manifestText = filesFor(project).read(MANIFEST)
+  } catch (error) {
+    write([`build: refused — ${String(error)}`])
+    void vscode.window.showErrorMessage(String(error))
+    return 'failed'
+  }
+  const plan = composeForProject(extensionPath, mountPath(project), manifestText)
   const stacks = plan.stacks
   // Composed here, before any terminal opens: a refusal — a package name that
   // is not one, a stack the extension does not carry — is said where it can be
   // read, rather than as the first line of a build that never started.
-  const composed = compose({ root: plan.root, stacks, manifestPath: plan.manifest })
+  const composed = compose({ root: plan.root, stacks, manifestPath: plan.manifest, manifestText })
   if (!composed.ok) {
     write([`build: refused — ${composed.message}`])
     void vscode.window.showErrorMessage(composed.message)

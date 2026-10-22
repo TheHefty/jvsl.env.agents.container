@@ -23,7 +23,9 @@ test('a WSL project binds the distro user\'s home, and reaches it from here thro
     () => Promise.resolve({ stdout: '/home/jv', stderr: '' }),
     'C:\\Users\\jv',
   )
-  assert.deepEqual(r, { ok: true, home: { mount: '/home/jv', local: '\\\\wsl.localhost\\Ubuntu\\home\\jv' } })
+  // Created through the distro (debt a-running-distro-is-reported-as-not-answering),
+  // so the path it is created at is the distro's own, not a UNC path.
+  assert.deepEqual(r, { ok: true, home: { mount: '/home/jv', local: '/home/jv' } })
 })
 
 test('a home the distro does not give is refused, naming the distro, never the Windows home', async () => {

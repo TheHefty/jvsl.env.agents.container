@@ -47,7 +47,15 @@ export const INSTRUCTION_FILES = ['CLAUDE.md', 'AGENTS.md'] as const
  * **One file being somebody's work does not make the pair untouchable.** A
  * project that wrote its own `CLAUDE.md` and has no `AGENTS.md` gets the second.
  */
-export function instructionWrites(projectRoot: string, assetsDir: string): InstructionWrite[] {
+export function instructionWrites(
+  /** The project's folder on this machine, or its files wherever they live (see host/files.ts). */
+  project: string | { read(rel: string): string | null },
+  assetsDir: string,
+): InstructionWrite[] {
+  const readTarget = (name: string): string | null =>
+    typeof project === 'string'
+      ? existsSync(join(project, name)) ? readOrEmpty(join(project, name)) : null
+      : project.read(name)
   return INSTRUCTION_FILES.map((name): InstructionWrite => {
     const source = join(assetsDir, name)
     if (!existsSync(source)) {
@@ -60,9 +68,8 @@ export function instructionWrites(projectRoot: string, assetsDir: string): Instr
           `instruction file is worse than an absent one, because an agent reads it.`,
       }
     }
-    const target = join(projectRoot, name)
-    if (existsSync(target)) {
-      const existing = readOrEmpty(target)
+    const existing = readTarget(name)
+    if (existing !== null) {
       if (!isGenerated(existing)) {
         return {
           name,
