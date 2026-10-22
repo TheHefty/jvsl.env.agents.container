@@ -17,6 +17,11 @@ export type ImageState = 'present' | 'absent' | 'unknown'
 export interface OpenContext {
   projectRoot: string
   homeDir: string
+  /**
+   * Where this machine reaches homeDir, when that differs: a WSL project binds
+   * the distro's home, created here through UNC. Defaults to homeDir.
+   */
+  localHome?: string
   extensionVersion: string
   facts: HostFacts
   manifest: string | null
@@ -195,7 +200,7 @@ export function decideOpen(context: OpenContext): Decision {
   const payload = {
     notes,
     log: built.log,
-    ensureHostDirs: [`${context.homeDir}/.claude`],
+    ensureHostDirs: [credentialsDir(context.localHome ?? context.homeDir)],
     configuration: built.configuration,
   }
 
@@ -333,4 +338,9 @@ export function regenerateConfiguration(inputs: RegenerationInputs): Regeneratio
     }
   }
   return { action: 'write', serialised: serialise(built.configuration), notes: built.warnings, log: built.log }
+}
+
+/** The credentials directory under a home, in that home's own separator. */
+function credentialsDir(home: string): string {
+  return home.startsWith('\\\\') ? `${home}\\.claude` : `${home}/.claude`
 }

@@ -324,3 +324,14 @@ test('open and Configure write byte-identical files from the same inputs', () =>
     assert.equal(r.serialised, serialise(opened.configuration))
   }
 })
+
+test('the credentials directory is created where this machine reaches it, and bound as docker sees it', () => {
+  // A WSL project: the bind source is the distro's home; the directory that has
+  // to exist before the container is created is made through UNC.
+  const d = decideOpen({ ...base, homeDir: '/home/jv', localHome: '\\\\wsl.localhost\\Ubuntu\\home\\jv' })
+  assert.equal(d.action, 'open')
+  if (d.action === 'open') {
+    assert.deepEqual(d.ensureHostDirs, ['\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude'])
+    assert.ok(d.configuration.mounts.some((m) => m.startsWith('source=/home/jv/.claude,')), d.configuration.mounts.join('\n'))
+  }
+})

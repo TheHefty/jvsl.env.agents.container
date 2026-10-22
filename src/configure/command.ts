@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
@@ -12,6 +11,7 @@ import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stac
 import { findGradleBuilds } from '../build/gradle.ts'
 import { dockerFor } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
+import { homeFor } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
@@ -306,9 +306,15 @@ async function regenerate(
     return
   }
   write(measured.notes.map((n) => `facts: ${n}`))
+  const home = await homeFor(location)
+  if (!home.ok) {
+    write([`configure: ${CONFIG_PATH} not regenerated: ${home.reason}`])
+    void vscode.window.showWarningMessage(`The new limits are not in ${CONFIG_PATH}: ${home.reason}.`)
+    return
+  }
   const r = regenerateConfiguration({
     projectRoot: mountPath(location),
-    homeDir: homedir(),
+    homeDir: home.home.mount,
     extensionVersion,
     facts: measured.facts,
     manifest: readOrNull(join(root, MANIFEST)),
