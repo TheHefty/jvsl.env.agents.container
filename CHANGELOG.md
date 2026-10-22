@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.5.0...v1.6.0) (2026-10-22)
+
+
+### Features
+
+* a container window opened from WSL or Windows is recognised as its project's ([f90024b](https://github.com/TheHefty/jvsl.env.agents.container/commit/f90024bd2796f7f42dd8143ab1d6ddef22eedf06))
+* a container window opened from WSL or Windows is recognised as its project's ([b60e374](https://github.com/TheHefty/jvsl.env.agents.container/commit/b60e3740a97ceeddc86f0c77522e5b6831be19d0))
+
 ## [1.5.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.4.0...v1.5.0) (2026-10-22)
 
 
