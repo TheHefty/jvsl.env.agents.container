@@ -92,6 +92,8 @@ export interface Running {
   id: string
   name: string
   localFolder: string
+  /** docker's State, when the listing asked for it: `running`, `exited`, ... */
+  state?: string
 }
 
 export type Choice = { kind: 'one'; id: string } | { kind: 'none' } | { kind: 'many'; names: string[] }
@@ -111,6 +113,11 @@ const trim = (p: string) => {
 export function containerFor(hostPath: string | readonly string[], running: readonly Running[]): Choice {
   const want = new Set((typeof hostPath === 'string' ? [hostPath] : hostPath).map(trim))
   const matches = running.filter((r) => want.has(trim(r.localFolder)))
+  // A stopped leftover is not a second owner (debt a-stopped-leftover-
+  // container-makes-the-project-ambiguous): of several, the one running is
+  // the project's. Two running, or several stopped, stays a refusal.
+  const live = matches.filter((r) => r.state === 'running')
+  if (matches.length > 1 && live.length === 1) return { kind: 'one', id: live[0]!.id }
   if (matches.length === 0) return { kind: 'none' }
   if (matches.length === 1) return { kind: 'one', id: matches[0]!.id }
   return { kind: 'many', names: matches.map((m) => m.name) }
