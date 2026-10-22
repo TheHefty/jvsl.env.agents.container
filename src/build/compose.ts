@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { MANIFEST } from '../shared/stack-manifest.ts'
+
 /**
  * The image's Dockerfile, composed from core and the selected stacks.
  *
@@ -41,6 +43,12 @@ export interface ComposeInput {
   stacks: readonly string[]
   /** The project's manifest, read for versions and packages when it exists. */
   manifestPath?: string
+  /**
+   * The manifest's text, when the caller has already read it — a WSL project's,
+   * read through the distro (host/files.ts). Wins over manifestPath, which then
+   * only names it in messages; null is a project with no manifest.
+   */
+  manifestText?: string | null
   /** Overrides, so the test beside the script can point at fixtures. */
   stacksDir?: string
   coreFrag?: string
@@ -102,7 +110,9 @@ function composeOrThrow(input: ComposeInput): string {
   const unfilled = [...new Set(core.match(/\{\{[A-Z_]*\}\}/g) ?? [])].sort().join(' ')
   if (unfilled !== '') refuse(`compose-dockerfile: nothing in ${coreVersions} fills ${unfilled} in ${coreFrag}.`)
 
-  const manifest = readManifest(input.manifestPath)
+  const manifest = input.manifestText !== undefined
+    ? input.manifestText === null ? undefined : { path: input.manifestPath ?? MANIFEST, value: JSON.parse(input.manifestText) as unknown }
+    : readManifest(input.manifestPath)
   const packages: string[] = []
   if (manifest !== undefined && typeof manifest.value === 'object' && manifest.value !== null &&
       !Array.isArray(manifest.value) && 'packages' in manifest.value) {

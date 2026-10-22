@@ -8,11 +8,10 @@
  * scripts/board-only-reads.test.sh fails if any other appears in these files.
  */
 import { randomBytes } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import type { Docker } from '../host/docker.ts'
+import { filesFor } from '../host/files.ts'
 import { containerFor, folderNames, type ProjectOnHost, type Running } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
@@ -74,7 +73,7 @@ async function render(
 
   let optedIn = false
   try {
-    optedIn = (JSON.parse(readFileSync(join(hostPath, MANIFEST), 'utf8')) as Record<string, unknown>)['beads'] === true
+    optedIn = (JSON.parse(filesFor(project).read(MANIFEST) ?? '{}') as Record<string, unknown>)['beads'] === true
   } catch {
     optedIn = false
   }

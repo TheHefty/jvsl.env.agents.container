@@ -3,6 +3,7 @@ import * as vscode from 'vscode'
 import { carried } from '../build/template.ts'
 import { CONFIGURE } from '../commands.ts'
 import { stacksAvailable } from '../configure/questions.ts'
+import { filesFor } from '../host/files.ts'
 import { hostProject } from '../host/project.ts'
 import { readViewState } from './state.ts'
 import { viewItems, type Row } from './view.ts'
@@ -69,7 +70,7 @@ export class SelectionView implements vscode.TreeDataProvider<Row> {
       return [{ kind: 'note', label: 'This project is not reachable from here', detail: project.reason }]
     }
     return viewItems({
-      ...readViewState(project.path, this.extensionPath),
+      ...readViewState(filesFor(project), this.extensionPath),
       sandboxWarning: this.sandboxWarning,
       lastBuild: this.lastBuild,
     })

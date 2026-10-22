@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { defaultExec, type Exec, type ProjectFiles } from '../host/files.ts'
+import type { ProjectOnHost } from '../host/locate.ts'
+
 /**
  * Which Gradle the editor imports a build with when the build has no wrapper.
  *
@@ -229,4 +232,61 @@ function isDirectory(path: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * The search a WSL project's builds are found by, run inside the distro
+ * (debt a-running-distro-is-reported-as-not-answering): walking the tree from
+ * Windows would be one UNC access per directory, which the extension host may
+ * not make at all. Bounded like the walk above — depth, the same directories
+ * pruned, no symlink followed (find does not follow them without -L), and a cap
+ * on how many paths come back. `$1` is the project's Linux path, an argument and
+ * never part of the script.
+ */
+export const GRADLE_FIND =
+  'cd -- "$1" && find . -maxdepth 9 \\( -name .git -o -name .gradle -o -name .kotlin -o -name .idea ' +
+  '-o -name build -o -name node_modules -o -name target -o -name dist -o -name out \\) -prune ' +
+  '-o -type f \\( -name settings.gradle -o -name settings.gradle.kts -o -name build.gradle ' +
+  '-o -name build.gradle.kts \\) -print | head -n 20000'
+
+/**
+ * The builds a listing of build files describes, with the same rule as the
+ * walk: a settings file starts a build; a build file with no build above it is
+ * a single-project build, and under one it is a subproject. Sorted, for the
+ * same reason the walk sorts. `read` gives a build's wrapper properties.
+ */
+export function buildsFromListing(listing: string, read: (rel: string) => string | null): GradleBuild[] {
+  const files = listing.split('\n').map((l) => l.trim().replace(/^\.\//, '')).filter((l) => l !== '' && l !== '.')
+  const dirOf = (f: string) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '.')
+  const withSettings = new Set(files.filter((f) => /(^|\/)settings\.gradle(\.kts)?$/.test(f)).map(dirOf))
+  const withBuild = new Set(files.filter((f) => /(^|\/)build\.gradle(\.kts)?$/.test(f)).map(dirOf))
+  const dirs = [...new Set([...withSettings, ...withBuild])].sort((a, b) => a.split('/').length - b.split('/').length || (a < b ? -1 : 1))
+  const builds: string[] = []
+  const above = (d: string) => builds.some((b) => b === '.' || d.startsWith(`${b}/`))
+  for (const d of dirs) {
+    if (withSettings.has(d) || !above(d)) builds.push(d)
+  }
+  return builds
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .map((dir) => ({ dir, wrapper: read(dir === '.' ? WRAPPER_REL : `${dir}/${WRAPPER_REL}`) }))
+}
+
+const WRAPPER_REL = 'gradle/wrapper/gradle-wrapper.properties'
+
+/**
+ * A project's builds, found where it lives: walked on this machine, or listed
+ * by the distro for a WSL project (debt a-running-distro-is-reported-as-not-
+ * answering). The wrapper properties are read through the project's files.
+ */
+export function findGradleBuildsFor(
+  project: Exclude<ProjectOnHost, { kind: 'none' }>,
+  files: ProjectFiles,
+  exec: Exec = defaultExec,
+): Scan {
+  if (project.kind === 'host') return findGradleBuilds(project.path)
+  const r = exec('wsl.exe', ['-d', project.distro, '--exec', 'sh', '-c', GRADLE_FIND, 'sh', project.linux])
+  if (r.status !== 0) {
+    return { builds: [], log: [`gradle: the WSL distro "${project.distro}" could not list the project's builds: ${r.stderr.trim() || `exit ${String(r.status)}`}`] }
+  }
+  return { builds: buildsFromListing(r.stdout, (rel) => files.read(rel)), log: [] }
 }

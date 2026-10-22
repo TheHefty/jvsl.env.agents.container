@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { carried } from '../build/template.ts'
@@ -8,10 +7,16 @@ import { carriesTemplateSubmodule } from '../migrate/migrate-files.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { type ViewState } from './view.ts'
 
-export function readViewState(root: string, extensionPath: string): ViewState {
+export function readViewState(
+  /** The project's folder on this machine, or its files wherever they live (host/files.ts). */
+  project: string | { read(rel: string): string | null },
+  extensionPath: string,
+): ViewState {
+  const read = (rel: string): string | null =>
+    typeof project === 'string' ? readOrNull(join(project, rel)) : project.read(rel)
   let manifest: Record<string, unknown> | null = null
   try {
-    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
+    const parsed: unknown = JSON.parse(read(MANIFEST) ?? '')
     if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
       manifest = parsed as Record<string, unknown>
     }
@@ -23,6 +28,6 @@ export function readViewState(root: string, extensionPath: string): ViewState {
   return {
     stacksAvailable: stacksAvailable(carried(extensionPath, 'stacks')),
     manifest,
-    oldFormat: carriesTemplateSubmodule(readOrNull(join(root, '.gitmodules'))),
+    oldFormat: carriesTemplateSubmodule((() => { try { return read('.gitmodules') } catch { return null } })()),
   }
 }

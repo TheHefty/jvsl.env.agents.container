@@ -232,9 +232,10 @@ export function composeCommand(
  * questions are what refuse an unreadable manifest, and they refuse it rather
  * than overwriting it.
  */
-function readManifest(root: string): Record<string, unknown> {
+function readManifest(text: string | null): Record<string, unknown> {
+  if (text === null) return {}
   try {
-    const parsed: unknown = JSON.parse(readFileSync(join(root, MANIFEST), 'utf8'))
+    const parsed: unknown = JSON.parse(text)
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
   } catch {
     return {}
@@ -246,7 +247,12 @@ function readManifest(root: string): Record<string, unknown> {
  * one composer. The editor's build terminal runs exactly this (see
  * buildInTerminal), so a test can drive the path a real build takes.
  */
-export function composeForProject(extensionPath: string, root: string): Compose {
+export function composeForProject(
+  extensionPath: string,
+  root: string,
+  /** The manifest's text, read where the project lives; read from root when omitted. */
+  manifestText: string | null = readOrNullAt(join(root, MANIFEST)),
+): Compose {
   // **The stacks are the manifest's top-level keys that name a stack the
   // extension carries**: the shape the configure command writes and the
   // composer reads versions from. This read a `stacks` field no manifest has,
@@ -254,7 +260,7 @@ export function composeForProject(extensionPath: string, root: string): Compose 
   // had no JDK (issue #158, debt the-build-composes-no-stack). `limits`,
   // `beads` and anything else are not stacks and never reach the composer.
   const carriedStacks = new Set(stacksAvailable(carried(extensionPath, 'stacks')))
-  const stacks = Object.keys(readManifest(root)).filter((key) => carriedStacks.has(key))
+  const stacks = Object.keys(readManifest(manifestText)).filter((key) => carriedStacks.has(key))
   return composeCommand(extensionPath, root, stacks)
 }
 
@@ -341,5 +347,13 @@ export function afterBuild(input: {
     message: `The image was built, but the container ${container.name} still runs the previous image. ` +
       'Recreating it ends everything running inside; what is in /config stays on its volume.',
     command: inContainer ? REBUILD_IN_CONTAINER : REBUILD_FROM_HOST,
+  }
+}
+
+function readOrNullAt(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf8')
+  } catch {
+    return null
   }
 }
