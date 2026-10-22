@@ -19,6 +19,8 @@ export function describe(context: vscode.ExtensionContext): string[] {
   return [
     `project: ${project.path}`,
     ...formatDetected({
+      // This machine's, which is the container's only on native Linux; anywhere
+      // else they are measured from docker when the project opens (factsFor).
       facts: hostFacts(),
       // **Where this extension runs, not where the window points.** remoteName
       // says the window is remote; it was read as "the extension is not on the

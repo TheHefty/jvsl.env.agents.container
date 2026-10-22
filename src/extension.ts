@@ -6,7 +6,7 @@ import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, MIGRATE, PICK, CREATE
 import { configure, pick } from './configure/command.ts'
 import { create } from './create/command.ts'
 import { extensionVersion, showDetected } from './host/detected.ts'
-import { dockerBounded } from './host/docker.ts'
+import { dockerFor } from './host/docker.ts'
 import { migrate } from './migrate/command.ts'
 import { prepare } from './open/command.ts'
 import { HANDOVER_KEY } from './open/handover.ts'
@@ -57,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath, extensionVersion(context), handOver)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath, extensionVersion(context))),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
-    vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerBounded, write)),
+    vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerFor, write)),
     vscode.commands.registerCommand(MIGRATE, () => migrate(write, () => channel.show(true))),
   )
 

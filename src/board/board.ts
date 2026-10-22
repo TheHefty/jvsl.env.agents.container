@@ -12,13 +12,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { containerFor, type Running } from '../host/locate.ts'
+import type { Docker } from '../host/docker.ts'
+import { containerFor, type ProjectOnHost, type Running } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
 import { parseExport, type Item } from './board-read.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
-type Docker = (args: string[], ms?: number) => Promise<{ stdout: string; stderr: string }>
 
 /** Longer than a status check: the export is the whole tracker. Still bounded. */
 export const BOARD_READ_MS = 15000
@@ -28,7 +28,7 @@ export const READ_COMMAND = ['bd', 'export'] as const
 
 let panel: vscode.WebviewPanel | undefined
 
-export async function showWork(docker: Docker, write: (lines: string[]) => void): Promise<void> {
+export async function showWork(dockerOf: (project: ProjectOnHost) => Docker, write: (lines: string[]) => void): Promise<void> {
   if (panel === undefined) {
     panel = vscode.window.createWebviewPanel('jvsl.agentContainer.board', 'Work', vscode.ViewColumn.Active, {
       enableScripts: true,
@@ -41,16 +41,20 @@ export async function showWork(docker: Docker, write: (lines: string[]) => void)
     })
     panel.webview.onDidReceiveMessage((message: unknown) => {
       if ((message as { type?: unknown })?.type === 'refresh' && panel !== undefined) {
-        void render(panel, docker, write)
+        void render(panel, dockerOf, write)
       }
     })
   } else {
     panel.reveal()
   }
-  await render(panel, docker, write)
+  await render(panel, dockerOf, write)
 }
 
-async function render(target: vscode.WebviewPanel, docker: Docker, write: (lines: string[]) => void): Promise<void> {
+async function render(
+  target: vscode.WebviewPanel,
+  dockerOf: (project: ProjectOnHost) => Docker,
+  write: (lines: string[]) => void,
+): Promise<void> {
   const nonce = randomBytes(16).toString('hex')
   const say = (title: string, body: string) => {
     write([`board: ${title} — ${body}`])
@@ -66,6 +70,7 @@ async function render(target: vscode.WebviewPanel, docker: Docker, write: (lines
     return
   }
   const hostPath = project.path
+  const docker = dockerOf(project)
 
   let optedIn = false
   try {

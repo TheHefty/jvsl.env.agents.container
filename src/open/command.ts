@@ -10,8 +10,9 @@ import { findGradleBuilds } from '../build/gradle.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
-import { dockerBounded } from '../host/docker.ts'
-import { hostFacts } from '../host/host.ts'
+import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
+import { factsFor } from '../host/host.ts'
+import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -36,7 +37,7 @@ export async function prepare(
   if (project.kind === 'none') return
   const root = project.path
 
-  const openContext = await gather(root, context, write)
+  const openContext = await gather(project, context, write)
   const decision = decideOpen(openContext)
 
   if (decision.action === 'refuse') {
@@ -119,23 +120,33 @@ export async function prepare(
 }
 
 export async function gather(
-  root: string,
+  project: Exclude<ProjectOnHost, { kind: 'none' }>,
   context: vscode.ExtensionContext,
   write: (lines: string[]) => void,
 ): Promise<OpenContext> {
+  const root = project.path
+  const docker = dockerFor(project)
   const gradle = findGradleBuilds(root)
   write(gradle.log)
+  // Facts from where the container will run. A daemon that does not answer is
+  // refused a few lines on, by the image check, so here it only must not throw.
+  const measured = await factsFor(project, docker).catch((error: unknown) => {
+    write([`facts: docker could not be asked (${String(error)})`])
+    return { facts: { cpuCount: 1, devicesPresent: [], devicesAbsent: [] }, notes: [] }
+  })
+  write(measured.notes.map((n) => `facts: ${n}`))
   return {
     projectRoot: root,
     homeDir: homedir(),
     extensionVersion: extensionVersion(context),
-    facts: hostFacts(),
+    facts: measured.facts,
+    factNotes: measured.notes,
     manifest: readOrNull(join(root, MANIFEST)),
     existingConfig: readOrNull(join(root, CONFIG_PATH)),
-    runningContainers: await runningContainers(write),
+    runningContainers: await runningContainers(write, docker),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: readOrNull(join(root, '.gitignore')),
-    image: await imageState(projectNames(root).image, write),
+    image: await imageState(projectNames(root).image, write, docker),
     gradleBuilds: gradle.builds,
   }
 }
@@ -164,13 +175,14 @@ export async function gather(
 export async function imageState(
   image: string,
   write: (lines: string[]) => void,
+  docker: Docker = localDocker,
 ): Promise<ImageState> {
   try {
-    await dockerBounded(['image', 'inspect', image])
+    await docker(['image', 'inspect', image])
     return 'present'
   } catch {
     try {
-      await dockerBounded(['version', '--format', '{{.Server.Version}}'])
+      await docker(['version', '--format', '{{.Server.Version}}'])
       write([`image ${image}: not present`])
       return 'absent'
     } catch (error) {
@@ -180,9 +192,12 @@ export async function imageState(
   }
 }
 
-export async function runningContainers(write: (lines: string[]) => void): Promise<string[]> {
+export async function runningContainers(
+  write: (lines: string[]) => void,
+  docker: Docker = localDocker,
+): Promise<string[]> {
   try {
-    const { stdout } = await dockerBounded(['ps', '--format', '{{.Names}}'])
+    const { stdout } = await docker(['ps', '--format', '{{.Names}}'])
     return stdout.split('\n').map((n) => n.trim()).filter((n) => n !== '')
   } catch (error) {
     write([`could not list running containers: ${String(error)}`])

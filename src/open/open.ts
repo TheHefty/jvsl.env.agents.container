@@ -36,6 +36,8 @@ export interface OpenContext {
   gitignore: string | null
   /** The project's Gradle builds, sorted, from gradle.ts's bounded scan. */
   gradleBuilds: GradleBuild[]
+  /** What measuring the machine had to say, such as a device probe that could not run. */
+  factNotes?: string[]
   /**
    * `.code-server/version.txt`'s contents, or null when it could not be read.
    *
@@ -188,6 +190,7 @@ export function decideOpen(context: OpenContext): Decision {
   // A warning, never a refusal: a project whose wrappers disagree still opens,
   // and is told what the editor will do about its wrapperless builds.
   notes.push(...built.warnings)
+  notes.push(...(context.factNotes ?? []))
 
   const payload = {
     notes,
