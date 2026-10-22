@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.3](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.2...v1.6.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* of several containers claiming a project, the one running is its own ([ac6e43d](https://github.com/TheHefty/jvsl.env.agents.container/commit/ac6e43df4c4740d8552908b9e1a673a95dfc3ca2))
+* of several containers claiming a project, the one running is its own ([260be5d](https://github.com/TheHefty/jvsl.env.agents.container/commit/260be5d47c0f2dd4776bbb2e180eaa345de9d383))
+
 ## [1.6.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.1...v1.6.2) (2026-10-22)
 
 
