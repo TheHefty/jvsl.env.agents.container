@@ -173,3 +173,16 @@ test('a local project is not asked whether it is reachable', () => {
   const local = { kind: 'host', path: '/gone' } as const
   assert.deepEqual(reachable(local, () => false), local)
 })
+
+test('a Windows folder matches the container labelled with it, whatever the drive letter\'s case or the separators', () => {
+  const running = [{ id: 'c1', name: 'kotodori', localFolder: 'c:\\Users\\a\\code\\kotodori' }]
+  assert.deepEqual(containerFor('C:\\Users\\a\\code\\kotodori', running), { kind: 'one', id: 'c1' })
+  assert.deepEqual(containerFor('C:/Users/a/code/kotodori/', running), { kind: 'one', id: 'c1' })
+  // Still exact otherwise: a prefix of another project is not that project.
+  assert.deepEqual(containerFor('C:\\Users\\a\\code\\koto', running), { kind: 'none' })
+})
+
+test('Linux folders still compare exactly, case included', () => {
+  const running = [{ id: 'c1', name: 'p', localFolder: '/home/a/Proj' }]
+  assert.deepEqual(containerFor('/home/a/proj', running), { kind: 'none' })
+})

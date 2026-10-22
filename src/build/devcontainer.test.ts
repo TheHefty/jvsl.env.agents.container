@@ -248,3 +248,27 @@ test('with no Gradle version the configuration is what it was before there was o
   assert.equal(JSON.stringify(buildConfiguration({ ...input, gradleVersion: null })), before)
   assert.ok(!before.includes('customizations'), before)
 })
+
+// --- a project on Windows (story with-docker-desktop-a-project-on-windows-opens)
+
+const windows = {
+  ...input,
+  projectRoot: 'C:\\Users\\João Lima\\code\\kotodori',
+  homeDir: 'C:\\Users\\João Lima',
+}
+
+test('a Windows project is named after its folder, whatever the separators', () => {
+  assert.equal(projectNames('C:\\Users\\a\\code\\kotodori').repo, 'kotodori')
+  assert.equal(projectNames('C:/Users/a/code/kotodori/').repo, 'kotodori')
+})
+
+test('Windows mount sources use forward slashes, which Docker Desktop accepts, and keep their spaces', () => {
+  const config = buildConfiguration(windows)
+  assert.equal(config.workspaceMount, 'source=C:/Users/João Lima/code/kotodori,target=/config/workspace,type=bind')
+  assert.ok(config.mounts.includes('source=C:/Users/João Lima/.claude,target=/config/.claude,type=bind'), config.mounts.join('\n'))
+})
+
+test('Linux paths are untouched', () => {
+  const config = buildConfiguration(input)
+  assert.equal(config.workspaceMount, 'source=/home/me/code/myrepo,target=/config/workspace,type=bind')
+})

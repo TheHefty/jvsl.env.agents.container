@@ -45,7 +45,12 @@ export interface Running {
 
 export type Choice = { kind: 'one'; id: string } | { kind: 'none' } | { kind: 'many'; names: string[] }
 
-const trim = (p: string) => (p.length > 1 ? p.replace(/\/+$/, '') : p)
+const trim = (p: string) => {
+  // A Windows folder, by drive letter: the label may carry another case of the
+  // drive or other separators, and Windows paths do not differ by case.
+  if (/^[A-Za-z]:[\\/]/.test(p)) return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  return p.length > 1 ? p.replace(/\/+$/, '') : p
+}
 
 /**
  * The running container for a project. **Exact match only**: a prefix of
