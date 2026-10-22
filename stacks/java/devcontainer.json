@@ -7,7 +7,13 @@
         ],
         "settings": {
           "java.import.gradle.java.home": "/usr/lib/jvm/stack-java",
-          "java.jdt.ls.java.home": "/usr/lib/jvm/stack-java",
+          "java.configuration.runtimes": [
+            {
+              "name": "JavaSE-{{VERSION}}",
+              "path": "/usr/lib/jvm/stack-java",
+              "default": true
+            }
+          ],
           "java.server.launchMode": "Standard",
           "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1536m -Xms100m -Xlog:disable"
         }
