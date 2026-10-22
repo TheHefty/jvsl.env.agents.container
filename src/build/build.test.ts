@@ -1,3 +1,4 @@
+import { projectNames } from './devcontainer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -261,4 +262,12 @@ test('on Windows the build\'s refusals name Docker Desktop, installed or started
   assert.match(absent?.message ?? '', /Docker Desktop is not installed.*https:\/\/docs\.docker\.com\/desktop\//)
   assert.match(unusable?.message ?? '', /start Docker Desktop/i)
   assert.equal(absent?.blocking && unusable?.blocking, true)
+})
+
+test('the build tags the image the configuration names, for any folder', () => {
+  // Two derivations of one name is how an image gets built under one name and
+  // looked for under another, and the open fails naming an image just built.
+  for (const folder of ['/work/MyProject', '/work/my project', '/work/kotodori']) {
+    assert.equal(composeCommand('/ext', folder, []).image, projectNames(folder).image, folder)
+  }
 })

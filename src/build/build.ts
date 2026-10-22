@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { stacksAvailable } from '../configure/questions.ts'
 import { dockerArgv, type DockerHost } from '../host/docker.ts'
+import { projectNames } from './devcontainer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { carried } from './template.ts'
 /**
@@ -215,13 +216,12 @@ export function composeCommand(
   workspace: string,
   stacks: string[],
 ): Compose {
-  const basename = workspace.replace(/\/+$/, '').split('/').pop() ?? 'project'
   return {
     root: extensionPath,
     stacks,
     manifest: `${workspace}/${MANIFEST}`,
     context: extensionPath,
-    image: `${basename}-dev`,
+    image: projectNames(workspace).image,
   }
 }
 

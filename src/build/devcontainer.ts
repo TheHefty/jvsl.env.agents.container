@@ -59,11 +59,15 @@ export interface ProjectNames {
 export function projectNames(projectRoot: string): ProjectNames {
   // Either separator, so a Windows folder is named the same on any platform.
   const repo = projectRoot.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? basename(projectRoot)
+  const name = dockerName(repo)
   return {
     repo,
-    image: `${repo}-dev`,
-    volume: `${repo}-code-server-data`,
-    launcherContainer: `${repo}-app`,
+    // Lower case: docker refuses capitals in a repository name, so a folder
+    // called MyProject built nothing (debt an-image-name-with-capitals-is-
+    // refused-by-docker).
+    image: `${name.toLowerCase()}-dev`,
+    volume: `${name}-code-server-data`,
+    launcherContainer: `${name}-app`,
   }
 }
 
@@ -194,4 +198,19 @@ export function isOurs(raw: string): boolean {
  */
 export function dockerPath(path: string): string {
   return /^[A-Za-z]:[\\/]/.test(path) ? path.replace(/\\/g, '/') : path
+}
+
+/**
+ * A folder's name as docker accepts it in a volume, container or image name:
+ * a run of anything else becomes one dash, and dashes left at either end go.
+ *
+ * **A name that is already valid comes out unchanged**, and that is the point:
+ * the volume holds a project's /config, and a renamed volume is a container
+ * that comes up empty with its state still there under the old name. Only a
+ * folder whose name never worked — a space, a parenthesis — is changed.
+ */
+export function dockerName(folder: string): string {
+  if (/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(folder)) return folder
+  const cleaned = folder.replace(/[^a-zA-Z0-9_.-]+/g, '-').replace(/^[^a-zA-Z0-9]+|-+$/g, '')
+  return cleaned === '' ? 'project' : cleaned
 }
