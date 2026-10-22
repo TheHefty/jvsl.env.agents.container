@@ -344,9 +344,15 @@ in one line of the boot log"; }
 # being restarted, passes the image test. This asks the booted container. The
 # stand-in has no s6, so there it is skipped, saying so.
 if docker exec "$NAME" test -d /etc/s6-overlay/s6-rc.d/svc-reaper; then
-    docker exec "$NAME" pgrep -u "$USER_NAME" -f 'svc-reaper/run' >/dev/null \
-        || fail "the reaper service is registered but not running as $USER_NAME after boot. \
-Its output is in docker logs, prefixed with a timestamp"
+    # Asked of s6 rather than of the process list: s6 starts it as `./run` from
+    # its service directory, so its command line names nothing a pattern could
+    # rely on — the first version of this check matched nothing and failed a
+    # service that was running.
+    state="$(docker exec "$NAME" /command/s6-svstat -o up,pid /run/service/svc-reaper 2>&1 || true)"
+    owner="$(docker exec "$NAME" sh -c "stat -c %U /proc/${state#* }" 2>/dev/null || true)"
+    [ "${state%% *}" = true ] && [ "$owner" = "$USER_NAME" ] \
+        || fail "the reaper service is registered but not up as $USER_NAME after boot (s6-svstat: \
+'$state', owner: '${owner:-none}'). Its output is in docker logs, prefixed with a timestamp"
     echo "booted.test: the reaper runs as $USER_NAME"
 else
     echo "booted.test: SKIPPED the reaper check, not passed: $IMAGE has no svc-reaper (the stand-in has no s6)"
