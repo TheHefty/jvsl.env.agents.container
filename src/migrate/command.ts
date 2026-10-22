@@ -5,7 +5,7 @@ import * as vscode from 'vscode'
 import { BUILD } from '../commands.ts'
 import { dockerFor, run } from '../host/docker.ts'
 import { hostProcessTerminal } from '../host/host-terminal.ts'
-import { containerFor } from '../host/locate.ts'
+import { containerFor, folderNames } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { applyFileMigration, carriesTemplateSubmodule, planFileMigration, textsWorthReading } from './migrate-files.ts'
 import { migrationStep, planMarkdown, planningPreview, stepFailure, type MigrationFacts } from './migrate-step.ts'
@@ -53,7 +53,7 @@ export async function migrate(write: (lines: string[]) => void, showOutput: () =
         const [id = '', name = '', localFolder = '', state = ''] = l.split('\t')
         return { id, name, localFolder, state }
       })
-      const choice = containerFor(root, rows)
+      const choice = containerFor(folderNames(project), rows)
       if (choice.kind === 'many') facts.container = choice
       if (choice.kind === 'one') {
         containerId = choice.id

@@ -186,3 +186,46 @@ test('Linux folders still compare exactly, case included', () => {
   const running = [{ id: 'c1', name: 'p', localFolder: '/home/a/Proj' }]
   assert.deepEqual(containerFor('/home/a/proj', running), { kind: 'none' })
 })
+
+// --- a container window opened from WSL (story a-container-window-opened-from-wsl-is-recognised-as-that-projects)
+// The authority's shape was read from Dev Containers' own encoder (2026-09
+// build): dev-container+<hex of hostPath, or of {hostPath,...}>[@<parent>].
+
+import { folderNames, locationFromAuthority } from './locate.ts'
+
+test('a container window opened from a WSL window is that distro\'s project', () => {
+  const r = locationFromAuthority(`dev-container+${hex('/home/jv/kotodori')}@wsl+Ubuntu`)
+  assert.deepEqual(r, { kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\home\\jv\\kotodori', linux: '/home/jv/kotodori' })
+  const json = hex(JSON.stringify({ hostPath: '/home/jv/kotodori', localDocker: false, configFile: {} }))
+  assert.deepEqual(locationFromAuthority(`dev-container+${json}@wsl+Ubuntu-22.04`)?.kind, 'wsl')
+})
+
+test('a WSL folder opened from a local Windows window carries a UNC hostPath, in either form', () => {
+  for (const unc of ['\\\\wsl.localhost\\Ubuntu\\home\\jv\\p', '\\\\wsl$\\Ubuntu\\home\\jv\\p', '\\\\WSL.LOCALHOST\\Ubuntu\\home\\jv\\p']) {
+    const r = locationFromAuthority(`dev-container+${hex(unc)}`)
+    assert.equal(r?.kind, 'wsl', unc)
+    assert.ok(r?.kind === 'wsl' && r.distro === 'Ubuntu' && r.linux === '/home/jv/p', JSON.stringify(r))
+  }
+})
+
+test('a Windows folder\'s container window is that folder', () => {
+  assert.deepEqual(locationFromAuthority(`dev-container+${hex('c:\\Users\\jv\\code\\p')}`), { kind: 'host', path: 'c:\\Users\\jv\\code\\p' })
+})
+
+test('a WSL parent with a path that is not Linux, or a UNC path with no distro, is not guessed', () => {
+  assert.equal(locationFromAuthority(`dev-container+${hex('relative/p')}@wsl+Ubuntu`), undefined)
+  assert.equal(locationFromAuthority(`dev-container+${hex('\\\\wsl.localhost\\')}`), undefined)
+})
+
+test('the container of a WSL project is found under either form its label may carry', () => {
+  const p = { kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\home\\jv\\p', linux: '/home/jv/p' } as const
+  assert.deepEqual(folderNames(p), ['/home/jv/p', '\\\\wsl.localhost\\Ubuntu\\home\\jv\\p'])
+  assert.deepEqual(containerFor(folderNames(p), [{ id: 'a', name: 'n', localFolder: '/home/jv/p' }]), { kind: 'one', id: 'a' })
+  assert.deepEqual(containerFor(folderNames(p), [{ id: 'b', name: 'n', localFolder: '\\\\wsl.localhost\\Ubuntu\\home\\jv\\p' }]), { kind: 'one', id: 'b' })
+  assert.deepEqual(containerFor(folderNames(p), [{ id: 'c', name: 'n', localFolder: '/home/jv/other' }]), { kind: 'none' })
+})
+
+test('a project window inside its container is located through projectOnHost', () => {
+  const r = projectOnHost({ remoteName: 'dev-container', folder: { fsPath: '/config/workspace', authority: `dev-container+${hex('/home/jv/p')}@wsl+Ubuntu` } })
+  assert.equal(r.kind, 'wsl')
+})
