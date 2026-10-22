@@ -72,6 +72,10 @@ story gate, and a task never carries its own. What a task carries that the story
 **three worst failure scenarios**: the specific ways *this* slice breaks, each with the test that
 catches it. Those are the first tests written — see "Test-first" in [Rules](RULES.md).
 
+One section of the template is not written with the rest: **After the code**, five checks answered
+against the diff once the code exists. A task is agreed without it; it is filled before the task
+is done, and an empty one on an agreed task is the process working, not a gap.
+
 ## Status
 
 | Status | Meaning |

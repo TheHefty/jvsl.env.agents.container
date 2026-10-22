@@ -98,6 +98,9 @@ is, as "The work tracker" in [Rules](RULES.md) says.
   `bd update <id> --acceptance "…"` and agreed at the story gate like the file they replace.
 - **A task** is `bd create --type task --parent <story>`, and its design — the problem, the
   proposal, the alternatives rejected, the three worst ways it breaks — is its description.
+- **A task's "After the code" checks are recorded on it once its code exists**, with
+  `bd update <id> --append-notes "…"`, before it is closed. `--append-notes` and not `--notes`:
+  the latter replaces whatever the item already carries.
 - **A `.feature` a runner executes lives beside the suite that runs it**, not in a planning folder:
   the runner's configuration is where its files are found, and a folder of documents is not a
   place a build should reach into. The story points to it with `bd update <id> --spec-id <path>`,

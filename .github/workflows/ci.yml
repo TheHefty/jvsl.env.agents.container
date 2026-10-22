@@ -138,6 +138,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: the two languages agree on files, headings and links
         run: bash docs/agent/check-parity.test.sh
+      - name: the task template's After the code section keeps the shape that makes it more than ceremony
+        run: bash docs/agent/post-code-checks.test.sh
       - name: a project's own rules have a home, and nothing points at the import that is gone
         run: bash docs/agent/project-rules.test.sh
 
