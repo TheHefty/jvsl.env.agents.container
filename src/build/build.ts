@@ -130,7 +130,8 @@ export function packageFor(manager: Manager, tool: Tool): string | null {
  * is the only acceptable one: the build then fails with docker's own message,
  * which names the cause better than a guess here would.
  */
-export function hostProblems(checks: HostChecks): HostProblem[] {
+export function hostProblems(checks: HostChecks, platform: NodeJS.Platform = 'linux'): HostProblem[] {
+  const windows = platform === 'win32'
   const problems: HostProblem[] = []
   const install = (tool: Tool): string => {
     const name = checks.manager ? packageFor(checks.manager, tool) : null
@@ -144,15 +145,20 @@ export function hostProblems(checks: HostChecks): HostProblem[] {
   switch (checks.docker) {
     case 'absent':
       problems.push({
-        message: `'docker' is not on PATH and setup needs it.${install('docker')}`,
+        message: windows
+          ? 'Docker Desktop is not installed, or docker.exe is not on the PATH the editor starts with. ' +
+            'Install it from https://docs.docker.com/desktop/.'
+          : `'docker' is not on PATH and setup needs it.${install('docker')}`,
         blocking: true,
       })
       break
     case 'unusable':
       problems.push({
-        message:
-          "'docker' is there but the daemon is not usable by this user — either it is not " +
-          'running, or you are not in the docker group.',
+        message: windows
+          ? 'Docker Desktop is installed but its engine is not answering. Start Docker Desktop and wait ' +
+            'until it says the engine is running.'
+          : "'docker' is there but the daemon is not usable by this user — either it is not " +
+            'running, or you are not in the docker group.',
         blocking: true,
       })
       break

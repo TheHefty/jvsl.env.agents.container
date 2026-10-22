@@ -254,3 +254,11 @@ test('an image that could not be read claims nothing', () => {
   assert.deepEqual(afterBuild({ built: undefined, container: one(OLD), inContainer: true }), { say: 'nothing' })
   assert.deepEqual(afterBuild({ built: NEW, container: one(''), inContainer: true }), { say: 'nothing' })
 })
+
+test('on Windows the build\'s refusals name Docker Desktop, installed or started', () => {
+  const absent = hostProblems({ docker: 'absent', manager: null }, 'win32')[0]
+  const unusable = hostProblems({ docker: 'unusable', manager: null }, 'win32')[0]
+  assert.match(absent?.message ?? '', /Docker Desktop is not installed.*https:\/\/docs\.docker\.com\/desktop\//)
+  assert.match(unusable?.message ?? '', /start Docker Desktop/i)
+  assert.equal(absent?.blocking && unusable?.blocking, true)
+})
