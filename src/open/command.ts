@@ -12,6 +12,7 @@ import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
 import { dockerFor, localDocker, whereFor, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
+import { homeFor, type Home } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { CONFIG_PATH, decideOpen, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
@@ -37,7 +38,16 @@ export async function prepare(
   if (project.kind === 'none') return
   const root = project.path
 
-  const openContext = await gather(project, context, write)
+  // Whose credentials the container is given: refused here, before anything is
+  // written, when a distro will not say where its home is.
+  const home = await homeFor(project)
+  if (!home.ok) {
+    write([`refused: ${home.reason}`])
+    void vscode.window.showErrorMessage(`${home.reason}. Nothing was written.`)
+    return
+  }
+
+  const openContext = await gather(project, context, write, home.home)
   const decision = decideOpen(openContext)
 
   if (decision.action === 'refuse') {
@@ -123,6 +133,7 @@ export async function gather(
   project: Exclude<ProjectOnHost, { kind: 'none' }>,
   context: vscode.ExtensionContext,
   write: (lines: string[]) => void,
+  home: Home = { mount: homedir(), local: homedir() },
 ): Promise<OpenContext> {
   const root = project.path
   const docker = dockerFor(project)
@@ -139,7 +150,8 @@ export async function gather(
     // What docker mounts and names the image after: the Linux path in a distro.
     // Files are read through `root`, which is where this machine reaches them.
     projectRoot: mountPath(project),
-    homeDir: homedir(),
+    homeDir: home.mount,
+    localHome: home.local,
     extensionVersion: extensionVersion(context),
     facts: measured.facts,
     factNotes: measured.notes,

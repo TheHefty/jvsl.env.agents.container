@@ -151,8 +151,7 @@ function wslProject(authority: string, path: string | undefined): ProjectOnHost 
   if (path === undefined || !path.startsWith('/')) {
     return { kind: 'none', reason: `this WSL window's folder has no Linux path (${path ?? 'none'})` }
   }
-  const unc = `\\\\wsl.localhost\\${distro}${path.replace(/\//g, '\\')}`
-  return { kind: 'wsl', distro, path: unc, linux: path }
+  return { kind: 'wsl', distro, path: uncFor(distro, path), linux: path }
 }
 
 /**
@@ -177,4 +176,9 @@ export function reachable(project: ProjectOnHost, exists: (path: string) => bool
       `the WSL distro "${project.distro}" does not answer at ${project.path} for ${project.linux}. ` +
       `Start it (wsl -d ${project.distro}) and try again`,
   }
+}
+
+/** A Linux path inside a distro, as this machine reaches it: `\\wsl.localhost\<distro>\...`. */
+export function uncFor(distro: string, linuxPath: string): string {
+  return `\\\\wsl.localhost\\${distro}${linuxPath.replace(/\//g, '\\')}`
 }
