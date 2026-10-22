@@ -249,7 +249,7 @@ done
 # Dockerfile. dpkg -s, because a binary on PATH could come from elsewhere.
 for pkg in ${CORE_TEST_PACKAGES:-}; do
     docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c "dpkg -s '$pkg' >/dev/null 2>&1" \
-        || fail "the manifest listed $pkg and $IMAGE does not have it installed. core/compose-dockerfile.sh turns \"packages\" into an install step"
+        || fail "the manifest listed $pkg and $IMAGE does not have it installed. the composer (src/build/compose.ts) turns \"packages\" into an install step"
 done
 
 # **ps runs, because Codex cannot start without it.** Codex records its

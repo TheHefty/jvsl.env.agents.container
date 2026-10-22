@@ -215,7 +215,7 @@ test('a file that is executable in the repository is executable in the package',
  */
 test('the package holds the composer where carried() looks for it', () => {
   const files = packagedFiles()
-  for (const needed of ['core/compose-dockerfile.sh', 'core/Dockerfile.frag', 'core/versions.json']) {
+  for (const needed of ['core/Dockerfile.frag', 'core/versions.json', 'core/devcontainer.json']) {
     assert.ok(
       files.includes(needed),
       `${needed} is not in the package; carried() would resolve to a path that does not exist ` +

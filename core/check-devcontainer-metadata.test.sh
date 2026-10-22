@@ -22,7 +22,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK="${CHECK_UNDER_TEST:-$HERE/check-devcontainer-metadata.sh}"
-COMPOSE="$HERE/compose-dockerfile.sh"
+COMPOSE="$HERE/../tools/compose.ts"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -173,7 +173,7 @@ fi
 # itself. With no stacks selected the label *is* core's declaration, so this
 # still fails if anything is dropped on the way through the composer, and it
 # does not need editing the next time core declares something.
-composed_value="$(bash "$COMPOSE" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'[[:space:]]*$/\1/p")"
+composed_value="$(node "$COMPOSE" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'[[:space:]]*$/\1/p")"
 check "a stackless project's label is exactly core's declaration" \
     "$(printf '%s' "$composed_value" | jq -S -c .)" \
     "$(jq -S -c . "$HERE/devcontainer.json")"
@@ -193,7 +193,7 @@ for dir in "$HERE/../stacks"/*/; do
     all_stacks+=("$(basename "$dir")")
 done
 
-all_value="$(bash "$COMPOSE" "${all_stacks[@]}" \
+all_value="$(node "$COMPOSE" "${all_stacks[@]}" \
     | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'[[:space:]]*$/\1/p")"
 declared="$(printf '%s' "$all_value" | jq -r '[.[].customizations.vscode.extensions[]?] | length')"
 
@@ -216,7 +216,7 @@ check "every declared extension survives composing all ${#all_stacks[@]} stacks"
 # reaches the label only if something the label installs needs it — and the
 # second assertion is what keeps the rule from eroding one convenient setting at
 # a time.
-none_value="$(bash "$COMPOSE" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'[[:space:]]*$/\1/p")"
+none_value="$(node "$COMPOSE" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'[[:space:]]*$/\1/p")"
 check "the surviving editor setting is declared" \
     "$(printf '%s' "$none_value" | jq -r '[.[].customizations.vscode.settings["workbench.iconTheme"]?] | first // "absent"')" \
     "file-icons"

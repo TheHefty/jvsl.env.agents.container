@@ -12,7 +12,7 @@
 # `root`, nothing fails, and the difference surfaces much later as root-owned
 # files in one project.
 #
-# This rule inverted when the label became composable. `compose-dockerfile.sh`
+# This rule inverted when the label became composable. The composer (src/build/compose.ts)
 # now emits it as the last line of the generated Dockerfile, merged from
 # `core/devcontainer.json` and each selected stack's — which is what lets the
 # remote editor's per-stack extensions exist at all. So the two things worth
@@ -33,7 +33,15 @@ set -euo pipefail
 ROOT="${METADATA_CHECK_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 CORE_FRAG="${METADATA_CHECK_CORE_FRAG:-$ROOT/core/Dockerfile.frag}"
 STACKS_DIR="${METADATA_CHECK_STACKS_DIR:-$ROOT/stacks}"
-COMPOSE="${METADATA_CHECK_COMPOSE:-$ROOT/core/compose-dockerfile.sh}"
+COMPOSE="${METADATA_CHECK_COMPOSE:-$ROOT/tools/compose.ts}"
+# The composer is TypeScript (src/build/compose.ts, through tools/compose.ts);
+# the test beside this file stands a shell stub in for it.
+run_compose() {
+    case "$COMPOSE" in
+        *.ts) node "$COMPOSE" "$@" ;;
+        *) bash "$COMPOSE" "$@" ;;
+    esac
+}
 
 fail() { echo "check-devcontainer-metadata: FAIL: $*" >&2; exit 1; }
 
@@ -50,7 +58,7 @@ done
 
 if [ "${#declaring[@]}" -gt 0 ]; then
     fail "$(printf '%s fragment declares devcontainer.metadata: %s. The label is composed and \
-emitted by compose-dockerfile.sh after every fragment; one declared inside a fragment is replaced \
+emitted by the composer (src/build/compose.ts) after every fragment; one declared inside a fragment is replaced \
 by it, or replaces it, depending on order — and nothing fails either way' \
 "${#declaring[@]}" "${declaring[*]}")"
 fi
@@ -144,7 +152,7 @@ trap 'rm -rf "$tmp"' EXIT
 # selected, ten contributors have to end up in one label instead of nine of
 # them being overwritten by the tenth — which is a failure that fails nothing
 # while it is happening.
-bash "$COMPOSE" > "$tmp/none.Dockerfile" \
+run_compose > "$tmp/none.Dockerfile" \
     || fail "composing with no stacks failed; the label cannot be checked"
 check_composed "no stacks selected" "$tmp/none.Dockerfile"
 
@@ -155,7 +163,7 @@ for dir in "$STACKS_DIR"/*/; do
 done
 
 if [ "${#all[@]}" -gt 0 ]; then
-    bash "$COMPOSE" "${all[@]}" > "$tmp/all.Dockerfile" \
+    run_compose "${all[@]}" > "$tmp/all.Dockerfile" \
         || fail "composing with every stack failed; the label cannot be checked"
     check_composed "every stack selected: ${all[*]}" "$tmp/all.Dockerfile"
 fi

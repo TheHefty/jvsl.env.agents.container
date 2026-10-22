@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Exercises core/compose-dockerfile.sh's substitution of core's own pinned
+# Exercises the composer — src/build/compose.ts, through tools/compose.ts, which
+# replaced core/compose-dockerfile.sh and is held to everything below — and its substitution of core's own pinned
 # versions — the real script, driven through CORE_VERSIONS.
 #
 # The stacks have had {{VERSION}} since the beginning; core did not, and its
@@ -11,7 +12,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE="$HERE/compose-dockerfile.sh"
+COMPOSE="$HERE/../tools/compose.ts"
 
 failures=0
 check() {
@@ -29,7 +30,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 composed="$work/core.Dockerfile"
-bash "$COMPOSE" > "$composed"
+node "$COMPOSE" > "$composed"
 
 # Failure 1 — a placeholder survives into the Dockerfile. It does not error at
 # compose time; it errors minutes later inside `docker build`, as npm reporting
@@ -50,7 +51,7 @@ check "nothing is left unsubstituted in the composed core" \
 fixture_frag="$work/pinned.frag"
 printf 'FROM scratch\nRUN install thing@{{THING_VERSION}}\n' > "$fixture_frag"
 printf '{"thing":"9.9.9"}\n' > "$work/pinned.json"
-pinned="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/pinned.json" bash "$COMPOSE")"
+pinned="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/pinned.json" node "$COMPOSE")"
 check "a pinned version reaches the composed Dockerfile" \
     "$({ printf '%s' "$pinned" | grep -c -F 'thing@9.9.9' || true; })" "1"
 
@@ -58,11 +59,11 @@ check "a pinned version reaches the composed Dockerfile" \
 # and forgetting the JSON has to stop here, naming what is missing, rather than
 # compose something that cannot build.
 printf '%s' '{}' > "$work/empty.json"
-out="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" 2>&1 >/dev/null || true)"
+out="$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" node "$COMPOSE" 2>&1 >/dev/null || true)"
 check "an unfilled placeholder stops the compose" \
     "$({ printf '%s' "$out" | grep -c 'THING_VERSION' || true; })" "1"
 check "and it exits non-zero rather than composing something unbuildable" \
-    "$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" bash "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
+    "$(CORE_FRAG="$fixture_frag" CORE_VERSIONS="$work/empty.json" node "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
 
 # Failure 4 — a metadata file that is not an array of entries. `jq -s add` over
 # an object produces something that is not a metadata array, the LABEL is
@@ -70,11 +71,11 @@ check "and it exits non-zero rather than composing something unbuildable" \
 # USER — which is root. So it has to stop here, naming the file, because the
 # alternative surfaces days later as root-owned files in one project.
 printf '%s' '{"remoteUser":"abc"}' > "$work/not-an-array.json"
-out="$(CORE_DEVCONTAINER="$work/not-an-array.json" bash "$COMPOSE" 2>&1 >/dev/null || true)"
+out="$(CORE_DEVCONTAINER="$work/not-an-array.json" node "$COMPOSE" 2>&1 >/dev/null || true)"
 check "a metadata file that is not an array stops the compose, by name" \
     "$({ printf '%s' "$out" | grep -c -F 'not-an-array.json' || true; })" "1"
 check "and it exits non-zero" \
-    "$(CORE_DEVCONTAINER="$work/not-an-array.json" bash "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
+    "$(CORE_DEVCONTAINER="$work/not-an-array.json" node "$COMPOSE" >/dev/null 2>&1; echo $?)" "1"
 
 # Failure 5 — a single quote in the value. The LABEL is single-quoted, so the
 # quote ends it early and the Dockerfile fails somewhere other than the file
@@ -82,7 +83,7 @@ check "and it exits non-zero" \
 # why this would never be noticed until it happened.
 printf '%s' '[{"remoteUser":"abc","customizations":{"vscode":{"extensions":["a.b'"'"'c"]}}}]' \
     > "$work/quoted.json"
-out="$(CORE_DEVCONTAINER="$work/quoted.json" bash "$COMPOSE" 2>&1 >/dev/null || true)"
+out="$(CORE_DEVCONTAINER="$work/quoted.json" node "$COMPOSE" 2>&1 >/dev/null || true)"
 check "a single quote in the metadata stops the compose" \
     "$({ printf '%s' "$out" | grep -c -F 'single quote' || true; })" "1"
 
@@ -91,12 +92,12 @@ check "a single quote in the metadata stops the compose" \
 # somewhere", because present-somewhere is true of the arrangement this change
 # replaced.
 check "the label is the last line of the composed Dockerfile" \
-    "$(bash "$COMPOSE" | grep -v '^[[:space:]]*$' | tail -1 \
+    "$(node "$COMPOSE" | grep -v '^[[:space:]]*$' | tail -1 \
        | sed -E "s/^LABEL devcontainer\.metadata='.*'$/LABEL-LAST/")" "LABEL-LAST"
 
 # --- what each stack declares for the host editor.
 
-label_of() { bash "$COMPOSE" "$@" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
+label_of() { node "$COMPOSE" "$@" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
 
 # Every real declaration has to be a one-entry array carrying extensions. A
 # file with the right name and the wrong shape composes into a label the client
@@ -176,7 +177,7 @@ done
 printf '%s\n' '[{"customizations":{"vscode":{"extensions":["fixture.loud"]}}}]' \
     > "$fixture_stacks/loud/devcontainer.json"
 
-fixture_label() { STACKS_DIR="$fixture_stacks" bash "$COMPOSE" "$@" \
+fixture_label() { STACKS_DIR="$fixture_stacks" node "$COMPOSE" "$@" \
     | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
 
 check "a stack that declares nothing changes the label not at all" \
@@ -192,7 +193,7 @@ check "a stack that declares one extension adds exactly it" \
 # file's extensions with the last boot's to let a stack added later bring its
 # extension. A file that drifted from the label would make that hook decide on
 # something the editor never sees.
-composed="$(bash "$COMPOSE" java node)"
+composed="$(node "$COMPOSE" java node)"
 label_json="$(printf '%s\n' "$composed" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p")"
 file_json="$(printf '%s\n' "$composed" | grep '^RUN mkdir -p /opt/jvsl ' | cut -d"'" -f4 || true)"
 check "the image writes /opt/jvsl/devcontainer-metadata.json" "$([ -n "$file_json" ] && echo yes || echo no)" "yes"
@@ -212,7 +213,7 @@ check "and the java stack's extension ($java_ext) is in it" \
 # package name** from a repository's manifest may reach a Dockerfile that runs as
 # root: that is the first of the task's three failure scenarios.
 
-with_manifest() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" bash "$COMPOSE" "${@:2}"; }
+with_manifest() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" node "$COMPOSE" "${@:2}"; }
 step_line='RUN apt-get update && apt-get install -y --no-install-recommends libsdl2-dev tree && rm -rf /var/lib/apt/lists/*'
 
 listed="$(with_manifest '{"packages":["libsdl2-dev","tree"]}' 2>/dev/null || true)"
@@ -240,9 +241,9 @@ set -e
 check "a packages field that is not a list refuses the compose" "$rc $(printf '%s' "$out" | wc -c | tr -d ' ')" "1 0"
 
 check "a manifest with no packages composes exactly as before" \
-    "$(with_manifest '{"limits":{"memory":"6g"}}' | sha256sum)" "$(bash "$COMPOSE" | sha256sum)"
+    "$(with_manifest '{"limits":{"memory":"6g"}}' | sha256sum)" "$(node "$COMPOSE" | sha256sum)"
 check "and so does an empty list" \
-    "$(with_manifest '{"packages":[]}' | sha256sum)" "$(bash "$COMPOSE" | sha256sum)"
+    "$(with_manifest '{"packages":[]}' | sha256sum)" "$(node "$COMPOSE" | sha256sum)"
 
 
 # **The java stack names its JDK to the editor** (debt
@@ -283,7 +284,7 @@ done
 # JDK. The stack now names that JDK as the project's runtime instead, which
 # needs the version in the editor settings: {{VERSION}} is filled in a stack's
 # devcontainer.json as it is in its Dockerfile fragment.
-label_with() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" bash "$COMPOSE" "${@:2}" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
+label_with() { printf '%s' "$1" > "$work/m.json"; STACK_MANIFEST="$work/m.json" node "$COMPOSE" "${@:2}" | sed -nE "s/^LABEL devcontainer\.metadata='(.*)'$/\1/p"; }
 for v in $(jq -r '.[]' "$HERE/../stacks/java/versions.json"); do
     for stack in java android; do
         label="$(label_with "{\"java\": \"$v\"}" "$stack")"

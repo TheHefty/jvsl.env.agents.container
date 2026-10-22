@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { stacksAvailable } from '../configure/questions.ts'
+import { dockerArgv, type DockerHost } from '../host/docker.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { carried } from './template.ts'
 /**
@@ -14,11 +15,10 @@ import { carried } from './template.ts'
  */
 
 export type Manager = 'apt' | 'dnf' | 'pacman'
-export type Tool = 'jq' | 'docker'
+export type Tool = 'docker'
 export type DockerState = 'ok' | 'unusable' | 'absent' | 'unknown'
 
 export interface HostChecks {
-  jq: boolean
   docker: DockerState
   manager: Manager | null
   /** What this host does to the agents' sandbox. Absent when not read. */
@@ -113,9 +113,9 @@ export function detectManager(exists: (command: string) => boolean): Manager | n
  */
 export function packageFor(manager: Manager, tool: Tool): string | null {
   const table: Record<Manager, Partial<Record<Tool, string>>> = {
-    apt: { jq: 'jq', docker: 'docker.io' },
-    dnf: { jq: 'jq', docker: 'docker' },
-    pacman: { jq: 'jq', docker: 'docker' },
+    apt: { docker: 'docker.io' },
+    dnf: { docker: 'docker' },
+    pacman: { docker: 'docker' },
   }
   return table[manager][tool] ?? null
 }
@@ -137,9 +137,9 @@ export function hostProblems(checks: HostChecks): HostProblem[] {
     return name ? ` Install it: the package is '${name}'.` : ' Install it.'
   }
 
-  if (!checks.jq) {
-    problems.push({ message: `'jq' is not on PATH and setup needs it.${install('jq')}`, blocking: true })
-  }
+  // No jq: the composer was a bash script that needed it, and is TypeScript in
+  // this process since the-composer-is-typescript. A Windows host never has jq,
+  // and asking for it refused every build there.
 
   switch (checks.docker) {
     case 'absent':
@@ -176,7 +176,8 @@ export function hostProblems(checks: HostChecks): HostProblem[] {
 /** What composing and building a project's image takes. */
 export interface Compose {
   /** The carried composer — never a project's own copy. */
-  script: string
+  /** The folder holding core/ and stacks/, which the composer reads. */
+  root: string
   /** Stacks, in the order the manifest lists them. */
   stacks: string[]
   /** `STACK_MANIFEST`: which version of each stack this project asked for. */
@@ -187,18 +188,18 @@ export interface Compose {
 }
 
 /**
- * The invocation, which must match the one CI makes rather than merely call the
- * same file.
+ * What the build composes from, which must match what CI composes rather than
+ * merely call the same composer.
  *
- * `core/compose-dockerfile.sh` was extracted from `setup` for exactly this
- * reason, and its own header records what happened when two callers each built
- * the concatenation themselves: the copies drifted, CI's ignored
- * `requires.json`, and `stack-build (android)` built core+android with no JDK
- * and died on a Java-based tool — a CI-only failure that never reproduced
- * through `setup`.
+ * There is one composer (src/build/compose.ts, run by CI through
+ * tools/compose.ts) for the reason its shell predecessor recorded: when two
+ * callers each built the concatenation themselves the copies drifted, CI's
+ * ignored `requires.json`, and `stack-build (android)` built core+android with
+ * no JDK and died on a Java-based tool — a CI-only failure that never
+ * reproduced locally.
  *
- * So shelling out is the decision, and these fields are the parts of the
- * invocation that can still differ while calling the same script. The context
+ * These fields are the parts that can still differ while calling the same
+ * composer. The context
  * is the one most easily got wrong: the composed Dockerfile has `COPY core/…`
  * and `COPY stacks/…` relative to it, so a context of the project's workspace
  * builds nothing — or builds whatever that project happens to have there.
@@ -210,7 +211,7 @@ export function composeCommand(
 ): Compose {
   const basename = workspace.replace(/\/+$/, '').split('/').pop() ?? 'project'
   return {
-    script: carried(extensionPath, 'core', 'compose-dockerfile.sh'),
+    root: extensionPath,
     stacks,
     manifest: `${workspace}/${MANIFEST}`,
     context: extensionPath,
@@ -251,40 +252,23 @@ export function composeForProject(extensionPath: string, root: string): Compose 
   return composeCommand(extensionPath, root, stacks)
 }
 
-/** Single-quote for `sh`, which is what makes a path with a space survive. */
-function quote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`
-}
 
 /**
- * Compose, then build, in one terminal.
+ * The build, as a process: `docker build -f -` with the composed Dockerfile on
+ * its input and the extension as its context, run by the docker of the
+ * project's location (see dockerArgv).
  *
- * **The quoting is deliberate here and it was inherited before.**
- * The function this replaced passed the script as `$0` precisely so a
- * directory with a space in it was not a quoting problem; composing needs a
- * command string again, which gives that problem back. Every path is quoted, and the test
- * beside this one uses paths with spaces rather than trusting the reading.
- *
- * `</dev/null` stays for the reason the old single-command version had it:
- * `createTerminal` provides a pty, and a pty is what a script uses to decide
- * whether to ask.
- * Nothing here asks, and a composer that paused for an answer would hang a
- * terminal with no prompt visible.
+ * **No shell.** The composer runs in this process (the-composer-is-typescript),
+ * so there is no command string to quote for, nothing a path can be read as,
+ * and no temporary file — and a Windows editor needs neither bash nor jq.
  */
-export function composeAndBuildCommand(
+export function buildInvocation(
   c: Compose,
-  dockerfileOut: string,
-): { shellPath: string; shellArgs: string[] } {
-  const script = [
-    'set -e',
-    `STACK_MANIFEST=${quote(c.manifest)} ${quote(c.script)} ${c.stacks.map(quote).join(' ')} > ${quote(dockerfileOut)}`,
-    `docker build -f ${quote(dockerfileOut)} -t ${quote(c.image)} ${quote(c.context)}`,
-  ].join('\n')
-  // **The braces matter.** `A; B </dev/null` redirects B alone, so the
-  // composer — the step that would actually ask something — would still have
-  // the terminal's pty on stdin. A test regex noticed this by accident; the
-  // group is what makes the redirect apply to both.
-  return { shellPath: '/bin/sh', shellArgs: ['-c', `{\n${script}\n} </dev/null`] }
+  dockerfile: string,
+  where: DockerHost,
+): { command: string; args: string[]; input: string } {
+  const { command, args } = dockerArgv(where, ['build', '-f', '-', '-t', c.image, c.context])
+  return { command, args, input: dockerfile }
 }
 
 /**

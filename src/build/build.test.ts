@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildOutcome,
-  composeAndBuildCommand,
+  buildInvocation,
   handsOver,
   composeCommand,
   detectManager,
@@ -51,7 +51,7 @@ test('each tool has a package name in every manager', () => {
   // and an absent one installs nothing while appearing to succeed. The shell copy
   // this replaces had a test asserting exactly this, in both directions.
   for (const manager of ['apt', 'dnf', 'pacman'] as const) {
-    for (const tool of ['jq', 'docker'] as const) {
+    for (const tool of ['docker'] as const) {
       const name = packageFor(manager, tool)
       assert.ok(name && name.length > 0, `${manager}:${tool}`)
     }
@@ -59,18 +59,18 @@ test('each tool has a package name in every manager', () => {
 })
 
 test('a tool the table does not know maps to nothing rather than to a guess', () => {
-  assert.equal(packageFor('apt', 'nosuchtool' as 'jq'), null)
+  assert.equal(packageFor('apt', 'nosuchtool' as 'docker'), null)
 })
 
-const ready: HostChecks = { jq: true, docker: 'ok', manager: 'apt' }
+const ready: HostChecks = { docker: 'ok', manager: 'apt' }
 
 test('a ready host has no problems', () => {
   assert.deepEqual(hostProblems(ready), [])
 })
 
 test('a missing tool is named with the package this host installs it from', () => {
-  const [problem] = hostProblems({ ...ready, jq: false })
-  assert.match(problem?.message ?? '', /jq/)
+  const [problem] = hostProblems({ ...ready, docker: 'absent' })
+  assert.match(problem?.message ?? '', /docker\.io/)
   assert.match(problem?.message ?? '', /install/i)
   assert.equal(problem?.blocking, true)
 })
@@ -95,14 +95,18 @@ test('a check that could not answer in time does not block', () => {
 
 test('with no known package manager the tool is still named', () => {
   // Naming the package is the nicety; naming what is missing is the point.
-  const [problem] = hostProblems({ jq: false, docker: 'ok', manager: null })
-  assert.match(problem?.message ?? '', /jq/)
+  const [problem] = hostProblems({ docker: 'absent', manager: null })
+  assert.match(problem?.message ?? '', /docker/)
   assert.equal(problem?.blocking, true)
 })
 
-test('the compose command invokes the carried script, with the project manifest', () => {
+test('jq is not asked for: the composer is TypeScript, and a Windows host never has it', () => {
+  assert.deepEqual(hostProblems({ docker: 'ok', manager: null }), [])
+})
+
+test('the compose plan names the extension\'s files, the stacks and the project manifest', () => {
   const c = composeCommand('/ext', '/work/my-project', ['java', 'python'])
-  assert.equal(c.script, '/ext/core/compose-dockerfile.sh')
+  assert.equal(c.root, '/ext')
   assert.deepEqual(c.stacks, ['java', 'python'])
   assert.equal(c.manifest, `/work/my-project/${MANIFEST}`)
 })
@@ -124,44 +128,37 @@ test('the image is named the way the generated configuration references it', () 
 })
 
 test('nothing in the build names a path inside a .code-server/ submodule', () => {
-  // Every project built on the template still has one, carrying whatever
-  // version it last bumped to. A fallback would make what runs depend on
-  // which project it is.
-  //
-  // The slash is the whole assertion. The manifest's name is the
-  // manifest's own name, at the workspace root, and it keeps that name after
-  // the submodule is gone — the first version of this test forbade the
-  // substring and failed on the manifest, which is the thing the build is
-  // supposed to read.
+  // The slash is the whole assertion: the manifest keeps its own name at the
+  // workspace root after the submodule is gone.
   const c = composeCommand('/ext', '/work/my-project', ['java'])
-  const everything = [c.script, c.manifest, c.context, c.image, ...c.stacks].join(' ')
+  const everything = [c.root, c.manifest, c.context, c.image, ...c.stacks].join(' ')
   assert.ok(!everything.includes('.code-server/'), everything)
 })
 
-test('the shell command composes and builds, reading nothing from the project but its manifest', () => {
+test('the build reads the Dockerfile from its input, with the extension as context', () => {
+  // Composed in this process (the-composer-is-typescript): no shell, no temporary
+  // file, and nothing from the project but its manifest.
   const c = composeCommand('/ext', '/work/my-project', ['java'])
-  const { shellArgs } = composeAndBuildCommand(c, '/tmp/out.Dockerfile')
-  const script = shellArgs[shellArgs.length - 1] ?? ''
-  assert.match(script, /STACK_MANIFEST=/)
-  assert.ok(script.includes('/ext/core/compose-dockerfile.sh'), script)
-  assert.ok(script.includes('docker build'), script)
-  // The context, which is the part most easily got wrong.
-  assert.match(script, /docker build -f \S+ -t \S+ '\/ext'/)
-  // And the redirect covers the composer too, not just the last command:
-  // `A; B </dev/null` redirects B alone, which would leave the composer with
-  // the terminal's pty on stdin and a question nobody can see.
-  assert.match(script, /^\{[\s\S]*\} <\/dev\/null$/)
+  const b = buildInvocation(c, 'FROM x\n', { kind: 'local' })
+  assert.deepEqual(b, {
+    command: 'docker',
+    args: ['build', '-f', '-', '-t', 'my-project-dev', '/ext'],
+    input: 'FROM x\n',
+  })
 })
 
-test('a path with a space in it does not become a quoting problem', () => {
-  // The function this replaced passed the script as $0 rather than inside the
-  // command string, so a space was never a quoting problem. Composing means a
-  // command string again, so the quoting is deliberate rather than inherited.
+test('a path with a space in it stays one argument, with no shell to quote for', () => {
   const c = composeCommand('/my ext', '/work/my project', ['java'])
-  const { shellArgs } = composeAndBuildCommand(c, '/tmp/out file.Dockerfile')
-  const script = shellArgs[shellArgs.length - 1] ?? ''
-  assert.ok(script.includes("'/my ext/core/compose-dockerfile.sh'"), script)
-  assert.ok(script.includes(`'/work/my project/${MANIFEST}'`), script)
+  const b = buildInvocation(c, 'FROM x\n', { kind: 'local' })
+  assert.equal(b.args.at(-1), '/my ext')
+  assert.equal(b.args.filter((a) => a === '/my ext').length, 1)
+})
+
+test('for a WSL project the build runs through the distro\'s docker', () => {
+  const c = composeCommand('/ext', '/work/p', [])
+  const b = buildInvocation(c, 'FROM x\n', { kind: 'wsl', distro: 'Ubuntu' })
+  assert.equal(b.command, 'wsl.exe')
+  assert.deepEqual(b.args.slice(0, 5), ['-d', 'Ubuntu', '--exec', 'docker', 'build'])
 })
 
 test('the handover is reachable from a successful build and from nothing else', () => {

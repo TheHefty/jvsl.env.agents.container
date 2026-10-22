@@ -716,6 +716,6 @@ RUN chmod +x /custom-cont-init.d/50-agent-rules.sh
 # catches it.
 # The devcontainer.metadata label is not declared here any more. It is composed
 # from core/devcontainer.json and each selected stack's, and emitted by
-# core/compose-dockerfile.sh as the last line of the generated Dockerfile —
+# the composer (src/build/compose.ts) as the last line of the generated Dockerfile —
 # the only position a later LABEL cannot replace. core/devcontainer.json is
 # where this image's own entry lives now.
