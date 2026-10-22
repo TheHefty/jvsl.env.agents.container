@@ -341,6 +341,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The composer is TypeScript (src/build/compose.ts) run by node directly,
+      # which needs 22.18+; the runner's default node is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: core's pins reach the Dockerfile
         run: bash core/compose-dockerfile.test.sh
 
@@ -375,6 +380,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The composer is TypeScript (src/build/compose.ts) run by node directly,
+      # which needs 22.18+; the runner's default node is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: exactly one fragment declares the label, and it declares the right thing
         run: bash core/check-devcontainer-metadata.sh
       - name: the check can actually fail
@@ -399,6 +409,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The composer is TypeScript (src/build/compose.ts) run by node directly,
+      # which needs 22.18+; the runner's default node is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: docker build core only
         # Composed rather than built straight from the fragment, which is how
         # this ran until core gained {{NAME_VERSION}} placeholders of its own.
@@ -410,7 +425,7 @@ jobs:
         # (story the-manifest-lists-packages-and-the-build-installs-them).
         run: |
           printf '{"packages":["tree"]}\n' > "$RUNNER_TEMP/manifest.json"
-          STACK_MANIFEST="$RUNNER_TEMP/manifest.json" core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
+          STACK_MANIFEST="$RUNNER_TEMP/manifest.json" node tools/compose.ts > "$RUNNER_TEMP/core.Dockerfile"
           docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
 
       # A successful build proves the RUN steps ran. It does not prove the
@@ -443,6 +458,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The composer is TypeScript (src/build/compose.ts) run by node directly,
+      # which needs 22.18+; the runner's default node is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       # Before the build, because it costs a second and the build costs minutes
       # — and because it is the part that was wrong the first time this job ran.
       # The base image announces every custom-init script by filename on every
@@ -461,7 +481,7 @@ jobs:
           bash core/booted.test.sh booted-fixture
       - name: docker build core only
         run: |
-          core/compose-dockerfile.sh > "$RUNNER_TEMP/core.Dockerfile"
+          node tools/compose.ts > "$RUNNER_TEMP/core.Dockerfile"
           docker build -f "$RUNNER_TEMP/core.Dockerfile" -t core-ci .
       - name: the user survives the boot, and ownership is repaired once
         # The jail check cannot pass here, for a reason that is the runner's.
@@ -498,14 +518,19 @@ jobs:
         stack: ${{ fromJson(needs.discover-stacks.outputs.stacks) }}
     steps:
       - uses: actions/checkout@v4
-      # Composed through the same script `setup` uses, so CI builds a stack
+      # The composer is TypeScript (src/build/compose.ts) run by node directly,
+      # which needs 22.18+; the runner's default node is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Composed through the same composer the extension uses, so CI builds a stack
       # the way the product actually builds it — including pulling in any
       # requires.json dependency. This step used to concatenate core + the
       # one stack by hand and skip dependencies, which is why the android
       # job built without a JDK and failed on the Java-based `avdmanager`.
       - name: docker build core + ${{ matrix.stack }} (lowest listed version)
         run: |
-          core/compose-dockerfile.sh "${{ matrix.stack }}" > /tmp/Dockerfile
+          node tools/compose.ts "${{ matrix.stack }}" > /tmp/Dockerfile
           docker build -f /tmp/Dockerfile -t "stack-ci-${{ matrix.stack }}" .
 
       # A successful `docker build` proves apt-get ran. It does not prove the

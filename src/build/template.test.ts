@@ -57,8 +57,8 @@ test('an unparseable version is never at least anything', () => {
 })
 
 test('carried() resolves under the extension, never under the workspace', () => {
-  const got = carried('/home/me/.vscode/extensions/jvsl-0.3.0', 'core', 'compose-dockerfile.sh')
-  assert.equal(got, '/home/me/.vscode/extensions/jvsl-0.3.0/core/compose-dockerfile.sh')
+  const got = carried('/home/me/.vscode/extensions/jvsl-0.3.0', 'core', 'Dockerfile.frag')
+  assert.equal(got, '/home/me/.vscode/extensions/jvsl-0.3.0/core/Dockerfile.frag')
 })
 
 test('carried() is the same expression in a checkout and in an installation', () => {

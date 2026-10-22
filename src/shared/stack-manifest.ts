@@ -4,7 +4,7 @@
  * **Not `src/manifest.ts`, deliberately.** `src/manifest.test.ts` is about
  * `package.json` — the *extension's* manifest — and two things called the
  * manifest in one directory is how somebody edits the wrong one. The name here
- * matches `STACK_MANIFEST`, which is what `core/compose-dockerfile.sh` already
+ * matches `STACK_MANIFEST`, which is what the composer (`src/build/compose.ts`) already
  * calls the file it is handed.
  *
  * **A leaf on purpose.** It imports nothing, so every module that needs the name

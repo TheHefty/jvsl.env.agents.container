@@ -1,11 +1,10 @@
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-import { composeAndBuildCommand, composeForProject, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
+import { buildInvocation, composeForProject, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
+import { compose } from './compose.ts'
 import { projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
-import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
+import { dockerFor, localDocker, whereFor, type Docker, type DockerHost } from '../host/docker.ts'
 import { mountPath } from '../host/locate.ts'
 import { hostProcessTerminal } from '../host/host-terminal.ts'
 import { containerFor } from '../host/locate.ts'
@@ -51,7 +50,7 @@ export async function build(
     return
   }
 
-  const outcome = await buildInTerminal(project.path, extensionPath, write)
+  const outcome = await buildInTerminal(project.path, extensionPath, write, whereFor(project))
   view.recordBuild(outcome)
   // No notification on failure: the terminal holds the whole error, which is
   // where the cause is, and a popup saying "the build failed" has to be
@@ -140,18 +139,27 @@ export async function buildInTerminal(
   root: string,
   extensionPath: string,
   write: (lines: string[]) => void,
+  where: DockerHost = { kind: 'local' },
 ): Promise<'ok' | 'failed' | 'cancelled'> {
-  const compose = composeForProject(extensionPath, root)
-  const stacks = compose.stacks
-  const dockerfileOut = join(tmpdir(), `${compose.image}.Dockerfile`)
-  const { shellPath, shellArgs } = composeAndBuildCommand(compose, dockerfileOut)
-  const pty = hostProcessTerminal(shellPath, shellArgs)
+  const plan = composeForProject(extensionPath, root)
+  const stacks = plan.stacks
+  // Composed here, before any terminal opens: a refusal — a package name that
+  // is not one, a stack the extension does not carry — is said where it can be
+  // read, rather than as the first line of a build that never started.
+  const composed = compose({ root: plan.root, stacks, manifestPath: plan.manifest })
+  if (!composed.ok) {
+    write([`build: refused — ${composed.message}`])
+    void vscode.window.showErrorMessage(composed.message)
+    return 'failed'
+  }
+  const { command, args, input } = buildInvocation(plan, composed.dockerfile, where)
+  const pty = hostProcessTerminal(command, args, { input })
   const terminal = vscode.window.createTerminal({ name: 'Agent Container: build', pty })
   terminal.show()
   write([
-    `build: composing from ${compose.script}`,
+    `build: composed in the extension from ${plan.root}`,
     `build: ${stacks.length} stack(s): ${stacks.join(', ') || '(none)'}`,
-    `build: image ${compose.image}, context ${compose.context}`,
+    `build: image ${plan.image}, context ${plan.context}`,
   ])
 
   // **The process's end, not the terminal's closing.** The terminal stays open

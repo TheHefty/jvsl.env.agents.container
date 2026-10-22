@@ -81,3 +81,20 @@ test('no terminal is created on the remote side: nothing passes shellPath to cre
     }
   }
 })
+
+test('what the build is given on its input reaches the process, and the input then ends', async () => {
+  // docker build -f - reads the composed Dockerfile from here, and waits for
+  // the end of it: an input left open is a build that never starts.
+  const t = hostProcessTerminal('cat', [], { input: 'FROM alpine\nRUN true\n' })
+  let text = ''
+  t.onDidWrite((s) => { text += s })
+  t.open(undefined)
+  assert.equal(await t.exited, 0)
+  assert.match(text, /FROM alpine\r\nRUN true\r\n/)
+})
+
+test('without input the process gets none, as before, and cannot wait on the terminal', async () => {
+  const t = hostProcessTerminal('cat', [])
+  t.open(undefined)
+  assert.equal(await t.exited, 0)
+})

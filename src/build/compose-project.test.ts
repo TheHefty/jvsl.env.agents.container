@@ -1,12 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { composeForProject } from './build.ts'
+import { compose } from './compose.ts'
 
 /**
  * Issue #158, debt the-build-composes-no-stack: kotodori's rebuilt image had no
@@ -21,10 +21,9 @@ function composed(manifest: Record<string, unknown>): { stacks: string[]; docker
   const root = mkdtempSync(join(tmpdir(), 'compose-project-'))
   writeFileSync(join(root, '.agent-container.stack.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   const c = composeForProject(EXTENSION, root)
-  const dockerfile = execFileSync(c.script, c.stacks, {
-    encoding: 'utf8', env: { ...process.env, STACK_MANIFEST: c.manifest }, maxBuffer: 16 * 1024 * 1024,
-  })
-  return { stacks: c.stacks, dockerfile }
+  const r = compose({ root: c.root, stacks: c.stacks, manifestPath: c.manifest })
+  assert.ok(r.ok, r.ok ? '' : r.message)
+  return { stacks: c.stacks, dockerfile: r.ok ? r.dockerfile : '' }
 }
 
 test("kotodori's manifest composes the java stack it selects, at its version", () => {

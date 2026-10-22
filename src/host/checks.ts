@@ -21,8 +21,7 @@ export async function hostChecks(docker: Docker = localDocker): Promise<HostChec
     }
   }
 
-  const [jq, dockerPresent, apt, dnf, pacman] = await Promise.all([
-    onPath('jq'),
+  const [dockerPresent, apt, dnf, pacman] = await Promise.all([
     onPath('docker'),
     onPath('apt-get'),
     onPath('dnf'),
@@ -43,7 +42,7 @@ export async function hostChecks(docker: Docker = localDocker): Promise<HostChec
   const exists = (command: string): boolean =>
     command === 'apt-get' ? apt : command === 'dnf' ? dnf : command === 'pacman' ? pacman : false
 
-  return { jq, docker: state, manager: detectManager(exists), sandbox: await sandboxConditions(docker) }
+  return { docker: state, manager: detectManager(exists), sandbox: await sandboxConditions(docker) }
 }
 
 /**

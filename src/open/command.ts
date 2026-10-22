@@ -10,7 +10,7 @@ import { findGradleBuilds } from '../build/gradle.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
-import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
+import { dockerFor, localDocker, whereFor, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
@@ -100,7 +100,7 @@ export async function prepare(
 
   if (decision.action === 'build') {
     write([`open: ${decision.cause}`])
-    const outcome = await buildInTerminal(root, context.extensionPath, write)
+    const outcome = await buildInTerminal(root, context.extensionPath, write, whereFor(project))
     write([`open: build ${outcome}`])
     if (!handsOver(outcome)) {
       // Said rather than left silent: a terminal that closed is not obviously

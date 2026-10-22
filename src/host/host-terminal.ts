@@ -53,7 +53,12 @@ export interface HostTerminal {
 /** A terminal's line endings: a bare \n moves down without returning. */
 const crlf = (s: string) => s.replace(/\r?\n/g, '\r\n')
 
-export function hostProcessTerminal(command: string, args: readonly string[]): HostTerminal {
+export function hostProcessTerminal(
+  command: string,
+  args: readonly string[],
+  /** Text for the process's input, which then ends; without it there is none. */
+  options: { input?: string } = {},
+): HostTerminal {
   const write = emitter<string>()
   const close = emitter<number | void>()
   let child: ReturnType<typeof spawn> | undefined
@@ -84,7 +89,14 @@ export function hostProcessTerminal(command: string, args: readonly string[]): H
       // Its own process group, so closing the terminal stops everything it
       // started, not only the first process: a `sh -c` build leaves docker
       // running otherwise, holding the output open.
-      child = spawn(command, [...args], { stdio: ['ignore', 'pipe', 'pipe'], detached: true })
+      const input = options.input
+      child = spawn(command, [...args], { stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'], detached: true })
+      if (input !== undefined) {
+        // A reader gone early (EPIPE) is the process's own failure to report,
+        // through its exit, not an exception here.
+        child.stdin?.on('error', () => {})
+        child.stdin?.end(input)
+      }
       child.stdout?.on('data', (b: Buffer) => write.fire(crlf(b.toString('utf8'))))
       child.stderr?.on('data', (b: Buffer) => write.fire(crlf(b.toString('utf8'))))
       child.on('error', (e: NodeJS.ErrnoException) => {
