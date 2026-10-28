@@ -444,7 +444,7 @@ developer holds.**
 Agreed on 2026-10-28, from #221. Agents write most of the code; decisions stay with the developer,
 but what the agent discovers on the way — a library default, a hidden bug, a workaround — ends up in
 commits and documents rather than in anybody's head, and there was no moment where it came back.
-The daily, at the start of the day, picks today's agreed tasks; review, retro and refinement close
+The planning, at the start of the day, picks today's agreed tasks; review, retro and refinement close
 it. The epic closes when a project the extension created, with the tracker on, runs the whole cycle
 with nothing but what the image brings. Tracked as `jvsl_env_agents_container-338`.
 
@@ -452,7 +452,7 @@ with nothing but what the image brings. Tracked as `jvsl_env_agents_container-33
 
 | | chosen | over |
 |---|---|---|
-| the chain | the ceremonies are its calendar: refinement is where stories and tasks are proposed and agreed, and the daily picks only agreed tasks | a shortcut letting a refined item go straight to code, which would leave two rules and weaken the task gate |
+| the chain | the ceremonies are its calendar: refinement is where stories and tasks are proposed and agreed, and the planning picks only agreed tasks | a shortcut letting a refined item go straight to code, which would leave two rules and weaken the task gate |
 | the journal | one tracker item a day, labelled `journal` | `docs/JOURNAL/`, a pull request a day on a protected branch; `ai-memory`, which only some projects have and which is treated as untrusted history |
 | reach | projects with `"beads": true`; elsewhere the skills refuse in one line saying how to turn the tracker on | a fallback over planning files, a second implementation of every skill |
 | review | accepts only after the developer explains the change in their own words, always | a per-item skip, the shortcut most likely to become the default |
@@ -468,11 +468,15 @@ finishes it is merged, as items already do.
 | # | Story | Why in that order |
 |---|---|---|
 | 1 | the image delivers the agent's skills | the plugin every ceremony arrives in, and the refusal they share |
-| 2 | the daily | needs only the tracker |
+| 2 | the planning | needs only the tracker |
 | 3 | the review | needs worked tasks to review |
 | 4 | the retro and its journal | the journal the study epic reads `blog-candidate` from |
-| 5 | refinement | proposes what tomorrow's daily picks |
+| 5 | refinement | proposes what tomorrow's planning picks |
 | 6 | the working agreement describes the day | normative documents, both languages; last, so it describes what exists |
+
+**Renamed on 2026-10-28, by João Lima: the daily is called planning.** The ceremony chooses the
+day's work, which "daily" did not say. The rename went everywhere, the plugin's scripts and the
+tests' names included: a leftover of an old name does not fail, it confuses.
 
 **What a test cannot hold here.** A skill is instructions to the agent, so "asks before assuming" or
 "never writes the developer's line" is verified by running the cycle, not by a suite. What is
@@ -518,7 +522,7 @@ The Study view sits beside *Show the Work* and reads the tracker the way the boa
 
 Agreed on 2026-10-28, found while designing the retro. The container ran in UTC — `/etc/localtime`
 pointing at `Etc/UTC`, no `TZ` — while the developer works at -0300, so the ceremonies' "today"
-turned at 21:00 their time: a retro held late would write tomorrow's journal, and the next daily
+turned at 21:00 their time: a retro held late would write tomorrow's journal, and the next planning
 would not find yesterday's. Commits made inside the sandbox carried UTC too. The epic closes when
 `date` and `git commit` inside the agent's sandbox show the host's timezone, with nothing configured
 by hand. Tracked as `jvsl_env_agents_container-7fd`.

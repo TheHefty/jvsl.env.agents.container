@@ -8,7 +8,7 @@ body() {
     cat <<MD
 ## Discovered
 ### bd prints labels as null, not as an empty list
-How it was found: the fixture of daily-brief had [] and the real export had null.
+How it was found: the fixture of planning-brief had [] and the real export had null.
 Why it matters: a script testing for [] reads every unlabelled item wrong.
 Blog candidate: $blog
 ## Surprised

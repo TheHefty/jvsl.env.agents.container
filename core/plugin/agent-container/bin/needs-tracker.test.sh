@@ -4,7 +4,7 @@
 #
 # Wrong in either direction is the failure. Refusing a project with the tracker
 # on leaves the developer with no ceremonies and a message that blames them;
-# letting one without it through runs a daily over a tracker that is not there,
+# letting one without it through runs a planning over a tracker that is not there,
 # and what the agent says then will not name the cause.
 set -euo pipefail
 

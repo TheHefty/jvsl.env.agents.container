@@ -7,7 +7,7 @@
 set -uo pipefail
 
 day="${JOURNAL_TODAY:-$(date +%F)}"
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 echo "## Items touched on $day"
 items="$(export_of | jq -r --arg day "$day" '

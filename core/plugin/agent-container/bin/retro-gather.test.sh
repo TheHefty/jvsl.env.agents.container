@@ -8,8 +8,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 
 failures=0
 check() {
@@ -42,7 +42,7 @@ commit 2026-10-27T10:00:00-0300 "feat: the morning"
 commit 2026-10-27T22:30:00-0300 "fix: late that evening"
 commit 2026-10-28T09:00:00-0300 "chore: the next morning"
 
-out="$(cd "$repo" && DAILY_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-27 bash "$HERE/retro-gather")"
+out="$(cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-27 bash "$HERE/retro-gather")"
 under() { printf '%s\n' "$out" | awk -v h="## $1 on " 'index($0, h) == 1 {on = 1; next} /^## / {on = 0} on && /^- /'; }
 
 check "the items touched that day, by local date" "$(under 'Items touched' | awk '{print $2}' | sort | paste -sd' ' -)" "t-late t-today"
@@ -51,7 +51,7 @@ check "the journal itself is not work the retro reports" "$(under 'Items touched
 check "the commits made that day, by local date, late evening included" \
     "$(under Commits | sed 's/^- [0-9a-f]* //' | paste -sd'|' -)" "fix: late that evening|feat: the morning"
 
-empty="$(cd "$repo" && DAILY_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-20 bash "$HERE/retro-gather")"
+empty="$(cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-20 bash "$HERE/retro-gather")"
 check "a day with nothing says so in both" "$(printf '%s\n' "$empty" | grep -c '^Nothing\.$')" "2"
 
 if [ "$failures" -gt 0 ]; then

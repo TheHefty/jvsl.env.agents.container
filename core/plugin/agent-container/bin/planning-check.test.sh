@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Exercises daily-check, the real script, against a fixture `bd export`.
+# Exercises planning-check, the real script, against a fixture `bd export`.
 #
-# It is what stands between the developer's choice in a daily and a claim: a
+# It is what stands between the developer's choice in a planning and a claim: a
 # task it lets through is started that day. The failure it guards is the worst
 # one the ceremony has — starting something nobody agreed, which is the gate
-# the whole chain exists for (story the-daily).
+# the whole chain exists for (story the-planning).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT="$HERE/daily-check"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+SCRIPT="$HERE/planning-check"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 
 failures=0
 check() {
@@ -46,7 +46,7 @@ item t-nocrit task open 2
 
 run() {
     local code=0
-    DAILY_EXPORT="$EXPORT" bash "$SCRIPT" "$@" > "$work/out" 2>&1 || code=$?
+    TRACKER_EXPORT="$EXPORT" bash "$SCRIPT" "$@" > "$work/out" 2>&1 || code=$?
     echo "$code"
 }
 line() { grep "^$1:" "$work/out" | head -n 1; }
@@ -73,7 +73,7 @@ check "several ids: one line each, and any refusal fails the whole" \
 check "no id at all is a usage error, not a pass" "$(run)" "2"
 
 if [ "$failures" -gt 0 ]; then
-    echo "daily-check.test: $failures failure(s)"
+    echo "planning-check.test: $failures failure(s)"
     exit 1
 fi
-echo "daily-check.test: only an agreed, unblocked task with a done criterion passes; everything else is refused with its reason."
+echo "planning-check.test: only an agreed, unblocked task with a done criterion passes; everything else is refused with its reason."

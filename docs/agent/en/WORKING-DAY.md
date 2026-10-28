@@ -15,33 +15,33 @@ Paths outside this folder are written as code rather than as links, for the reas
 
 | Ceremony | Skill | When | What it leaves |
 |---|---|---|---|
-| Daily | `agent-container:daily` | start of the day | today's agreed tasks, each with its done criterion, claimed in the developer's name |
+| Planning | `agent-container:planning` | start of the day | today's agreed tasks, each with its done criterion, claimed in the developer's name |
 | Review | `agent-container:review` | end of the day, first | each task accepted in the developer's own words, or reopened with what is missing |
 | Retro | `agent-container:retro` | end of the day, second | the day's journal entry |
 | Refinement | `agent-container:refine` | end of the day, last | the next stories and tasks, proposed and agreed |
 
 **The ceremonies are the chain's calendar, not a way around it.** Every link of the chain in
 [Workflow](WORKFLOW.md) is still agreed before it is written. Refinement is where stories and tasks
-are proposed and agreed, and the daily picks only what was agreed. An item that reaches a daily raw
+are proposed and agreed, and the planning picks only what was agreed. An item that reaches a planning raw
 goes back to refinement rather than being built that day.
 
 Each ceremony runs `needs-tracker` first and stops, in one line saying how to turn the tracker on,
 in a project whose manifest does not say `"beads": true`.
 
-## The daily
+## The planning
 
-In a project that has a tracker, the daily reads it with `daily-brief`, which shows in progress, blocked with what blocks
+In a project that has a tracker, the planning reads it with `planning-brief`, which shows in progress, blocked with what blocks
 it, ready, and what yesterday's journal entry left open. It proposes a short list. **The developer
 chooses**, and nothing is marked in progress until they confirm.
 
-`daily-check` stands between the choice and the claim. It passes only an agreed, open task with no
+`planning-check` stands between the choice and the claim. It passes only an agreed, open task with no
 open blocker and a done criterion. **A task's done criterion is its `acceptance_criteria`.** When it
-is missing, the daily asks the developer and writes their answer with `bd update <id> --acceptance`.
+is missing, the planning asks the developer and writes their answer with `bd update <id> --acceptance`.
 It never writes one itself. The claim is `bd update <id> --claim --actor "<name>"`, in the
 developer's name, taken from `git config user.name`. Inside the sandbox bd would otherwise record
 `unknown`.
 
-The daily writes no code.
+The planning writes no code.
 
 ## The end-of-day block
 
@@ -70,10 +70,10 @@ went wrong; and everything it decided alone. The developer writes or approves th
 learned. The agent never writes that line on its own.
 
 The day's entry lives in the tracker, not in a file. It is a `chore` labelled `journal`, closed when
-it is written so no daily offers it as work, and keyed by metadata `day`. The day is the local date,
+it is written so no planning offers it as work, and keyed by metadata `day`. The day is the local date,
 so a retro held late in the evening belongs to that day. `journal-write` writes it, and a second
 retro on the same day rewrites the same entry. Its sections, in this order and named exactly so,
-because the daily and the study skill read them:
+because the planning and the study skill read them:
 
 ```
 ## Discovered
@@ -92,7 +92,7 @@ Blog candidate: yes | no
 `journal-write` refuses an entry without "What I learned", or with "Decided alone" empty; that
 section says "Nothing." when there was nothing. `Blog candidate: yes` marks a discovery the developer
 chose to write about, and labels the entry `blog-candidate` for the study skill. When the last day
-with work has no entry, the next daily says the retro was skipped.
+with work has no entry, the next planning says the retro was skipped.
 
 ## What a task records
 

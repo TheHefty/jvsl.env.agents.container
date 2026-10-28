@@ -275,11 +275,11 @@ maioria não tem. Para esses, nada mais nestas regras muda.
 ### O dia de trabalho
 
 Isto vale só para um projeto que tem rastreador. O seu dia de trabalho tem quatro cerimônias, que vêm
-como skills no plugin da imagem e rodam com o desenvolvedor: `agent-container:daily` no início do dia,
+como skills no plugin da imagem e rodam com o desenvolvedor: `agent-container:planning` no início do dia,
 e `agent-container:review`, `agent-container:retro` e `agent-container:refine` no fim, nessa ordem.
 Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
 
-- **Elas são o calendário da cadeia, não um atalho em volta dela.** Uma daily só pega tasks
+- **Elas são o calendário da cadeia, não um atalho em volta dela.** Um planning só pega tasks
   acordadas; o refinement é onde stories e tasks são propostas e acordadas.
 - **Uma task está pronta quando o desenvolvedor sabe explicá-la.** Testes passando não bastam.
   Aceitar exige as palavras dele, e a task fecha quando o seu pull request entra, não quando é aceita.

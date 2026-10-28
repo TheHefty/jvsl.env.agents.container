@@ -5,13 +5,13 @@
 # that bd ready never lists (the rules, "The work tracker").
 #
 # A half-proposal, carrying only one of the two, is still a proposal (the
-# daily's check reads it so) and is completed. Refused, writing nothing: an id
+# planning's check reads it so) and is completed. Refused, writing nothing: an id
 # that is neither, one that is closed, and a task with no done criterion. Then
 # each is read back, and an agreement bd left half done is said and fails.
 set -uo pipefail
 
 BD="${REVIEW_BD:-bd}"
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 [ "$#" -ge 1 ] || { echo "usage: refine-agree <id>..." >&2; exit 2; }
 
 items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || exit 2
@@ -25,7 +25,7 @@ for id in "$@"; do
         closed) echo "$id: closed, so there is nothing to agree"; exit 1 ;;
     esac
     if [ "$status" != deferred ] && [ "$labelled" != yes ]; then echo "$id: not a proposal, so there is nothing to agree"; exit 1; fi
-    if [ "$type" = task ] && [ "$crit" != yes ]; then echo "$id: a task with no done criterion — write one first, or the daily will refuse it"; exit 1; fi
+    if [ "$type" = task ] && [ "$crit" != yes ]; then echo "$id: a task with no done criterion — write one first, or the planning will refuse it"; exit 1; fi
     plan+=("$id $status $labelled")
 done
 

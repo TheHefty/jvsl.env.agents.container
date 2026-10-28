@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The daily's gate between the developer's choice and a claim (story the-daily).
+# The planning's gate between the developer's choice and a claim (story the-planning).
 # One line per id, `<id>: ok` or `<id>: <why not>`, and exit 1 if any is
 # refused; 2 when given nothing to check.
 #
@@ -11,19 +11,19 @@
 # while it is not closed; a parent never blocks. The criterion is the task's
 # acceptance_criteria field, which refinement writes.
 #
-# Reads `bd export` (or $DAILY_EXPORT, for the test), in the shape bd 1.3.1
+# Reads `bd export` (or $TRACKER_EXPORT, for the test), in the shape bd 1.3.1
 # prints and core/image.test.sh checks against the real one.
 set -uo pipefail
 
 if [ "$#" -eq 0 ]; then
-    echo "usage: daily-check <id>...  — says, for each, whether the daily can start it" >&2
+    echo "usage: planning-check <id>...  — says, for each, whether the planning can start it" >&2
     exit 2
 fi
 
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || {
-    echo "daily-check: could not read the tracker's export" >&2; exit 2; }
+    echo "planning-check: could not read the tracker's export" >&2; exit 2; }
 
 rc=0
 for id in "$@"; do

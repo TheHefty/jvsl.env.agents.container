@@ -40,7 +40,7 @@ It lists the items touched today and the commits made today, both by the local d
 
 - **What I learned**: ask the developer for their line. You may offer a draft for them to change or approve, but what goes in the entry is what they wrote or approved.
 - **Blog candidates**: ask whether any discovery is worth writing about. Mark only the ones they choose.
-- **Left open**: ask what is left for tomorrow. Tomorrow's daily reads this section.
+- **Left open**: ask what is left for tomorrow. Tomorrow's planning reads this section.
 
 ## 5. Write the entry
 
