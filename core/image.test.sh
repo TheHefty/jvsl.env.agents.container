@@ -125,6 +125,12 @@ base="$(docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
     printf "editor=%s\n" "$(command -v code-server >/dev/null 2>&1 && echo present || echo absent)"
     printf "reaper=%s\n" "$([ -x /etc/s6-overlay/s6-rc.d/svc-reaper/run ] && [ -e /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper ] && [ -d /usr/local/lib/jvsl/reapers.d ] && command -v jq >/dev/null && echo registered || echo missing)"
     printf "browserkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/browser-tests ] && [ -r /usr/local/lib/jvsl/reaper-lib.sh ] && command -v du >/dev/null && command -v seq >/dev/null && find /proc/self/fd/ -maxdepth 1 -type l -printf "%l\n" >/dev/null 2>&1 && echo ok || echo missing)"
+    # #219: one CJK font, found by language and by code point, and Latin text
+    # still in DejaVu. fc-match names the first family it would use.
+    for l in ja ko zh-cn zh-tw; do printf "lang_%s=%s\n" "$l" "$(fc-list ":lang=$l" family 2>/dev/null | head -n 1)"; done
+    for c in 3042 d55c 4e2d 9ad4; do printf "char_%s=%s\n" "$c" "$(fc-list ":charset=$c" family 2>/dev/null | head -n 1)"; done
+    for g in sans-serif serif monospace; do printf "match_%s=%s\n" "$g" "$(fc-match -f "%{family[0]}" "$g" 2>/dev/null)"; done
+    printf "wqyprefs=%s\n" "$([ -e /etc/fonts/conf.d/65-wqy-microhei.conf ] && echo linked || echo absent)"
     printf "tmpkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/sandbox-tmp ] && command -v numfmt >/dev/null && find /tmp -maxdepth 0 -newerct @0 -print -quit 2>/dev/null | grep -q . && du -sb /tmp >/dev/null 2>&1 && readlink /proc/self/ns/mnt >/dev/null && echo ok || echo missing)"
 ' 2>/dev/null || true)"
 
@@ -146,6 +152,25 @@ test runs leave behind, and the first sign would be an OOM kill hours later"
 
 [ "$(field browserkind)" = "ok" ] || fail "the reaper's browser-tests kind or reaper-lib.sh is not installed, or du, seq or \
 GNU find's -printf is missing; a dead browser-test run's Chrome and ports would never be freed"
+
+for l in ja ko zh-cn zh-tw; do
+    [ -n "$(field "lang_$l")" ] || fail "fontconfig names no font for :lang=$l, so headless Chromium draws \
+that language as empty boxes and no screenshot of it means anything (#219). fonts-wqy-microhei is \
+missing, or fc-cache was not run after it"
+done
+for c in 3042 d55c 4e2d 9ad4; do
+    [ -n "$(field "char_$c")" ] || fail "no font covers U+${c^^}, so Chromium has nothing to fall back to \
+for it and draws a box (#219)"
+done
+for pair in sans-serif:"DejaVu Sans" serif:"DejaVu Serif" monospace:"DejaVu Sans Mono"; do
+    g="${pair%%:*}"; want="${pair#*:}"
+    [ "$(field "match_$g")" = "$want" ] || fail "$g resolves to '$(field "match_$g")', not $want: a \
+font's own preferences moved Latin text, and every visual baseline a project has moves with it. \
+65-wqy-microhei.conf is the one that would, and is meant to be excluded by dpkg"
+done
+[ "$(field wqyprefs)" = "absent" ] || fail "/etc/fonts/conf.d/65-wqy-microhei.conf is linked: its \
+unconditional sans-serif and monospace preferences can put WenQuanYi ahead of DejaVu for Latin text. \
+The dpkg path-exclude in core/Dockerfile.frag did not hold"
 
 [ "$(field tmpkind)" = "ok" ] || fail "the reaper's sandbox-tmp kind is not installed, or numfmt, GNU \
 find's -newerct, du -sb or /proc/self/ns/mnt is missing; each ai-jail session's /tmp would fill \
