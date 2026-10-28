@@ -138,6 +138,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: the two languages agree on files, headings and links
         run: bash docs/agent/check-parity.test.sh
+      - name: the working day's documents name exactly the plugin's ceremonies, in both languages
+        run: bash docs/agent/working-day.test.sh
       - name: the task template's After the code section keeps the shape that makes it more than ceremony
         run: bash docs/agent/post-code-checks.test.sh
       - name: the pre-code step is one statement, the shape then its failures, said rather than asked

@@ -27,6 +27,11 @@ the point where every open question has an answer and the write-up is the user's
 document is its own pull request, so each gate is a merge and each layer has a reviewable diff
 attached to the discussion that produced it.
 
+**A project with a tracker works this chain on a calendar.** The four ceremonies of
+[The working day](WORKING-DAY.md) are when its gates happen: refinement proposes and agrees stories
+and tasks at the end of a day, and the next daily picks only what was agreed. They change when a
+link is agreed, never whether.
+
 The table is where a project without a tracker keeps its planning. A project that has one keeps the
 same links and the same gates, but each story and task is an item instead of a file: see
 [Planning in a project that has a tracker](#planning-in-a-project-that-has-a-tracker).
