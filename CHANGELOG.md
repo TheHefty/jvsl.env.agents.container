@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.4...v1.7.0) (2026-10-28)
+
+
+### Features
+
+* the reaper sweeps each sandbox's /tmp of what nobody touched for a day and nobody holds ([40445c1](https://github.com/TheHefty/jvsl.env.agents.container/commit/40445c1cdf68cf27f71f4ad26f91290c4c49e438))
+* the reaper sweeps each sandbox's /tmp of what nobody touched for a day and nobody holds ([4c77a9d](https://github.com/TheHefty/jvsl.env.agents.container/commit/4c77a9df1de5fc4f6f4684ecba7e92befc33ac4e)), closes [#220](https://github.com/TheHefty/jvsl.env.agents.container/issues/220)
+
 ## [1.6.4](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.3...v1.6.4) (2026-10-22)
 
 
