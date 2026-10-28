@@ -11,18 +11,49 @@ export interface HostFacts {
   cpuCount: number
   devicesPresent: string[]
   devicesAbsent: string[]
+  /** The host's IANA timezone; absent when it could not be read as one. */
+  timeZone?: string
 }
 
 export interface HostProbe {
   cpuCount: () => number
   exists: (path: string) => boolean
   devices: readonly string[]
+  timeZone?: () => string | undefined
 }
 
 const realProbe: HostProbe = {
   cpuCount: () => availableParallelism(),
   exists: existsSync,
   devices: CANDIDATE_DEVICES,
+  timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+}
+
+/**
+ * An IANA timezone name: `UTC`, or an area and at least one location. What
+ * reaches the container's TZ has to be one — glibc reads anything else as UTC
+ * without a word (`TZ=Not/AZone date` prints UTC labelled "Not", measured
+ * 2026-10-28), so a Windows name or an empty string would be a container
+ * silently on the wrong time.
+ */
+const IANA_ZONE = /^(?:UTC|[A-Za-z]+(?:\/[A-Za-z0-9_+-]+)+)$/
+
+/**
+ * The host's timezone, read here because the container only knows UTC (story
+ * the-container-and-the-sandbox-use-the-hosts-timezone). On every platform the
+ * editor runs on — Windows for a WSL project included — this is the
+ * developer's own, which is the time the container should tell.
+ */
+function readTimeZone(probe: HostProbe): { timeZone?: string; note?: string } {
+  let raw: string | undefined
+  try {
+    raw = probe.timeZone?.()
+  } catch {
+    raw = undefined
+  }
+  if (raw !== undefined && IANA_ZONE.test(raw)) return { timeZone: raw }
+  if (probe.timeZone === undefined) return {}
+  return { note: `could not read the host's timezone (got ${JSON.stringify(raw ?? null)}), so the container keeps UTC` }
 }
 
 /**
@@ -40,7 +71,8 @@ export function hostFacts(probe: HostProbe = realProbe): HostFacts {
   for (const device of probe.devices) {
     ;(probe.exists(device) ? present : absent).push(device)
   }
-  return { cpuCount: probe.cpuCount(), devicesPresent: present, devicesAbsent: absent }
+  const { timeZone } = readTimeZone(probe)
+  return { cpuCount: probe.cpuCount(), devicesPresent: present, devicesAbsent: absent, ...(timeZone ? { timeZone } : {}) }
 }
 
 /** Probe output — one `/dev/...` per line — as the facts the configuration takes. */
@@ -77,7 +109,12 @@ export async function factsFor(
   platform: NodeJS.Platform = process.platform,
   probe: HostProbe = realProbe,
 ): Promise<{ facts: HostFacts; notes: string[] }> {
-  if (project.kind === 'host' && platform === 'linux') return { facts: hostFacts(probe), notes: [] }
+  // Read once per open, whatever machine docker runs on: the timezone is the
+  // developer's, and a value read twice is a value that can differ.
+  const { timeZone, note } = readTimeZone(probe)
+  const zone = { ...(timeZone ? { timeZone } : {}) }
+  const zoneNotes = note ? [note] : []
+  if (project.kind === 'host' && platform === 'linux') return { facts: { ...hostFacts({ ...probe, timeZone: undefined }), ...zone }, notes: zoneNotes }
   const cpus = Number.parseInt((await docker(['info', '--format', '{{.NCPU}}'])).stdout.trim(), 10)
   if (!Number.isInteger(cpus) || cpus < 1) throw new Error('docker info did not give a core count')
   const list = probe.devices.map((d) => `[ -e /host-dev/${d.replace(/^\/dev\//, '')} ] && echo ${d}`).join('; ')
@@ -86,11 +123,12 @@ export async function factsFor(
       ['run', '--rm', '-v', '/dev:/host-dev:ro', PROBE_IMAGE, 'sh', '-c', `${list}; true`],
       PROBE_MS,
     )
-    return { facts: { cpuCount: cpus, ...parseProbe(stdout, probe.devices) }, notes: [] }
+    return { facts: { cpuCount: cpus, ...parseProbe(stdout, probe.devices), ...zone }, notes: zoneNotes }
   } catch (error) {
     return {
-      facts: { cpuCount: cpus, devicesPresent: [], devicesAbsent: [...probe.devices] },
+      facts: { cpuCount: cpus, devicesPresent: [], devicesAbsent: [...probe.devices], ...zone },
       notes: [
+        ...zoneNotes,
         `the devices of the machine docker runs on could not be listed (${String(error)}), so the ` +
           `container starts without /dev/fuse, /dev/net/tun and /dev/kvm. Nested Docker and the ` +
           `emulator will say they are unavailable. Opening again once the probe can run passes them.`,

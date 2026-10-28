@@ -197,6 +197,18 @@ for agent in claude codex; do
         "$(argv "$agent" GH_CONFIG_DIR=/nowhere/at/all | count '^/nowhere/at/all$')" "0"
 done
 
+# **TZ, so the agent tells the developer's time** (story
+# the-container-and-the-sandbox-use-the-hosts-timezone). The extension writes
+# the host's timezone into the container's TZ; --clearenv would drop it, and the
+# agent's date, commits and ceremonies would keep UTC with nothing saying so.
+# Forwarded by name only when it is set: an empty TZ is UTC to glibc.
+for agent in claude codex; do
+    check "$agent hands the sandbox TZ when the container has one" \
+        "$(argv "$agent" TZ=America/Sao_Paulo | count '^TZ$')" "1"
+    check "$agent hands nothing when TZ is unset" "$(argv "$agent" -u TZ | count '^TZ')" "0"
+    check "$agent hands nothing when TZ is empty" "$(argv "$agent" TZ= | count '^TZ')" "0"
+done
+
 # The sandbox flags that only exist because --clearenv drops them, kept from
 # when this file covered claude.sh alone.
 check "the sandbox is handed RUSTUP_HOME" \
