@@ -375,6 +375,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/study-track.test.sh
       - name: study topics come from blog candidates and the report, each with a slug the contract accepts
         run: bash core/plugin/agent-container/bin/study-sources.test.sh
+      - name: a study topic is moved only when earned, never backwards, and never anything but a study topic
+        run: bash core/plugin/agent-container/bin/study-move.test.sh
 
   compose-versions:
     needs: changes

@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // The Study view (story the-study-view): read-only, and the topic page's
     // one write is an attempt, through the project's own files.
     vscode.commands.registerCommand(OPEN_TOPIC, (slug: unknown) => {
-      if (typeof slug === 'string') openTopic(slug, schemasFrom(context.extensionPath), write, () => study.refresh())
+      if (typeof slug === 'string') openTopic(slug, schemasFrom(context.extensionPath), dockerFor, write, () => study.refresh())
     }),
     vscode.commands.registerCommand(REFRESH_STUDY, () => study.refresh()),
   )

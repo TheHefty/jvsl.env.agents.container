@@ -50,5 +50,17 @@ guard and allow it by name." >&2
     exit 1
 fi
 echo "ok      the only bd command the board names is \`bd export\`"
+
+# **The Study view's one write is a script, by name** (story
+# the-view-moves-the-topic-in-the-tracker): the plugin's study-move, which
+# makes three moves, each only when earned, each only on a study topic. Any
+# other script of the plugin run from here is a write nobody decided.
+scripts="$(printf '%s\n' "$code" | grep -oE "agent-container/bin/[a-z-]+" | sed 's|.*/||' | sort -u || true)"
+if [ "$scripts" != "study-move" ]; then
+    echo "board-only-reads: FAIL: the extension runs plugin scripts other than study-move, or none at all:" >&2
+    printf '        %s\n' ${scripts:-"(none found: the search is broken)"} >&2
+    exit 1
+fi
+echo "ok      the only plugin script the extension runs is study-move"
 echo
-echo "board-only-reads.test: 3 passed, 0 failed."
+echo "board-only-reads.test: 4 passed, 0 failed."
