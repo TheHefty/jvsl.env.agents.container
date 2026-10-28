@@ -30,7 +30,7 @@ in a project whose manifest does not say `"beads": true`.
 
 ## The daily
 
-The daily reads the tracker with `daily-brief`, which shows in progress, blocked with what blocks
+In a project that has a tracker, the daily reads it with `daily-brief`, which shows in progress, blocked with what blocks
 it, ready, and what yesterday's journal entry left open. It proposes a short list. **The developer
 chooses**, and nothing is marked in progress until they confirm.
 
@@ -95,6 +95,8 @@ chose to write about, and labels the entry `blog-candidate` for the study skill.
 with work has no entry, the next daily says the retro was skipped.
 
 ## What a task records
+
+In a project that has a tracker, a task records three things.
 
 - **Its done criterion**, in `acceptance_criteria`, written at refinement.
 - **Its pull request**, recorded when the pull request is opened, with

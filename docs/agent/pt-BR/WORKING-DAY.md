@@ -30,7 +30,7 @@ projeto cujo manifest não diz `"beads": true`.
 
 ## A daily
 
-A daily lê o rastreador com `daily-brief`, que mostra o que está em andamento, o que está bloqueado e
+Num projeto que tem rastreador, a daily o lê com `daily-brief`, que mostra o que está em andamento, o que está bloqueado e
 pelo quê, o que está pronto, e o que a entrada de ontem no diário deixou em aberto. Ela propõe uma
 lista curta. **O desenvolvedor escolhe**, e nada fica em andamento antes de ele confirmar.
 
@@ -95,6 +95,8 @@ desenvolvedor escolheu escrever, e põe a label `blog-candidate` na entrada para
 Quando o último dia com trabalho não tem entrada, a daily seguinte diz que a retro foi pulada.
 
 ## O que uma task registra
+
+Num projeto que tem rastreador, uma task registra três coisas.
 
 - **O seu critério de pronto**, em `acceptance_criteria`, escrito no refinement.
 - **O seu pull request**, registrado quando o pull request é aberto, com
