@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Refinement's agenda (story refinement), from `bd export` or $DAILY_EXPORT:
+#
+#   Awaiting agreement            open proposals, with what they are under
+#   Stories with no agreed task   agreed stories nothing in a daily can come from yet
+#   Tasks with no done criterion  agreed tasks the daily would refuse
+#   Agreed and ready              what tomorrow's daily can pick
+#
+# Closed items — finished or rejected — and journal entries appear nowhere.
+set -uo pipefail
+
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+export_of | jq -c 'select(._type == "issue")' | jq -sr '
+    (map({key: .id, value: .status}) | from_entries) as $status
+    | def labels: (.labels // []);
+      def proposal: (.status == "deferred" or (labels | index("proposed")));
+      def parent: ([(.dependencies // [])[] | select(.type == "parent-child") | .depends_on_id] | first);
+      def blocked: ([(.dependencies // [])[] | select(.type == "blocks") | .depends_on_id
+                     | select(($status[.] // "closed") != "closed")] | length > 0);
+      def line: "- \(.id) \(.title)";
+    map(select(.status != "closed" and (labels | index("journal") | not))) as $live
+    | ($live | map(select(proposal | not))) as $agreed
+    | ($agreed | map(select(.issue_type == "task")) | map(parent)) as $with_tasks
+    | "## Awaiting agreement",
+      ($live | map(select(proposal)) | .[] | line + (if parent then " — under \(parent)" else "" end)),
+      "",
+      "## Stories with no agreed task",
+      ($agreed | map(select(.issue_type == "feature" and (.id as $s | $with_tasks | index($s) | not))) | .[] | line),
+      "",
+      "## Tasks with no done criterion",
+      ($agreed | map(select(.issue_type == "task" and ((.acceptance_criteria // "") | length) == 0)) | .[] | line),
+      "",
+      "## Agreed and ready",
+      ($agreed | map(select(.issue_type == "task" and .status == "open" and ((.acceptance_criteria // "") | length) > 0 and (blocked | not)))
+       | sort_by(.priority, .created_at) | .[] | line)'

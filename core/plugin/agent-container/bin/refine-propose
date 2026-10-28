@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# refine-propose <story|task> <parent> <title> <body-file> <acceptance-file> [blocked-by...]
+#
+# Writes a story or a task as a proposal (story refinement), the way the rules
+# say a link is proposed — `--labels proposed --status deferred --parent` —
+# with both halves every time, and only where the chain can use it:
+#
+#   a story under an agreed epic, its acceptance carrying at least one Scenario;
+#   a task under an agreed story, its acceptance being its done criterion,
+#   which the daily refuses a task without.
+#
+# Agreed means open or in progress, not deferred and not labelled proposed:
+# nothing is proposed under a draft or under something closed. Epics are not
+# refinement's: they are agreed at the SRS gate. Refused, it writes nothing.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+usage() { echo "usage: refine-propose <story|task> <parent> <title> <body-file> <acceptance-file> [blocked-by...]" >&2; exit 2; }
+[ "$#" -ge 5 ] || usage
+kind="$1" parent="$2" title="$3" body="$4" acc="$5"; shift 5
+case "$kind" in
+    story) type=feature; parent_type=epic ;;
+    task) type=task; parent_type=feature ;;
+    *) echo "refine-propose: refinement proposes stories and tasks; an epic is agreed at the SRS gate, with its sentence." >&2; exit 2 ;;
+esac
+refuse() { echo "refine-propose: \"$title\" was not proposed. $*"; exit 1; }
+
+[ -n "${title//[[:space:]]/}" ] || refuse "It has no title."
+[ -f "$body" ] && [ -n "$(tr -d '[:space:]' < "$body")" ] || refuse "Its body is empty: say what it is and why."
+[ -f "$acc" ] || refuse "Its acceptance file $acc does not exist."
+if [ "$kind" = task ]; then
+    [ -n "$(tr -d '[:space:]' < "$acc")" ] || refuse "A task needs a done criterion, which is what the daily checks before starting it."
+else
+    grep -q 'Scenario' "$acc" || refuse "A story's acceptance is its scenarios, and this one has no Scenario."
+fi
+
+state="$(export_of | jq -r --arg id "$parent" 'select(._type == "issue" and .id == $id)
+    | "\(.issue_type) \(.status) \(if ((.labels // []) | index("proposed")) then "proposed" else "-" end)"' | head -n 1)"
+[ -n "$state" ] || refuse "Its parent $parent is not in the tracker."
+read -r ptype pstatus plabel <<<"$state"
+[ "$ptype" = "$parent_type" ] || refuse "A $kind goes under $( [ "$kind" = story ] && echo "an epic" || echo "a story" ), and $parent is a $ptype."
+[ "$pstatus" != closed ] || refuse "Its parent $parent is closed."
+[ "$pstatus" != deferred ] && [ "$plabel" != proposed ] || refuse "Its parent $parent is itself a proposal: agree it first, so the chain is agreed in order."
+
+id="$("$BD" create "$title" -t "$type" --parent "$parent" --labels proposed --status deferred \
+    --acceptance "$(cat "$acc")" --body-file "$body" --silent)" || exit 1
+[ -n "$id" ] || { echo "refine-propose: bd created nothing for \"$title\"" >&2; exit 1; }
+for blocker in "$@"; do
+    "$BD" dep add "$id" "$blocker" >/dev/null || { echo "refine-propose: $id was proposed, but could not be made to wait on $blocker" >&2; exit 1; }
+done
+echo "$id"
