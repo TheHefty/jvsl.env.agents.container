@@ -46,9 +46,13 @@ chmod +x "$work/bin/ai-jail"
 # CLAUDE_JAILED and CODEX_JAILED have to go: set, a wrapper is the recursion
 # guard and execs the real CLI instead of building any argv at all. The suite
 # runs inside the jail as often as not, which is exactly where they are set.
+# AGENT_PLUGIN is pinned to a directory of the suite's own: the default is the
+# image's, which exists in the dev container and not on a CI runner, and a test
+# that reads differently in the two is the one that passed here and failed there.
+plugin="$work/plugin"; mkdir -p "$plugin"
 argv() {
     local agent="$1"; shift
-    env -u CLAUDE_JAILED -u CODEX_JAILED "$@" \
+    AGENT_PLUGIN="$plugin" env -u CLAUDE_JAILED -u CODEX_JAILED "$@" \
         JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/$agent.sh"
 }
 count() { { grep -c -- "$1" || true; } }
@@ -96,7 +100,32 @@ check "codex is handed the same one" \
 rest() { tail -n +"$((n + 1))" | paste -sd' ' -; }
 check "and claude adds only what is Claude's" \
     "$(argv claude -u RUSTUP_HOME | rest)" \
-    "--env CLAUDE_JAILED=1 --env CLAUDE_CONFIG_DIR claude"
+    "--env CLAUDE_JAILED=1 --env CLAUDE_CONFIG_DIR claude --plugin-dir $plugin"
+
+# **The image's plugin, and what it must not cost** (story
+# the-image-delivers-the-agents-skills). It goes before the caller's arguments,
+# which arrive unchanged and in order: an argument moved or merged is a `claude
+# -r` or a `claude mcp add` that does something else. Measured on Claude Code
+# 2.1.308: --plugin-dir before --version, mcp list and plugin list works.
+with_args() {
+    env -u CLAUDE_JAILED -u CODEX_JAILED -u RUSTUP_HOME AGENT_PLUGIN="$plugin" \
+        JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/claude.sh" "$@"
+}
+check "the caller's arguments follow the plugin, unchanged and in order" \
+    "$(with_args -r --model opus 'two words' mcp | tail -n 6 | paste -sd'|' -)" \
+    "--plugin-dir|$plugin|-r|--model|opus|two words|mcp"
+check "codex is handed no plugin" "$(argv codex | count '^--plugin-dir$')" "0"
+
+# A missing directory is silent in the CLI — `claude --plugin-dir /nonexistent`
+# starts with no warning, measured on 2.1.308 — so the wrapper is what says it,
+# once, and starts the session anyway: the ceremonies missing is no reason to
+# lose the agent.
+missing_err="$(env -u CLAUDE_JAILED -u RUSTUP_HOME AGENT_PLUGIN="$work/no-plugin" \
+    JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/claude.sh" 2>&1 >/dev/null)"
+check "with no plugin in the image, one line says so and names the path" \
+    "$(printf '%s\n' "$missing_err" | grep -c "no agent-container plugin at $work/no-plugin")" "1"
+check "and the session still starts, without the flag" \
+    "$(argv claude AGENT_PLUGIN="$work/no-plugin" | tail -n 1)" "claude"
 check "and codex adds only what is Codex's" \
     "$(argv codex -u RUSTUP_HOME | rest)" \
     "--env CODEX_JAILED=1 codex"
