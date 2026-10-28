@@ -1,7 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildConfiguration, GENERATED_BY, isOurs, projectNames } from './devcontainer.ts'
+import { createHash } from 'node:crypto'
+
+import { buildConfiguration, CONFIG_GENERATION, GENERATED_BY, isOurs, projectNames } from './devcontainer.ts'
 
 const input = {
   projectRoot: '/home/me/code/myrepo',
@@ -114,7 +116,7 @@ test('the image\'s own command must run, so the tooling must not replace it', ()
 
 test('the marker says which version wrote the file', () => {
   const config = buildConfiguration(input)
-  assert.deepEqual(config[GENERATED_BY], { extension: '0.1.0' })
+  assert.deepEqual(config[GENERATED_BY], { extension: '0.1.0', generation: CONFIG_GENERATION })
 })
 
 test('the marker carries nothing that changes between opens', () => {
@@ -123,7 +125,7 @@ test('the marker carries nothing that changes between opens', () => {
   // the container on every open — killing whatever was running inside it,
   // unasked, every time. A timestamp is enough to cause it.
   const marker = buildConfiguration(input)[GENERATED_BY] as Record<string, unknown>
-  assert.deepEqual(Object.keys(marker), ['extension'])
+  assert.deepEqual(Object.keys(marker), ['extension', 'generation'])
 })
 
 test('two generations from the same inputs are byte-identical', () => {
@@ -317,4 +319,31 @@ test('the same host gives the same configuration, byte for byte, so opening agai
   // differed between opens would recreate the container, killing what ran in it.
   const facts = { ...input.facts, timeZone: 'Asia/Kolkata' }
   assert.equal(JSON.stringify(buildConfiguration({ ...input, facts })), JSON.stringify(buildConfiguration({ ...input, facts })))
+})
+
+// --- the generation (debt a-projects-generated-container-configuration-does-not-follow-an-upgraded-extension)
+//
+// An existing project's configuration is regenerated only when asked, so an
+// upgrade that changes what is generated has to say so: the file carries the
+// generator's generation, and opening compares it. The number is only as good as
+// the discipline of raising it, so this fingerprint holds it: the generator's
+// output for an input that reaches every branch — devices, Gradle, the timezone
+// — with the version pinned. Change the output and this fails until the
+// generation is raised and the new fingerprint recorded with it.
+const RECORDED = { generation: 2, sha256: '405868811a8c7547aa3bef7ed40f13322198201cf97e330b541694f50f226dcf' }
+
+test('the generator cannot change its output without raising the generation', () => {
+  const everyBranch = buildConfiguration({
+    ...input,
+    extensionVersion: 'pinned',
+    facts: { cpuCount: 16, devicesPresent: ['/dev/fuse', '/dev/kvm'], devicesAbsent: ['/dev/net/tun'], timeZone: 'America/Sao_Paulo' },
+    gradleVersion: '8.10',
+  })
+  const sha256 = createHash('sha256').update(JSON.stringify(everyBranch, null, 2)).digest('hex')
+  assert.equal(
+    `${CONFIG_GENERATION} ${sha256}`,
+    `${RECORDED.generation} ${RECORDED.sha256}`,
+    'the generated configuration changed: raise CONFIG_GENERATION by one in devcontainer.ts, and record ' +
+      `{ generation: <it>, sha256: '<the new hash>' } here, so existing projects are told to regenerate`,
+  )
 })

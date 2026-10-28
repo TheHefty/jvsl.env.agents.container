@@ -4,12 +4,15 @@ import * as vscode from 'vscode'
 
 import { hostProblems, sandboxWarnings } from '../build/build.ts'
 import { hostChecks, sandboxConditions } from '../host/checks.ts'
-import { describe } from '../host/detected.ts'
+import { describe, extensionVersion } from '../host/detected.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { prepare } from './command.ts'
 import { HANDOVER_KEY, startupAction } from './handover.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-manifest.ts'
+import { filesFor } from '../host/files.ts'
+import { CONFIG_PATH } from './open.ts'
+import { staleness } from './stale.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
 /**
@@ -69,6 +72,7 @@ export async function startup(
   const folder = project.kind === 'host' ? project.path : undefined
   if (startupAction(handedOver, folder, Date.now()) !== 'prepare') {
     write(['open flow: nothing written: this folder was opened, not asked to be prepared. Open in container, from the panel, prepares it.'])
+    offerRegeneration(context, channel, write, project)
     return
   }
   if (project.kind === 'host') adoptManifest(project.path, write)
@@ -141,4 +145,33 @@ export function watchManifest(onChange: () => void): vscode.Disposable {
     return watcher
   })
   return { dispose: () => { for (const w of watchers) w.dispose() } }
+}
+
+/**
+ * A configuration an older extension generated, said once with an action, and
+ * written only if it is chosen (debt
+ * a-projects-generated-container-configuration-does-not-follow-an-upgraded-extension).
+ * Reads the file through the project's own files, so a WSL project is read
+ * through the distro; never throws, because nothing here is worth stopping
+ * startup for.
+ */
+function offerRegeneration(
+  context: vscode.ExtensionContext,
+  channel: vscode.OutputChannel,
+  write: (lines: string[]) => void,
+  project: ReturnType<typeof hostProject>,
+): void {
+  if (project.kind === 'none') return
+  try {
+    const s = staleness(filesFor(project).read(CONFIG_PATH), extensionVersion(context))
+    if (!s.stale) return
+    write([`configuration: ${s.message}`])
+    void vscode.window.showInformationMessage(s.message, 'Regenerate').then((choice) => {
+      if (choice !== 'Regenerate') return
+      write(['configuration: regenerating, as asked'])
+      return prepare(context, channel, write, { handOver: true })
+    })
+  } catch (error) {
+    write([`configuration: could not be checked for a newer generation: ${String(error)}`])
+  }
 }
