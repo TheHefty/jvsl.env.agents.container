@@ -112,3 +112,32 @@ test('an unreadable practice.json is reported as such, not as an empty topic', (
   const dir = topicWith((d) => writeFileSync(join(d, 'practice.json'), '{"topic": '))
   assert.match(problems(dir), /practice\.json: .*not valid JSON/)
 })
+
+// --- answers never leak into the guide (story the-study-skill-builds-a-topic) ---
+//
+// A guide that states an answer makes the practice a reading exercise. Checked
+// verbatim, ignoring case and spacing: a rephrasing is a judgement, and an
+// answer under 12 characters ("null", "8080") cannot be told from prose.
+
+test('an answer copied into the guide is reported, naming its item, whatever its case and spacing', () => {
+  const dir = topicWith((d) => {
+    const answer = example().items.find((i) => i.id === 'q-3')!.answer as string
+    const shouted = answer.toUpperCase().replace(/ /g, '   ')
+    writeFileSync(join(d, 'guide.md'), readFileSync(join(d, 'guide.md'), 'utf8').replace('## Sources\n', `## Sources\n\n${shouted}\n`))
+  })
+  assert.match(problems(dir), /guide\.md: .*contains the answer to "q-3"/)
+})
+
+test('an answer that lives only in practice.json is not a leak', () => {
+  assert.deepEqual(checkTopic(EXAMPLE), [])
+})
+
+test('a short answer is not checked, so ordinary prose is never flagged', () => {
+  const p = example()
+  p.items[2]!.answer = 'It fails.'
+  const dir = topicWith((d) => {
+    writeJson(d, 'practice.json', p)
+    writeFileSync(join(d, 'guide.md'), readFileSync(join(d, 'guide.md'), 'utf8').replace('## Sources\n', '## Sources\n\nIt fails.\n'))
+  })
+  assert.deepEqual(checkTopic(dir), [])
+})
