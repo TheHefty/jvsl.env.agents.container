@@ -298,3 +298,23 @@ test('every name that is valid today comes out exactly as before', () => {
     assert.deepEqual(n, { repo: folder, image: `${folder}-dev`, volume: `${folder}-code-server-data`, launcherContainer: `${folder}-app` })
   }
 })
+
+// --- the host's timezone (story the-container-and-the-sandbox-use-the-hosts-timezone)
+
+test("the host's timezone reaches the container as TZ", () => {
+  const config = buildConfiguration({ ...input, facts: { ...input.facts, timeZone: 'America/Sao_Paulo' } })
+  assert.deepEqual(config.containerEnv, { PUID: '1000', PGID: '1000', TZ: 'America/Sao_Paulo' })
+})
+
+test('with no timezone there is no TZ at all, not an empty one', () => {
+  // An empty TZ is not "unset" to glibc: it is UTC, said differently, and a
+  // key that is sometimes there and sometimes empty is a hash that moves.
+  assert.ok(!('TZ' in buildConfiguration(input).containerEnv))
+})
+
+test('the same host gives the same configuration, byte for byte, so opening again recreates nothing', () => {
+  // The tooling identifies a container by a hash of this file; a value that
+  // differed between opens would recreate the container, killing what ran in it.
+  const facts = { ...input.facts, timeZone: 'Asia/Kolkata' }
+  assert.equal(JSON.stringify(buildConfiguration({ ...input, facts })), JSON.stringify(buildConfiguration({ ...input, facts })))
+})
