@@ -159,8 +159,22 @@ daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "ready=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Ready/,/^## /p" | grep -c "^- $a ")"
     printf "blocked=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Blocked/,/^## /p" | grep -c "^- $b .*blocked by $a")"
     printf "check=%s\n" "$("$B/daily-check" "$a" >/dev/null 2>&1 && echo ok || echo refused)"
+    # The review against the same real bd: the PR recorded as metadata is read
+    # back, an acceptance is written, and a merged PR closes the task. gh is a
+    # stand-in that answers MERGED, because the image test has no network.
+    bd update "$a" --set-metadata pr=7 >/dev/null 2>&1
+    printf "%s" "{\"state\":\"MERGED\"}" > /tmp/state.json
+    printf "%s\n" "#!/bin/sh" "cat /tmp/state.json" > /tmp/gh && chmod +x /tmp/gh
+    "$B/review-accept" "$a" "it reads the export" >/dev/null 2>&1
+    printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
+    REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
+    printf "settled=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].status")"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+[ "$(dfield listed) $(dfield settled)" = "1 closed" ] || fail "against the real bd, the review \
+did not read back a task's pull request from its metadata or did not close it once accepted and merged \
+(listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
+every task with no pull request"
 [ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, daily-brief \
 or daily-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
 $(dfield init)): the export's shape no longer matches what the daily's scripts and their fixture expect, \
