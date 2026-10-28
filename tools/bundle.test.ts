@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import Module from 'node:module'
 import { join } from 'node:path'
@@ -119,7 +119,7 @@ test('activation registers every contributed command, each under its own id', as
 // Driven at the level it was found: the built bundle, activated in a window
 // whose folder is a real project on disk.
 
-function stubEditor(folder: string, handedOver: unknown, updates: unknown[]) {
+function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = []) {
   const noop = { dispose() {} }
   internals._load = function (this: unknown, request, parent, isMain) {
     if (request === 'vscode') {
@@ -127,9 +127,9 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[]) {
         window: {
           createOutputChannel: () => ({ appendLine() {}, show() {}, dispose() {} }),
           registerTreeDataProvider: () => noop,
-          showWarningMessage: () => Promise.resolve(undefined),
-          showInformationMessage: () => Promise.resolve(undefined),
-          showErrorMessage: () => Promise.resolve(undefined),
+          showWarningMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
+          showInformationMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
+          showErrorMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
         },
         workspace: {
           workspaceFolders: [{ uri: { fsPath: folder, authority: '' } }],
@@ -164,6 +164,40 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[]) {
 }
 
 const settle = () => new Promise((r) => setTimeout(r, 1500))
+
+// --- a stale configuration is said, and nothing is written
+// (debt a-projects-generated-container-configuration-does-not-follow-an-upgraded-extension)
+//
+// Found on 2026-10-28: a project whose devcontainer.json an extension of 1.3.2
+// had written kept it through an upgrade to 1.8.0 and a rebuild, so the host's
+// timezone never reached its container, and nothing said why. Driven where it
+// was found: the built bundle, activated in a window opened on that project.
+
+test('a configuration an older extension generated is said once, offering to regenerate it, and left as it was', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'stale-config-'))
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":[]}\n')
+  mkdirSync(join(dir, '.devcontainer'))
+  const old = `${JSON.stringify({ image: 'x-dev', containerEnv: { PUID: '1000', PGID: '1000' }, 'x-jvsl-generated': { extension: '1.3.2' } }, null, 2)}\n`
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), old)
+  const messages: string[] = []
+  await stubEditor(dir, undefined, [], messages)
+  await settle()
+  const said = messages.filter((m) => m.includes('devcontainer.json'))
+  assert.equal(said.length, 1, JSON.stringify(messages))
+  assert.match(said[0] ?? '', /1\.3\.2.*Regenerate/s)
+  assert.equal(readFileSync(join(dir, '.devcontainer', 'devcontainer.json'), 'utf8'), old, 'nothing written until Regenerate is chosen')
+})
+
+test('a configuration of the current generation says nothing', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'current-config-'))
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":[]}\n')
+  mkdirSync(join(dir, '.devcontainer'))
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), JSON.stringify({ image: 'x-dev', 'x-jvsl-generated': { extension: '0.0.1', generation: 2 } }))
+  const messages: string[] = []
+  await stubEditor(dir, undefined, [], messages)
+  await settle()
+  assert.deepEqual(messages.filter((m) => m.includes('devcontainer.json')), [])
+})
 
 function legacyProject(): string {
   const dir = mkdtempSync(join(tmpdir(), 'opened-folder-'))

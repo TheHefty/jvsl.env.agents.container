@@ -16,6 +16,22 @@ import type { HostFacts } from '../host/host.ts'
  */
 export const GENERATED_BY = 'x-jvsl-generated'
 
+/**
+ * Which generation of the generator wrote a configuration.
+ *
+ * **Raised whenever the generated output changes** (debt
+ * a-projects-generated-container-configuration-does-not-follow-an-upgraded-extension).
+ * An existing project's configuration is rewritten only when asked, so an
+ * upgrade that changes it — TZ was the first — never reached anyone. Opening a
+ * project compares this number and offers to regenerate, writing nothing until
+ * asked. A file with no number predates them and counts as 1; 2 is the first
+ * with TZ. The fingerprint in devcontainer.test.ts fails until it is raised.
+ *
+ * The same on every open, so it moves the configuration's hash only when the
+ * output really changed.
+ */
+export const CONFIG_GENERATION = 2
+
 export interface Configuration {
   name: string
   image: string
@@ -30,7 +46,7 @@ export interface Configuration {
   runArgs: string[]
   /** Only when there is something to say. See buildConfiguration. */
   customizations?: { vscode: { settings: Record<string, string> } }
-  [GENERATED_BY]: { extension: string }
+  [GENERATED_BY]: { extension: string; generation: number }
 }
 
 export interface BuildInput {
@@ -171,7 +187,7 @@ export function buildConfiguration(input: BuildInput): Configuration {
     ...(input.gradleVersion
       ? { customizations: { vscode: { settings: { [IMPORT_SETTING]: input.gradleVersion } } } }
       : {}),
-    [GENERATED_BY]: { extension: extensionVersion },
+    [GENERATED_BY]: { extension: extensionVersion, generation: CONFIG_GENERATION },
   }
 }
 
