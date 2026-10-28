@@ -28,6 +28,11 @@ conduzido até o ponto em que toda questão em aberto tem resposta e a redação
 aprovar. Cada documento é seu próprio pull request, então cada gate é um merge e cada camada tem um
 diff revisável grudado na discussão que o produziu.
 
+**Um projeto com rastreador percorre esta cadeia num calendário.** As quatro cerimônias de
+[O dia de trabalho](WORKING-DAY.md) são quando os seus gates acontecem: o refinement propõe e acorda
+stories e tasks no fim de um dia, e a daily seguinte só pega o que foi acordado. Elas mudam quando um
+elo é acordado, nunca se ele é.
+
 A tabela é onde um projeto sem rastreador guarda o seu planejamento. Um projeto que tem rastreador
 mantém os mesmos elos e os mesmos gates, mas cada estória e cada task é um item em vez de um
 arquivo: veja

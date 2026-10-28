@@ -272,6 +272,22 @@ maioria não tem. Para esses, nada mais nestas regras muda.
   dívida. Registrar não começa a correção. Este é o único item que você pode criar sem um gate
   próprio, e só porque o usuário disse sim.
 
+### O dia de trabalho
+
+Isto vale só para um projeto que tem rastreador. O seu dia de trabalho tem quatro cerimônias, que vêm
+como skills no plugin da imagem e rodam com o desenvolvedor: `agent-container:daily` no início do dia,
+e `agent-container:review`, `agent-container:retro` e `agent-container:refine` no fim, nessa ordem.
+Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
+
+- **Elas são o calendário da cadeia, não um atalho em volta dela.** Uma daily só pega tasks
+  acordadas; o refinement é onde stories e tasks são propostas e acordadas.
+- **Uma task está pronta quando o desenvolvedor sabe explicá-la.** Testes passando não bastam.
+  Aceitar exige as palavras dele, e a task fecha quando o seu pull request entra, não quando é aceita.
+- **A retro nunca é pulada.** Num dia curto ela é curta. A linha sobre o que foi aprendido é do
+  desenvolvedor, nunca só sua, e "Decided alone" lista tudo o que você escolheu sem perguntar.
+- **Registre o pull request de uma task quando o abrir**, com `bd update <id> --set-metadata pr=<n>`.
+  O review o lê; nada mais liga a mudança à task.
+
 ### O submódulo do template
 
 - **Bumpe `.code-server/` para uma tag, nunca para um commit solto.** Um commit alcançável só a

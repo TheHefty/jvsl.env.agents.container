@@ -269,6 +269,22 @@ Most do not. Everything else in these rules is unchanged for them.
   Recording it does not start the fix. This is the one item you may create without a gate of its
   own, and only because the user said yes.
 
+### The working day
+
+This applies only to a project that has a tracker. Its working day has four ceremonies, shipped as
+skills in the image's plugin and run with the developer: `agent-container:daily` at the start of the
+day, and `agent-container:review`, `agent-container:retro` and `agent-container:refine` at its end,
+in that order. How each runs is in [The working day](WORKING-DAY.md).
+
+- **They are the chain's calendar, not a way around it.** A daily picks only agreed tasks;
+  refinement is where stories and tasks are proposed and agreed.
+- **A task is done when the developer can explain it.** Passing tests are not enough. Accepting
+  needs their own words, and the task closes when its pull request merges, not when it is accepted.
+- **The retro is never skipped.** On a short day it is short. The line on what was learned is the
+  developer's, never yours alone, and "Decided alone" lists everything you chose without asking.
+- **Record a task's pull request when you open it**, with `bd update <id> --set-metadata pr=<n>`.
+  The review reads it; nothing else links the change to the task.
+
 ### The template submodule
 
 - **Bump `.code-server/` to a tag, never to a bare commit.** A commit reachable only from a branch
