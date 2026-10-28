@@ -436,6 +436,77 @@ needs exact rendering adds `fonts-noto-cjk` to its manifest's packages.
 |---|---|---|
 | 1 | every image draws CJK text | no FR — what the image carries; one package, and the assertion that it is there |
 
+## Epic: the working day ends with the developer knowing what the agent found
+
+**Every image carries four ceremonies, as skills, that turn a day of agent work into knowledge the
+developer holds.**
+
+Agreed on 2026-10-28, from #221. Agents write most of the code; decisions stay with the developer,
+but what the agent discovers on the way — a library default, a hidden bug, a workaround — ends up in
+commits and documents rather than in anybody's head, and there was no moment where it came back.
+The daily, at the start of the day, picks today's agreed tasks; review, retro and refinement close
+it. The epic closes when a project the extension created, with the tracker on, runs the whole cycle
+with nothing but what the image brings. Tracked as `jvsl_env_agents_container-338`.
+
+**Decided by João Lima before any story, each over a named alternative:**
+
+| | chosen | over |
+|---|---|---|
+| the chain | the ceremonies are its calendar: refinement is where stories and tasks are proposed and agreed, and the daily picks only agreed tasks | a shortcut letting a refined item go straight to code, which would leave two rules and weaken the task gate |
+| the journal | one tracker item a day, labelled `journal` | `docs/JOURNAL/`, a pull request a day on a protected branch; `ai-memory`, which only some projects have and which is treated as untrusted history |
+| reach | projects with `"beads": true`; elsewhere the skills refuse in one line saying how to turn the tracker on | a fallback over planning files, a second implementation of every skill |
+| review | accepts only after the developer explains the change in their own words, always | a per-item skip, the shortcut most likely to become the default |
+
+**Accepting is not merging.** A review records acceptance, and the task closes when the change that
+finishes it is merged, as items already do.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the image delivers the agent's skills | the boot hook every ceremony arrives by, and the refusal they share |
+| 2 | the daily | needs only the tracker |
+| 3 | the review | needs worked tasks to review |
+| 4 | the retro and its journal | the journal the study epic reads `blog-candidate` from |
+| 5 | refinement | proposes what tomorrow's daily picks |
+| 6 | the working agreement describes the day | normative documents, both languages; last, so it describes what exists |
+
+**What a test cannot hold here.** A skill is instructions to the agent, so "asks before assuming" or
+"never writes the developer's line" is verified by running the cycle, not by a suite. What is
+mechanical — delivery, refusal, the tracker's state — is tested like everything else.
+
+## Epic: the developer studies a topic before writing about it
+
+**A topic the agent found becomes study material the developer works through, answers hidden until
+attempted, and is tracked until published.**
+
+Agreed on 2026-10-28, from #227, and after the epic above, whose journal carries the
+`blog-candidate` marks. Writing about what the agent discovered without studying it first publishes
+knowledge that is not yours. The epic closes when a topic marked in a retro becomes material, is
+studied in the extension's Study view with every answer hidden until attempted, and is tracked to
+published. Tracked as `jvsl_env_agents_container-zxw`.
+
+**Decided by João Lima before any story:**
+
+- **The material is in the repository; the attempts are not.** `docs/study/<slug>/guide.md` and
+  `practice.json` are versioned and reviewed like any document. `attempts.json` is ignored by git:
+  what the developer writes while getting it wrong does not go into a repository that may be
+  public. Changing machines restarts the attempts, not the material.
+- **`docs/REPORT.md` is ignored by git.** A snapshot regenerated on demand; committed, it is stale
+  the day after and read as true.
+- **The topic's state is the tracker's own.** Not studied is `open`, studying is `in_progress`,
+  ready to write is the label `ready-to-write`, published is `closed` with the post's link as the
+  reason; every topic carries the label `study`.
+
+The Study view sits beside *Show the Work* and reads the tracker the way the board does, through
+`bd export` in the container.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the study material has a contract | a JSON Schema for both files; everything below writes or reads it |
+| 2 | the project report | read-only; the other source of topics, beside the journal |
+| 3 | the study skill builds a topic | needs the contract; creates the topic's tracker item |
+| 4 | the Study view | needs material to show |
+| 5 | the view moves the topic in the tracker | needs the view; ready to write and published |
+
 ## Epics named but not decomposed
 
 Named so the first release does not close the door on them. None has stories until it is grilled,
