@@ -147,13 +147,14 @@ document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('
 }));
 `
 
-function shell(nonce: string, body: string, script: string): string {
+/** A page with this extension's policy: shared by the board and the Study view. */
+export function shell(nonce: string, body: string, script: string, style: string = STYLE): string {
   return [
     '<!DOCTYPE html>',
     '<html lang="en"><head><meta charset="utf-8">',
     `<meta http-equiv="Content-Security-Policy" content="${CSP(nonce)}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<style nonce="${nonce}">${STYLE}</style>`,
+    `<style nonce="${nonce}">${style}</style>`,
     '</head><body>',
     body,
     script === '' ? '' : `<script nonce="${nonce}">${script}</script>`,

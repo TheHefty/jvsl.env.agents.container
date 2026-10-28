@@ -18,7 +18,10 @@ import { readFileSync, existsSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
+// This module's folder, asked for only by the CLI: bundled into the extension
+// as CommonJS, import.meta.url is undefined, and resolving it at import would
+// stop the extension activating.
+const here = () => dirname(fileURLToPath(import.meta.url))
 const ANNOTATIONS = new Set(['$schema', '$id', 'title', 'description'])
 const KEYWORDS = new Set(['type', 'required', 'properties', 'additionalProperties', 'items', 'enum', 'const',
   'pattern', 'minLength', 'minimum', 'maximum', 'minItems', 'maxItems', 'contains', 'minContains', 'maxContains', 'allOf'])
@@ -78,34 +81,62 @@ export function validate(schema, data, path = '') {
   return errors
 }
 
-const SCHEMAS = {
-  practice: JSON.parse(readFileSync(join(HERE, 'practice.schema.json'), 'utf8')),
-  attempts: JSON.parse(readFileSync(join(HERE, 'attempts.schema.json'), 'utf8')),
+/**
+ * The two schemas, read from `dir` — the CLI passes this module's folder, the
+ * extension its own copy of core/. **Read when asked, never at import**: bundled
+ * into the extension this module's folder is dist/, where no schema is, and a
+ * read at import would stop the extension activating.
+ */
+export function loadSchemas(dir = here()) {
+  return {
+    practice: JSON.parse(readFileSync(join(dir, 'practice.schema.json'), 'utf8')),
+    attempts: JSON.parse(readFileSync(join(dir, 'attempts.schema.json'), 'utf8')),
+  }
 }
 
-function readJson(file, problems) {
+/** A .gitignore's text with every topic's attempts.json ignored, once; null is no file yet. */
+export function withAttemptsIgnored(text) {
+  const LINE = '*/attempts.json'
+  const current = text ?? ''
+  if (current.split('\n').includes(LINE)) return current
+  return `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}${LINE}\n`
+}
+
+function parse(name, text, problems) {
   try {
-    return { ok: true, value: JSON.parse(readFileSync(file, 'utf8')) }
+    return { ok: true, value: JSON.parse(text) }
   } catch (error) {
-    problems.push({ file: basename(file), path: '', rule: 'json', message: `is not valid JSON (${error.message})` })
+    problems.push({ file: name, path: '', rule: 'json', message: `is not valid JSON (${error.message})` })
     return { ok: false }
   }
 }
 
 /** Every problem with the topic in `dir`, each with its file; none when it is valid. */
 export function checkTopic(dir) {
+  const read = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), 'utf8') : null)
+  return checkTopicWith(read, basename(dir), loadSchemas(), dir)
+}
+
+/**
+ * The same check, with the topic's files read through `read(name)` — null when a
+ * file is not there. The Study view reads a WSL project through the distro, not
+ * through node's fs, so it brings its own reader.
+ */
+export function checkTopicWith(read, folder, schemas, where = folder) {
   const problems = []
   const add = (file, list) => problems.push(...list.map((e) => ({ file, ...e })))
-  const practiceFile = join(dir, 'practice.json')
-  if (!existsSync(practiceFile)) {
-    problems.push({ file: 'practice.json', path: '', rule: 'missing', message: `is missing from ${dir}` })
+  const practiceText = read('practice.json')
+  let practiceValue = null
+  if (practiceText === null) {
+    problems.push({ file: 'practice.json', path: '', rule: 'missing', message: `is missing from ${where}` })
   } else {
-    const practice = readJson(practiceFile, problems)
+    const practice = parse('practice.json', practiceText, problems)
     if (practice.ok) {
-      add('practice.json', validate(SCHEMAS.practice, practice.value))
+      practiceValue = practice.value
+      add('practice.json', validate(schemas.practice, practice.value))
       const p = practice.value
-      if (typeof p?.topic === 'string' && p.topic !== basename(dir)) {
-        add('practice.json', [{ path: '/topic', rule: 'folder', message: `is "${p.topic}", but the topic's folder is "${basename(dir)}"` }])
+      if (typeof p?.topic === 'string' && p.topic !== folder) {
+        add('practice.json', [{ path: '/topic', rule: 'folder', message: `is "${p.topic}", but the topic's folder is "${folder}"` }])
       }
       const items = Array.isArray(p?.items) ? p.items : []
       const seen = new Map()
@@ -114,11 +145,11 @@ export function checkTopic(dir) {
         if (seen.has(item.id)) add('practice.json', [{ path: `/items/${i}/id`, rule: 'unique', message: `"${item.id}" is used twice, here and at /items/${seen.get(item.id)}` }])
         else seen.set(item.id, i)
       })
-      const attemptsFile = join(dir, 'attempts.json')
-      if (existsSync(attemptsFile)) {
-        const attempts = readJson(attemptsFile, problems)
+      const attemptsText = read('attempts.json')
+      if (attemptsText !== null) {
+        const attempts = parse('attempts.json', attemptsText, problems)
         if (attempts.ok) {
-          add('attempts.json', validate(SCHEMAS.attempts, attempts.value))
+          add('attempts.json', validate(schemas.attempts, attempts.value))
           for (const key of Object.keys(typeOf(attempts.value) === 'object' ? attempts.value : {})) {
             if (!seen.has(key)) add('attempts.json', [{ path: `/${key}`, rule: 'item', message: `is an attempt for "${key}", which practice.json does not have` }])
           }
@@ -126,20 +157,19 @@ export function checkTopic(dir) {
       }
     }
   }
-  const guideFile = join(dir, 'guide.md')
-  if (!existsSync(guideFile)) {
-    problems.push({ file: 'guide.md', path: '', rule: 'missing', message: `is missing from ${dir}` })
+  const guideText = read('guide.md')
+  if (guideText === null) {
+    problems.push({ file: 'guide.md', path: '', rule: 'missing', message: `is missing from ${where}` })
   } else {
-    const headings = readFileSync(guideFile, 'utf8').split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3).trim())
+    const headings = guideText.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3).trim())
     for (const want of GUIDE_SECTIONS) {
       if (!headings.includes(want)) problems.push({ file: 'guide.md', path: '', rule: 'section', message: `has no "## ${want}" section` })
     }
     // The answers stay in practice.json (story the-study-skill-builds-a-topic).
     // Verbatim, ignoring case and spacing: a rephrasing is a judgement, and an
     // answer shorter than LEAK_MIN cannot be told from ordinary prose.
-    const practice = existsSync(practiceFile) ? (() => { try { return JSON.parse(readFileSync(practiceFile, 'utf8')) } catch { return null } })() : null
-    const guide = normal(readFileSync(guideFile, 'utf8'))
-    for (const item of Array.isArray(practice?.items) ? practice.items : []) {
+    const guide = normal(guideText)
+    for (const item of Array.isArray(practiceValue?.items) ? practiceValue.items : []) {
       const answer = typeof item?.answer === 'string' ? normal(item.answer) : ''
       if (answer.length >= LEAK_MIN && guide.includes(answer)) {
         problems.push({ file: 'guide.md', path: '', rule: 'leak', message: `contains the answer to "${item.id}": answers live in practice.json, hidden until attempted` })

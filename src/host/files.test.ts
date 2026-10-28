@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -94,4 +94,39 @@ test('a local project reads and writes its own folder, and never runs anything',
   assert.equal(f.read('m.json'), 'y')
   assert.equal(f.exists('a'), true)
   assert.deepEqual(calls, [])
+})
+
+// --- listing a folder (story the-study-view) ----------------------------------
+//
+// The Study view lists docs/study/. A WSL project is listed through the distro,
+// with the same fixed script and the path as an argument, never through a UNC
+// path or a shell line built from the folder's name.
+
+test('a WSL project lists a folder through a fixed script, the path as an argument', () => {
+  const calls: { command: string; args: string[] }[] = []
+  const exec = (command: string, args: string[]) => {
+    calls.push({ command, args })
+    return { status: 0, stdout: 'a-topic\nb topic\n.gitignore\n', stderr: '' }
+  }
+  const files = filesFor({ kind: 'wsl', distro: 'Ubuntu', path: '\\\\wsl.localhost\\Ubuntu\\p', linux: '/home/me/p' }, exec)
+  assert.deepEqual(files.list('docs/study'), ['.gitignore', 'a-topic', 'b topic'])
+  assert.equal(calls[0]?.command, 'wsl.exe')
+  assert.equal(calls[0]?.args.at(-1), '/home/me/p/docs/study')
+  assert.ok(!(calls[0]?.args.slice(0, -1).join(' ') ?? '').includes('docs/study'))
+})
+
+test('listing a folder that is not there gives null, and any other failure throws', () => {
+  const absent = filesFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, () => ({ status: 3, stdout: '', stderr: '' }))
+  assert.equal(absent.list('docs/study'), null)
+  const broken = filesFor({ kind: 'wsl', distro: 'Ubuntu', path: 'u', linux: '/p' }, () => ({ status: 1, stdout: '', stderr: 'boom' }))
+  assert.throws(() => broken.list('docs/study'), /boom/)
+})
+
+test('a host project lists a folder from its disk, and null when it is not there', () => {
+  const root = mkdtempSync(join(tmpdir(), 'files-list-'))
+  mkdirSync(join(root, 'docs/study/b'), { recursive: true })
+  mkdirSync(join(root, 'docs/study/a'))
+  const files = filesFor({ kind: 'host', path: root })
+  assert.deepEqual(files.list('docs/study'), ['a', 'b'])
+  assert.equal(files.list('docs/nowhere'), null)
 })

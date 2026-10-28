@@ -28,6 +28,8 @@ export interface Item {
   /** The ids this item waits on through a `blocks` dependency. */
   blockedBy: string[]
   debtKind?: DebtKind
+  /** bd's metadata, when the item has any: a study topic's `study`, a task's `pr`. */
+  metadata?: Record<string, unknown>
 }
 
 const DEBT_KINDS: readonly DebtKind[] = ['hotfix', 'shortcut', 'defect']
@@ -72,6 +74,9 @@ export function parseExport(jsonl: string): Item[] {
       parent: text(deps.find((d) => d.type === 'parent-child')?.depends_on_id),
       blockedBy: deps.filter((d) => d.type === 'blocks').map((d) => String(d.depends_on_id)),
       ...(kind === undefined ? {} : { debtKind: kind }),
+      ...(row['metadata'] !== null && typeof row['metadata'] === 'object' && !Array.isArray(row['metadata'])
+        ? { metadata: row['metadata'] as Record<string, unknown> }
+        : {}),
     })
   })
   return items

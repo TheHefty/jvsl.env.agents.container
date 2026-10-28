@@ -59,6 +59,15 @@
       {
         "command": "jvsl.agentContainer.migrate",
         "title": "Agent Container: Migrate from code-server"
+      },
+      {
+        "command": "jvsl.agentContainer.openTopic",
+        "title": "Agent Container: Open a Study Topic"
+      },
+      {
+        "command": "jvsl.agentContainer.refreshStudy",
+        "title": "Agent Container: Read the Study Topics Again",
+        "icon": "$(refresh)"
       }
     ],
     "views": {
@@ -66,6 +75,10 @@
         {
           "id": "jvsl.agentContainer.view",
           "name": "Agent Container"
+        },
+        {
+          "id": "jvsl.agentContainer.study",
+          "name": "Study"
         }
       ]
     },
@@ -80,6 +93,17 @@
           "command": "jvsl.agentContainer.build",
           "when": "view == jvsl.agentContainer.view",
           "group": "navigation"
+        },
+        {
+          "command": "jvsl.agentContainer.refreshStudy",
+          "when": "view == jvsl.agentContainer.study",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "jvsl.agentContainer.openTopic",
+          "when": "false"
         }
       ]
     }

@@ -4,7 +4,7 @@ import { readFileSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:f
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { validate, checkTopic } from '../../core/plugin/agent-container/study/validate.mjs'
+import { validate, checkTopic, checkTopicWith, loadSchemas, withAttemptsIgnored } from '../../core/plugin/agent-container/study/validate.mjs'
 
 // --- the study contract (story the-study-material-has-a-contract) --------------
 //
@@ -140,4 +140,42 @@ test('a short answer is not checked, so ordinary prose is never flagged', () => 
     writeFileSync(join(d, 'guide.md'), readFileSync(join(d, 'guide.md'), 'utf8').replace('## Sources\n', '## Sources\n\nIt fails.\n'))
   })
   assert.deepEqual(checkTopic(dir), [])
+})
+
+// --- read through a function, for a WSL project (story the-study-view) ---------
+//
+// The extension does not read a WSL project with node's fs: src/host/files.ts
+// goes through wsl.exe. So the view checks a topic through the reader it is
+// given, with the schemas loaded from the extension's own copy of core/.
+
+test('a topic read through a function gives what the folder gives', () => {
+  const read = (name: string): string | null => {
+    try { return readFileSync(join(EXAMPLE, name), 'utf8') } catch { return null }
+  }
+  assert.deepEqual(checkTopicWith(read, 'bd-labels-are-null', loadSchemas(STUDY)), [])
+  const broken = (name: string) => (name === 'practice.json' ? '{"topic": ' : read(name))
+  assert.match(messages(checkTopicWith(broken, 'bd-labels-are-null', loadSchemas(STUDY))), /not valid JSON/)
+})
+
+test('loading the module reads no file and resolves no path: both wait until the CLI asks', () => {
+  // Bundled into the extension the module's own folder is dist/, where no
+  // schema is. A read at import would stop the extension activating.
+  const source = readFileSync(join(STUDY, 'validate.mjs'), 'utf8')
+  // A top-level line that reaches the disk or the module's URL before any arrow:
+  // inside a function it waits to be called; outside one it runs at import.
+  const evaluatedAtImport = (l: string) => {
+    const arrow = l.indexOf('=>')
+    const at = l.search(/readFileSync|import\.meta|fileURLToPath\(/)
+    return at >= 0 && (arrow < 0 || at < arrow)
+  }
+  const topLevel = source.split('\n').filter((l) => /^(const|let|var) /.test(l) && evaluatedAtImport(l))
+  assert.deepEqual(topLevel, [])
+})
+
+// --- the attempts are ignored, by one rule -------------------------------------
+
+test('a .gitignore gains the attempts line once, keeping its own lines and its last line whole', () => {
+  assert.equal(withAttemptsIgnored(null), '*/attempts.json\n')
+  assert.equal(withAttemptsIgnored('build/'), 'build/\n*/attempts.json\n')
+  assert.equal(withAttemptsIgnored('notes.txt\n*/attempts.json\n'), 'notes.txt\n*/attempts.json\n')
 })

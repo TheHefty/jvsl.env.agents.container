@@ -43,11 +43,13 @@ echo "ok      the first registerCommand is at line $first_register"
 
 # Work the prologue does that is not registration. `createOutputChannel` and the
 # `write` closure are here because every branch below needs them to say anything
-# at all; a view is constructed because the commands close over it.
+# at all; a view is constructed because the commands close over it — the
+# selection view and the Study view, whose constructors only keep their
+# arguments and so cannot throw.
 prologue="$(awk -v s="$start" -v e="$first_register" 'NR > s && NR < e' "$FILE")"
 offenders="$(printf '%s\n' "$prologue" \
     | grep -nE '^\s*(const|let|await|void)\s' \
-    | grep -vE 'createOutputChannel|const write|new SelectionView|^\s*[0-9]+:\s*//' \
+    | grep -vE 'createOutputChannel|const write|new SelectionView|new StudyView|^\s*[0-9]+:\s*//' \
     || true)"
 
 if [ -n "$offenders" ]; then
