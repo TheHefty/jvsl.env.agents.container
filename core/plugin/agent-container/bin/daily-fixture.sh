@@ -26,3 +26,13 @@ dep() {
         if .id == $id then .dependencies += [{issue_id: $id, depends_on_id: $on, type: $type}] else . end' \
         "$EXPORT" > "$tmp" && mv "$tmp" "$EXPORT"
 }
+
+# meta id key json-value — bd 1.3.1 prints metadata as an object, a number
+# staying a number: {"pr": 239}.
+meta() {
+    local tmp
+    tmp="$(mktemp)"
+    jq -c --arg id "$1" --arg k "$2" --argjson v "$3" '
+        if .id == $id then .metadata = ((.metadata // {}) + {($k): $v}) else . end' \
+        "$EXPORT" > "$tmp" && mv "$tmp" "$EXPORT"
+}

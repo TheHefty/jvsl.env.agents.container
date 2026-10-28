@@ -341,6 +341,12 @@ jobs:
         run: bash core/plugin/agent-container/bin/daily-brief.test.sh
       - name: the daily starts nothing that is not an agreed task with a done criterion
         run: bash core/plugin/agent-container/bin/daily-check.test.sh
+      - name: the review lists what was worked on, with its criterion and its pull request
+        run: bash core/plugin/agent-container/bin/review-list.test.sh
+      - name: nothing is accepted or reopened without the developer's words
+        run: bash core/plugin/agent-container/bin/review-accept.test.sh
+      - name: an accepted task closes when its pull request merges, and only then
+        run: bash core/plugin/agent-container/bin/review-settle.test.sh
 
   compose-versions:
     needs: changes
