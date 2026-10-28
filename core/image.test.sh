@@ -139,6 +139,27 @@ plugin="$(docker run --rm --network none --entrypoint /bin/bash -e CLAUDE_CONFIG
     printf "loaded=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" plugin list 2>/dev/null | grep -A3 agent-container | grep -c loaded)"
     printf "version=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" --version 2>/dev/null | grep -c "Claude Code")"
 ' 2>/dev/null || true)"
+# The daily's scripts against the real bd (story the-daily). Their tests use a
+# fixture in the shape bd 1.3.1 prints; this is what catches that shape and
+# the real one drifting apart, which would leave both scripts reading nothing
+# while their tests stay green. Two tasks, the second blocked by the first.
+daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
+    B=/opt/jvsl/plugins/agent-container/bin
+    cd "$(mktemp -d)" && git init -q && BD_NON_INTERACTIVE=1 bd init -q --prefix t >/dev/null 2>&1 || { echo "init=failed"; exit 0; }
+    a="$(bd create first -t task --acceptance "done when x" --silent 2>/dev/null)"
+    b="$(bd create second -t task --acceptance "done when y" --silent 2>/dev/null)"
+    bd dep add "$b" "$a" >/dev/null 2>&1
+    brief="$("$B/daily-brief" 2>/dev/null)"
+    printf "ready=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Ready/,/^## /p" | grep -c "^- $a ")"
+    printf "blocked=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Blocked/,/^## /p" | grep -c "^- $b .*blocked by $a")"
+    printf "check=%s\n" "$("$B/daily-check" "$a" >/dev/null 2>&1 && echo ok || echo refused)"
+' 2>/dev/null || true)"
+dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+[ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, daily-brief \
+or daily-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
+$(dfield init)): the export's shape no longer matches what the daily's scripts and their fixture expect, \
+so a daily would offer the wrong tasks, or none"
+
 pfield() { printf '%s' "$plugin" | sed -n "s/^$1=//p"; }
 [ "$(pfield dir)" = "ok" ] || fail "the agent-container plugin is not at /opt/jvsl/plugins/agent-container, or its \
 needs-tracker is not executable. The claude wrapper would start every session without the ceremonies, \

@@ -337,6 +337,10 @@ jobs:
       # there.
       - name: a ceremony runs only when the project's tracker is on
         run: bash core/plugin/agent-container/bin/needs-tracker.test.sh
+      - name: the daily offers only agreed, unblocked tasks and names what holds the others back
+        run: bash core/plugin/agent-container/bin/daily-brief.test.sh
+      - name: the daily starts nothing that is not an agreed task with a done criterion
+        run: bash core/plugin/agent-container/bin/daily-check.test.sh
 
   compose-versions:
     needs: changes
