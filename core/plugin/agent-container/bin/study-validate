@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# study-validate <topic-dir>...: checks study material against its contract
+# (story the-study-material-has-a-contract), with the same validator the Study
+# view bundles. See core/plugin/agent-container/study/validate.mjs.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$HERE/../study/cli.mjs" "$@"
