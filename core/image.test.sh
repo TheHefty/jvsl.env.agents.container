@@ -134,6 +134,28 @@ base="$(docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
     printf "tmpkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/sandbox-tmp ] && command -v numfmt >/dev/null && find /tmp -maxdepth 0 -newerct @0 -print -quit 2>/dev/null | grep -q . && du -sb /tmp >/dev/null 2>&1 && readlink /proc/self/ns/mnt >/dev/null && echo ok || echo missing)"
 ' 2>/dev/null || true)"
 
+# The image's plugin (story the-image-delivers-the-agents-skills): valid, and
+# loaded by the CLI the image installs. A missing directory or a bad manifest
+# is silent in the CLI — measured on 2.1.308 — so this is where it is caught.
+# Offline and with a throwaway config directory: what it checks is the image.
+plugin="$(docker run --rm --network none --entrypoint /bin/bash -e CLAUDE_CONFIG_DIR=/tmp/cc "$IMAGE" -c '
+    P=/opt/jvsl/plugins/agent-container
+    printf "dir=%s\n" "$([ -f "$P/.claude-plugin/plugin.json" ] && [ -x "$P/bin/needs-tracker" ] && echo ok || echo missing)"
+    printf "valid=%s\n" "$(timeout 60 /usr/bin/claude plugin validate "$P" >/dev/null 2>&1 && echo ok || echo invalid)"
+    printf "loaded=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" plugin list 2>/dev/null | grep -A3 agent-container | grep -c loaded)"
+    printf "version=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" --version 2>/dev/null | grep -c "Claude Code")"
+' 2>/dev/null || true)"
+pfield() { printf '%s' "$plugin" | sed -n "s/^$1=//p"; }
+[ "$(pfield dir)" = "ok" ] || fail "the agent-container plugin is not at /opt/jvsl/plugins/agent-container, or its \
+needs-tracker is not executable. The claude wrapper would start every session without the ceremonies, \
+saying so once"
+[ "$(pfield valid)" = "ok" ] || fail "claude plugin validate rejects /opt/jvsl/plugins/agent-container: a plugin \
+the CLI refuses loads nothing, and --plugin-dir says nothing about it"
+[ "$(pfield loaded)" = "1" ] || fail "with --plugin-dir, claude plugin list does not report agent-container as \
+loaded, so no ceremony would be available"
+[ "$(pfield version)" = "1" ] || fail "claude --plugin-dir <plugin> --version does not run: the argument the \
+wrapper adds would break every invocation"
+
 # TZ has an effect only if the zone files are here: glibc falls back to UTC
 # with no error otherwise, and /usr/share/zoneinfo is owned by no package in
 # this image (measured 2026-10-28), so a change of base could take it away

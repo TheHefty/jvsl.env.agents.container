@@ -332,6 +332,11 @@ jobs:
       # decision, and this is where it is enforced rather than remembered.
       - name: only names that have been decided about cross as variables
         run: bash core/bin/jail-env-allowlist.test.sh
+      # The refusal every ceremony in the image's plugin runs first. Wrong
+      # either way, it blames the developer or runs over a tracker that is not
+      # there.
+      - name: a ceremony runs only when the project's tracker is on
+        run: bash core/plugin/agent-container/bin/needs-tracker.test.sh
 
   compose-versions:
     needs: changes

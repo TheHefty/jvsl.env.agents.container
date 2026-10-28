@@ -42,4 +42,20 @@ jail_args=(
   --env CLAUDE_CONFIG_DIR
 )
 
-exec ai-jail "${jail_args[@]}" claude "$@"
+# The image's plugin, which holds the ceremonies (story
+# the-image-delivers-the-agents-skills). Loaded for the session rather than
+# written into ~/.claude, which in the container is the developer's own, bound
+# from the host. Before the caller's arguments, which follow unchanged: measured
+# on Claude Code 2.1.308, --plugin-dir ahead of --version, `mcp` and `plugin`
+# works. A missing directory is silent in the CLI, so it is said here, once,
+# and the session starts anyway — the ceremonies missing is no reason to lose
+# the agent.
+AGENT_PLUGIN="${AGENT_PLUGIN:-/opt/jvsl/plugins/agent-container}"
+plugin_args=()
+if [ -d "$AGENT_PLUGIN" ]; then
+  plugin_args=(--plugin-dir "$AGENT_PLUGIN")
+else
+  echo "claude: the image carries no agent-container plugin at $AGENT_PLUGIN, so the ceremonies are not available; a rebuild is what brings it back." >&2
+fi
+
+exec ai-jail "${jail_args[@]}" claude "${plugin_args[@]}" "$@"
