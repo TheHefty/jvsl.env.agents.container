@@ -402,6 +402,136 @@ Tracked as `jvsl_env_agents_container-66p`.
 | 2 | orphaned Testcontainers containers are reaped | the largest leftover: one held 7 GiB and caused the OOM kill |
 | 3 | orphaned browser-test processes and their profiles are reaped | ports and memory held by dead WebdriverIO runs |
 | 4 | orphaned JVMs are reaped | the backstop: after the Java stack's short idle times, a Kotlin orphan already exits in ten minutes |
+| 5 | stale temporary files are reaped from every sandbox's /tmp | added on 2026-10-28 from #220: each ai-jail session's `/tmp` is a tmpfs of its own, charged to the container's memory, and one Iron Squid session filled 2.9 GB of it until chrome-headless was OOM-killed |
+
+**Amended on 2026-10-28** to carry story 5. Its sentence grew to *"and what a live session's /tmp
+keeps long after anything uses it"*: what an entry there is left over from is not a dead run but a
+day nobody touched it. The container's own `/tmp` is left alone, because ai-jail mounts sandboxes
+from files in it.
+
+## Epic: the container draws Chinese, Japanese and Korean text
+
+**A headless browser in the container draws Chinese, Japanese and Korean text as glyphs, not as
+boxes.**
+
+Agreed on 2026-10-28, from #219. The image had only DejaVu, so headless Chromium — what Playwright
+uses for acceptance tests and screenshots — drew every CJK character as an empty box: a 320 px
+screenshot of Iron Squid's `/ja-JP/` showed nothing else. Text assertions and axe still worked,
+because they read the DOM; no visual check in those languages did. The epic closes when every image
+the extension builds lists a font for `ja`, `ko`, `zh-cn` and `zh-tw`, and a headless Chromium
+screenshot of Japanese text in such a container shows glyphs. Tracked as
+`jvsl_env_agents_container-o3x`.
+
+**The font is WenQuanYi Micro Hei, in core**, chosen by João Lima over Noto CJK sans-only in core
+— about 45 MB in every image — and over leaving it to each project's manifest packages. In core,
+because a project should not need to know this to see its own pages; this font, because 1.5 MB ends
+the boxes.
+
+**What it deliberately does not buy.** One font covers all four languages, drawn from Droid Sans
+Fallback, so Japanese kanji take a Chinese design and widths approximate a real device's rather
+than match them. A CJK width or overflow check passing here is evidence, not proof. A project that
+needs exact rendering adds `fonts-noto-cjk` to its manifest's packages.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | every image draws CJK text | no FR — what the image carries; one package, and the assertion that it is there |
+
+## Epic: the working day ends with the developer knowing what the agent found
+
+**Every image carries four ceremonies, as skills, that turn a day of agent work into knowledge the
+developer holds.**
+
+Agreed on 2026-10-28, from #221. Agents write most of the code; decisions stay with the developer,
+but what the agent discovers on the way — a library default, a hidden bug, a workaround — ends up in
+commits and documents rather than in anybody's head, and there was no moment where it came back.
+The daily, at the start of the day, picks today's agreed tasks; review, retro and refinement close
+it. The epic closes when a project the extension created, with the tracker on, runs the whole cycle
+with nothing but what the image brings. Tracked as `jvsl_env_agents_container-338`.
+
+**Decided by João Lima before any story, each over a named alternative:**
+
+| | chosen | over |
+|---|---|---|
+| the chain | the ceremonies are its calendar: refinement is where stories and tasks are proposed and agreed, and the daily picks only agreed tasks | a shortcut letting a refined item go straight to code, which would leave two rules and weaken the task gate |
+| the journal | one tracker item a day, labelled `journal` | `docs/JOURNAL/`, a pull request a day on a protected branch; `ai-memory`, which only some projects have and which is treated as untrusted history |
+| reach | projects with `"beads": true`; elsewhere the skills refuse in one line saying how to turn the tracker on | a fallback over planning files, a second implementation of every skill |
+| review | accepts only after the developer explains the change in their own words, always | a per-item skip, the shortcut most likely to become the default |
+
+**The skills are a plugin the image carries**, at `/opt/jvsl/plugins/agent-container`, loaded by the
+`claude` wrapper with `--plugin-dir`. `~/.claude` is the developer's own, bound from the host, so
+the image writes nothing there: a tmpfs over `skills/` was rejected because it would hide the
+developer's own skills inside the container.
+
+**Accepting is not merging.** A review records acceptance, and the task closes when the change that
+finishes it is merged, as items already do.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the image delivers the agent's skills | the plugin every ceremony arrives in, and the refusal they share |
+| 2 | the daily | needs only the tracker |
+| 3 | the review | needs worked tasks to review |
+| 4 | the retro and its journal | the journal the study epic reads `blog-candidate` from |
+| 5 | refinement | proposes what tomorrow's daily picks |
+| 6 | the working agreement describes the day | normative documents, both languages; last, so it describes what exists |
+
+**What a test cannot hold here.** A skill is instructions to the agent, so "asks before assuming" or
+"never writes the developer's line" is verified by running the cycle, not by a suite. What is
+mechanical — delivery, refusal, the tracker's state — is tested like everything else.
+
+## Epic: the developer studies a topic before writing about it
+
+**A topic the agent found becomes study material the developer works through, answers hidden until
+attempted, and is tracked until published.**
+
+Agreed on 2026-10-28, from #227, and after the epic above, whose journal carries the
+`blog-candidate` marks. Writing about what the agent discovered without studying it first publishes
+knowledge that is not yours. The epic closes when a topic marked in a retro becomes material, is
+studied in the extension's Study view with every answer hidden until attempted, and is tracked to
+published. Tracked as `jvsl_env_agents_container-zxw`.
+
+**Decided by João Lima before any story:**
+
+- **The material is in the repository; the attempts are not.** `docs/study/<slug>/guide.md` and
+  `practice.json` are versioned and reviewed like any document. `attempts.json` is ignored by git:
+  what the developer writes while getting it wrong does not go into a repository that may be
+  public. Changing machines restarts the attempts, not the material.
+- **`docs/REPORT.md` is ignored by git.** A snapshot regenerated on demand; committed, it is stale
+  the day after and read as true.
+- **The topic's state is the tracker's own.** Not studied is `open`, studying is `in_progress`,
+  ready to write is the label `ready-to-write`, published is `closed` with the post's link as the
+  reason; every topic carries the label `study`.
+
+The Study view sits beside *Show the Work* and reads the tracker the way the board does, through
+`bd export` in the container.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the study material has a contract | a JSON Schema for both files; everything below writes or reads it |
+| 2 | the project report | read-only; the other source of topics, beside the journal |
+| 3 | the study skill builds a topic | needs the contract; creates the topic's tracker item |
+| 4 | the Study view | needs material to show |
+| 5 | the view moves the topic in the tracker | needs the view; ready to write and published |
+
+## Epic: the container keeps the developer's time
+
+**Inside the container and the agent's sandbox, the time of day is the developer's own.**
+
+Agreed on 2026-10-28, found while designing the retro. The container ran in UTC — `/etc/localtime`
+pointing at `Etc/UTC`, no `TZ` — while the developer works at -0300, so the ceremonies' "today"
+turned at 21:00 their time: a retro held late would write tomorrow's journal, and the next daily
+would not find yesterday's. Commits made inside the sandbox carried UTC too. The epic closes when
+`date` and `git commit` inside the agent's sandbox show the host's timezone, with nothing configured
+by hand. Tracked as `jvsl_env_agents_container-7fd`.
+
+**The host's timezone, read by the extension**, chosen by João Lima over a timezone key in the
+manifest, which only the ceremonies would have followed, and over keeping UTC. The extension runs on
+the host, where `Intl` reads the timezone the same way on Windows, WSL and macOS; it writes `TZ` into
+the generated configuration, and the sandbox is handed `TZ` across `--clearenv`. `TZ` is not a
+secret, so it joins the sandbox's allowlist as a decision recorded in its test.
+
+| # | Story | Why in that order |
+|---|---|---|
+| 1 | the container and the sandbox use the host's timezone | one story; before the retro, so the journal's "today" is right from its first entry |
 
 ## Epics named but not decomposed
 

@@ -25,7 +25,10 @@ COMMON="$HERE/jail-common.sh"
 # Names that are not secrets: two recursion markers, two paths, a socket
 # address, and a telemetry switch. Each is here because it cannot be inherited — ai-jail --clearenv's
 # the sandbox — and none of them is worth anything to somebody reading `ps`.
-ALLOWED=(CLAUDE_JAILED CLAUDE_CONFIG_DIR CODEX_JAILED RUSTUP_HOME DOCKER_HOST DO_NOT_TRACK)
+# TZ is the host's timezone, an IANA name such as America/Sao_Paulo: the
+# time of day, which `date` prints to anyone (story
+# the-container-and-the-sandbox-use-the-hosts-timezone).
+ALLOWED=(CLAUDE_JAILED CLAUDE_CONFIG_DIR CODEX_JAILED RUSTUP_HOME DOCKER_HOST DO_NOT_TRACK TZ)
 
 # Secrets still crossing, knowingly, each one a line in the debt. **This list
 # must only ever shrink.** The check below fails if a name appears that is
