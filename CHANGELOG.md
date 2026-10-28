@@ -5,29 +5,19 @@
 
 ### Features
 
-* refinement ([5ef3509](https://github.com/TheHefty/jvsl.env.agents.container/commit/5ef35092f8143540e06cd0ceec94ba5640b48549))
 * refinement ([b187940](https://github.com/TheHefty/jvsl.env.agents.container/commit/b187940d9f9e4b67a1e1f27808ddd03f6bc28828))
-* the container and the agent's sandbox keep the host's timezone ([3b79e1a](https://github.com/TheHefty/jvsl.env.agents.container/commit/3b79e1a39ccc98a1f12e925487b66121a8da55ee))
 * the container and the agent's sandbox keep the host's timezone ([04344d2](https://github.com/TheHefty/jvsl.env.agents.container/commit/04344d2089a365e5d0f8005627286f30990768eb))
-* the daily ([92e9e8e](https://github.com/TheHefty/jvsl.env.agents.container/commit/92e9e8e5ffc39c2c068075fc253ae7d26e4b90dc))
 * the daily ([b5f5784](https://github.com/TheHefty/jvsl.env.agents.container/commit/b5f57844a431f5c9235bbb76ef341ff569c9b052))
-* the daily is called planning ([dec507a](https://github.com/TheHefty/jvsl.env.agents.container/commit/dec507a94d384e5a9a95e9cca6c2ac9a8c95929e))
 * the daily is called planning ([caf45e7](https://github.com/TheHefty/jvsl.env.agents.container/commit/caf45e75d7841292befcf3bcff3afdb8585ffe54))
-* the image carries an agent-container plugin, and claude loads it ([79be58f](https://github.com/TheHefty/jvsl.env.agents.container/commit/79be58f767cc19b217c0d7efe3cacf768ed7c613))
 * the image carries an agent-container plugin, and claude loads it ([6a73549](https://github.com/TheHefty/jvsl.env.agents.container/commit/6a73549d6c86c601f9618980d54d2ca735c63e40))
-* the retro and its journal ([6e43206](https://github.com/TheHefty/jvsl.env.agents.container/commit/6e43206016234cdb2282136fac06ad2f1e753c1f))
 * the retro and its journal ([7dfae96](https://github.com/TheHefty/jvsl.env.agents.container/commit/7dfae96b243d4b42911ef6bcbd4a59cd3183878f))
-* the review ([2f520e3](https://github.com/TheHefty/jvsl.env.agents.container/commit/2f520e3d280ff8d5d5cf966241c986cd6ba6b5da))
 * the review ([69b6390](https://github.com/TheHefty/jvsl.env.agents.container/commit/69b6390538f6f2760d3cf02661528648dd40c44e))
-* the study material has a contract ([23f27a5](https://github.com/TheHefty/jvsl.env.agents.container/commit/23f27a5b93f6c88b78a12f49fea1a5dec33aa616))
 * the study material has a contract, checked by one validator both sides share ([bb9afb2](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb9afb205e16a3f8f80ece85169b8e29f5e0cabc))
-* the working day is in the normative documents ([e1c552f](https://github.com/TheHefty/jvsl.env.agents.container/commit/e1c552f6f0f141918a09e809436bd011983fdf44))
 * the working day is in the normative documents ([a533823](https://github.com/TheHefty/jvsl.env.agents.container/commit/a533823d76ddf41540d227691a7c35d8b1300ceb))
 
 
 ### Bug Fixes
 
-* the image draws Chinese, Japanese and Korean text, and Latin text keeps DejaVu ([8842d23](https://github.com/TheHefty/jvsl.env.agents.container/commit/8842d23966221c1174503953980e2b2271d6e00f))
 * the image draws Chinese, Japanese and Korean text, and Latin text keeps DejaVu ([877b3d3](https://github.com/TheHefty/jvsl.env.agents.container/commit/877b3d377b60640e14bc57eb8ab4b15a15874b0f)), closes [#219](https://github.com/TheHefty/jvsl.env.agents.container/issues/219)
 * the working day's tracker commands say they are for a project that has one ([bb8fbd1](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb8fbd1838cb13d52a40ed6e18e7888975e6246b))
 
