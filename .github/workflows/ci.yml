@@ -365,6 +365,12 @@ jobs:
         run: bash core/plugin/agent-container/bin/study-validate.test.sh
       - name: a study topic's attempts never reach the repository
         run: bash core/plugin/agent-container/bin/study-ignore.test.sh
+      - name: writing the project report changes nothing but the report
+        run: bash core/plugin/agent-container/bin/report-guard.test.sh
+      - name: every claim in the report cites a file that exists, and no implicit decision is given a motive
+        run: bash core/plugin/agent-container/bin/report-check.test.sh
+      - name: the report is kept out of git without changing a file of the project
+        run: bash core/plugin/agent-container/bin/report-exclude.test.sh
 
   compose-versions:
     needs: changes

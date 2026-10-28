@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# report-exclude: keeps docs/REPORT.md out of git through .git/info/exclude
+# (story the-project-report). Local and unversioned, so writing the report
+# changes no file of the project — a line in .gitignore would. A fresh clone
+# gets the line the first time the skill runs. Idempotent.
+set -uo pipefail
+
+git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "report-exclude: not in a git repository, so there is nothing to keep the report out of"; exit 1; }
+f="$(git rev-parse --git-path info/exclude)"
+LINE='/docs/REPORT.md'
+mkdir -p "$(dirname "$f")" && touch "$f" || exit 1
+grep -qxF "$LINE" "$f" && exit 0
+[ -s "$f" ] && [ -n "$(tail -c 1 "$f")" ] && printf '\n' >> "$f"
+printf '%s\n' "$LINE" >> "$f"

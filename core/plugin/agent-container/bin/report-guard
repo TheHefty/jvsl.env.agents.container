@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# report-guard start|end: the project report changes nothing but itself (story
+# the-project-report). `start` records every file git can see — tracked, and
+# untracked but not ignored — with its mode and content hash; `end` compares,
+# and fails naming each path that changed, appeared or disappeared, other than
+# docs/REPORT.md. Before and after, not against HEAD: uncommitted work already
+# in the tree is the developer's, not the report's. Ignored files are not
+# watched — a build writing into them is the skill's instructions' to forbid.
+set -uo pipefail
+
+case "${1:-}" in start|end) ;; *) echo "usage: report-guard start|end" >&2; exit 2 ;; esac
+top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "report-guard: not in a git repository" >&2; exit 2; }
+snap="$(git rev-parse --git-path report-guard.snapshot)"
+case "$snap" in /*) ;; *) snap="$top/$snap" ;; esac
+
+snapshot() {
+    cd "$top" || exit 2
+    git ls-files -z -co --exclude-standard | sort -zu | while IFS= read -r -d '' f; do
+        [ "$f" = docs/REPORT.md ] && continue
+        if [ -e "$f" ] || [ -L "$f" ]; then
+            printf '%s\t%s\t%s\n' "$f" "$(stat -c %a "$f")" "$(git hash-object --no-filters -- "$f")"
+        else
+            printf '%s\tmissing\t-\n' "$f"
+        fi
+    done
+}
+
+if [ "$1" = start ]; then
+    snapshot > "$snap"
+    exit 0
+fi
+[ -f "$snap" ] || { echo "report-guard: no snapshot to compare with — run report-guard start before writing the report" >&2; exit 2; }
+after="$(mktemp)"; snapshot > "$after"
+changes="$(awk -F'\t' '
+    NR == FNR { before[$1] = $2 "\t" $3; next }
+    { now[$1] = $2 "\t" $3 }
+    END {
+        for (f in now) {
+            split(now[f], n, "\t")
+            if (!(f in before)) { if (n[1] != "missing") print "appeared: " f; continue }
+            split(before[f], b, "\t")
+            if (b[1] != "missing" && n[1] == "missing") print "disappeared: " f
+            else if (b[1] == "missing" && n[1] != "missing") print "appeared: " f
+            else if (before[f] != now[f]) print "changed: " f
+        }
+        for (f in before) { split(before[f], b, "\t"); if (!(f in now) && b[1] != "missing") print "disappeared: " f }
+    }' "$snap" "$after" | sort)"
+rm -f "$after" "$snap"
+if [ -n "$changes" ]; then
+    echo "report-guard: writing the report changed the project, which it must not:"
+    printf '%s\n' "$changes"
+    exit 1
+fi

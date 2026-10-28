@@ -25,8 +25,14 @@ check() {
     fi
 }
 
-plugin="$(find "$SKILLS" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | paste -sd' ' -)"
-check "the plugin has the four ceremonies" "$plugin" "planning refine retro review"
+# The ceremonies are the ones WORKING-DAY.md's table declares. The plugin can
+# carry other skills — the project report is one — so the comparison is with
+# that table, and each ceremony in it has to exist in the plugin.
+plugin="$(grep -oE '^\| [A-Za-z]+ \| `agent-container:[a-z-]+`' "$DOCS/en/WORKING-DAY.md" | grep -oE 'agent-container:[a-z-]+' | sed 's/^agent-container://' | sort -u | paste -sd' ' -)"
+check "WORKING-DAY.md declares the four ceremonies" "$plugin" "planning refine retro review"
+for c in $plugin; do
+    check "the ceremony $c is a skill in the plugin" "$([ -f "$SKILLS/$c/SKILL.md" ] && echo yes || echo no)" "yes"
+done
 
 # The working-day section of RULES.md, from its heading to the next one.
 section() { awk -v h="$2" '$0 == h {on = 1; print; next} on && /^#{1,3} / {on = 0} on' "$DOCS/$1/RULES.md"; }
@@ -37,7 +43,7 @@ declare -A explain=([en]="explain" [pt-BR]="explic")
 for lang in en pt-BR; do
     rules="$(section "$lang" "${heading[$lang]}")"
     check "$lang: RULES.md has its working-day section" "$([ -n "$rules" ] && echo yes || echo no)" "yes"
-    check "$lang: the skills it names are exactly the plugin's" \
+    check "$lang: the skills it names are exactly the ceremonies" \
         "$(printf '%s\n' "$rules" | grep -oE 'agent-container:[a-z-]+' | sed 's/^agent-container://' | sort -u | paste -sd' ' -)" "$plugin"
     check "$lang: it says the retro is never skipped" "$(printf '%s\n' "$rules" | grep -c "${never[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
     check "$lang: it says a task is done when the developer can explain it" "$(printf '%s\n' "$rules" | grep -ci "${explain[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
