@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.9.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.8.0...v1.9.0) (2026-10-28)
+
+
+### Features
+
+* the project report ([58af7af](https://github.com/TheHefty/jvsl.env.agents.container/commit/58af7af30352745e0af904457cf6e0faadb4a134))
+* the study skill builds a topic, keeps its answers out of the guide, and tracks it once ([9e923a2](https://github.com/TheHefty/jvsl.env.agents.container/commit/9e923a219f7bf3775d6098358b0100c6e1b60f7f))
+* the Study view ([198ca62](https://github.com/TheHefty/jvsl.env.agents.container/commit/198ca62c6dd8e675c12521b471c1ccbf69236505))
+* the Study view moves a topic through the tracker ([0ed33a2](https://github.com/TheHefty/jvsl.env.agents.container/commit/0ed33a2adf61c5777f65afc9e2b084374cacd026))
+
+
+### Bug Fixes
+
+* a configuration an older extension generated is said, with Regenerate, and written only if chosen ([30da107](https://github.com/TheHefty/jvsl.env.agents.container/commit/30da1077d80e6cfffc947e7ba4400df2ca1f19b7))
+
 ## [1.8.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.7.0...v1.8.0) (2026-10-28)
 
 
