@@ -203,8 +203,22 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     t1="$("$B/study-track" some-topic "Some topic" 2>/dev/null | tail -n 1)"
     t2="$("$B/study-track" some-topic "Some topic, rebuilt" 2>/dev/null | tail -n 1)"
     printf "tracked=%s\n" "$([ -n "$t1" ] && [ "$t1" = "$t2" ] && echo once || echo twice) $(bd list --label study --json 2>/dev/null | jq -r "length") $(bd show "$t1" --json 2>/dev/null | jq -r ".[0].status")"
+    # The moves against the real bd: the tracked topic above, its practice
+    # attempted whole, made ready, then published with a link.
+    M="$(mktemp -d)"; mkdir -p "$M/docs/study/some-topic"
+    printf "%s" "{\"topic\":\"some-topic\",\"items\":[{\"id\":\"q-1\"},{\"id\":\"q-2\"}]}" > "$M/docs/study/some-topic/practice.json"
+    printf "%s" "{\"q-1\":[{\"at\":\"2026-10-28T21:00:00-03:00\",\"text\":\"x\"}]}" > "$M/docs/study/some-topic/attempts.json"
+    STUDY_ROOT="$M" "$B/study-move" some-topic started >/dev/null 2>&1
+    early="$(STUDY_ROOT="$M" "$B/study-move" some-topic ready >/dev/null 2>&1; echo $?)"
+    printf "%s" "{\"q-1\":[{\"at\":\"2026-10-28T21:00:00-03:00\",\"text\":\"x\"}],\"q-2\":[{\"at\":\"2026-10-28T21:01:00-03:00\",\"text\":\"y\"}]}" > "$M/docs/study/some-topic/attempts.json"
+    STUDY_ROOT="$M" "$B/study-move" some-topic ready >/dev/null 2>&1
+    STUDY_ROOT="$M" "$B/study-move" some-topic published https://blog.example/post >/dev/null 2>&1
+    printf "moved=%s\n" "$early $(bd show "$t1" --json 2>/dev/null | jq -r ".[0] | [.status, (.close_reason // \"-\")] | join(\" \")")"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$planning" | sed -n "s/^$1=//p"; }
+[ "$(dfield moved)" = "1 closed Published: https://blog.example/post" ] || fail "against the real bd, a study topic \
+was not moved as study-move promises (moved=$(dfield moved)): ready should be refused with an item unattempted, \
+then the topic made ready and published with its link as the close reason"
 [ "$(dfield tracked)" = "once 1 open" ] || fail "against the real bd, a study topic was not tracked once and \
 left open (tracked=$(dfield tracked)): a rebuild would duplicate the topic or move the developer progress"
 [ "$(dfield report)" = "ok" ] || fail "the project report's scripts do not run in this image (report=$(dfield report)): \

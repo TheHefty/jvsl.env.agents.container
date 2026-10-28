@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# study-move <slug> started|ready|published [link]: the one way the Study view
+# writes to the tracker (story the-view-moves-the-topic-in-the-tracker). The
+# extension runs this inside the container and runs no bd write of its own.
+#
+#   started    an open topic goes in progress; any other state is left alone
+#   ready      only once every practice item has an attempt in attempts.json
+#              itself — the done criterion study-track wrote on the task —
+#              then labelled ready-to-write; a topic never started is started
+#   published  only a topic ready to write, with an http(s) link, which becomes
+#              the close reason; a published topic is not closed again
+#
+# The rules are here, reading the topic's own files, so that no page and no
+# message sent to the panel can mark a topic ready that was not studied. Only
+# an item labelled `study`, found by metadata `study=<slug>`, is ever moved.
+# Exit 0 done or nothing to do, 1 refused (the line says why), 2 usage.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+ROOT="${STUDY_ROOT:-/config/workspace}"
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
+
+slug="${1:-}"; move="${2:-}"; link="${3:-}"
+case "$move" in started|ready|published) ;; *) echo "usage: study-move <slug> started|ready|published [link]" >&2; exit 2 ;; esac
+[[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "usage: study-move <slug> …: \"$slug\" is not a topic's slug" >&2; exit 2; }
+refuse() { echo "study-move: $slug was not marked $move. $*"; exit 1; }
+
+read -r id status ready < <(export_of | jq -r --arg s "$slug" '
+    select(._type == "issue" and ((.labels // []) | index("study")) and .metadata.study == $s)
+    | "\(.id) \(.status) \(if ((.labels // []) | index("ready-to-write")) then "yes" else "no" end)"' | head -n 1)
+[ -n "${id:-}" ] || refuse "No study task tracks it: build it with the study skill, or run study-track $slug \"<title>\"."
+
+case "$move" in
+started)
+    if [ "$status" = open ]; then
+        "$BD" update "$id" --status in_progress >/dev/null || exit 2
+        echo "$slug: started — $id is in progress"
+    else
+        echo "$slug: nothing to do — $id is already $( [ "$status" = closed ] && echo published || { [ "$ready" = yes ] && echo "ready to write" || echo "in progress"; } )"
+    fi
+    ;;
+ready)
+    [ "$status" != closed ] || refuse "It is already published."
+    if [ "$ready" = yes ]; then echo "$slug: nothing to do — $id is already ready to write"; exit 0; fi
+    dir="$ROOT/docs/study/$slug"
+    [ -f "$dir/practice.json" ] || refuse "$dir/practice.json is not there to check against."
+    attempts="$dir/attempts.json"; [ -f "$attempts" ] || attempts=/dev/null
+    missing="$(jq -r --slurpfile a <(cat "$attempts" 2>/dev/null; [ "$attempts" = /dev/null ] && echo '{}') '
+        ($a[0] // {}) as $att | .items[] | .id | select((($att[.] // []) | length) == 0)' "$dir/practice.json" | paste -sd' ' - | sed 's/ /, /g')"
+    [ -z "$missing" ] || refuse "Every item needs an attempt first, and these have none: $missing."
+    [ "$status" = open ] && { "$BD" update "$id" --status in_progress >/dev/null || exit 2; }
+    "$BD" label add "$id" ready-to-write >/dev/null || exit 2
+    echo "$slug: ready to write — $id"
+    ;;
+published)
+    [ "$status" != closed ] || refuse "It is already published."
+    [ "$ready" = yes ] || refuse "It is not ready to write yet: every item needs an attempt, and then Ready to write."
+    [[ "$link" =~ ^https?://[^[:space:]]+$ ]] || refuse "Give the post's link, as an http(s) address."
+    "$BD" close "$id" --reason "Published: $link" >/dev/null || exit 2
+    echo "$slug: published — $id closed with $link"
+    ;;
+esac

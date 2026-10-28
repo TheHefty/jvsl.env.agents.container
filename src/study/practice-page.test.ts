@@ -72,3 +72,24 @@ test('a broken topic opens on its problems, with no guide and no practice', () =
   assert.ok(html.includes('contains the answer to &quot;q-1&quot;'))
   for (const item of practice.items) assert.ok(!html.includes(item.prompt))
 })
+
+// --- the moves (story the-view-moves-the-topic-in-the-tracker) -----------------
+
+test("the page says the topic's state, and offers ready to write and publishing", () => {
+  const html = practicePage({ nonce: 'n0nce', title: 'Labels', guide: { html: '<p>g</p>' }, practice, attempts: {}, state: 'studying' })
+  assert.ok(html.includes('State: studying'))
+  assert.ok(html.includes('id="ready"'))
+  assert.ok(html.includes('id="publish"') && html.includes('id="link"'))
+})
+
+test('a published topic offers no move', () => {
+  const html = practicePage({ nonce: 'n0nce', title: 'Labels', guide: { html: '<p>g</p>' }, practice, attempts: {}, state: 'published' })
+  assert.ok(html.includes('State: published'))
+  assert.ok(!html.includes('id="ready"') && !html.includes('id="publish"'))
+})
+
+test("a state that could not be read is said, and the page still works", () => {
+  const html = practicePage({ nonce: 'n0nce', title: 'Labels', guide: { html: '<p>g</p>' }, practice, attempts: {}, state: 'unknown — the container is not running' })
+  assert.ok(html.includes('State: unknown — the container is not running'))
+  assert.ok(html.includes('data-save="q-1"'))
+})

@@ -45,7 +45,11 @@ document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('clic
   const text = document.querySelector('textarea[data-for="' + id + '"]').value;
   vscode.postMessage({ type: 'attempt', id, text });
 }));
-document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));`
+document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
+const ready = document.getElementById('ready');
+if (ready) ready.addEventListener('click', () => vscode.postMessage({ type: 'ready' }));
+const publish = document.getElementById('publish');
+if (publish) publish.addEventListener('click', () => vscode.postMessage({ type: 'published', link: document.getElementById('link').value }));`
 
 const kindOf = (item: PracticeItem): string =>
   [item.kind, `level ${item.level}`, item.variation ? 'what if…?' : '', item.angle === 'when-not-to-use' ? 'when not to use it' : '']
@@ -76,14 +80,26 @@ export function practicePage(input: {
   practice: Practice
   attempts: Attempts
   notice?: string
+  /** The topic's state in the tracker, as the Study view says it. */
+  state?: string
 }): string {
-  const { nonce, title, guide, practice, attempts, notice } = input
+  const { nonce, title, guide, practice, attempts, notice, state } = input
+  // Published is the end: nothing to move. Anything else offers both moves, and
+  // study-move — which reads the files themselves — decides whether they are
+  // earned, so the page never has to be trusted with that.
+  const moves = state === 'published'
+    ? ''
+    : '<p><button id="ready">Ready to write</button> ' +
+      '<input id="link" type="url" placeholder="https://… the published post" aria-label="The post\'s link"> ' +
+      '<button id="publish">Mark published</button></p>'
   const guideHtml = 'html' in guide
     ? guide.html
     : `<p class="notice">${escape(guide.notice)}</p><pre>${escape(guide.text)}</pre>`
   const body = [
     `<h1>${escape(title)}</h1>`,
+    state === undefined ? '' : `<p class="meta">State: ${escape(state)}</p>`,
     notice === undefined ? '' : `<p class="notice">${escape(notice)}</p>`,
+    moves,
     `<div class="guide">${guideHtml}</div>`,
     '<h2>Practice</h2>',
     '<p class="meta">Each answer stays hidden until you have written an attempt.</p>',
