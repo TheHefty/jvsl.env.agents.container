@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# review-settle [<id>...]: closes each accepted task whose pull request has
+# merged, and says what the others wait for (story the-review). With no ids,
+# every accepted open task — so the next review or daily closes what merged
+# overnight.
+#
+# Accepting is not merging: only MERGED closes. An open PR waits, a PR closed
+# without merging is said so, a task with no PR recorded is said so, and a gh
+# that cannot answer — no network, not logged in — is never read as merged:
+# the task stays open, gh's own error is quoted, and the script exits 1.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+GH="${REVIEW_GH:-gh}"
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || {
+    echo "review-settle: could not read the tracker's export" >&2; exit 2; }
+
+if [ "$#" -gt 0 ]; then
+    ids=("$@")
+else
+    mapfile -t ids < <(jq -r '.[] | select(.status != "closed" and ((.labels // []) | index("accepted"))) | .id' <<<"$items")
+fi
+
+rc=0
+for id in "${ids[@]}"; do
+    read -r status accepted pr < <(jq -r --arg id "$id" '
+        (map(select(.id == $id)) | first) as $it
+        | if $it == null then "missing no -"
+          else "\($it.status) \(if (($it.labels // []) | index("accepted")) then "yes" else "no" end) \($it.metadata.pr // "-")" end' <<<"$items")
+    if [ "$status" = missing ]; then echo "$id: not in the tracker"; rc=1; continue; fi
+    if [ "$status" = closed ]; then echo "$id: already closed"; continue; fi
+    if [ "$accepted" != yes ]; then echo "$id: not accepted in review, so there is nothing to settle"; continue; fi
+    if [ "$pr" = - ]; then
+        echo "$id: accepted, but no pull request is recorded, so it cannot close on a merge — record it with bd update $id --set-metadata pr=<n>"
+        continue
+    fi
+    err="$(mktemp)"
+    if ! state="$("$GH" pr view "$pr" --json state 2>"$err" | jq -r .state 2>/dev/null)" || [ -z "$state" ] || [ "$state" = null ]; then
+        echo "$id: left open — could not read #$pr: $(tail -n 1 "$err")"
+        rm -f "$err"; rc=1; continue
+    fi
+    rm -f "$err"
+    case "$state" in
+        MERGED)
+            "$BD" close "$id" --reason "Accepted in review; merged in #$pr." >/dev/null || { echo "$id: #$pr merged, but closing it failed"; rc=1; continue; }
+            echo "$id: closed — accepted, and #$pr merged" ;;
+        OPEN) echo "$id: accepted, waiting for #$pr to merge" ;;
+        CLOSED) echo "$id: accepted, but #$pr was closed without merging — reopen it, or record the pull request that replaced it" ;;
+        *) echo "$id: left open — #$pr is in a state this does not know: $state"; rc=1 ;;
+    esac
+done
+exit "$rc"

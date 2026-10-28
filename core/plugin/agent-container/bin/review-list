@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# What the review walks (story the-review): tasks in progress, and accepted
+# tasks not yet closed, which are waiting for their pull request to merge. One
+# block each, with the done criterion it is reviewed against and the pull
+# request that holds its change (metadata `pr`, recorded when it was opened).
+# Read from `bd export`, or $DAILY_EXPORT for the test.
+set -uo pipefail
+
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+export_of | jq -c 'select(._type == "issue")' | jq -sr '
+    def labels: (.labels // []);
+    map(select(.issue_type == "task" and (labels | index("journal") | not) and (labels | index("proposed") | not)
+               and (.status == "in_progress" or (.status != "closed" and (labels | index("accepted"))))))
+    | sort_by((if (labels | index("accepted")) then 1 else 0 end), .priority, .created_at)
+    | .[]
+    | (.metadata.pr // null) as $pr
+    | "### \(.id) \(.title)",
+      "criterion: \(if ((.acceptance_criteria // "") | length) > 0 then .acceptance_criteria else "none recorded" end)",
+      "pr: \(if $pr == null then "no pull request recorded" else "#\($pr)" end)",
+      "state: \(if (labels | index("accepted")) then (if $pr == null then "accepted, no pull request to wait for" else "accepted, waiting for #\($pr) to merge" end) else "in progress" end)",
+      ""'

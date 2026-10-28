@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# review-reopen <id> <what is missing>: the developer rejected a change (story
+# the-review). The task stays open, an earlier acceptance is taken back, and
+# what is missing goes into its notes. Refused without a reason: a reopen
+# nobody can act on is a task that comes back unchanged.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+TODAY="${REVIEW_TODAY:-$(date -u +%F)}"
+
+if [ "$#" -lt 1 ] || [ -z "$1" ]; then
+    echo "usage: review-reopen <id> <what is missing>" >&2
+    exit 2
+fi
+id="$1"; why="${2:-}"
+if [ -z "${why//[[:space:]]/}" ]; then
+    echo "review-reopen: $id was not reopened. Say what is missing, so whoever picks it up next knows."
+    exit 1
+fi
+# Removing a label the task does not carry is not an error worth stopping for.
+"$BD" label remove "$id" accepted >/dev/null 2>&1 || true
+"$BD" update "$id" --append-notes "Reopened in review on $TODAY: $why" >/dev/null || exit 1
+echo "$id: reopened — $why"
