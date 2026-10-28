@@ -112,7 +112,7 @@ with_args() {
         JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/claude.sh" "$@"
 }
 check "the caller's arguments follow the plugin, unchanged and in order" \
-    "$(with_args -r --model opus 'two words' mcp | tail -n 6 | paste -sd'|' -)" \
+    "$(with_args -r --model opus 'two words' mcp | tail -n 7 | paste -sd'|' -)" \
     "--plugin-dir|$plugin|-r|--model|opus|two words|mcp"
 check "codex is handed no plugin" "$(argv codex | count '^--plugin-dir$')" "0"
 

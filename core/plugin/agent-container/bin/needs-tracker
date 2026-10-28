@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# The first step of every ceremony in this plugin: they work over the project's
+# tracker, so without one they stop here, in one line that says how to turn it
+# on, rather than reading a tracker that is not there and failing on something
+# that names a different cause.
+#
+# Only `"beads": true` passes — the same reading the image's boot hook gives the
+# key. Anything else is refused, and a manifest that does not parse is said to
+# be unreadable rather than reported as the tracker being off: those are two
+# different fixes.
+set -uo pipefail
+
+MANIFEST="${AGENT_MANIFEST:-/config/workspace/.agent-container.stack.json}"
+
+if [ ! -f "$MANIFEST" ]; then
+    echo "The ceremonies need the work tracker, and there is no project manifest at $MANIFEST to turn it on in: open the project through the extension, then set \"beads\": true and rebuild."
+    exit 1
+fi
+if ! value="$(jq -c '.beads' "$MANIFEST" 2>/dev/null)"; then
+    echo "The ceremonies need the work tracker, and it could not read $MANIFEST as JSON, so whether it is on cannot be told: fix the file first."
+    exit 1
+fi
+if [ "$value" != true ]; then
+    echo "The ceremonies need the work tracker, and this project does not have it on: set \"beads\": true in $(basename "$MANIFEST") and rebuild."
+    exit 1
+fi
+exit 0

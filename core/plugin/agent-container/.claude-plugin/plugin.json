@@ -1,0 +1,9 @@
+{
+  "name": "agent-container",
+  "version": "1.0.0",
+  "description": "The working day with the agent: daily, review, retro and refinement, shipped in the agent container's image and loaded by its claude wrapper.",
+  "author": {
+    "name": "João Lima",
+    "url": "https://github.com/TheHefty/jvsl.env.agents.container"
+  }
+}
