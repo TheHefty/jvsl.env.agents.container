@@ -3,7 +3,7 @@
 # the scripts asked for instead of changing a real tracker or a real PR.
 #
 # bd records each call, one per line, arguments joined by a tab, and answers
-# `create` with $BD_NEW_ID.
+# `create` with $BD_NEW_ID and `show` with $BD_SHOW.
 # gh answers `gh pr view <n> --json state ...` from $GH_STATES (lines `n STATE`),
 # and fails with $GH_FAIL on stderr when that is set.
 
@@ -14,6 +14,9 @@ stubs() {
 (IFS=$'\t'; echo "$*") >> "$BD_CALLS"
 # `create --silent` prints only the new id, which the caller goes on to use.
 [ "$1" = create ] && echo "${BD_NEW_ID:-j-new}"
+# `show <id> --json` answers with $BD_SHOW: by default an item that is neither
+# deferred nor labelled, which is what a completed agreement leaves.
+[ "$1" = show ] && echo "${BD_SHOW:-[{\"status\":\"open\",\"labels\":[]}]}"
 exit 0
 SH
     cat > "$1/gh" <<'SH'

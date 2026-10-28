@@ -351,6 +351,12 @@ jobs:
         run: bash core/plugin/agent-container/bin/journal-write.test.sh
       - name: the retro gathers the items and commits of the developer's day, by its local date
         run: bash core/plugin/agent-container/bin/retro-gather.test.sh
+      - name: refinement proposes whole, in the right place, with what the chain needs
+        run: bash core/plugin/agent-container/bin/refine-propose.test.sh
+      - name: agreement is both halves or nothing, and a rejection is a close with its reason
+        run: bash core/plugin/agent-container/bin/refine-agree.test.sh
+      - name: refinement's agenda shows what waits, what cannot reach a daily yet, and what is ready
+        run: bash core/plugin/agent-container/bin/refine-candidates.test.sh
 
   compose-versions:
     needs: changes
