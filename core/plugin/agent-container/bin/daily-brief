@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# What the daily is chosen from (story the-daily): four sections in Markdown,
+# one line per item, read from `bd export` (or $DAILY_EXPORT, for the test).
+#
+#   In progress           tasks being worked on
+#   Blocked               open tasks with an open blocker, naming it
+#   Ready                 agreed, open, unblocked tasks — by priority, then by
+#                         how many items each unblocks, then oldest first; one
+#                         without a done criterion is marked, so the daily asks
+#   Left open yesterday   the "## Left open" section of the latest journal
+#                         entry from before today ($DAILY_TODAY, UTC)
+#
+# The same reading as daily-check: agreed is neither deferred nor labelled
+# `proposed`; a blocker counts until it is closed; a parent never blocks.
+# Journal entries carry the label `journal` and are never offered as work.
+set -uo pipefail
+
+TODAY="${DAILY_TODAY:-$(date -u +%F)}"
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
+    (map({key: .id, value: .status}) | from_entries) as $status
+    | def labels: (.labels // []);
+      def open_blockers: [(.dependencies // [])[] | select(.type == "blocks") | .depends_on_id
+                          | select(($status[.] // "closed") != "closed")];
+      def line: "- \(.id) P\(.priority) \(.title)";
+    (map(select(labels | index("journal") | not))) as $work
+    | ($work | map(select(.issue_type == "task"))) as $tasks
+    | "## In progress",
+      ($tasks | map(select(.status == "in_progress")) | sort_by(.priority, .created_at) | .[] | line),
+      "",
+      "## Blocked",
+      ($tasks | map(select(.status == "open" and (open_blockers | length) > 0)) | sort_by(.priority, .created_at)
+       | .[] | "\(line) — blocked by \(open_blockers | join(", "))"),
+      "",
+      "## Ready",
+      ($tasks | map(select(.status == "open" and (labels | index("proposed") | not) and (open_blockers | length) == 0))
+       | sort_by(.priority, -(.dependent_count // 0), .created_at)
+       | .[] | line + (if ((.acceptance_criteria // "") | length) == 0 then " — no done criterion" else "" end)),
+      "",
+      "## Left open yesterday",
+      ( map(select((labels | index("journal")) and .created_at[0:10] < $today)) | sort_by(.created_at) | last
+        | if . == null then "No journal entry yet."
+          else (.description // "") | split("\n")
+               | (index("## Left open")) as $at
+               | if $at == null then "The latest entry has no Left open section."
+                 else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
+                      | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end
+          end )'
