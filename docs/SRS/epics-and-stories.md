@@ -457,12 +457,17 @@ with nothing but what the image brings. Tracked as `jvsl_env_agents_container-33
 | reach | projects with `"beads": true`; elsewhere the skills refuse in one line saying how to turn the tracker on | a fallback over planning files, a second implementation of every skill |
 | review | accepts only after the developer explains the change in their own words, always | a per-item skip, the shortcut most likely to become the default |
 
+**The skills are a plugin the image carries**, at `/opt/jvsl/plugins/agent-container`, loaded by the
+`claude` wrapper with `--plugin-dir`. `~/.claude` is the developer's own, bound from the host, so
+the image writes nothing there: a tmpfs over `skills/` was rejected because it would hide the
+developer's own skills inside the container.
+
 **Accepting is not merging.** A review records acceptance, and the task closes when the change that
 finishes it is merged, as items already do.
 
 | # | Story | Why in that order |
 |---|---|---|
-| 1 | the image delivers the agent's skills | the boot hook every ceremony arrives by, and the refusal they share |
+| 1 | the image delivers the agent's skills | the plugin every ceremony arrives in, and the refusal they share |
 | 2 | the daily | needs only the tracker |
 | 3 | the review | needs worked tasks to review |
 | 4 | the retro and its journal | the journal the study epic reads `blog-candidate` from |
