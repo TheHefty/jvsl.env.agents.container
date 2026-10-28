@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# study-track <slug> <title>: the topic's task in the tracker (story
+# the-study-skill-builds-a-topic). Created once — a task, so the planning
+# offers it like any other work, labelled `study`, keyed by metadata
+# `study=<slug>` rather than by its title, which can be edited. A rebuild
+# updates its title and description and **never its status**: the developer's
+# progress is theirs to move (story the-view-moves-the-topic-in-the-tracker),
+# and a published topic stays closed.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
+[ "$#" -ge 2 ] || { echo "usage: study-track <slug> <title>" >&2; exit 2; }
+slug="$1"; title="$2"
+[[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "study-track: \"$slug\" is not a slug the contract accepts; make one with study-slug" >&2; exit 2; }
+
+folder="docs/study/$slug"
+description="Study material in $folder/: guide.md to read, practice.json to work through in the Study view."
+criterion="Ready to write once every practice item has an attempt; done when the post is published, with its link."
+
+id="$(export_of | jq -r --arg s "$slug" 'select(._type == "issue" and ((.labels // []) | index("study")) and .metadata.study == $s) | .id' | head -n 1)"
+if [ -n "$id" ]; then
+    "$BD" update "$id" --title "$title" --description "$description" >/dev/null || exit 1
+else
+    id="$("$BD" create "$title" -t task --labels study --description "$description" --acceptance "$criterion" \
+        --metadata "{\"study\":\"$slug\",\"folder\":\"$folder\"}" --silent)" || exit 1
+    [ -n "$id" ] || { echo "study-track: bd created no task for $slug" >&2; exit 1; }
+fi
+echo "$id"

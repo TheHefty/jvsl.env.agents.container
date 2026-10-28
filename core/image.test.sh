@@ -198,8 +198,15 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     mkdir -p "$R/docs"; printf "%s\n" "# Project report" "## Overview" "- One file, \`a.txt\`." "## Decisions" "### Documented" "### Implicit" \
         "## Critical areas" "## Quality and tests" "## Study list" "## Topics to write about" > "$R/docs/REPORT.md"
     printf "report=%s\n" "$( (cd "$R" && "$B/report-exclude" && "$B/report-check" docs/REPORT.md && "$B/report-guard" end) >/dev/null 2>&1 && echo ok || echo failed)"
+    # A study topic tracked against the real bd: created once, and a rebuild
+    # updates it without creating another or changing its status.
+    t1="$("$B/study-track" some-topic "Some topic" 2>/dev/null | tail -n 1)"
+    t2="$("$B/study-track" some-topic "Some topic, rebuilt" 2>/dev/null | tail -n 1)"
+    printf "tracked=%s\n" "$([ -n "$t1" ] && [ "$t1" = "$t2" ] && echo once || echo twice) $(bd list --label study --json 2>/dev/null | jq -r "length") $(bd show "$t1" --json 2>/dev/null | jq -r ".[0].status")"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$planning" | sed -n "s/^$1=//p"; }
+[ "$(dfield tracked)" = "once 1 open" ] || fail "against the real bd, a study topic was not tracked once and \
+left open (tracked=$(dfield tracked)): a rebuild would duplicate the topic or move the developer progress"
 [ "$(dfield report)" = "ok" ] || fail "the project report's scripts do not run in this image (report=$(dfield report)): \
 git or node is missing, or report-guard, report-exclude or report-check fails on a report that only writes itself"
 [ "$(dfield study)" = "ok" ] || fail "study-validate does not pass the contract's own example in this image \

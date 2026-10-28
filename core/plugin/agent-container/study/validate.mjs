@@ -26,6 +26,8 @@ const KEYWORDS = new Set(['type', 'required', 'properties', 'additionalPropertie
 export const GUIDE_SECTIONS = ['The problem', 'Fundamentals', 'What goes wrong without it', 'How the project solves it',
   'Trade-offs', 'Sources', 'Points for the post']
 
+export const LEAK_MIN = 12
+const normal = (t) => t.toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.!?;:]+$/, '')
 const typeOf = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : Number.isInteger(v) ? 'integer' : typeof v)
 const isType = (v, t) => t === typeOf(v) || (t === 'number' && typeof v === 'number')
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b)
@@ -131,6 +133,17 @@ export function checkTopic(dir) {
     const headings = readFileSync(guideFile, 'utf8').split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3).trim())
     for (const want of GUIDE_SECTIONS) {
       if (!headings.includes(want)) problems.push({ file: 'guide.md', path: '', rule: 'section', message: `has no "## ${want}" section` })
+    }
+    // The answers stay in practice.json (story the-study-skill-builds-a-topic).
+    // Verbatim, ignoring case and spacing: a rephrasing is a judgement, and an
+    // answer shorter than LEAK_MIN cannot be told from ordinary prose.
+    const practice = existsSync(practiceFile) ? (() => { try { return JSON.parse(readFileSync(practiceFile, 'utf8')) } catch { return null } })() : null
+    const guide = normal(readFileSync(guideFile, 'utf8'))
+    for (const item of Array.isArray(practice?.items) ? practice.items : []) {
+      const answer = typeof item?.answer === 'string' ? normal(item.answer) : ''
+      if (answer.length >= LEAK_MIN && guide.includes(answer)) {
+        problems.push({ file: 'guide.md', path: '', rule: 'leak', message: `contains the answer to "${item.id}": answers live in practice.json, hidden until attempted` })
+      }
     }
     const order = headings.filter((h) => GUIDE_SECTIONS.includes(h))
     if (GUIDE_SECTIONS.every((s) => order.includes(s)) && order.join('|') !== GUIDE_SECTIONS.join('|')) {

@@ -3,12 +3,17 @@
 # the-project-report). `start` records every file git can see — tracked, and
 # untracked but not ignored — with its mode and content hash; `end` compares,
 # and fails naming each path that changed, appeared or disappeared, other than
-# docs/REPORT.md. Before and after, not against HEAD: uncommitted work already
+# what it allows: docs/REPORT.md unless told otherwise. Before and after, not against HEAD: uncommitted work already
 # in the tree is the developer's, not the report's. Ignored files are not
 # watched — a build writing into them is the skill's instructions' to forbid.
 set -uo pipefail
 
-case "${1:-}" in start|end) ;; *) echo "usage: report-guard start|end" >&2; exit 2 ;; esac
+case "${1:-}" in start|end) ;; *) echo "usage: report-guard start | report-guard end [allowed-path...]" >&2; exit 2 ;; esac
+# What may change: by default only the report. The study skill passes its
+# topic's folder (story the-study-skill-builds-a-topic); a path ending in / is a
+# folder and allows what is inside it, any other path allows itself.
+mode="$1"; shift
+allowed=("$@"); [ "${#allowed[@]}" -gt 0 ] || allowed=(docs/REPORT.md)
 top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "report-guard: not in a git repository" >&2; exit 2; }
 snap="$(git rev-parse --git-path report-guard.snapshot)"
 case "$snap" in /*) ;; *) snap="$top/$snap" ;; esac
@@ -16,7 +21,9 @@ case "$snap" in /*) ;; *) snap="$top/$snap" ;; esac
 snapshot() {
     cd "$top" || exit 2
     git ls-files -z -co --exclude-standard | sort -zu | while IFS= read -r -d '' f; do
-        [ "$f" = docs/REPORT.md ] && continue
+        for a in "${allowed[@]}"; do
+            case "$a" in */) [[ "$f" == "$a"* ]] && continue 2 ;; *) [ "$f" = "$a" ] && continue 2 ;; esac
+        done
         if [ -e "$f" ] || [ -L "$f" ]; then
             printf '%s\t%s\t%s\n' "$f" "$(stat -c %a "$f")" "$(git hash-object --no-filters -- "$f")"
         else
@@ -25,7 +32,7 @@ snapshot() {
     done
 }
 
-if [ "$1" = start ]; then
+if [ "$mode" = start ]; then
     snapshot > "$snap"
     exit 0
 fi

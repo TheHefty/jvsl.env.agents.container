@@ -14,11 +14,14 @@ variation (`"variation": true`), and at least one is about when the solution is 
 (`"angle": "when-not-to-use"`). The schemas say so through `contains` with `minContains` and
 `maxContains`.
 
-Three rules are beyond what a schema can say, and `validate.mjs` checks them too:
+Four rules are beyond what a schema can say, and `validate.mjs` checks them too:
 
 - `topic` is the folder's name;
 - item ids are unique;
-- every key in `attempts.json` is an item id.
+- every key in `attempts.json` is an item id;
+- no answer appears in `guide.md`. This is checked verbatim, ignoring case and spacing. An answer
+  shorter than 12 characters (`null`, `8080`) cannot be told apart from ordinary prose, so it is not
+  checked, and a rephrased answer is the developer's to notice.
 
 ## One validator, both sides
 

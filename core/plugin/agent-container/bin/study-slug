@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# study-slug <title>: the folder name of a study topic (story
+# the-study-skill-builds-a-topic) — lowercase, each run of anything else
+# turned into one dash, at most sixty characters, never starting or ending on a
+# dash. The same shape the contract's pattern accepts.
+set -uo pipefail
+[ "$#" -ge 1 ] || { echo "usage: study-slug <title>" >&2; exit 2; }
+slug="$(printf '%s' "$*" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//')"
+slug="${slug:0:60}"; slug="${slug%%-}"; slug="$(printf '%s' "$slug" | sed -E 's/-+$//')"
+[ -n "$slug" ] || { echo "study-slug: \"$*\" has nothing to make a slug of" >&2; exit 1; }
+printf '%s\n' "$slug"

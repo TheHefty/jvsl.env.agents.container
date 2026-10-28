@@ -53,6 +53,26 @@ fresh; guard start > /dev/null
 chmod +x "$r/src/app.js"
 check "a changed mode fails" "$(guard end) $(grep -c 'changed: src/app.js' "$work/out")" "1 1"
 
+# The study skill allows its topic's folder instead (story
+# the-study-skill-builds-a-topic): the material may be written there, the post
+# nowhere.
+endwith() { local code=0; (cd "$r" && bash "$HERE/report-guard" end "$@") > "$work/out" 2>&1 || code=$?; echo "$code"; }
+fresh; guard start > /dev/null
+mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'i\n' > "$r/docs/study/.gitignore"
+check "with a folder allowed, writing inside it passes" "$(endwith docs/study/x/ docs/study/.gitignore)" "0"
+fresh; guard start > /dev/null
+mkdir -p "$r/docs/study/x" "$r/docs/posts"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'p\n' > "$r/docs/posts/x.md"
+check "a post written beside it fails, named" "$(endwith docs/study/x/) $(grep -c 'appeared: docs/posts/x.md' "$work/out")" "1 1"
+fresh; guard start > /dev/null
+mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'more\n' >> "$r/README.md"
+check "an edited project file fails too" "$(endwith docs/study/x/) $(grep -c 'changed: README.md' "$work/out")" "1 1"
+fresh; guard start > /dev/null
+mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"
+check "with nothing allowed, only the report may change, as before" "$(guard end) $(grep -c 'appeared: docs/study/x/guide.md' "$work/out")" "1 1"
+fresh; guard start > /dev/null
+mkdir -p "$r/docs/study/xy"; printf 'g\n' > "$r/docs/study/xy/guide.md"
+check "an allowed folder is a folder, not a prefix of another" "$(endwith docs/study/x/) $(grep -c 'docs/study/xy/guide.md' "$work/out")" "1 1"
+
 fresh
 check "end without start is refused, not a pass" "$(guard end)" "2"
 check "a word other than start or end is a usage error" "$(guard middle)" "2"

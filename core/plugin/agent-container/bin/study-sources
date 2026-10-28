@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Where a study topic can come from (story the-study-skill-builds-a-topic), for
+# the developer to choose: every discovery the retro marked "Blog candidate:
+# yes", with its day, and every topic the project report lists, with its files.
+# The third source is the developer's own description, which needs no list.
+# Each comes with the slug its folder would have.
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
+report="${STUDY_REPORT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)/docs/REPORT.md}"
+
+with_slug() { while IFS=$'\t' read -r title rest; do printf -- '- %s%s — slug: %s\n' "$title" "$rest" "$(bash "$HERE/study-slug" "$title" 2>/dev/null)"; done; }
+
+echo "## From the journal"
+journal="$(export_of | jq -r 'select(._type == "issue" and ((.labels // []) | index("journal")) and ((.labels // []) | index("blog-candidate")))
+    | (.metadata.day // .created_at[0:10]) as $day
+    | (.description // "") | split("\n### ")[1:][]
+    | split("\n") as $l
+    | select(any($l[]; test("^Blog candidate:\\s*yes"; "i")))
+    | "\($l[0])\t — \($day)"' | sort -t$'\t' -k2,2r | with_slug)"
+printf '%s\n' "${journal:-Nothing yet.}"
+echo
+echo "## From the report"
+topics=""
+[ -f "$report" ] && topics="$(awk '/^## Topics to write about$/ {on = 1; next} /^## / {on = 0} on && /^- /' "$report" \
+    | sed -E 's/^- (.*) — (Files: .*)$/\1\t — \2/' | with_slug)"
+printf '%s\n' "${topics:-Nothing yet.}"
