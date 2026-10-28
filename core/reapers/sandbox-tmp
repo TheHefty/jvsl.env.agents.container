@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Reaper kind (see core/services/svc-reaper/run): removes from each live
+# sandbox's /tmp what nobody has touched for a day and nobody holds.
+#
+# **Why** (#220). ai-jail's bwrap mounts a tmpfs of its own on every session's
+# /tmp. It is memory, charged to the container, and nothing empties it while the
+# session lives: in Iron Squid one session held 2.9 GB in about 2,900 mkdtemp
+# folders left by acceptance tests, and the kernel OOM-killed chrome-headless.
+# The agent cannot sweep shared temporary space from inside, and should not.
+#
+# **A sandbox is found by its init**: an abc process running bwrap with
+# /tmp/.ai-jail-landlock, in a mount namespace that is not the container's. The
+# outer bwrap shares the container's; a rootless container Testcontainers
+# started has a namespace of its own, but no landlock, and its /tmp is not
+# ours. Its /tmp is reached as /proc/<init>/root/tmp. **The container's own
+# /tmp is never swept**: it holds the ai-jail-deny-dir.* and ai-jail-empty.*
+# files sandboxes are mounted from.
+#
+# **The sweep runs from inside that /tmp**, entered with cd and the init's start
+# time and namespace read again afterwards. The cwd pins the tmpfs, so a pid
+# reused from then on cannot point the removal at another filesystem.
+#
+# **An entry is a name directly under /tmp**, removed whole or not at all, when:
+# nothing under it has an mtime or a ctime within the window — the ctime
+# because npm stamps every file 1985 and tar keeps old mtimes, so a folder
+# unpacked a minute ago can look decades old; no process in the sandbox has an
+# fd or its cwd on it or inside it; no socket bound in it is listening, which
+# /proc/<pid>/fd shows only as socket:[inode], never as a path; it is not
+# claude-* (the agent's own) or .ai-jail-* (the launcher); and abc owns it.
+#
+# **One line per sandbox**, not per entry: 2,900 lines a pass would rotate the
+# reaper's whole log away. A sandbox it cannot enter is said on stderr and the
+# others are still swept; it then exits 1, which the frame says once.
+set -uo pipefail
+shopt -s nullglob dotglob
+
+PROC="${REAPER_PROC:-/proc}"
+NOW="${REAPER_NOW:-$(date +%s)}"
+ME="${REAPER_UID:-$(id -u)}"
+WINDOW="${REAPER_TMP_WINDOW:-86400}"
+SELF_NS="${REAPER_SELF_NS:-$(readlink /proc/self/ns/mnt)}"
+
+start_of() {
+    local s
+    s="$(cat "$PROC/$1/stat" 2>/dev/null)" || return 1
+    awk '{print $20}' <<<"${s##*) }"
+}
+
+declare -A init_of=() members=()
+for dir in "$PROC"/[0-9]*; do
+    pid="${dir##*/}"
+    ns="$(readlink "$dir/ns/mnt" 2>/dev/null)" || continue
+    [ "$ns" != "$SELF_NS" ] || continue
+    members[$ns]+="$pid "
+    [ -z "${init_of[$ns]:-}" ] || continue
+    [ "$(awk '/^Uid:/ {print $2}' "$dir/status" 2>/dev/null)" = "$ME" ] || continue
+    cmd="$(tr '\0' '\n' < "$dir/cmdline" 2>/dev/null)" || continue
+    [ "$(basename "$(head -n 1 <<<"$cmd")")" = bwrap ] || continue
+    grep -qx -- /tmp/.ai-jail-landlock <<<"$cmd" || continue
+    init_of[$ns]="$pid $(start_of "$pid")"
+done
+
+# A seam for the test, to change /proc between the scan and the sweep.
+[ -n "${REAPER_BETWEEN:-}" ] && eval "$REAPER_BETWEEN"
+
+# sweep ns init start: in a subshell, so its cd ends with it.
+sweep() {
+    local ns="$1" init="$2" start="$3" m h e n=0 bytes=0 size
+    local -a held=()
+    cd "$PROC/$init/root/tmp" 2>/dev/null || {
+        echo "could not enter the /tmp of sandbox pid $init: $PROC/$init/root/tmp is not readable" >&2
+        return 1
+    }
+    [ "$(start_of "$init")" = "$start" ] && [ "$(readlink "$PROC/$init/ns/mnt" 2>/dev/null)" = "$ns" ] \
+        || return 0   # the session ended, or its pid was reused: nothing here is ours
+    for m in ${members[$ns]}; do
+        while IFS= read -r h; do [ -n "$h" ] && held+=("$h"); done < <(
+            find "$PROC/$m/fd/" -maxdepth 1 -type l -printf '%l\n' 2>/dev/null
+            readlink "$PROC/$m/cwd" 2>/dev/null)
+    done
+    # Bound socket paths; an abstract one starts with @ and is no file.
+    while IFS= read -r h; do held+=("$h"); done < <(
+        awk 'NR > 1 && $8 != "" && substr($8, 1, 1) != "@" {print $8}' "$PROC/$init/net/unix" 2>/dev/null)
+
+    for e in *; do
+        case "$e" in claude-*|.ai-jail-*) continue ;; esac
+        [ "$(stat -c %u -- "$e" 2>/dev/null)" = "$ME" ] || continue
+        [ -z "$(find -P "./$e" \( -newermt "@$((NOW - WINDOW))" -o -newerct "@$((NOW - WINDOW))" \) -print -quit 2>/dev/null)" ] || continue
+        for h in "${held[@]}"; do
+            case "$h" in "/tmp/$e"|"/tmp/$e"/*) continue 2 ;; esac
+        done
+        size="$(du -sb -- "./$e" 2>/dev/null | cut -f1)"
+        rm -rf --one-file-system -- "./$e" 2>/dev/null || continue
+        n=$((n + 1)); bytes=$((bytes + ${size:-0}))
+    done
+    [ "$n" -gt 0 ] && echo "/tmp of sandbox pid $init: $n entries, $(numfmt --to=iec "$bytes") (unchanged for $((WINDOW / 3600))h, nothing holds them)"
+    return 0
+}
+
+rc=0
+for ns in "${!init_of[@]}"; do
+    read -r init start <<<"${init_of[$ns]}"
+    ( sweep "$ns" "$init" "$start" ) || rc=1
+done
+exit "$rc"
