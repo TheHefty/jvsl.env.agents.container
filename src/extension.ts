@@ -2,7 +2,9 @@ import * as vscode from 'vscode'
 
 import { showWork } from './board/board.ts'
 import { build } from './build/command.ts'
-import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, MIGRATE, PICK, CREATE, VIEW } from './commands.ts'
+import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, MIGRATE, PICK, CREATE, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
+import { StudyView, schemasFrom } from './study/study-view.ts'
+import { openTopic } from './study/study-panel.ts'
 import { configure, pick } from './configure/command.ts'
 import { create } from './create/command.ts'
 import { extensionVersion, showDetected } from './host/detected.ts'
@@ -47,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Declared before the commands that close over it: the closure would resolve
   // either way, but a reader should not have to know that to be sure.
   const view = new SelectionView(context.extensionPath)
+  const study = new StudyView(context.extensionPath, dockerFor, write)
 
   context.subscriptions.push(
     vscode.commands.registerCommand(SHOW_DETECTED, () => showDetected(context, channel, write)),
@@ -59,6 +62,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
     vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerFor, write)),
     vscode.commands.registerCommand(MIGRATE, () => migrate(write, () => channel.show(true))),
+    // The Study view (story the-study-view): read-only, and the topic page's
+    // one write is an attempt, through the project's own files.
+    vscode.commands.registerCommand(OPEN_TOPIC, (slug: unknown) => {
+      if (typeof slug === 'string') openTopic(slug, schemasFrom(context.extensionPath), write, () => study.refresh())
+    }),
+    vscode.commands.registerCommand(REFRESH_STUDY, () => study.refresh()),
   )
 
   // Open and Create name the folder they are about to open, so that the window
@@ -71,6 +80,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW, view),
+    vscode.window.registerTreeDataProvider(STUDY_VIEW, study),
     // External edits count: the manifest is a file a person may change by hand,
     // and a view that only updates when this extension writes it would be
     // confidently wrong rather than merely stale.

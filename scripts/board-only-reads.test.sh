@@ -18,7 +18,7 @@ cd "$ROOT"
 
 # git ls-files, not a shell glob: it sees the board's files wherever under src/
 # they sit (scripts/every-source-is-read.test.sh).
-mapfile -t sources < <(git ls-files 'src/board*.ts' 'src/board/*.ts' | grep -vE '\.test\.ts$' | sort -u || true)
+mapfile -t sources < <(git ls-files 'src/board*.ts' 'src/board/*.ts' 'src/study/*.ts' | grep -vE '\.test\.ts$' | sort -u || true)
 if [ "${#sources[@]}" -lt 3 ]; then
     echo "board-only-reads: FAIL: found ${#sources[@]} board source file(s); this check is not reading \
 the tree it thinks it is and would pass vacuously." >&2

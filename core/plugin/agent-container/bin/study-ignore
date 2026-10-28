@@ -2,16 +2,8 @@
 # study-ignore <docs/study>: makes sure every topic's attempts.json is ignored
 # by git before one is written (story the-study-material-has-a-contract). What
 # the developer writes while getting it wrong does not go into a repository
-# that may be public. Creates the folder's .gitignore if needed, keeps whatever
-# it already ignores, and adds the line once.
+# that may be public. The rule is withAttemptsIgnored in study/validate.mjs,
+# which the Study view applies too, so the two cannot drift.
 set -uo pipefail
-
-dir="${1:-}"
-[ -n "$dir" ] || { echo "usage: study-ignore <docs/study>" >&2; exit 2; }
-LINE='*/attempts.json'
-mkdir -p "$dir" || exit 1
-touch "$dir/.gitignore" || exit 1
-grep -qxF "$LINE" "$dir/.gitignore" && exit 0
-# A last line with no newline would otherwise have this one glued onto it.
-[ -s "$dir/.gitignore" ] && [ -n "$(tail -c 1 "$dir/.gitignore")" ] && printf '\n' >> "$dir/.gitignore"
-printf '%s\n' "$LINE" >> "$dir/.gitignore"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$HERE/../study/ignore.mjs" "$@"

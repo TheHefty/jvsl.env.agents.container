@@ -11,21 +11,18 @@ import { randomBytes } from 'node:crypto'
 import * as vscode from 'vscode'
 
 import type { Docker } from '../host/docker.ts'
-import { filesFor } from '../host/files.ts'
-import { containerFor, folderNames, type ProjectOnHost, type Running } from '../host/locate.ts'
+import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
-import { parseExport, type Item } from './board-read.ts'
-import { MANIFEST } from '../shared/stack-manifest.ts'
+import { readTracker } from './tracker.ts'
+import type { Item } from './board-read.ts'
 
 
-/** Longer than a status check: the export is the whole tracker. Still bounded. */
-export const BOARD_READ_MS = 15000
 
-/** The command the page runs in the container, and the only bd command it runs. */
-export const READ_COMMAND = ['bd', 'export'] as const
 
 let panel: vscode.WebviewPanel | undefined
+
+export { BOARD_READ_MS, READ_COMMAND } from './tracker.ts'
 
 export async function showWork(dockerOf: (project: ProjectOnHost) => Docker, write: (lines: string[]) => void): Promise<void> {
   if (panel === undefined) {
@@ -68,80 +65,17 @@ async function render(
       "tracker through the project's container, found by that folder.")
     return
   }
-  const hostPath = project.path
   const docker = dockerOf(project)
 
-  let optedIn = false
-  try {
-    optedIn = (JSON.parse(filesFor(project).read(MANIFEST) ?? '{}') as Record<string, unknown>)['beads'] === true
-  } catch {
-    optedIn = false
-  }
-  if (!optedIn) {
-    say(
-      'This project has no tracker',
-      `A project asks for one with "beads": true in ${MANIFEST}, and gets it when its container next boots.`,
-    )
+  const read = await readTracker(project, docker)
+  if (!read.ok) {
+    say(read.title, read.body)
     return
   }
-
-  let running: Running[]
-  try {
-    const { stdout } = await docker([
-      'ps',
-      '--filter', 'label=devcontainer.local_folder',
-      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}',
-    ])
-    running = stdout
-      .split('\n')
-      .filter((l) => l.trim() !== '')
-      .map((l) => {
-        const [id = '', name = '', localFolder = ''] = l.split('\t')
-        return { id, name, localFolder }
-      })
-  } catch (error) {
-    say('Docker did not answer', `Listing the running containers failed: ${String(error)}`)
-    return
-  }
-
-  const choice = containerFor(folderNames(project), running)
-  if (choice.kind === 'none') {
-    say(
-      "The project's container is not running",
-      `The tracker is read from inside the container for ${hostPath}, so there is nothing to show until it runs. ` +
-        'Nothing is kept from an earlier reading: a board that looks current and is not is the worse failure.',
-    )
-    return
-  }
-  if (choice.kind === 'many') {
-    say(
-      'More than one container claims this project',
-      `${choice.names.join(', ')} are all labelled with ${hostPath}. Stop the ones that are not in use; the board ` +
-        'will not guess which one holds the real tracker.',
-    )
-    return
-  }
-
-  let items: Item[]
-  try {
-    const { stdout } = await docker(
-      ['exec', '-u', 'abc', '-e', 'HOME=/config', '-w', '/config/workspace', choice.id, ...READ_COMMAND],
-      BOARD_READ_MS,
-    )
-    items = parseExport(stdout)
-  } catch (error) {
-    const stderr = (error as { stderr?: unknown }).stderr
-    const why = String(error).includes('timeout')
-      ? `it did not finish within ${BOARD_READ_MS / 1000}s`
-      : typeof stderr === 'string' && stderr.trim() !== ''
-        ? stderr.trim()
-        : String(error)
-    say('The tracker could not be read', `\`bd export\` in the project's container failed: ${why}`)
-    return
-  }
+  const items = read.items
 
   const { rendered, notice } = await renderAll(items)
-  write([`board: ${items.length} item(s) read from ${choice.id}`])
+  write([`board: ${items.length} item(s) read from ${read.container}`])
   target.webview.html = boardPage({ nonce, items, rendered, ...(notice === undefined ? {} : { notice }) })
 }
 

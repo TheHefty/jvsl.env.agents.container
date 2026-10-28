@@ -10,3 +10,7 @@ export const MIGRATE = 'jvsl.agentContainer.migrate'
 export const PICK = 'jvsl.agentContainer.open'
 export const CREATE = 'jvsl.agentContainer.create'
 export const VIEW = 'jvsl.agentContainer.view'
+/** The Study view (story the-study-view), and the two commands its rows and title use. */
+export const STUDY_VIEW = 'jvsl.agentContainer.study'
+export const OPEN_TOPIC = 'jvsl.agentContainer.openTopic'
+export const REFRESH_STUDY = 'jvsl.agentContainer.refreshStudy'

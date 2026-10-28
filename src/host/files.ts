@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { ProjectOnHost } from './locate.ts'
@@ -32,6 +32,8 @@ export interface ProjectFiles {
   /** Written whole, through a temporary file moved into place. */
   write(rel: string, text: string): void
   exists(rel: string): boolean
+  /** A folder's entries, sorted, hidden ones included; null when the folder is not there. */
+  list(rel: string): string[] | null
   /** An absolute directory, as this project's machine names it (the credentials directory). */
   mkdirAbsolute(path: string): void
 }
@@ -58,6 +60,7 @@ const SCRIPTS = {
   // half-way leaves the old file, never a truncated one.
   write: 'mkdir -p -- "$(dirname -- "$1")" && tmp="$1.tmp.$$" && cat > "$tmp" && mv -f "$tmp" "$1"',
   exists: '[ -e "$1" ]',
+  list: `[ -d "$1" ] || exit ${ABSENT}; ls -1A -- "$1"`,
   mkdir: 'mkdir -p -- "$1"',
 } as const
 
@@ -92,6 +95,13 @@ export function filesFor(project: Exclude<ProjectOnHost, { kind: 'none' }>, exec
     exists(rel) {
       return run('exists', at(rel)).status === 0
     },
+    list(rel) {
+      const path = at(rel)
+      const r = run('list', path)
+      if (r.status === ABSENT) return null
+      if (r.status !== 0) return fail('list', path, r)
+      return r.stdout.split('\n').filter((l) => l !== '').sort()
+    },
     mkdirAbsolute(path) {
       const r = run('mkdir', path)
       if (r.status !== 0) fail('create', path, r)
@@ -118,6 +128,14 @@ function localFiles(root: string): ProjectFiles {
     },
     exists(rel) {
       return existsSync(join(root, rel))
+    },
+    list(rel) {
+      try {
+        return readdirSync(join(root, rel)).sort()
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+        throw error
+      }
     },
     mkdirAbsolute(path) {
       mkdirSync(path, { recursive: true })
