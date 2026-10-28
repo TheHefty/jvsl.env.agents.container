@@ -8,14 +8,18 @@
 #                         how many items each unblocks, then oldest first; one
 #                         without a done criterion is marked, so the daily asks
 #   Left open yesterday   the "## Left open" section of the latest journal
-#                         entry from before today ($DAILY_TODAY, UTC)
+#                         entry from before today, found by its metadata
+#                         `day`; and, first, a line when the last day with
+#                         work before today has no entry: its retro was
+#                         skipped. Days are local ($DAILY_TODAY, or today),
+#                         so a late retro is the day it was held.
 #
 # The same reading as daily-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
 # Journal entries carry the label `journal` and are never offered as work.
 set -uo pipefail
 
-TODAY="${DAILY_TODAY:-$(date -u +%F)}"
+TODAY="${DAILY_TODAY:-$(date +%F)}"
 if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
 
 export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
@@ -39,11 +43,18 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
        | .[] | line + (if ((.acceptance_criteria // "") | length) == 0 then " — no done criterion" else "" end)),
       "",
       "## Left open yesterday",
-      ( map(select((labels | index("journal")) and .created_at[0:10] < $today)) | sort_by(.created_at) | last
-        | if . == null then "No journal entry yet."
-          else (.description // "") | split("\n")
-               | (index("## Left open")) as $at
-               | if $at == null then "The latest entry has no Left open section."
-                 else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
-                      | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end
-          end )'
+      ( def localday: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | localtime | strftime("%F");
+        def day: (.metadata.day // (.created_at | localday));
+        map(select(labels | index("journal"))) as $journal
+        | ($journal | map(day)) as $days
+        | ($work | map(.updated_at | localday) | map(select(. < $today)) | max) as $lastwork
+        | (if $lastwork != null and ($days | index($lastwork) | not)
+           then "No journal for \($lastwork), which had work: its retro was skipped." else empty end),
+          ( $journal | map(select(day < $today)) | sort_by(day) | last
+            | if . == null then "No journal entry yet."
+              else (.description // "") | split("\n")
+                   | (index("## Left open")) as $at
+                   | if $at == null then "The latest entry has no Left open section."
+                     else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
+                          | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end
+              end ) )'

@@ -16,3 +16,4 @@ refuses in one line, saying how to turn the tracker on, when the manifest does n
 |---|---|
 | `daily` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/daily-brief`, `bin/daily-check`) |
 | `review` | ends the day's work: each task shown against its criterion, accepted only in the developer's own words, closed when its pull request merges (`bin/review-list`, `bin/review-accept`, `bin/review-reopen`, `bin/review-settle`) |
+| `retro` | the day's retrospective: discovered, surprised, went wrong, decided alone, and the developer's own "what I learned", written as the day's journal entry (`bin/retro-gather`, `bin/journal-write`) |

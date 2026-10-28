@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# What the retro reports from (story the-retro-and-its-journal): the items
+# touched on the day, journal entries excluded, each with the pull request it
+# recorded, and the commits made that day in the current repository. Both by
+# the local date — $JOURNAL_TODAY, or today — so a late evening is the day it
+# was and not tomorrow in UTC.
+set -uo pipefail
+
+day="${JOURNAL_TODAY:-$(date +%F)}"
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+
+echo "## Items touched on $day"
+items="$(export_of | jq -r --arg day "$day" '
+    select(._type == "issue" and ((.labels // []) | index("journal") | not))
+    | select((.updated_at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | localtime | strftime("%F")) == $day)
+    | "- \(.id) [\(.status)] \(.title)\(if .metadata.pr then " — #\(.metadata.pr)" else "" end)"')"
+printf '%s\n' "${items:-Nothing.}"
+echo
+echo "## Commits on $day"
+next="$(date -d "$day + 1 day" +%F)"
+commits="$(git log --since="$day 00:00" --until="$next 00:00" --format='- %h %s' 2>/dev/null)"
+printf '%s\n' "${commits:-Nothing.}"

@@ -65,24 +65,35 @@ check "a task with no criterion is offered, marked so the daily asks for one" \
 check "proposals, stories and closed tasks are not offered" \
     "$(section Ready | tr ' ' '\n' | grep -cxE 't-proposal|t-half-proposal|s1|t-done' || true)" "0"
 
-check "with no journal yet, the brief says so" "$(left_open)" "No journal entry yet."
+# The brief's day is the local one (DAILY_TODAY pins it), and so are the days
+# the work happened on: every fixture item above was touched in early October.
+check "with no journal yet, the brief says so" "$(left_open | grep -c '^No journal entry yet\.$')" "1"
+check "and a day with work and no entry is said to have skipped its retro" \
+    "$(left_open | grep -c '^No journal for 2026-10-09, which had work: its retro was skipped\.$')" "1"
 
-item j-old task open 2 '["journal"]' "" 2026-10-26T18:00:00Z "## Discovered
-a thing
-## Left open
-the oldest point"
-item j-yesterday task open 2 '["journal"]' "" 2026-10-27T18:00:00Z "## Discovered
-the default was wrong
-## Left open
-- the migration's second half
-- ask about the cache
-## Decided alone
-nothing"
-item j-today task open 2 '["journal"]' "" 2026-10-28T09:00:00Z "## Left open
-written this morning"
-check "yesterday's open points come from the latest entry before today, that section only" \
-    "$(left_open | paste -sd'|' -)" "- the migration's second half|- ask about the cache"
+# --- entries in the shape journal-write accepts (story the-retro-and-its-journal) ---
+# shellcheck source=core/plugin/agent-container/bin/journal-body-fixture.sh
+. "$HERE/journal-body-fixture.sh"
+# Found by their `day`, not by when they were created: j-late was written at
+# 01:00 UTC on the 28th, which is the 27th's retro held late at -0300.
+item j-old chore closed 2 '["journal"]' "" 2026-10-26T18:00:00Z "$(body x Nothing. no '- the oldest point')"
+meta j-old day '"2026-10-26"'
+item j-late chore closed 2 '["journal"]' "" 2026-10-28T01:00:00Z "$(body x Nothing. no '- the second half of the migration
+- ask about the cache')"
+meta j-late day '"2026-10-27"'
+item j-today chore closed 2 '["journal"]' "" 2026-10-28T09:00:00Z "$(body x Nothing. no '- written this morning')"
+meta j-today day '"2026-10-28"'
+check "yesterday's open points come from the entry for the latest day before today, that section only" \
+    "$(left_open | grep -v '^No journal' | paste -sd'|' -)" "- the second half of the migration|- ask about the cache"
 check "and journal entries are not tasks to offer" "$(section Ready | tr ' ' '\n' | grep -c '^j-' || true)" "0"
+
+# Touched on the 27th, and the 27th has its entry: nothing was skipped.
+item t-27 task open 2 null "c" 2026-10-27T15:00:00Z
+check "a day with work and its entry is not called skipped" "$(left_open | grep -c 'skipped' || true)" "0"
+# Touched on the 27th, local, but the only entry is the 26th's: skipped.
+grep -v '"id":"j-late"' "$EXPORT" > "$work/e2"; mv "$work/e2" "$EXPORT"
+check "a day with work and no entry is called skipped, by its local date" \
+    "$(left_open | grep -c '^No journal for 2026-10-27, which had work: its retro was skipped\.$')" "1"
 
 if [ "$failures" -gt 0 ]; then
     echo "daily-brief.test: $failures failure(s)"
