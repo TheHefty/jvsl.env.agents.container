@@ -174,6 +174,16 @@ JAIL_COMMON_ARGS+=(--env "RUSTUP_HOME=${RUSTUP_HOME:-/usr/local/rustup}")
 # that happened to unset it should be able to undo.
 JAIL_COMMON_ARGS+=(--env "DO_NOT_TRACK=1")
 
+# **TZ, the host's timezone**, which the extension writes into the container's
+# environment (story the-container-and-the-sandbox-use-the-hosts-timezone).
+# --clearenv drops it, and the agent would tell UTC: its date, its commits and
+# the ceremonies' "today", which turns at 21:00 for a developer at -0300.
+# Forwarded by name, and only when set: an empty TZ is UTC to glibc. Not a
+# secret, which core/bin/jail-env-allowlist.test.sh records.
+if [ -n "${TZ:-}" ]; then
+    JAIL_COMMON_ARGS+=(--env TZ)
+fi
+
 # ai-memory's lifecycle hooks run *inside* the sandbox — the installed hook
 # config invokes the binary directly, not the staged shell scripts — and they
 # read their capture policy out of the store, whose path is baked into each hook

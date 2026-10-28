@@ -139,7 +139,13 @@ export function buildConfiguration(input: BuildInput): Configuration {
     // the image. These two are the base image's `init-adduser`, which is what
     // makes a bind-mounted write land as the person rather than as uid 911 —
     // they look like the same kind of obscure variable and are not.
-    containerEnv: { PUID: '1000', PGID: '1000' },
+    //
+    // **TZ is the host's timezone** (story
+    // the-container-and-the-sandbox-use-the-hosts-timezone): the container knows
+    // only UTC, and the developer's day — the ceremonies' "today", a commit's
+    // offset — is theirs. Absent rather than empty when unknown: an empty TZ is
+    // UTC to glibc, and a key that comes and goes is a hash that moves.
+    containerEnv: { PUID: '1000', PGID: '1000', ...(facts.timeZone ? { TZ: facts.timeZone } : {}) },
     // **The image's own command has to run.** For an image-based configuration
     // the tooling otherwise replaces it with `while sleep 1000; do :; done`,
     // and this image's command is s6-overlay — which is what starts the nested
