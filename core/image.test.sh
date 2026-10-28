@@ -134,6 +134,16 @@ base="$(docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
     printf "tmpkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/sandbox-tmp ] && command -v numfmt >/dev/null && find /tmp -maxdepth 0 -newerct @0 -print -quit 2>/dev/null | grep -q . && du -sb /tmp >/dev/null 2>&1 && readlink /proc/self/ns/mnt >/dev/null && echo ok || echo missing)"
 ' 2>/dev/null || true)"
 
+# TZ has an effect only if the zone files are here: glibc falls back to UTC
+# with no error otherwise, and /usr/share/zoneinfo is owned by no package in
+# this image (measured 2026-10-28), so a change of base could take it away
+# unannounced. Two zones without daylight saving, so the offsets never move.
+zones="$(docker run --rm --network none --entrypoint /bin/sh "$IMAGE" -c \
+    'printf "%s %s" "$(TZ=America/Sao_Paulo date +%z)" "$(TZ=Asia/Kolkata date +%z)"' 2>/dev/null || true)"
+[ "$zones" = "-0300 +0530" ] || fail "TZ has no effect in this image (America/Sao_Paulo and Asia/Kolkata \
+gave '$zones', not '-0300 +0530'): the zone files under /usr/share/zoneinfo are missing, so the host's \
+timezone the extension passes would silently be UTC"
+
 field() { printf '%s' "$base" | sed -n "s/^$1=//p"; }
 
 [ "$(field uid)" = "911" ] || fail "abc's uid is '$(field uid)', not 911. LinuxServer's base creates \
