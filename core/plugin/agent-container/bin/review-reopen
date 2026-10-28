@@ -6,7 +6,7 @@
 set -uo pipefail
 
 BD="${REVIEW_BD:-bd}"
-TODAY="${REVIEW_TODAY:-$(date -u +%F)}"
+TODAY="${REVIEW_TODAY:-$(date +%F)}"
 
 if [ "$#" -lt 1 ] || [ -z "$1" ]; then
     echo "usage: review-reopen <id> <what is missing>" >&2
