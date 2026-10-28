@@ -181,8 +181,14 @@ daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "before=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
     "$B/refine-agree" "$p" >/dev/null 2>&1
     printf "after=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
+    # The study contract runs on the node the image has: the example passes,
+    # and the same validator the Study view bundles is what says so.
+    printf "study=%s\n" "$("$B/study-validate" /opt/jvsl/plugins/agent-container/study/example/bd-labels-are-null >/dev/null 2>&1 && echo ok || echo failed)"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+[ "$(dfield study)" = "ok" ] || fail "study-validate does not pass the contract's own example in this image \
+(study=$(dfield study)): node is missing, or the plugin's study folder did not arrive, so the study skill \
+would refuse every topic"
 [ "$(dfield before) $(dfield after)" = "0 1" ] || fail "against the real bd, a proposed task was \
 offered by the daily, or an agreed one was not (before=$(dfield before) after=$(dfield after)): either a \
 draft reaches a daily as work, or agreement leaves it unreachable"
