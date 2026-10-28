@@ -143,6 +143,23 @@ run_passes 5
 check "a kind that recovers is said once to have recovered" "$(grep -c 'testcontainers: running again' "$log")" "1"
 check "and its failure was still said only once" "$(grep -c 'testcontainers: could not run' "$log")" "1"
 
+# A kind that reaped some things and then failed on others — the sandbox-tmp
+# kind sweeping one sandbox and unable to enter another. What it did is done,
+# and a reap nobody logged is a disk that emptied with nothing saying why.
+reset
+cat > "$kinds/sandbox-tmp" <<SH
+#!/usr/bin/env bash
+echo "/tmp of sandbox pid 1810: 3 entries, 12M (unchanged for 24h, nothing holds them)"
+echo "could not enter the /tmp of sandbox pid 2273" >&2
+exit 1
+SH
+chmod +x "$kinds/sandbox-tmp"
+run_passes 3
+check "what a failing kind reaped before failing is logged, every pass it reaps" \
+    "$(grep -c 'sandbox-tmp: reaped /tmp of sandbox pid 1810: 3 entries' "$log")" "3"
+check "and its failure is still said only once" \
+    "$(grep -c 'sandbox-tmp: could not run: could not enter the /tmp of sandbox pid 2273' "$log")" "1"
+
 # --- the off switch -------------------------------------------------------------
 
 for case in 'off|{"reaper": false}|0' \

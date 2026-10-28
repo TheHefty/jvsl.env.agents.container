@@ -306,6 +306,8 @@ jobs:
         run: bash stacks/java/reapers/testcontainers.test.sh
       - name: a dead browser-test run is stopped by its group, and a live one or a dev server never is
         run: bash core/reapers/browser-tests.test.sh
+      - name: a sandbox's /tmp loses what nobody touched for a day and nobody holds, in one line per session, and nothing live or outside it
+        run: bash core/reapers/sandbox-tmp.test.sh
       - name: a Kotlin daemon with no Gradle left and a language server with no editor are stopped, and no other JVM
         run: bash stacks/java/reapers/jvms.test.sh
 

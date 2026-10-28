@@ -125,6 +125,7 @@ base="$(docker run --rm --entrypoint /bin/bash "$IMAGE" -c '
     printf "editor=%s\n" "$(command -v code-server >/dev/null 2>&1 && echo present || echo absent)"
     printf "reaper=%s\n" "$([ -x /etc/s6-overlay/s6-rc.d/svc-reaper/run ] && [ -e /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper ] && [ -d /usr/local/lib/jvsl/reapers.d ] && command -v jq >/dev/null && echo registered || echo missing)"
     printf "browserkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/browser-tests ] && [ -r /usr/local/lib/jvsl/reaper-lib.sh ] && command -v du >/dev/null && command -v seq >/dev/null && find /proc/self/fd/ -maxdepth 1 -type l -printf "%l\n" >/dev/null 2>&1 && echo ok || echo missing)"
+    printf "tmpkind=%s\n" "$([ -x /usr/local/lib/jvsl/reapers.d/sandbox-tmp ] && command -v numfmt >/dev/null && find /tmp -maxdepth 0 -newerct @0 -print -quit 2>/dev/null | grep -q . && du -sb /tmp >/dev/null 2>&1 && readlink /proc/self/ns/mnt >/dev/null && echo ok || echo missing)"
 ' 2>/dev/null || true)"
 
 field() { printf '%s' "$base" | sed -n "s/^$1=//p"; }
@@ -145,6 +146,10 @@ test runs leave behind, and the first sign would be an OOM kill hours later"
 
 [ "$(field browserkind)" = "ok" ] || fail "the reaper's browser-tests kind or reaper-lib.sh is not installed, or du, seq or \
 GNU find's -printf is missing; a dead browser-test run's Chrome and ports would never be freed"
+
+[ "$(field tmpkind)" = "ok" ] || fail "the reaper's sandbox-tmp kind is not installed, or numfmt, GNU \
+find's -newerct, du -sb or /proc/self/ns/mnt is missing; each ai-jail session's /tmp would fill \
+the container's memory until the kernel kills something (#220)"
 
 [ "$(field hooks)" = "yes" ] || fail "no /custom-cont-init.d in this image, so every boot hook \
 silently never runs — the ownership repair and the git credential helper among them"

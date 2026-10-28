@@ -605,6 +605,14 @@ COPY core/reapers/reaper-lib.sh /usr/local/lib/jvsl/reaper-lib.sh
 COPY core/reapers/browser-tests /usr/local/lib/jvsl/reapers.d/browser-tests
 RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/browser-tests
 
+# The reaper's sandbox-tmp kind (#220): each live ai-jail session's /tmp is a
+# tmpfs of its own, charged to the container's memory and emptied by nothing
+# while the session lives. Reached from here through /proc/<init>/root/tmp;
+# entries untouched for a day and held by nothing go. The container's own /tmp
+# is not swept: sandboxes are mounted from files in it.
+COPY core/reapers/sandbox-tmp /usr/local/lib/jvsl/reapers.d/sandbox-tmp
+RUN chmod 0755 /usr/local/lib/jvsl/reapers.d/sandbox-tmp
+
 # 7.3 Installs beads (steveyegge/beads), the work tracker, and the boot hook
 # that initialises one for a project that asked. Pinned and digest-checked for
 # the same reason ai-jail and ai-memory are, above.

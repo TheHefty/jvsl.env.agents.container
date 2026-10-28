@@ -13,8 +13,8 @@
 #
 # **The contract with a kind.** It prints one line per thing it reaped, as
 # `<what> (<why it counted as orphaned>)`, and nothing else on stdout, and exits
-# 0. Exiting non-zero means it could not do its work; its last stderr line is
-# the reason.
+# 0. Exiting non-zero means it could not do all of its work; its last stderr
+# line is the reason, and whatever it printed before failing is still logged.
 #
 # **What this frame owns.** Each reap is one timestamped line, on stdout for
 # `docker logs` and in $REAPER_LOG for whoever is in a terminal wondering why
@@ -94,6 +94,12 @@ one_pass() {
         name="$(basename "$kind")"
         rc=0
         out="$("$kind" 2>"$err")" || rc=$?
+        # Logged before the failure is looked at: what a kind reaped before it
+        # failed is done, and a reap nobody logged is memory that came back
+        # with nothing saying why.
+        while IFS= read -r line; do
+            [ -n "$line" ] && say "$name: reaped $line"
+        done <<<"$out"
         if [ "$rc" -ne 0 ]; then
             if [ -z "${failing[$name]:-}" ]; then
                 say "$name: could not run: $(tail -n 1 "$err")"
@@ -105,9 +111,6 @@ one_pass() {
             say "$name: running again."
             unset "failing[$name]"
         fi
-        while IFS= read -r line; do
-            [ -n "$line" ] && say "$name: reaped $line"
-        done <<<"$out"
     done
     rm -f "$err"
 }
