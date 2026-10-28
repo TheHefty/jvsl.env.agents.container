@@ -11,3 +11,7 @@ refuses in one line, saying how to turn the tracker on, when the manifest does n
 `"beads": true`.
 
 `/usr/bin/claude`, called by its absolute path, is the unjailed escape hatch and loads no plugin.
+
+| skill | what it does |
+|---|---|
+| `daily` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/daily-brief`, `bin/daily-check`) |

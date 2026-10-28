@@ -573,9 +573,9 @@ RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex
 # working day with the agent, each added by its own story, and needs-tracker,
 # the refusal each runs first. Read-only under /opt/jvsl, which the sandbox
 # sees, because ~/.claude in the container is the developer's own, bound from
-# the host, and the image writes nothing there. Its test is not shipped.
+# the host, and the image writes nothing there. Its tests are not shipped.
 COPY core/plugin/agent-container /opt/jvsl/plugins/agent-container
-RUN rm -f /opt/jvsl/plugins/agent-container/bin/*.test.sh \
+RUN rm -f /opt/jvsl/plugins/agent-container/bin/*.test.sh /opt/jvsl/plugins/agent-container/bin/*-fixture.sh \
     && chmod 0755 /opt/jvsl/plugins/agent-container/bin/needs-tracker
 
 # 7.2 Installs ai-memory (akitaonrails/ai-memory), long-term memory shared
