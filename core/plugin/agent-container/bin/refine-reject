@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# refine-reject <id> <reason>: the developer rejected a proposal (story
+# refinement). Closed with the reason, never deleted: the reason is what stops
+# the same draft coming back (the rules, "The work tracker").
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+[ "$#" -ge 1 ] && [ -n "$1" ] || { echo "usage: refine-reject <id> <why it was rejected>" >&2; exit 2; }
+id="$1"; why="${2:-}"
+if [ -z "${why//[[:space:]]/}" ]; then
+    echo "refine-reject: $id was not rejected. Say why, so the same draft does not come back."
+    exit 1
+fi
+"$BD" close "$id" --reason "Rejected in refinement: $why" >/dev/null || exit 1
+echo "$id: rejected — $why"

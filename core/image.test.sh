@@ -179,8 +179,19 @@ daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "journal=%s\n" "$(bd list --label journal --all --json 2>/dev/null | jq -r "length")"
     printf "same=%s\n" "$([ -n "$j1" ] && [ "$j1" = "$j2" ] && echo yes || echo no)"
     printf "entry=%s\n" "$(bd show "$j1" --json 2>/dev/null | jq -r ".[0] | [.status, .metadata.day, (.description | test(\"second\"))] | join(\" \")")"
+    # Refinement against the same real bd: a task proposed under an agreed
+    # story is not offered by the daily; once agreed, it is.
+    s="$(bd create story -t feature --acceptance "Scenario: x" --silent 2>/dev/null)"
+    printf "%s\n" "what it is for" > /tmp/r-body; printf "%s\n" "done when z" > /tmp/r-crit
+    p="$("$B/refine-propose" task "$s" proposed-one /tmp/r-body /tmp/r-crit 2>/dev/null | tail -n 1)"
+    printf "before=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
+    "$B/refine-agree" "$p" >/dev/null 2>&1
+    printf "after=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+[ "$(dfield before) $(dfield after)" = "0 1" ] || fail "against the real bd, a proposed task was \
+offered by the daily, or an agreed one was not (before=$(dfield before) after=$(dfield after)): either a \
+draft reaches a daily as work, or agreement leaves it unreachable"
 [ "$(dfield journal) $(dfield same) $(dfield entry)" = "1 yes closed 2026-10-28 true" ] || fail "against \
 the real bd, two retros on one day did not leave one closed entry keyed by its day with the second body \
 (journal=$(dfield journal) same=$(dfield same) entry=$(dfield entry)): the daily would read the wrong \

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# refine-agree <id>...: the developer agreed these proposals (story refinement).
+# Both halves in one step — `bd undefer` and `bd label remove … proposed` —
+# because done by halves the item stays a draft on the board, or becomes work
+# that bd ready never lists (the rules, "The work tracker").
+#
+# A half-proposal, carrying only one of the two, is still a proposal (the
+# daily's check reads it so) and is completed. Refused, writing nothing: an id
+# that is neither, one that is closed, and a task with no done criterion. Then
+# each is read back, and an agreement bd left half done is said and fails.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+[ "$#" -ge 1 ] || { echo "usage: refine-agree <id>..." >&2; exit 2; }
+
+items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || exit 2
+plan=()
+for id in "$@"; do
+    read -r status labelled type crit < <(jq -r --arg id "$id" '(map(select(.id == $id)) | first) as $it
+        | if $it == null then "missing - - -"
+          else "\($it.status) \(if (($it.labels // []) | index("proposed")) then "yes" else "no" end) \($it.issue_type) \(if (($it.acceptance_criteria // "") | length) > 0 then "yes" else "no" end)" end' <<<"$items")
+    case "$status" in
+        missing) echo "$id: not in the tracker"; exit 1 ;;
+        closed) echo "$id: closed, so there is nothing to agree"; exit 1 ;;
+    esac
+    if [ "$status" != deferred ] && [ "$labelled" != yes ]; then echo "$id: not a proposal, so there is nothing to agree"; exit 1; fi
+    if [ "$type" = task ] && [ "$crit" != yes ]; then echo "$id: a task with no done criterion — write one first, or the daily will refuse it"; exit 1; fi
+    plan+=("$id $status $labelled")
+done
+
+rc=0
+for p in "${plan[@]}"; do
+    read -r id status labelled <<<"$p"
+    [ "$status" = deferred ] && { "$BD" undefer "$id" >/dev/null || rc=1; }
+    [ "$labelled" = yes ] && { "$BD" label remove "$id" proposed >/dev/null || rc=1; }
+    left="$("$BD" show "$id" --json 2>/dev/null | jq -r '.[0] | [(if .status == "deferred" then "deferred" else empty end), (if ((.labels // []) | index("proposed")) then "labelled proposed" else empty end)] | join(" and ")')"
+    if [ -n "$left" ]; then echo "$id: agreement left by halves — it is still $left"; rc=1; else echo "$id: agreed"; fi
+done
+exit "$rc"
