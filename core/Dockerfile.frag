@@ -197,6 +197,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 
+# 1.0.1 The font a browser a project downloads needs for CJK text (#219).
+#
+# With only DejaVu here, headless Chromium — what Playwright screenshots with —
+# drew every Chinese, Japanese and Korean character as an empty box. WenQuanYi
+# Micro Hei covers all four languages in 1.5 MB, and Chromium finds it per
+# character by coverage, so it needs none of the preferences its package ships.
+# **Those are excluded, before the install, so an upgrade cannot bring them
+# back**: besides rules for lang=zh they prefer it for sans-serif and monospace
+# unconditionally, which could put it ahead of DejaVu for Latin text and move
+# every visual baseline a project has. The file stays in conf.avail for a
+# project that wants it.
+#
+# **What it does not buy:** Japanese is drawn in a Chinese design and widths only
+# approximate a device's. A project that needs exact rendering adds
+# fonts-noto-cjk to its manifest's packages. core/image.test.sh asserts both the
+# coverage and that sans-serif, serif and monospace are still DejaVu.
+RUN printf 'path-exclude=/etc/fonts/conf.d/65-wqy-microhei.conf\n' > /etc/dpkg/dpkg.cfg.d/no-wqy-preferences
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fontconfig \
+    fonts-wqy-microhei \
+    && fc-cache -f \
+    && rm -rf /var/lib/apt/lists/*
+
 # 1.1 Installs Rust (stable, via rustup) system-wide, so the CLI/agent and
 # user 'abc' both have `cargo`.
 #
