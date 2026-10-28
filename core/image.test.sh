@@ -190,8 +190,18 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     # The study contract runs on the node the image has: the example passes,
     # and the same validator the Study view bundles is what says so.
     printf "study=%s\n" "$("$B/study-validate" /opt/jvsl/plugins/agent-container/study/example/bd-labels-are-null >/dev/null 2>&1 && echo ok || echo failed)"
+    # The scripts of the project report, on the git and node of the image: writing only
+    # the report passes the guard, and a well-formed report passes the check.
+    R="$(mktemp -d)" && git init -q "$R" && printf "%s\n" "x" > "$R/a.txt" && git -C "$R" add -A \
+        && git -C "$R" -c user.name=t -c user.email=t@t commit -q -m i
+    (cd "$R" && "$B/report-guard" start) >/dev/null 2>&1
+    mkdir -p "$R/docs"; printf "%s\n" "# Project report" "## Overview" "- One file, \`a.txt\`." "## Decisions" "### Documented" "### Implicit" \
+        "## Critical areas" "## Quality and tests" "## Study list" "## Topics to write about" > "$R/docs/REPORT.md"
+    printf "report=%s\n" "$( (cd "$R" && "$B/report-exclude" && "$B/report-check" docs/REPORT.md && "$B/report-guard" end) >/dev/null 2>&1 && echo ok || echo failed)"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$planning" | sed -n "s/^$1=//p"; }
+[ "$(dfield report)" = "ok" ] || fail "the project report's scripts do not run in this image (report=$(dfield report)): \
+git or node is missing, or report-guard, report-exclude or report-check fails on a report that only writes itself"
 [ "$(dfield study)" = "ok" ] || fail "study-validate does not pass the contract's own example in this image \
 (study=$(dfield study)): node is missing, or the plugin's study folder did not arrive, so the study skill \
 would refuse every topic"

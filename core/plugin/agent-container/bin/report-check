@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# report-check <docs/REPORT.md>: checks the project report's shape and citations
+# (story the-project-report). See core/plugin/agent-container/report/check.mjs.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$HERE/../report/check.mjs" "$@"
