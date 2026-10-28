@@ -163,8 +163,22 @@ daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
     REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
     printf "settled=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].status")"
+    # The journal against the same real bd: two retros on one day leave one
+    # entry, closed, labelled journal, keyed by its day, with the second body.
+    printf "%s\n" "## Discovered" "## Surprised" "## Went wrong" "## Decided alone" "Nothing." \
+        "## What I learned" "first" "## Left open" "## Links" > /tmp/j1.md
+    sed "s/^first$/second/" /tmp/j1.md > /tmp/j2.md
+    j1="$(JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j1.md 2>/dev/null | tail -n 1)"
+    j2="$(JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j2.md 2>/dev/null | tail -n 1)"
+    printf "journal=%s\n" "$(bd list --label journal --all --json 2>/dev/null | jq -r "length")"
+    printf "same=%s\n" "$([ -n "$j1" ] && [ "$j1" = "$j2" ] && echo yes || echo no)"
+    printf "entry=%s\n" "$(bd show "$j1" --json 2>/dev/null | jq -r ".[0] | [.status, .metadata.day, (.description | test(\"second\"))] | join(\" \")")"
 ' 2>/dev/null || true)"
 dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+[ "$(dfield journal) $(dfield same) $(dfield entry)" = "1 yes closed 2026-10-28 true" ] || fail "against \
+the real bd, two retros on one day did not leave one closed entry keyed by its day with the second body \
+(journal=$(dfield journal) same=$(dfield same) entry=$(dfield entry)): the daily would read the wrong \
+day's Left open, or a day would show two entries"
 [ "$(dfield listed) $(dfield settled)" = "1 closed" ] || fail "against the real bd, the review \
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
