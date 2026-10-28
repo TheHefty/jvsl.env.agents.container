@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.8.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.7.0...v1.8.0) (2026-10-28)
+
+
+### Features
+
+* refinement ([b187940](https://github.com/TheHefty/jvsl.env.agents.container/commit/b187940d9f9e4b67a1e1f27808ddd03f6bc28828))
+* the container and the agent's sandbox keep the host's timezone ([04344d2](https://github.com/TheHefty/jvsl.env.agents.container/commit/04344d2089a365e5d0f8005627286f30990768eb))
+* the daily ([b5f5784](https://github.com/TheHefty/jvsl.env.agents.container/commit/b5f57844a431f5c9235bbb76ef341ff569c9b052))
+* the daily is called planning ([caf45e7](https://github.com/TheHefty/jvsl.env.agents.container/commit/caf45e75d7841292befcf3bcff3afdb8585ffe54))
+* the image carries an agent-container plugin, and claude loads it ([6a73549](https://github.com/TheHefty/jvsl.env.agents.container/commit/6a73549d6c86c601f9618980d54d2ca735c63e40))
+* the retro and its journal ([7dfae96](https://github.com/TheHefty/jvsl.env.agents.container/commit/7dfae96b243d4b42911ef6bcbd4a59cd3183878f))
+* the review ([69b6390](https://github.com/TheHefty/jvsl.env.agents.container/commit/69b6390538f6f2760d3cf02661528648dd40c44e))
+* the study material has a contract, checked by one validator both sides share ([bb9afb2](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb9afb205e16a3f8f80ece85169b8e29f5e0cabc))
+* the working day is in the normative documents ([a533823](https://github.com/TheHefty/jvsl.env.agents.container/commit/a533823d76ddf41540d227691a7c35d8b1300ceb))
+
+
+### Bug Fixes
+
+* the image draws Chinese, Japanese and Korean text, and Latin text keeps DejaVu ([877b3d3](https://github.com/TheHefty/jvsl.env.agents.container/commit/877b3d377b60640e14bc57eb8ab4b15a15874b0f)), closes [#219](https://github.com/TheHefty/jvsl.env.agents.container/issues/219)
+* the working day's tracker commands say they are for a project that has one ([bb8fbd1](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb8fbd1838cb13d52a40ed6e18e7888975e6246b))
+
 ## [1.7.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.6.4...v1.7.0) (2026-10-28)
 
 
