@@ -6,8 +6,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 
 failures=0
 check() {
@@ -34,7 +34,7 @@ item s1 feature in_progress 2
 item t-proposal task deferred 2 '["proposed"]' "c"
 item j1 task in_progress 2 '["journal"]'
 
-out="$(DAILY_EXPORT="$EXPORT" bash "$HERE/review-list")"
+out="$(TRACKER_EXPORT="$EXPORT" bash "$HERE/review-list")"
 ids() { printf '%s\n' "$out" | sed -n 's/^### \([^ ]*\) .*/\1/p' | paste -sd' ' -; }
 block() { printf '%s\n' "$out" | awk -v id="$1" '$1 == "###" {on = ($2 == id); next} on'; }
 

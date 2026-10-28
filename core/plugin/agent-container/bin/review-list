@@ -3,10 +3,10 @@
 # tasks not yet closed, which are waiting for their pull request to merge. One
 # block each, with the done criterion it is reviewed against and the pull
 # request that holds its change (metadata `pr`, recorded when it was opened).
-# Read from `bd export`, or $DAILY_EXPORT for the test.
+# Read from `bd export`, or $TRACKER_EXPORT for the test.
 set -uo pipefail
 
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 export_of | jq -c 'select(._type == "issue")' | jq -sr '
     def labels: (.labels // []);

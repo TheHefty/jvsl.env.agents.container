@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Refinement's agenda (story refinement), from `bd export` or $DAILY_EXPORT:
+# Refinement's agenda (story refinement), from `bd export` or $TRACKER_EXPORT:
 #
 #   Awaiting agreement            open proposals, with what they are under
-#   Stories with no agreed task   agreed stories nothing in a daily can come from yet
-#   Tasks with no done criterion  agreed tasks the daily would refuse
-#   Agreed and ready              what tomorrow's daily can pick
+#   Stories with no agreed task   agreed stories nothing in a planning can come from yet
+#   Tasks with no done criterion  agreed tasks the planning would refuse
+#   Agreed and ready              what tomorrow's planning can pick
 #
 # Closed items — finished or rejected — and journal entries appear nowhere.
 set -uo pipefail
 
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 export_of | jq -c 'select(._type == "issue")' | jq -sr '
     (map({key: .id, value: .status}) | from_entries) as $status

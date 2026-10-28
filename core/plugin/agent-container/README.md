@@ -4,7 +4,7 @@ The plugin the agent container's image carries at `/opt/jvsl/plugins/agent-conta
 wrapper loads it with `--plugin-dir`, so every jailed session has it and nothing is written to
 `~/.claude`, which inside the container is the developer's own, bound from the host.
 
-It holds the ceremonies of a working day with the agent — daily, review, retro and refinement — each
+It holds the ceremonies of a working day with the agent — planning, review, retro and refinement — each
 added by its own story of the epic *the working day ends with the developer knowing what the agent
 found*. They need the project's work tracker: `bin/needs-tracker` is the first step of each, and
 refuses in one line, saying how to turn the tracker on, when the manifest does not have
@@ -14,7 +14,7 @@ refuses in one line, saying how to turn the tracker on, when the manifest does n
 
 | skill | what it does |
 |---|---|
-| `daily` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/daily-brief`, `bin/daily-check`) |
+| `planning` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/planning-brief`, `bin/planning-check`) |
 | `review` | ends the day's work: each task shown against its criterion, accepted only in the developer's own words, closed when its pull request merges (`bin/review-list`, `bin/review-accept`, `bin/review-reopen`, `bin/review-settle`) |
 | `retro` | the day's retrospective: discovered, surprised, went wrong, decided alone, and the developer's own "what I learned", written as the day's journal entry (`bin/retro-gather`, `bin/journal-write`) |
 | `refine` | the day's last ceremony: grills the next items, proposes stories and tasks, agrees or rejects them on the developer's word (`bin/refine-candidates`, `bin/refine-propose`, `bin/refine-agree`, `bin/refine-reject`) |

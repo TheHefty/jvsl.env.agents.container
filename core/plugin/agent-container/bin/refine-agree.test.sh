@@ -7,8 +7,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 # shellcheck source=core/plugin/agent-container/bin/review-stubs.sh
 . "$HERE/review-stubs.sh"
 
@@ -41,7 +41,7 @@ item gone task closed 2 '["proposed"]' "c"
 run() {
     local script="$1" code=0; shift
     : > "$BD_CALLS"
-    DAILY_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/$script" "$@" > "$work/out" 2>&1 || code=$?
+    TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/$script" "$@" > "$work/out" 2>&1 || code=$?
     echo "$code"
 }
 calls() { wc -l < "$BD_CALLS" | tr -d ' '; }

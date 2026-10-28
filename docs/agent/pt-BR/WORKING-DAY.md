@@ -15,33 +15,33 @@ Caminhos fora desta pasta são escritos como código, não como links, pelo moti
 
 | Cerimônia | Skill | Quando | O que deixa |
 |---|---|---|---|
-| Daily | `agent-container:daily` | início do dia | as tasks acordadas do dia, cada uma com seu critério de pronto, reivindicadas em nome do desenvolvedor |
+| Planning | `agent-container:planning` | início do dia | as tasks acordadas do dia, cada uma com seu critério de pronto, reivindicadas em nome do desenvolvedor |
 | Review | `agent-container:review` | fim do dia, primeiro | cada task aceita nas palavras do próprio desenvolvedor, ou reaberta com o que falta |
 | Retro | `agent-container:retro` | fim do dia, segundo | a entrada do dia no diário |
 | Refinement | `agent-container:refine` | fim do dia, por último | as próximas stories e tasks, propostas e acordadas |
 
 **As cerimônias são o calendário da cadeia, não um atalho em volta dela.** Todo elo da cadeia do
 [Workflow](WORKFLOW.md) continua acordado antes de ser escrito. O refinement é onde stories e tasks
-são propostas e acordadas, e a daily só pega o que foi acordado. Um item que chega cru numa daily
+são propostas e acordadas, e o planning só pega o que foi acordado. Um item que chega cru num planning
 volta para o refinement em vez de ser construído naquele dia.
 
 Cada cerimônia roda `needs-tracker` primeiro e para, numa linha dizendo como ligar o rastreador, num
 projeto cujo manifest não diz `"beads": true`.
 
-## A daily
+## O planning
 
-Num projeto que tem rastreador, a daily o lê com `daily-brief`, que mostra o que está em andamento, o que está bloqueado e
+Num projeto que tem rastreador, o planning o lê com `planning-brief`, que mostra o que está em andamento, o que está bloqueado e
 pelo quê, o que está pronto, e o que a entrada de ontem no diário deixou em aberto. Ela propõe uma
 lista curta. **O desenvolvedor escolhe**, e nada fica em andamento antes de ele confirmar.
 
-`daily-check` fica entre a escolha e a reivindicação. Ele só deixa passar uma task acordada, aberta,
+`planning-check` fica entre a escolha e a reivindicação. Ele só deixa passar uma task acordada, aberta,
 sem bloqueio aberto e com critério de pronto. **O critério de pronto de uma task é o seu
-`acceptance_criteria`.** Quando falta, a daily pergunta ao desenvolvedor e grava a resposta dele com
+`acceptance_criteria`.** Quando falta, o planning pergunta ao desenvolvedor e grava a resposta dele com
 `bd update <id> --acceptance`. Ela nunca escreve um por conta própria. A reivindicação é
 `bd update <id> --claim --actor "<name>"`, em nome do desenvolvedor, tirado de `git config user.name`.
 Dentro do sandbox o bd gravaria `unknown`.
 
-A daily não escreve código.
+O planning não escreve código.
 
 ## O bloco do fim do dia
 
@@ -70,10 +70,10 @@ tudo o que decidiu sozinho. O desenvolvedor escreve ou aprova a linha sobre o qu
 nunca escreve essa linha por conta própria.
 
 A entrada do dia fica no rastreador, não num arquivo. É um `chore` com a label `journal`, fechado
-quando é escrito para que nenhuma daily o ofereça como trabalho, e com a chave no metadado `day`. O
+quando é escrito para que nenhum planning o ofereça como trabalho, e com a chave no metadado `day`. O
 dia é a data local, então uma retro feita tarde da noite pertence àquele dia. `journal-write` a
 escreve, e uma segunda retro no mesmo dia reescreve a mesma entrada. As seções, nesta ordem e com
-estes nomes exatos, porque a daily e a skill de estudo as leem:
+estes nomes exatos, porque o planning e a skill de estudo as leem:
 
 ```
 ## Discovered
@@ -92,7 +92,7 @@ Blog candidate: yes | no
 `journal-write` recusa uma entrada sem "What I learned", ou com "Decided alone" vazio; essa seção diz
 "Nothing." quando não houve nada. `Blog candidate: yes` marca uma descoberta sobre a qual o
 desenvolvedor escolheu escrever, e põe a label `blog-candidate` na entrada para a skill de estudo.
-Quando o último dia com trabalho não tem entrada, a daily seguinte diz que a retro foi pulada.
+Quando o último dia com trabalho não tem entrada, o planning seguinte diz que a retro foi pulada.
 
 ## O que uma task registra
 

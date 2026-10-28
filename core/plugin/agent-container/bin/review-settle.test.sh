@@ -8,8 +8,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 # shellcheck source=core/plugin/agent-container/bin/review-stubs.sh
 . "$HERE/review-stubs.sh"
 
@@ -42,7 +42,7 @@ printf '238 MERGED\n239 OPEN\n240 CLOSED\n241 MERGED\n242 MERGED\n' > "$GH_STATE
 run() {
     local code=0
     : > "$BD_CALLS"
-    DAILY_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" REVIEW_GH="$work/bin/gh" \
+    TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" REVIEW_GH="$work/bin/gh" \
         bash "$HERE/review-settle" "$@" > "$work/out" 2>&1 || code=$?
     echo "$code"
 }

@@ -7,7 +7,7 @@
 #
 #   a story under an agreed epic, its acceptance carrying at least one Scenario;
 #   a task under an agreed story, its acceptance being its done criterion,
-#   which the daily refuses a task without.
+#   which the planning refuses a task without.
 #
 # Agreed means open or in progress, not deferred and not labelled proposed:
 # nothing is proposed under a draft or under something closed. Epics are not
@@ -15,7 +15,7 @@
 set -uo pipefail
 
 BD="${REVIEW_BD:-bd}"
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 usage() { echo "usage: refine-propose <story|task> <parent> <title> <body-file> <acceptance-file> [blocked-by...]" >&2; exit 2; }
 [ "$#" -ge 5 ] || usage
@@ -31,7 +31,7 @@ refuse() { echo "refine-propose: \"$title\" was not proposed. $*"; exit 1; }
 [ -f "$body" ] && [ -n "$(tr -d '[:space:]' < "$body")" ] || refuse "Its body is empty: say what it is and why."
 [ -f "$acc" ] || refuse "Its acceptance file $acc does not exist."
 if [ "$kind" = task ]; then
-    [ -n "$(tr -d '[:space:]' < "$acc")" ] || refuse "A task needs a done criterion, which is what the daily checks before starting it."
+    [ -n "$(tr -d '[:space:]' < "$acc")" ] || refuse "A task needs a done criterion, which is what the planning checks before starting it."
 else
     grep -q 'Scenario' "$acc" || refuse "A story's acceptance is its scenarios, and this one has no Scenario."
 fi

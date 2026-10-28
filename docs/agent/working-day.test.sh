@@ -26,7 +26,7 @@ check() {
 }
 
 plugin="$(find "$SKILLS" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | paste -sd' ' -)"
-check "the plugin has the four ceremonies" "$plugin" "daily refine retro review"
+check "the plugin has the four ceremonies" "$plugin" "planning refine retro review"
 
 # The working-day section of RULES.md, from its heading to the next one.
 section() { awk -v h="$2" '$0 == h {on = 1; print; next} on && /^#{1,3} / {on = 0} on' "$DOCS/$1/RULES.md"; }

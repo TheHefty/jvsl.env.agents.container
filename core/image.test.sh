@@ -145,20 +145,20 @@ plugin="$(docker run --rm --network none --entrypoint /bin/bash -e CLAUDE_CONFIG
     printf "loaded=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" plugin list 2>/dev/null | grep -A3 agent-container | grep -c loaded)"
     printf "version=%s\n" "$(timeout 60 /usr/bin/claude --plugin-dir "$P" --version 2>/dev/null | grep -c "Claude Code")"
 ' 2>/dev/null || true)"
-# The daily's scripts against the real bd (story the-daily). Their tests use a
+# The planning's scripts against the real bd (story the-planning). Their tests use a
 # fixture in the shape bd 1.3.1 prints; this is what catches that shape and
 # the real one drifting apart, which would leave both scripts reading nothing
 # while their tests stay green. Two tasks, the second blocked by the first.
-daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
+planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     B=/opt/jvsl/plugins/agent-container/bin
     cd "$(mktemp -d)" && git init -q && BD_NON_INTERACTIVE=1 bd init -q --prefix t >/dev/null 2>&1 || { echo "init=failed"; exit 0; }
     a="$(bd create first -t task --acceptance "done when x" --silent 2>/dev/null)"
     b="$(bd create second -t task --acceptance "done when y" --silent 2>/dev/null)"
     bd dep add "$b" "$a" >/dev/null 2>&1
-    brief="$("$B/daily-brief" 2>/dev/null)"
+    brief="$("$B/planning-brief" 2>/dev/null)"
     printf "ready=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Ready/,/^## /p" | grep -c "^- $a ")"
     printf "blocked=%s\n" "$(printf "%s\n" "$brief" | sed -n "/^## Blocked/,/^## /p" | grep -c "^- $b .*blocked by $a")"
-    printf "check=%s\n" "$("$B/daily-check" "$a" >/dev/null 2>&1 && echo ok || echo refused)"
+    printf "check=%s\n" "$("$B/planning-check" "$a" >/dev/null 2>&1 && echo ok || echo refused)"
     # The review against the same real bd: the PR recorded as metadata is read
     # back, an acceptance is written, and a merged PR closes the task. gh is a
     # stand-in that answers MERGED, because the image test has no network.
@@ -180,36 +180,36 @@ daily="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "same=%s\n" "$([ -n "$j1" ] && [ "$j1" = "$j2" ] && echo yes || echo no)"
     printf "entry=%s\n" "$(bd show "$j1" --json 2>/dev/null | jq -r ".[0] | [.status, .metadata.day, (.description | test(\"second\"))] | join(\" \")")"
     # Refinement against the same real bd: a task proposed under an agreed
-    # story is not offered by the daily; once agreed, it is.
+    # story is not offered by the planning; once agreed, it is.
     s="$(bd create story -t feature --acceptance "Scenario: x" --silent 2>/dev/null)"
     printf "%s\n" "what it is for" > /tmp/r-body; printf "%s\n" "done when z" > /tmp/r-crit
     p="$("$B/refine-propose" task "$s" proposed-one /tmp/r-body /tmp/r-crit 2>/dev/null | tail -n 1)"
-    printf "before=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
+    printf "before=%s\n" "$("$B/planning-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
     "$B/refine-agree" "$p" >/dev/null 2>&1
-    printf "after=%s\n" "$("$B/daily-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
+    printf "after=%s\n" "$("$B/planning-brief" 2>/dev/null | sed -n "/^## Ready/,/^## /p" | grep -c "^- $p ")"
     # The study contract runs on the node the image has: the example passes,
     # and the same validator the Study view bundles is what says so.
     printf "study=%s\n" "$("$B/study-validate" /opt/jvsl/plugins/agent-container/study/example/bd-labels-are-null >/dev/null 2>&1 && echo ok || echo failed)"
 ' 2>/dev/null || true)"
-dfield() { printf '%s' "$daily" | sed -n "s/^$1=//p"; }
+dfield() { printf '%s' "$planning" | sed -n "s/^$1=//p"; }
 [ "$(dfield study)" = "ok" ] || fail "study-validate does not pass the contract's own example in this image \
 (study=$(dfield study)): node is missing, or the plugin's study folder did not arrive, so the study skill \
 would refuse every topic"
 [ "$(dfield before) $(dfield after)" = "0 1" ] || fail "against the real bd, a proposed task was \
-offered by the daily, or an agreed one was not (before=$(dfield before) after=$(dfield after)): either a \
-draft reaches a daily as work, or agreement leaves it unreachable"
+offered by the planning, or an agreed one was not (before=$(dfield before) after=$(dfield after)): either a \
+draft reaches a planning as work, or agreement leaves it unreachable"
 [ "$(dfield journal) $(dfield same) $(dfield entry)" = "1 yes closed 2026-10-28 true" ] || fail "against \
 the real bd, two retros on one day did not leave one closed entry keyed by its day with the second body \
-(journal=$(dfield journal) same=$(dfield same) entry=$(dfield entry)): the daily would read the wrong \
+(journal=$(dfield journal) same=$(dfield same) entry=$(dfield entry)): the planning would read the wrong \
 day's Left open, or a day would show two entries"
 [ "$(dfield listed) $(dfield settled)" = "1 closed" ] || fail "against the real bd, the review \
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
 every task with no pull request"
-[ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, daily-brief \
-or daily-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
-$(dfield init)): the export's shape no longer matches what the daily's scripts and their fixture expect, \
-so a daily would offer the wrong tasks, or none"
+[ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, planning-brief \
+or planning-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
+$(dfield init)): the export's shape no longer matches what the planning's scripts and their fixture expect, \
+so a planning would offer the wrong tasks, or none"
 
 pfield() { printf '%s' "$plugin" | sed -n "s/^$1=//p"; }
 [ "$(pfield dir)" = "ok" ] || fail "the agent-container plugin is not at /opt/jvsl/plugins/agent-container, or its \

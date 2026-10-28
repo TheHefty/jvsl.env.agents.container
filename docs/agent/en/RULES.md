@@ -272,11 +272,11 @@ Most do not. Everything else in these rules is unchanged for them.
 ### The working day
 
 This applies only to a project that has a tracker. Its working day has four ceremonies, shipped as
-skills in the image's plugin and run with the developer: `agent-container:daily` at the start of the
+skills in the image's plugin and run with the developer: `agent-container:planning` at the start of the
 day, and `agent-container:review`, `agent-container:retro` and `agent-container:refine` at its end,
 in that order. How each runs is in [The working day](WORKING-DAY.md).
 
-- **They are the chain's calendar, not a way around it.** A daily picks only agreed tasks;
+- **They are the chain's calendar, not a way around it.** A planning picks only agreed tasks;
   refinement is where stories and tasks are proposed and agreed.
 - **A task is done when the developer can explain it.** Passing tests are not enough. Accepting
   needs their own words, and the task closes when its pull request merges, not when it is accepted.

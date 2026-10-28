@@ -8,8 +8,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 # shellcheck source=core/plugin/agent-container/bin/review-stubs.sh
 . "$HERE/review-stubs.sh"
 
@@ -38,23 +38,23 @@ item s-prop feature deferred 2 '["proposed"]' "Scenario: x"
 item s-closed feature closed 2 null "Scenario: x"
 item t1 task open 2 null "c"
 printf 'What it is for.\n' > "$work/body"
-printf 'Done when the daily lists it.\n' > "$work/crit"
+printf 'Done when the planning lists it.\n' > "$work/crit"
 printf 'Feature: f\n  Scenario: it happens\n    Then it is so\n' > "$work/scen"
 : > "$work/empty"
 
 run() {
     local code=0
     : > "$BD_CALLS"
-    DAILY_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/refine-propose" "$@" > "$work/out" 2>&1 || code=$?
+    TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/refine-propose" "$@" > "$work/out" 2>&1 || code=$?
     echo "$code"
 }
 calls() { wc -l < "$BD_CALLS" | tr -d ' '; }
 created() { grep $'^create\t' "$BD_CALLS" | head -n 1; }
 
-check "a task under an agreed story, with a criterion, is proposed" "$(run task s1 'the daily' "$work/body" "$work/crit")" "0"
+check "a task under an agreed story, with a criterion, is proposed" "$(run task s1 'the planning' "$work/body" "$work/crit")" "0"
 check "as a task under that story" "$(created | grep -c $'\t-t\ttask\t.*--parent\ts1\t')" "1"
 check "carrying both halves of a proposal" "$(created | grep -c -- $'--labels\tproposed\t--status\tdeferred')" "1"
-check "with its criterion as its acceptance" "$(created | grep -c -- $'--acceptance\tDone when the daily lists it.')" "1"
+check "with its criterion as its acceptance" "$(created | grep -c -- $'--acceptance\tDone when the planning lists it.')" "1"
 check "printing its id" "$(tail -n 1 "$work/out")" "n-1"
 
 check "a story under an agreed epic, with a scenario, is proposed" "$(run story e1 'a story' "$work/body" "$work/scen")" "0"
@@ -68,7 +68,7 @@ refused() {
     echo "$code $(calls)"
 }
 check "a task with no criterion is refused, writing nothing" "$(refused task s1 t "$work/body" "$work/empty")" "1 0"
-check "saying the criterion is what the daily needs" "$(grep -c 'done criterion' "$work/out")" "1"
+check "saying the criterion is what the planning needs" "$(grep -c 'done criterion' "$work/out")" "1"
 check "a story with no scenario is refused" "$(refused story e1 s "$work/body" "$work/crit")" "1 0"
 check "a task under an epic is refused" "$(refused task e1 t "$work/body" "$work/crit")" "1 0"
 check "a story under a story is refused" "$(refused story s1 s "$work/body" "$work/scen")" "1 0"

@@ -14,7 +14,7 @@ A filter like `select(.labels | index("proposed") | not)` throws on the first un
 
 ## How the project solves it
 
-Every reader defaults the field first: `(.labels // [])`, in `core/plugin/agent-container/bin/daily-brief`, `daily-check` and `review-list`. The test fixture, `core/plugin/agent-container/bin/daily-fixture.sh`, writes `null` exactly as bd 1.3.1 does.
+Every reader defaults the field first: `(.labels // [])`, in `core/plugin/agent-container/bin/planning-brief`, `planning-check` and `review-list`. The test fixture, `core/plugin/agent-container/bin/tracker-fixture.sh`, writes `null` exactly as bd 1.3.1 does.
 
 ## Trade-offs
 

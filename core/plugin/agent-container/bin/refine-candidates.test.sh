@@ -2,13 +2,13 @@
 # Exercises refine-candidates, the real script, against a fixture export.
 #
 # Refinement's agenda (story refinement): what waits for the developer's word,
-# what cannot reach a daily yet, and what tomorrow's daily can pick. A rejected
+# what cannot reach a planning yet, and what tomorrow's planning can pick. A rejected
 # draft listed again is the same conversation twice.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 
 failures=0
 check() {
@@ -40,14 +40,14 @@ item s-gone feature closed 2 '["proposed"]' "Scenario: x"
 item t-gone task closed 2 null "c"
 item j1 chore closed 2 '["journal"]'
 
-out="$(DAILY_EXPORT="$EXPORT" bash "$HERE/refine-candidates")"
+out="$(TRACKER_EXPORT="$EXPORT" bash "$HERE/refine-candidates")"
 section() { printf '%s\n' "$out" | awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on && /^- / {print $2}' | paste -sd' ' -; }
 
 check "open proposals await agreement" "$(section 'Awaiting agreement')" "p-task"
 check "naming what they are proposed under" "$(printf '%s\n' "$out" | grep -c '^- p-task .*under s-empty')" "1"
 check "an agreed story with no agreed task under it is listed, a proposed one not counting" "$(section 'Stories with no agreed task')" "s-empty"
 check "a task with no criterion is listed for one" "$(section 'Tasks with no done criterion')" "t-old"
-check "what tomorrow's daily can pick is shown" "$(section 'Agreed and ready')" "t-ready"
+check "what tomorrow's planning can pick is shown" "$(section 'Agreed and ready')" "t-ready"
 check "rejected, closed and journal items appear nowhere" "$(printf '%s\n' "$out" | grep -cE '^- (s-gone|t-gone|j1) ' || true)" "0"
 
 if [ "$failures" -gt 0 ]; then

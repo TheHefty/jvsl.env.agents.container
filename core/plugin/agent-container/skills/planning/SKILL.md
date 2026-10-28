@@ -1,13 +1,13 @@
 ---
-name: daily
-description: Start the working day with the developer — read the tracker and yesterday's journal, propose today's tasks, and claim only what the developer confirms. Use when the developer asks to start the day, run the daily, or plan today's work. Writes no code.
+name: planning
+description: Start the working day with the developer — read the tracker and yesterday's journal, propose today's tasks, and claim only what the developer confirms. Use when the developer asks to start the day, plan the day, or plan today's work. Writes no code.
 ---
 
-# The daily
+# Planning
 
 The start of a working day with the developer. It ends when today's plan is agreed and claimed. **It writes no code**, and nothing is started that the developer did not choose.
 
-The ceremonies are the calendar of the project's chain — epic, story, task, code — not a way around it. The daily picks **only agreed tasks**. Anything else goes back to refinement.
+The ceremonies are the calendar of the project's chain — epic, story, task, code — not a way around it. The planning picks **only agreed tasks**. Anything else goes back to refinement.
 
 ## 1. The tracker has to be on
 
@@ -24,7 +24,7 @@ If it exits non-zero, tell the developer the line it printed, word for word, and
 Run:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/daily-brief
+${CLAUDE_PLUGIN_ROOT}/bin/planning-brief
 ```
 
 Present its four sections in plain words:
@@ -46,13 +46,13 @@ Propose a short list from **Ready**, in the order the brief gives (priority, the
 Run, with the ids the developer chose:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/daily-check <id> [<id>...]
+${CLAUDE_PLUGIN_ROOT}/bin/planning-check <id> [<id>...]
 ```
 
 For each line that is not `ok`:
 - **A proposal, a story, an epic or a deferred item**: say it is not ready and why, using the line. Leave it for refinement. Do not start it, and do not write a task for it here.
 - **Blocked**: say by what. It is not started today unless the blocker is.
-- **No done criterion**: ask the developer what will show the task is done. Write their answer with `bd update <id> --acceptance "<their words>"`, then run `daily-check` on it again.
+- **No done criterion**: ask the developer what will show the task is done. Write their answer with `bd update <id> --acceptance "<their words>"`, then run `planning-check` on it again.
 
 Never fill in a criterion yourself.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # journal-write <body-file>: writes the day's journal entry (story
 # the-retro-and-its-journal). One entry per working day: a chore labelled
-# `journal`, closed when it is created so no daily offers it as work, titled
+# `journal`, closed when it is created so no planning offers it as work, titled
 # `Journal <day>` and found by its metadata `day` — a title can be edited, a key
 # is a key. A second retro on the same day rewrites that entry.
 #
@@ -17,7 +17,7 @@ set -uo pipefail
 
 BD="${REVIEW_BD:-bd}"
 SECTIONS=("Discovered" "Surprised" "Went wrong" "Decided alone" "What I learned" "Left open" "Links")
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 file="${1:-}"
 if [ -z "$file" ] || [ ! -f "$file" ]; then
@@ -34,7 +34,7 @@ mapfile -t found < <(sed -n 's/^## //p' "$file")
 for want in "${SECTIONS[@]}"; do
     printf '%s\n' "${found[@]}" | grep -qxF -- "$want" || refuse "It has no \"## $want\" section; every entry has all seven, in order: ${SECTIONS[*]}."
 done
-[ "${found[*]}" = "${SECTIONS[*]}" ] || refuse "Its sections are not in the order the daily and the study skill read: ${SECTIONS[*]}."
+[ "${found[*]}" = "${SECTIONS[*]}" ] || refuse "Its sections are not in the order the planning and the study skill read: ${SECTIONS[*]}."
 
 section() { awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on' "$file"; }
 blank() { [ -z "$(section "$1" | tr -d '[:space:]')" ]; }

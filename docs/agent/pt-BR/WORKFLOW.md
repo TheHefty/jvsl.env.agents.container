@@ -30,7 +30,7 @@ diff revisável grudado na discussão que o produziu.
 
 **Um projeto com rastreador percorre esta cadeia num calendário.** As quatro cerimônias de
 [O dia de trabalho](WORKING-DAY.md) são quando os seus gates acontecem: o refinement propõe e acorda
-stories e tasks no fim de um dia, e a daily seguinte só pega o que foi acordado. Elas mudam quando um
+stories e tasks no fim de um dia, e o planning seguinte só pega o que foi acordado. Elas mudam quando um
 elo é acordado, nunca se ele é.
 
 A tabela é onde um projeto sem rastreador guarda o seu planejamento. Um projeto que tem rastreador

@@ -29,7 +29,7 @@ attached to the discussion that produced it.
 
 **A project with a tracker works this chain on a calendar.** The four ceremonies of
 [The working day](WORKING-DAY.md) are when its gates happen: refinement proposes and agrees stories
-and tasks at the end of a day, and the next daily picks only what was agreed. They change when a
+and tasks at the end of a day, and the next planning picks only what was agreed. They change when a
 link is agreed, never whether.
 
 The table is where a project without a tracker keeps its planning. A project that has one keeps the

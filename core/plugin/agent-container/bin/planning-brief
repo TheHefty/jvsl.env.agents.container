@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# What the daily is chosen from (story the-daily): four sections in Markdown,
-# one line per item, read from `bd export` (or $DAILY_EXPORT, for the test).
+# What the planning is chosen from (story the-planning): four sections in Markdown,
+# one line per item, read from `bd export` (or $TRACKER_EXPORT, for the test).
 #
 #   In progress           tasks being worked on
 #   Blocked               open tasks with an open blocker, naming it
 #   Ready                 agreed, open, unblocked tasks — by priority, then by
 #                         how many items each unblocks, then oldest first; one
-#                         without a done criterion is marked, so the daily asks
+#                         without a done criterion is marked, so the planning asks
 #   Left open yesterday   the "## Left open" section of the latest journal
 #                         entry from before today, found by its metadata
 #                         `day`; and, first, a line when the last day with
 #                         work before today has no entry: its retro was
-#                         skipped. Days are local ($DAILY_TODAY, or today),
+#                         skipped. Days are local ($PLANNING_TODAY, or today),
 #                         so a late retro is the day it was held.
 #
-# The same reading as daily-check: agreed is neither deferred nor labelled
+# The same reading as planning-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
 # Journal entries carry the label `journal` and are never offered as work.
 set -uo pipefail
 
-TODAY="${DAILY_TODAY:-$(date +%F)}"
-if [ -n "${DAILY_EXPORT:-}" ]; then export_of() { cat "$DAILY_EXPORT"; }; else export_of() { bd export; }; fi
+TODAY="${PLANNING_TODAY:-$(date +%F)}"
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
     (map({key: .id, value: .status}) | from_entries) as $status

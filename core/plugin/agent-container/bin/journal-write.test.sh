@@ -8,8 +8,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=core/plugin/agent-container/bin/daily-fixture.sh
-. "$HERE/daily-fixture.sh"
+# shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
+. "$HERE/tracker-fixture.sh"
 # shellcheck source=core/plugin/agent-container/bin/review-stubs.sh
 . "$HERE/review-stubs.sh"
 # shellcheck source=core/plugin/agent-container/bin/journal-body-fixture.sh
@@ -36,7 +36,7 @@ EXPORT="$work/export.jsonl"; : > "$EXPORT"
 write() {
     local code=0
     : > "$BD_CALLS"
-    DAILY_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" JOURNAL_TODAY="${DAY:-2026-10-28}" \
+    TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" JOURNAL_TODAY="${DAY:-2026-10-28}" \
         bash "$HERE/journal-write" "$work/body.md" > "$work/out" 2>&1 || code=$?
     echo "$code"
 }
@@ -50,7 +50,7 @@ check "a first retro writes the day's entry" "$(write)" "0"
 check "creating a chore labelled journal, titled for the day" \
     "$(called $'^create\tJournal 2026-10-28\t-t\tchore\t--labels\tjournal\t')" "1"
 check "keyed by its day in metadata" "$(called '"day":"2026-10-28"')" "1"
-check "and closed, so no daily offers it as work" "$(called $'^close\tj-new\t--reason\t')" "1"
+check "and closed, so no planning offers it as work" "$(called $'^close\tj-new\t--reason\t')" "1"
 check "it prints the entry's id" "$(tail -n 1 "$work/out")" "j-new"
 
 item j-28 chore closed 2 '["journal"]' "" 2026-10-28T12:00:00Z "old body"; meta j-28 day '"2026-10-28"'
@@ -65,7 +65,7 @@ check "a new day gets a new entry, even with yesterday's there" "$(called $'^cre
 # the 27th, and that is the day it belongs to.
 : > "$EXPORT"
 code=0; : > "$BD_CALLS"
-TZ=America/Sao_Paulo DAILY_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" JOURNAL_NOW=1793149200 \
+TZ=America/Sao_Paulo TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" JOURNAL_NOW=1793149200 \
     bash "$HERE/journal-write" "$work/body.md" > "$work/out" 2>&1 || code=$?
 check "a retro at 22:00 in São Paulo is that day's, not tomorrow's in UTC" "$code $(called $'^create\tJournal 2026-10-27\t')" "0 1"
 

@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Sourced by daily-brief.test.sh and daily-check.test.sh: builds a `bd export`
+# Sourced by planning-brief.test.sh and planning-check.test.sh: builds a `bd export`
 # in the shape bd 1.3.1 prints, measured on this repository's tracker on
 # 2026-10-28 — one object per line, `labels` null when there are none,
 # `acceptance_criteria` absent when empty, dependencies typed `parent-child` or
