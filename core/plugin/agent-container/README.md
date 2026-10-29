@@ -14,7 +14,7 @@ refuses in one line, saying how to turn the tracker on, when the manifest does n
 
 | skill | what it does |
 |---|---|
-| `planning` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/planning-brief`, `bin/planning-check`) |
+| `planning` | starts the day: reads the tracker and yesterday's journal, proposes today's tasks, claims only what the developer confirms (`bin/planning-brief`, `bin/planning-check`; the journal through `bin/journal-read`) |
 | `review` | ends the day's work: each task shown against its criterion, accepted only in the developer's own words, closed when its pull request merges (`bin/review-list`, `bin/review-accept`, `bin/review-reopen`, `bin/review-settle`) |
 | `retro` | the day's retrospective: discovered, surprised, went wrong, decided alone, and the developer's own "what I learned", written as the day's journal entry, to the developer's private repository or kept in an outbox until it can be (`bin/retro-gather`, `bin/journal-write`, `bin/journal-flush`) |
 | `refine` | the day's last ceremony: grills the next items, proposes stories and tasks, agrees or rejects them on the developer's word (`bin/refine-candidates`, `bin/refine-propose`, `bin/refine-agree`, `bin/refine-reject`) |

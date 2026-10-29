@@ -36,7 +36,21 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 EXPORT="$work/export.jsonl"
 
-brief() { TRACKER_EXPORT="$EXPORT" PLANNING_TODAY=2026-10-28 bash "$SCRIPT"; }
+# The journal lives in the developer's private repository, played by a gh stub
+# whose files are under $GH_STORE, and in the outbox under $home (story
+# the-journals-readers-read-it-from-the-private-repository). The project is
+# named by its origin, as journal-write names it: demo, not the folder r.
+mkdir -p "$work/bin"
+export GH_CALLS="$work/gh-calls" GH_STORE="$work/store"
+# shellcheck source=core/plugin/agent-container/bin/journal-gh-stub.sh
+. "$HERE/journal-gh-stub.sh"
+journal_gh_stub "$work/bin/gh"
+home="$work/home"; outbox="$home/journal-outbox/demo"
+mkdir -p "$home" "$GH_STORE/demo" "$work/r"; : > "$GH_CALLS"
+printf '%s' '{"repository": "TheHefty/journal"}' > "$home/journal.json"
+git -C "$work/r" init -q && git -C "$work/r" remote add origin https://github.com/someone/demo.git
+
+brief() { (cd "$work/r" && TRACKER_EXPORT="$EXPORT" PLANNING_TODAY=2026-10-28 REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" bash "$SCRIPT"); }
 # The ids listed under one section, in order, space-separated.
 section() { brief | awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on && /^- / {print $2}' | paste -sd' ' -; }
 left_open() { brief | awk '$0 == "## Left open yesterday" {on = 1; next} /^## / {on = 0} on' | sed '/^$/d'; }
@@ -84,29 +98,60 @@ check "with no journal yet, the brief says so" "$(left_open | grep -c '^No journ
 check "and a day with work and no entry is said to have skipped its retro" \
     "$(left_open | grep -c '^No journal for 2026-10-09, which had work: its retro was skipped\.$')" "1"
 
-# --- entries in the shape journal-write accepts (story the-retro-and-its-journal) ---
+# --- entries in the private repository, by the day their file is named for ------
 # shellcheck source=core/plugin/agent-container/bin/journal-body-fixture.sh
 . "$HERE/journal-body-fixture.sh"
-# Found by their `day`, not by when they were created: j-late was written at
-# 01:00 UTC on the 28th, which is the 27th's retro held late at -0300.
-item j-old chore closed 2 '["journal"]' "" 2026-10-26T18:00:00Z "$(body x Nothing. no '- the oldest point')"
-meta j-old day '"2026-10-26"'
-item j-late chore closed 2 '["journal"]' "" 2026-10-28T01:00:00Z "$(body x Nothing. no '- the second half of the migration
-- ask about the cache')"
-meta j-late day '"2026-10-27"'
-item j-today chore closed 2 '["journal"]' "" 2026-10-28T09:00:00Z "$(body x Nothing. no '- written this morning')"
-meta j-today day '"2026-10-28"'
+body x Nothing. no '- the oldest point' > "$GH_STORE/demo/2026-10-26.md"
+body x Nothing. no '- the second half of the migration
+- ask about the cache' > "$GH_STORE/demo/2026-10-27.md"
+body x Nothing. no '- written this morning' > "$GH_STORE/demo/2026-10-28.md"
 check "yesterday's open points come from the entry for the latest day before today, that section only" \
     "$(left_open | grep -v '^No journal' | paste -sd'|' -)" "- the second half of the migration|- ask about the cache"
-check "and journal entries are not tasks to offer" "$(section Ready | tr ' ' '\n' | grep -c '^j-' || true)" "0"
+# Entries the tracker still holds from before the journal moved are not work.
+item j-old chore closed 2 '["journal"]' "" 2026-10-20T18:00:00Z "$(body x Nothing. no '- from the tracker')"
+check "and journal entries left in the tracker are neither tasks to offer nor read" \
+    "$(section Ready | tr ' ' '\n' | grep -c '^j-' || true) $(left_open | grep -c 'from the tracker' || true)" "0 0"
 
 # Touched on the 27th, and the 27th has its entry: nothing was skipped.
 item t-27 task open 2 null "c" 2026-10-27T15:00:00Z
 check "a day with work and its entry is not called skipped" "$(left_open | grep -c 'skipped' || true)" "0"
-# Touched on the 27th, local, but the only entry is the 26th's: skipped.
-grep -v '"id":"j-late"' "$EXPORT" > "$work/e2"; mv "$work/e2" "$EXPORT"
-check "a day with work and no entry is called skipped, by its local date" \
+mv "$GH_STORE/demo/2026-10-27.md" "$work/27.md"
+check "a day with work and no entry in the repository or the outbox is called skipped, by its local date" \
     "$(left_open | grep -c '^No journal for 2026-10-27, which had work: its retro was skipped\.$')" "1"
+
+# --- an entry still waiting in the outbox ------------------------------------------
+mkdir -p "$outbox"; cp "$work/27.md" "$outbox/2026-10-27.md"
+export GH_FAIL=put
+check "an entry waiting in the outbox is read, and said not to be sent yet" \
+    "$(left_open | grep -c '^The entry for 2026-10-27 is not sent yet: it waits in the outbox on this machine\.$') $(left_open | grep -c '^- ask about the cache$') $(left_open | grep -c 'skipped' || true)" "1 1 0"
+body x Nothing. no '- the old point' > "$GH_STORE/demo/2026-10-27.md"
+check "when the repository and the outbox both hold a day, the outbox's newer entry is the one read" \
+    "$(left_open | grep -c '^- the old point$' || true) $(left_open | grep -c '^- ask about the cache$')" "0 1"
+unset GH_FAIL
+left_open > /dev/null
+check "the planning sends what was waiting before it reads" \
+    "$(ls "$outbox" | wc -l | tr -d ' ') $(grep -c 'ask about the cache' "$GH_STORE/demo/2026-10-27.md")" "0 1"
+
+# --- the repository cannot be read --------------------------------------------------
+rm "$GH_STORE/demo/2026-10-27.md"; cp "$work/27.md" "$outbox/2026-10-27.md"
+export GH_FAIL=offline
+check "with GitHub unreachable, the brief says the journal could not be read, and why" \
+    "$(left_open | grep -c '^The journal could not be read from TheHefty/journal: error connecting to api.github.com\. Only entries waiting on this machine are shown\.$')" "1"
+check "still shows what waits in the outbox" "$(left_open | grep -c '^- ask about the cache$')" "1"
+rm "$outbox/2026-10-27.md"
+check "and calls no day skipped, since it could not see the entries" "$(left_open | grep -c 'skipped' || true)" "0"
+unset GH_FAIL
+mv "$home/journal.json" "$work/journal.json"
+check "with no repository named, the brief says so instead of calling a day skipped" \
+    "$(left_open | grep -c '^The journal could not be read: no journal repository is named in .*journal.json\. Only entries waiting on this machine are shown\.$') $(left_open | grep -c 'skipped' || true)" "1 0"
+mv "$work/journal.json" "$home/journal.json"
+
+# --- the writer and the readers name the project the same way -------------------------
+rm -rf "$GH_STORE/demo"; mkdir -p "$GH_STORE"
+body x Nothing. no '- written by the retro' > "$work/entry.md"
+(cd "$work/r" && PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_TODAY=2026-10-27 \
+    bash "$HERE/journal-write" "$work/entry.md" > /dev/null 2>&1)
+check "an entry journal-write sent is the one the planning reads" "$(left_open | grep -c '^- written by the retro$')" "1"
 
 if [ "$failures" -gt 0 ]; then
     echo "planning-brief.test: $failures failure(s)"

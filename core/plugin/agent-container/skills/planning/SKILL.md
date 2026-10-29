@@ -31,7 +31,7 @@ Present its four sections in plain words:
 - what is **in progress**;
 - what is **blocked**, and by what;
 - what is **ready**;
-- what yesterday's journal **left open**.
+- what yesterday's journal **left open**. The journal is read from the developer's private repository and from the entries still waiting on this machine. If the brief says an entry is not sent yet, or that the journal could not be read, tell the developer, in its words.
 
 Do not add items it does not list, and do not drop any it does. It already applies the rules: an agreed task is neither deferred nor a proposal, a blocker counts until it is closed, and a parent never blocks.
 

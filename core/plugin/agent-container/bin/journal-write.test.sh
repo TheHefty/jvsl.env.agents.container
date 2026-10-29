@@ -30,49 +30,14 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin"
 export GH_CALLS="$work/gh-calls" GH_STORE="$work/store" BD_CALLS="$work/bd-calls"
 
-# gh standing in for GitHub. $GH_PRIVATE is the repository's visibility, or
-# "missing" for a 404; $GH_FAIL names the one step that fails (visibility, get,
-# put); files live under $GH_STORE, so a test can read what was sent.
-cat > "$work/bin/gh" <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' "$*" >> "$GH_CALLS"
-[ "$1" = api ] || { echo "gh stub: unexpected $*" >&2; exit 2; }
-shift
-method=GET
-if [ "$1" = -X ]; then method="$2"; shift 2; fi
-path="$1"; shift
-case "$path" in
-    repos/*/*/contents/*)
-        file="${path#repos/*/*/contents/}"
-        if [ "$method" = GET ]; then
-            [ "${GH_FAIL:-}" = get ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
-            [ -f "$GH_STORE/$file" ] || { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
-            sha1sum "$GH_STORE/$file" | cut -c1-40; exit 0
-        fi
-        [ "${GH_FAIL:-}" = put ] && { echo "HTTP 409: conflict" >&2; exit 1; }
-        content=""; sha=""
-        for a in "$@"; do
-            case "$a" in content=*) content="${a#content=}" ;; sha=*) sha="${a#sha=}" ;; esac
-        done
-        if [ -f "$GH_STORE/$file" ] && [ "$sha" != "$(sha1sum "$GH_STORE/$file" | cut -c1-40)" ]; then
-            echo "HTTP 409: sha does not match" >&2; exit 1
-        fi
-        mkdir -p "$(dirname "$GH_STORE/$file")"
-        printf '%s' "$content" | base64 -d > "$GH_STORE/$file"
-        echo '{"content":{"path":"'"$file"'"}}' ;;
-    repos/*/*)
-        [ "${GH_FAIL:-}" = visibility ] && { echo "error connecting to api.github.com" >&2; exit 1; }
-        case "${GH_PRIVATE:-true}" in
-            missing) echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
-            *) echo "$GH_PRIVATE" ;;
-        esac ;;
-esac
-SH
+# shellcheck source=core/plugin/agent-container/bin/journal-gh-stub.sh
+. "$HERE/journal-gh-stub.sh"
+journal_gh_stub "$work/bin/gh"
 cat > "$work/bin/bd" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$BD_CALLS"
 SH
-chmod +x "$work/bin/gh" "$work/bin/bd"
+chmod +x "$work/bin/bd"
 
 home="$work/home"
 outbox="$home/journal-outbox/demo"
