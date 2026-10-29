@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.11.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.10.0...v1.11.0) (2026-10-29)
+
+
+### Features
+
+* a debt is like a story, and refinement plans its fix as tasks under it ([00b56c6](https://github.com/TheHefty/jvsl.env.agents.container/commit/00b56c6c43aae80149ab090d57751468f7dfec4f))
+* the planning and study-sources read the journal from the private repository ([ebd03f7](https://github.com/TheHefty/jvsl.env.agents.container/commit/ebd03f7fc93c9abbdcf50cebc831eb882d7a926f))
+* the retro's journal goes to the developer's private repository, never the tracker ([aeb8650](https://github.com/TheHefty/jvsl.env.agents.container/commit/aeb86509887a81fe677674a2fc6d63b7c22bae05))
+
 ## [1.10.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.9.0...v1.10.0) (2026-10-29)
 
 
