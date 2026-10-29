@@ -98,3 +98,31 @@ test('without input the process gets none, as before, and cannot wait on the ter
   t.open(undefined)
   assert.equal(await t.exited, 0)
 })
+
+/**
+ * Found on 2026-10-29, building from Windows with 1.11.0 (debt
+ * the-build-from-windows-prints-nothing-because-wsl-exe-is-spawned-detached):
+ * the terminal stayed blank for 93 seconds until cancelled. On Windows a
+ * detached process gets no console, and wsl.exe then writes nothing — measured
+ * with VS Code's own Node 24.22.1 and the build's own command, 0 bytes after
+ * 20 seconds detached, exit 0 and 585 bytes not. CI has no Windows and no WSL,
+ * so these drive the real spawn here with the platform given, and read whether
+ * the child got a process group of its own: what `detached` does on Linux.
+ */
+async function groupOf(platform: NodeJS.Platform): Promise<'own' | 'ours'> {
+  const t = hostProcessTerminal('sh', ['-c', 'read -r _ _ _ _ pgid _ < /proc/$$/stat; echo "$$ $pgid"'], { platform })
+  let text = ''
+  t.onDidWrite((s) => { text += s })
+  t.open(undefined)
+  assert.equal(await t.exited, 0)
+  const [pid, pgid] = text.trim().split(/\s+/)
+  return pid === pgid ? 'own' : 'ours'
+}
+
+test('on Windows the process is not detached, so wsl.exe has a console to write from (debt iya)', async () => {
+  assert.equal(await groupOf('win32'), 'ours')
+})
+
+test('on Linux it stays detached, in a group of its own, so closing the terminal stops all it started', async () => {
+  assert.equal(await groupOf('linux'), 'own')
+})
