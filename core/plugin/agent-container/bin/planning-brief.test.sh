@@ -7,6 +7,14 @@
 # taken for yesterday's (story the-planning).
 set -euo pipefail
 
+# The fixture's times are UTC midnights, and the brief reads days by the local
+# date — so the test pins UTC. Without it, a developer at -0300 or +0900 gets a
+# different day for the same fixture and a red suite for code that is right
+# (found 2026-10-28, the first day this container had the host's timezone).
+# Local days themselves are held by retro-gather's and journal-write's tests,
+# which set America/Sao_Paulo on purpose.
+export TZ=UTC
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$HERE/planning-brief"
 # shellcheck source=core/plugin/agent-container/bin/tracker-fixture.sh
