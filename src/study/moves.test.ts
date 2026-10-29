@@ -8,14 +8,11 @@ import type { Docker } from '../host/docker.ts'
 // --- the view moves the topic, and never silently (story the-view-moves-the-topic-in-the-tracker)
 
 const task = (status: string, labels: string[] = ['study']): Item => ({ id: 'st-1', title: 't', status, type: 'task', labels, blockedBy: [], metadata: { study: 'labels' } })
-const one = { 'q-1': [{ at: '2026-10-28T21:00:00-03:00', text: 'x' }] }
-
-test('a started is due exactly when there is an attempt and the topic is still open', () => {
-  assert.equal(startedDue(one, task('open')), true)
-  assert.equal(startedDue({}, task('open')), false)
-  assert.equal(startedDue({ 'q-1': [] }, task('open')), false)
-  for (const s of ['in_progress', 'closed']) assert.equal(startedDue(one, task(s)), false, s)
-  assert.equal(startedDue(one, undefined), false)
+test('opening a topic starts it exactly when it is still open', () => {
+  assert.equal(startedDue(task('open')), true)
+  for (const s of ['in_progress', 'closed']) assert.equal(startedDue(task(s)), false, s)
+  assert.equal(startedDue(task('in_progress', ['study', 'ready-to-write'])), false)
+  assert.equal(startedDue(undefined), false)
 })
 
 // docker as the board's lookup sees it: one container labelled with the project.

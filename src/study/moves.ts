@@ -4,20 +4,18 @@
  *
  * **The extension runs no bd write.** It runs the plugin's `study-move` inside
  * the project's container, which makes three moves — started, ready, published
- * — each only when earned, reading the topic's own files, and only on an item
- * labelled `study`. A view able to run any bd command is one bug away from
+ * — and only on an item labelled `study`. A view able to run any bd command is one bug away from
  * closing the wrong item; scripts/board-only-reads.test.sh holds src/study to
  * `bd export` and this one script.
  *
  * **Never silent.** A refusal comes back as the script's own line; a stopped
  * container as the reason. A `started` missed while the container was stopped
- * is due again on the next render, so the tracker catches up with the attempts.
+ * is due again the next time the topic is opened.
  */
 import { containerOf, inContainer } from '../board/tracker.ts'
 import type { Item } from '../board/board-read.ts'
 import type { Docker } from '../host/docker.ts'
 import type { ProjectOnHost } from '../host/locate.ts'
-import type { Attempts } from './practice-page.ts'
 
 export const STUDY_MOVE = '/opt/jvsl/plugins/agent-container/bin/study-move'
 
@@ -26,9 +24,9 @@ export const MOVE_MS = 15000
 
 export type Move = 'started' | 'ready' | 'published'
 
-/** A started is due when the developer has attempted something and the topic is still open. */
-export function startedDue(attempts: Attempts, item: Item | undefined): boolean {
-  return item !== undefined && item.status === 'open' && Object.values(attempts).some((list) => list.length > 0)
+/** Opening a topic starts it, when it is still open (task the-practice-leaves-the-study). */
+export function startedDue(item: Item | undefined): boolean {
+  return item !== undefined && item.status === 'open'
 }
 
 export async function runMove(

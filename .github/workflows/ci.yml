@@ -341,6 +341,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/needs-tracker.test.sh
       - name: every script a skill calls exists, and each ceremony has one name
         run: bash core/plugin/agent-container/plugin-references.test.sh
+      - name: the study is its guide alone, and nothing still asks for or offers a practice
+        run: bash scripts/the-practice-is-gone.test.sh
       - name: the planning offers only agreed, unblocked tasks and names what holds the others back
         run: bash core/plugin/agent-container/bin/planning-brief.test.sh
       - name: the planning starts nothing that is not an agreed task with a done criterion
@@ -361,10 +363,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/refine-agree.test.sh
       - name: refinement's agenda shows what waits, what cannot reach a planning yet, and what is ready
         run: bash core/plugin/agent-container/bin/refine-candidates.test.sh
-      - name: study material is checked against its contract, one line per problem, never skipped
+      - name: a study topic's guide is checked against its contract, one line per problem, never skipped
         run: bash core/plugin/agent-container/bin/study-validate.test.sh
-      - name: a study topic's attempts never reach the repository
-        run: bash core/plugin/agent-container/bin/study-ignore.test.sh
       - name: writing the project report changes nothing but the report
         run: bash core/plugin/agent-container/bin/report-guard.test.sh
       - name: every claim in the report cites a file that exists, and no implicit decision is given a motive

@@ -13,7 +13,7 @@
  */
 import type { Item } from '../board/board-read.ts'
 import type { ProjectFiles } from '../host/files.ts'
-import { checkTopicWith, type Schemas, type TopicProblem } from './contract.ts'
+import { checkTopicWith, type TopicProblem } from './contract.ts'
 
 export const STUDY_DIR = 'docs/study'
 
@@ -59,14 +59,14 @@ export function topicRows(folders: readonly TopicFolder[], tracker: TrackerView)
 }
 
 /** The topic folders under docs/study/, each checked against the contract through the project's own files. */
-export function readTopics(files: ProjectFiles, schemas: Schemas): TopicFolder[] {
+export function readTopics(files: ProjectFiles): TopicFolder[] {
   const entries = files.list(STUDY_DIR) ?? []
   return entries
-    .filter((e) => !e.startsWith('.') && (files.exists(`${STUDY_DIR}/${e}/practice.json`) || files.exists(`${STUDY_DIR}/${e}/guide.md`)))
+    .filter((e) => !e.startsWith('.') && files.exists(`${STUDY_DIR}/${e}/guide.md`))
     .map((slug) => {
       const read = (name: string) => files.read(`${STUDY_DIR}/${slug}/${name}`)
       const guide = read('guide.md') ?? ''
       const heading = guide.split('\n').find((l) => l.startsWith('# '))
-      return { slug, title: heading === undefined ? slug : heading.slice(2).trim(), problems: checkTopicWith(read, slug, schemas, `${STUDY_DIR}/${slug}`) }
+      return { slug, title: heading === undefined ? slug : heading.slice(2).trim(), problems: checkTopicWith(read, slug, `${STUDY_DIR}/${slug}`) }
     })
 }

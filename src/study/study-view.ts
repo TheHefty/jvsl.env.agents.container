@@ -4,7 +4,6 @@
  * the reads those decisions need. It only reads — the topic folders through the
  * project's files, the tracker through the board's `bd export`.
  */
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { OPEN_TOPIC } from '../commands.ts'
@@ -13,13 +12,7 @@ import type { Docker } from '../host/docker.ts'
 import { filesFor } from '../host/files.ts'
 import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
-import { loadSchemas, type Schemas } from './contract.ts'
 import { readTopics, topicRows, type TopicRow } from './topics.ts'
-
-/** The schemas from the extension's own copy of core/, which ships in the .vsix. */
-export function schemasFrom(extensionPath: string): Schemas {
-  return loadSchemas(join(extensionPath, 'core', 'plugin', 'agent-container', 'study'))
-}
 
 type Row = TopicRow | { slug: ''; label: string; detail: string; state: 'unknown' }
 
@@ -43,7 +36,7 @@ export class StudyView implements vscode.TreeDataProvider<Row> {
     const files = filesFor(project)
     let topics
     try {
-      topics = readTopics(files, schemasFrom(this.extensionPath))
+      topics = readTopics(files)
     } catch (error) {
       this.write([`study: the topics could not be read — ${String(error)}`])
       return [{ slug: '', label: 'The topics could not be read', detail: String(error), state: 'unknown' }]

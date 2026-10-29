@@ -15,8 +15,8 @@ slug="$1"; title="$2"
 [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "study-track: \"$slug\" is not a slug the contract accepts; make one with study-slug" >&2; exit 2; }
 
 folder="docs/study/$slug"
-description="Study material in $folder/: guide.md to read, practice.json to work through in the Study view."
-criterion="Ready to write once every practice item has an attempt; done when the post is published, with its link."
+description="Study material in $folder/: guide.md, read in the Study view before writing the post."
+criterion="Ready to write when the developer says so; done when the post is published, with its link."
 
 id="$(export_of | jq -r --arg s "$slug" 'select(._type == "issue" and ((.labels // []) | index("study")) and .metadata.study == $s) | .id' | head -n 1)"
 if [ -n "$id" ]; then

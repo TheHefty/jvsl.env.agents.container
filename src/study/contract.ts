@@ -8,5 +8,5 @@
  * whole reason the validator interprets the schema files rather than restating
  * them.
  */
-export { checkTopic, checkTopicWith, loadSchemas, validate, withAttemptsIgnored, GUIDE_SECTIONS } from '../../core/plugin/agent-container/study/validate.mjs'
-export type { SchemaError, Schemas, TopicProblem } from '../../core/plugin/agent-container/study/validate.mjs'
+export { checkTopic, checkTopicWith, GUIDE_SECTIONS } from '../../core/plugin/agent-container/study/validate.mjs'
+export type { TopicProblem } from '../../core/plugin/agent-container/study/validate.mjs'
