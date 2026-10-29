@@ -119,17 +119,30 @@ test('activation registers every contributed command, each under its own id', as
 // Driven at the level it was found: the built bundle, activated in a window
 // whose folder is a real project on disk.
 
-function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = []) {
+/** What a test can give the stubbed editor: answers to notices, and what it records. */
+interface EditorScript {
+  /** The action a notice is answered with, by its text; undefined dismisses it. */
+  answer?: (message: string) => string | undefined
+  /** Every command the extension executes. */
+  executed?: string[]
+  /** What getCommands reports as available. */
+  commands?: string[]
+  /** Every line written to the extension's output channel. */
+  channel?: string[]
+}
+
+function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = [], script: EditorScript = {}) {
   const noop = { dispose() {} }
+  const say = (m: string) => { messages.push(m); return Promise.resolve(script.answer?.(m)) }
   internals._load = function (this: unknown, request, parent, isMain) {
     if (request === 'vscode') {
       return {
         window: {
-          createOutputChannel: () => ({ appendLine() {}, show() {}, dispose() {} }),
+          createOutputChannel: () => ({ appendLine(l: string) { script.channel?.push(l) }, show() {}, dispose() {} }),
           registerTreeDataProvider: () => noop,
-          showWarningMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
-          showInformationMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
-          showErrorMessage: (m: string) => { messages.push(m); return Promise.resolve(undefined) },
+          showWarningMessage: say,
+          showInformationMessage: say,
+          showErrorMessage: say,
         },
         workspace: {
           workspaceFolders: [{ uri: { fsPath: folder, authority: '' } }],
@@ -138,8 +151,8 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
         },
         commands: {
           registerCommand: () => noop,
-          executeCommand: () => Promise.resolve(undefined),
-          getCommands: () => Promise.resolve([]),
+          executeCommand: (c: string) => { script.executed?.push(c); return Promise.resolve(undefined) },
+          getCommands: () => Promise.resolve(script.commands ?? []),
         },
         extensions: { all: [] },
         env: { remoteName: undefined },
@@ -220,4 +233,90 @@ test('a folder Open or Create handed over is prepared, and the handover is consu
   await settle()
   assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'prepared: the old manifest was adopted')
   assert.ok(updates.includes(undefined), 'the handover was consumed')
+})
+
+// --- a regenerated configuration reaches the container (debt
+// regenerate-reopens-the-window-but-the-container-keeps-its-old-configuration)
+//
+// Found on 2026-10-28 on 1.9.0: Regenerate rewrote devcontainer.json and
+// reopened, Dev Containers reattached to the existing container, and the new
+// configuration reached nothing until a Rebuild Container by hand. Driven
+// where it was found: the built bundle, in a window on a project with a stale
+// configuration, with a docker on PATH that reports the project's container.
+// Dev Containers itself cannot be driven here; what the extension hands it is
+// the claim.
+
+const REOPEN = 'remote-containers.reopenInContainer'
+const REBUILD = 'remote-containers.rebuildAndReopenInContainer'
+
+function staleProjectWithContainer(): { dir: string; restore: () => void } {
+  const dir = mkdtempSync(join(tmpdir(), 'regenerate-'))
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":[]}\n')
+  mkdirSync(join(dir, '.devcontainer'))
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'),
+    `${JSON.stringify({ image: 'x-dev', containerEnv: { PUID: '1000', PGID: '1000' }, 'x-jvsl-generated': { extension: '1.3.2' } }, null, 2)}\n`)
+  const bin = join(dir, '.fake-bin')
+  mkdirSync(bin)
+  // The calls preparing and reading the container make, answered as a daemon
+  // with the image built and one container created for this folder.
+  writeFileSync(join(bin, 'docker'), [
+    '#!/bin/sh',
+    'case "$*" in',
+    '  "info --format {{.NCPU}}") echo 4 ;;',
+    '  "version --format {{.Server.Version}}") echo 27.0.0 ;;',
+    '  "image inspect -f {{.Id}} "*) echo sha256:new ;;',
+    '  "image inspect "*) echo "[{}]" ;;',
+    '  "ps -a --filter"*) printf "abc\\tproj-ctr\\t%s\\trunning\\n" "$FAKE_PROJECT" ;;',
+    '  "inspect -f {{.Image}} abc") echo sha256:old ;;',
+    'esac',
+  ].join('\n'), { mode: 0o755 })
+  const path = process.env.PATH
+  process.env.PATH = `${bin}:${path ?? ''}`
+  process.env.FAKE_PROJECT = dir
+  return { dir, restore: () => { process.env.PATH = path; delete process.env.FAKE_PROJECT } }
+}
+
+async function until(done: () => boolean, ms = 8000) {
+  const end = Date.now() + ms
+  while (!done() && Date.now() < end) await new Promise((r) => setTimeout(r, 100))
+}
+
+test('Regenerate with a container already there asks to recreate it, and Recreate runs the rebuild (debt o81)', async () => {
+  const { dir, restore } = staleProjectWithContainer()
+  try {
+    const messages: string[] = []
+    const executed: string[] = []
+    await stubEditor(dir, undefined, [], messages, {
+      answer: (m) => (m.includes('Regenerate') ? 'Regenerate' : m.includes('old configuration') ? 'Recreate container' : undefined),
+      executed,
+      commands: [REOPEN, REBUILD],
+    })
+    await until(() => executed.length > 0)
+    assert.ok(messages.some((m) => /proj-ctr.*old configuration/s.test(m)), JSON.stringify(messages))
+    assert.deepEqual(executed, [REBUILD], 'recreated through the rebuild, not reattached with a reopen')
+    assert.match(readFileSync(join(dir, '.devcontainer', 'devcontainer.json'), 'utf8'), /"generation"/)
+  } finally {
+    restore()
+  }
+})
+
+test('dismissing the question recreates nothing, and the channel says what waits', async () => {
+  const { dir, restore } = staleProjectWithContainer()
+  try {
+    const messages: string[] = []
+    const executed: string[] = []
+    const channel: string[] = []
+    await stubEditor(dir, undefined, [], messages, {
+      answer: (m) => (m.includes('Regenerate') ? 'Regenerate' : undefined),
+      executed,
+      commands: [REOPEN, REBUILD],
+      channel,
+    })
+    await until(() => messages.some((m) => m.includes('old configuration')))
+    await settle()
+    assert.deepEqual(executed, [], 'nothing recreated, nor reattached to the old container')
+    assert.ok(channel.some((l) => /waits for .*Rebuild Container/.test(l)), JSON.stringify(channel))
+  } finally {
+    restore()
+  }
 })

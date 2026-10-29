@@ -18,6 +18,15 @@ import { CONFIG_PATH, decideOpen, imageStateFrom, prepareHere, REOPEN_COMMAND, s
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
+ * What prepare did: nothing written (refused, failed, or a build that did not
+ * finish), the configuration written, or written and handed over to the
+ * reopen. Regenerate reads it to know whether there is anything to recreate a
+ * container for (debt
+ * regenerate-reopens-the-window-but-the-container-keeps-its-old-configuration).
+ */
+export type Prepared = 'not written' | 'written' | 'handed over'
+
+/**
  * Decides, writes, and says what needs saying. `handOver` is the difference
  * between activation — which leaves the asking to the tooling — and the command,
  * which was invoked precisely because somebody wants it open now.
@@ -27,14 +36,14 @@ export async function prepare(
   channel: vscode.OutputChannel,
   write: (lines: string[]) => void,
   options: { handOver: boolean },
-): Promise<void> {
+): Promise<Prepared> {
   const here = prepareHere(vscode.env.remoteName)
   if (!here.act) {
     write([`open flow: nothing to do — ${here.why}`])
-    return
+    return 'not written'
   }
   const project = hostProject()
-  if (project.kind === 'none') return
+  if (project.kind === 'none') return 'not written'
 
   // Whose credentials the container is given: refused here, before anything is
   // written, when a distro will not say where its home is.
@@ -42,7 +51,7 @@ export async function prepare(
   if (!home.ok) {
     write([`refused: ${home.reason}`])
     void vscode.window.showErrorMessage(`${home.reason}. Nothing was written.`)
-    return
+    return 'not written'
   }
 
   const openContext = await gather(project, context, write, home.home)
@@ -53,7 +62,7 @@ export async function prepare(
     const show = 'Show details'
     const chosen = await vscode.window.showWarningMessage(decision.cause, show)
     if (chosen === show) channel.show(true)
-    return
+    return 'not written'
   }
 
   const files = filesFor(project)
@@ -68,7 +77,7 @@ export async function prepare(
     const cause = `could not write ${CONFIG_PATH}: ${String(error)}`
     write([cause])
     void vscode.window.showErrorMessage(cause)
-    return
+    return 'not written'
   }
 
   write([
@@ -118,13 +127,15 @@ export async function prepare(
           ? 'The build was stopped, so the project was not opened.'
           : 'The build failed, so the project was not opened. Its output is in the terminal.',
       )
-      return
+      return 'not written'
     }
   }
 
   if (options.handOver || decision.action === 'build') {
     await vscode.commands.executeCommand(REOPEN_COMMAND)
+    return 'handed over'
   }
+  return 'written'
 }
 
 export async function gather(

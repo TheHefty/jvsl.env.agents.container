@@ -6,13 +6,15 @@ import { hostProblems, sandboxWarnings } from '../build/build.ts'
 import { hostChecks, sandboxConditions } from '../host/checks.ts'
 import { describe, extensionVersion } from '../host/detected.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
+import { projectContainer } from '../build/command.ts'
+import { dockerFor } from '../host/docker.ts'
 import { prepare } from './command.ts'
 import { HANDOVER_KEY, startupAction } from './handover.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-manifest.ts'
 import { filesFor } from '../host/files.ts'
-import { CONFIG_PATH } from './open.ts'
-import { staleness } from './stale.ts'
+import { CONFIG_PATH, REOPEN_COMMAND } from './open.ts'
+import { afterRegenerate, staleness } from './stale.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
 /**
@@ -148,6 +150,49 @@ export function watchManifest(onChange: () => void): vscode.Disposable {
 }
 
 /**
+ * Regenerate: the configuration rewritten, then taken to the container (debt
+ * regenerate-reopens-the-window-but-the-container-keeps-its-old-configuration).
+ * A reopen alone reattaches to the existing container, which keeps its old
+ * configuration, so with a container the rebuild is asked for — never run
+ * unasked, since recreating ends what runs inside. See afterRegenerate.
+ */
+async function regenerate(
+  context: vscode.ExtensionContext,
+  channel: vscode.OutputChannel,
+  write: (lines: string[]) => void,
+  project: Exclude<ReturnType<typeof hostProject>, { kind: 'none' }>,
+): Promise<void> {
+  if ((await prepare(context, channel, write, { handOver: false })) !== 'written') return
+  const container = await projectContainer(project, dockerFor(project), (why) => write([`configuration: ${why}`]))
+  const next = afterRegenerate({ container, inContainer: vscode.env.remoteName === 'dev-container' })
+  if (next.say === 'reopen') {
+    await vscode.commands.executeCommand(REOPEN_COMMAND)
+    return
+  }
+  write([`configuration: ${next.message}`])
+  if (next.say === 'ambiguous') {
+    void vscode.window.showWarningMessage(next.message)
+    return
+  }
+  const waits = 'configuration: the rewritten configuration waits for the container to be recreated: ' +
+    'run "Dev Containers: Rebuild Container" when nothing is running in it'
+  if (!(await vscode.commands.getCommands(true)).includes(next.command)) {
+    write([waits])
+    void vscode.window.showWarningMessage(
+      `${next.message} Dev Containers does not provide \`${next.command}\` here: run "Dev Containers: Rebuild Container" from the Command Palette.`,
+    )
+    return
+  }
+  const recreate = 'Recreate container'
+  if ((await vscode.window.showWarningMessage(next.message, recreate)) === recreate) {
+    write([`configuration: recreating through ${next.command}`])
+    await vscode.commands.executeCommand(next.command)
+    return
+  }
+  write([waits])
+}
+
+/**
  * A configuration an older extension generated, said once with an action, and
  * written only if it is chosen (debt
  * a-projects-generated-container-configuration-does-not-follow-an-upgraded-extension).
@@ -169,7 +214,7 @@ function offerRegeneration(
     void vscode.window.showInformationMessage(s.message, 'Regenerate').then((choice) => {
       if (choice !== 'Regenerate') return
       write(['configuration: regenerating, as asked'])
-      return prepare(context, channel, write, { handOver: true })
+      return regenerate(context, channel, write, project)
     })
   } catch (error) {
     write([`configuration: could not be checked for a newer generation: ${String(error)}`])
