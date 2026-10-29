@@ -61,6 +61,39 @@ export async function build(
 }
 
 /**
+ * The container Dev Containers created for this project, with the image it
+ * runs: what a build and Regenerate both ask before offering to recreate it.
+ * A docker that cannot answer is said through `why` and read as no container,
+ * so nothing is offered on a guess.
+ */
+export async function projectContainer(
+  project: Exclude<ProjectOnHost, { kind: 'none' }>,
+  docker: Docker,
+  why: (line: string) => void,
+): Promise<ContainerForImage> {
+  try {
+    const { stdout } = await docker([
+      'ps', '-a', '--filter', 'label=devcontainer.local_folder',
+      // The state, so a stopped leftover is not read as a second owner of the
+      // project (debt a-stopped-leftover-container-makes-the-project-ambiguous).
+      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.State}}',
+    ])
+    const rows = stdout.split('\n').filter((l) => l.trim() !== '').map((l) => {
+      const [id = '', name = '', localFolder = '', state = ''] = l.split('\t')
+      return { id, name, localFolder, state }
+    })
+    const choice = containerFor(folderNames(project), rows)
+    if (choice.kind !== 'one') return choice
+    const row = rows.find((r) => r.id === choice.id)!
+    const { stdout: img } = await docker(['inspect', '-f', '{{.Image}}', choice.id])
+    return { kind: 'one', id: choice.id, name: row.name, image: img.trim() }
+  } catch (error) {
+    why(`could not read the project's container: ${String(error)}`)
+    return { kind: 'none' }
+  }
+}
+
+/**
  * After a good build: does the project's container still run the previous
  * image? See afterBuild for the decision; this reads docker and asks the user.
  * **It never removes a container**: the only action is Dev Containers' own
@@ -79,28 +112,7 @@ export async function offerRecreate(
     write([`build: could not read the image ${image} just built: ${String(error)}`])
   }
 
-  let container: ContainerForImage = { kind: 'none' }
-  try {
-    const { stdout } = await docker([
-      'ps', '-a', '--filter', 'label=devcontainer.local_folder',
-      // The state, so a stopped leftover is not read as a second owner of the
-      // project (debt a-stopped-leftover-container-makes-the-project-ambiguous).
-      '--format', '{{.ID}}\t{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.State}}',
-    ])
-    const rows = stdout.split('\n').filter((l) => l.trim() !== '').map((l) => {
-      const [id = '', name = '', localFolder = '', state = ''] = l.split('\t')
-      return { id, name, localFolder, state }
-    })
-    const choice = containerFor(folderNames(project), rows)
-    if (choice.kind === 'many') container = choice
-    if (choice.kind === 'one') {
-      const row = rows.find((r) => r.id === choice.id)!
-      const { stdout: img } = await docker(['inspect', '-f', '{{.Image}}', choice.id])
-      container = { kind: 'one', id: choice.id, name: row.name, image: img.trim() }
-    }
-  } catch (error) {
-    write([`build: could not read the project's container: ${String(error)}`])
-  }
+  const container = await projectContainer(project, docker, (why) => write([`build: ${why}`]))
 
   const decision = afterBuild({ built, container, inContainer: vscode.env.remoteName === 'dev-container' })
   if (decision.say === 'nothing') {
