@@ -231,7 +231,10 @@ test('another remote does not prepare either: the project is not on this machine
 const wrapper = (v: string): string =>
   `distributionUrl=https\\://services.gradle.org/distributions/gradle-${v}-bin.zip\n`
 
-test('a wrapperless Gradle build opens with the wrappers\' version, and says so only in the log', () => {
+// Not "only in the log" any more (debt rjj, measured 2026-10-29): editor
+// extensions open a wrapperless build with the Gradle they bundle whatever the
+// setting says, so the open names the fix as well as setting the version.
+test('a wrapperless Gradle build opens with the wrappers\' version, and the open warns, naming the wrapper that fixes it', () => {
   const d = decideOpen({
     ...base,
     gradleBuilds: [
@@ -242,7 +245,8 @@ test('a wrapperless Gradle build opens with the wrappers\' version, and says so 
   assert.equal(d.action, 'open')
   if (d.action === 'open') {
     assert.equal(d.configuration.customizations?.vscode.settings['java.import.gradle.version'], '8.14.3')
-    assert.deepEqual(d.notes, [])
+    assert.equal(d.notes.length, 1)
+    assert.ok(d.notes[0]?.includes('gradle wrapper --gradle-version 8.14.3'), d.notes[0])
     assert.ok(d.log.some((l) => l.includes('build-logic')), d.log.join('\n'))
   }
 })

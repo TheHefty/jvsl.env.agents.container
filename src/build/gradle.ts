@@ -17,10 +17,15 @@ import type { ProjectOnHost } from '../host/locate.ts'
  * kotlin-dsl accessors out from under it. The builds failed intermittently,
  * naming a missing `PluginSpecBuilders.kt` and not the second Gradle.
  *
- * `java.import.gradle.version` is what both Buildship and the Build Server fall
- * back to where a build has no wrapper; where it has one, the wrapper still
- * wins. So setting it to the version every wrapper names changes nothing but
- * the wrapperless builds.
+ * `java.import.gradle.version` was meant to be what both Buildship and the
+ * Build Server fall back to where a build has no wrapper. **Measured on
+ * 2026-10-29, it is only partly** (debt rjj): jdt.ls's main connection honours
+ * it, but a second jdt.ls connection still opened build-logic with
+ * redhat.java's bundled 9.7.1, and vscode-gradle's server with its bundled
+ * 9.8.1, whatever the setting said. So it is still set, for the clients that
+ * read it, and a wrapperless build is always warned about: the only fix that
+ * holds every client is a wrapper in that build, which is the project's to
+ * make.
  */
 export const IMPORT_SETTING = 'java.import.gradle.version'
 
@@ -167,7 +172,10 @@ export function gradleVersion(builds: GradleBuild[]): GradleVersion {
   }
 
   const list = bare.map((d) => `\`${d}\``).join(', ')
-  const fix = `Give each of them a wrapper of its own (\`gradle wrapper\` in that directory), or the editor imports it with the Gradle it bundles, which can corrupt a build the project's wrapper also writes.`
+  const fix = (version?: string) =>
+    `Give each of them a wrapper of its own (\`gradle wrapper${version ? ` --gradle-version ${version}` : ''}\` in that directory), ` +
+    `or editor extensions open it as a build of its own with the Gradle they bundle, whatever \`${IMPORT_SETTING}\` says, ` +
+    "which corrupts what the project's wrapper writes there."
 
   if (unreadable.length > 0) {
     return {
@@ -176,7 +184,7 @@ export function gradleVersion(builds: GradleBuild[]): GradleVersion {
       warnings: [
         `Gradle builds with no wrapper (${list}) are imported by the editor with the Gradle it bundles, because the version of ` +
           unreadable.map((d) => `\`${d}\``).join(', ') +
-          `'s wrapper could not be read. ${fix}`,
+          `'s wrapper could not be read. ${fix()}`,
       ],
     }
   }
@@ -186,7 +194,7 @@ export function gradleVersion(builds: GradleBuild[]): GradleVersion {
     return {
       version: null,
       log,
-      warnings: [`Gradle builds in this project (${list}) have no Gradle wrapper, so the editor imports them with the Gradle it bundles. ${fix}`],
+      warnings: [`Gradle builds in this project (${list}) have no Gradle wrapper, so the editor imports them with the Gradle it bundles. ${fix()}`],
     }
   }
   if (distinct.length > 1) {
@@ -195,14 +203,23 @@ export function gradleVersion(builds: GradleBuild[]): GradleVersion {
       version: null,
       log,
       warnings: [
-        `Gradle builds with no wrapper (${list}) are imported by the editor with the Gradle it bundles, because the project's wrappers disagree (${named}) and no one version is right for all of them. ${fix}`,
+        `Gradle builds with no wrapper (${list}) are imported by the editor with the Gradle it bundles, because the project's wrappers disagree (${named}) and no one version is right for all of them. ${fix()}`,
       ],
     }
   }
 
   const [version = null] = distinct
-  log.push(`gradle: ${bare.join(', ')} has no wrapper; the editor imports it with ${version}, the version every wrapper names (${IMPORT_SETTING})`)
-  return { version, warnings: [], log }
+  log.push(
+    `gradle: ${bare.join(', ')} has no wrapper; ${IMPORT_SETTING} is set to ${version}, the version every wrapper names, ` +
+      'for the clients that read it. Editor extensions that open it as a build of its own ignore it (debt rjj).',
+  )
+  return {
+    version,
+    log,
+    warnings: [
+      `Gradle builds in this project (${list}) have no Gradle wrapper, while the others name ${version}. ${fix(version ?? undefined)}`,
+    ],
+  }
 }
 
 /**

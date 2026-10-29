@@ -19,11 +19,30 @@ const kotodori: GradleBuild[] = [
   { dir: '2-backend/iam', wrapper: wrapper('8.14.3') },
 ]
 
-test('a wrapperless build is imported with the version every wrapper names', () => {
+// Measured in kotodori on 2026-10-29 (debt rjj): with java.import.gradle.version
+// at 8.14.3, jdt.ls's main connection used it, but a second jdt.ls connection
+// opened build-logic with redhat.java's bundled 9.7.1 and vscode-gradle's
+// server with its bundled 9.8.1, and the next 8.14.3 import of core failed on
+// what they left in build-logic/build. No editor setting held either one.
+
+test('a wrapperless build still sets the version every wrapper names, for the clients that read it', () => {
   const result = gradleVersion(kotodori)
   assert.equal(result.version, '8.14.3')
-  assert.deepEqual(result.warnings, [])
-  assert.ok(result.log.some((l) => l.includes('2-backend/build-logic') && l.includes('8.14.3')), result.log.join('\n'))
+})
+
+test('and is warned about, naming each wrapperless build and the wrapper that fixes it', () => {
+  const result = gradleVersion(kotodori)
+  assert.equal(result.warnings.length, 1)
+  const w = result.warnings[0] ?? ''
+  assert.ok(w.includes('`2-backend/build-logic`'), w)
+  assert.ok(w.includes('gradle wrapper --gradle-version 8.14.3'), w)
+  assert.match(w, /whatever `java\.import\.gradle\.version` says/)
+})
+
+test('the log no longer claims the editor imports it with that version', () => {
+  const result = gradleVersion(kotodori)
+  assert.ok(!result.log.some((l) => /the editor imports it with/.test(l)), result.log.join('\n'))
+  assert.ok(result.log.some((l) => l.includes('2-backend/build-logic') && l.includes('ignore')), result.log.join('\n'))
 })
 
 test('nothing is set when every build has its own wrapper, so the configuration does not change', () => {
