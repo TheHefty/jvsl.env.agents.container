@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.0...v1.12.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* refinement's agenda lists what awaits verification apart from what needs a task ([d1c8b41](https://github.com/TheHefty/jvsl.env.agents.container/commit/d1c8b41d270d7110b81ed8da7c6fc96305e2b2f2))
+* Regenerate asks to recreate an existing container instead of reattaching to it ([7cb288e](https://github.com/TheHefty/jvsl.env.agents.container/commit/7cb288e9c9cc934b2509792d1ab5c780b6f01f83))
+
 ## [1.12.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.11.1...v1.12.0) (2026-10-29)
 
 
