@@ -2,7 +2,11 @@
 # Refinement's agenda (story refinement), from `bd export` or $TRACKER_EXPORT:
 #
 #   Awaiting agreement            open proposals, with what they are under
-#   Stories with no agreed task   agreed stories nothing in a planning can come from yet
+#   Stories with no agreed task   agreed stories nothing in a planning can come from yet:
+#                                 no task ever, or only rejected ones
+#   Debts with no agreed task     the same, for debts
+#   Awaiting verification         agreed stories and debts whose tasks are done and
+#                                 none open: they wait to be verified, not for a task
 #   Tasks with no done criterion  agreed tasks the planning would refuse
 #   Agreed and ready              what tomorrow's planning can pick
 #
@@ -24,14 +28,20 @@ export_of | jq -c 'select(._type == "issue")' | jq -L "$HERE" -sr 'include "work
     map(select(.status != "closed" and (labels | index("journal") | not))) as $live
     | ($live | map(select(proposal | not))) as $agreed
     | ($agreed | map(select(.issue_type == "task")) | map(parent)) as $with_tasks
-    | "## Awaiting agreement",
+    | (map(select(.issue_type == "task" and .status == "closed" and (rejected | not))) | map(parent)) as $done_under
+    | def waiting: (.id as $s | $with_tasks | index($s) | not);
+      def done: (.id as $s | $done_under | index($s));
+      "## Awaiting agreement",
       ($live | map(select(proposal)) | .[] | line + (if parent then " — under \(parent)" else "" end)),
       "",
       "## Stories with no agreed task",
-      ($agreed | map(select(.issue_type == "feature" and (.id as $s | $with_tasks | index($s) | not))) | .[] | line),
+      ($agreed | map(select(.issue_type == "feature" and waiting and (done | not))) | .[] | line),
       "",
       "## Debts with no agreed task",
-      ($agreed | map(select(is_debt and (.id as $d | $with_tasks | index($d) | not))) | .[] | line),
+      ($agreed | map(select(is_debt and waiting and (done | not))) | .[] | line),
+      "",
+      "## Awaiting verification",
+      ($agreed | map(select((.issue_type == "feature" or is_debt) and waiting and done)) | .[] | line),
       "",
       "## Tasks with no done criterion",
       ($agreed | map(select(.issue_type == "task" and ((.acceptance_criteria // "") | length) == 0)) | .[] | line),

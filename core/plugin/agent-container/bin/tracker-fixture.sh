@@ -36,3 +36,10 @@ meta() {
         if .id == $id then .metadata = ((.metadata // {}) + {($k): $v}) else . end' \
         "$EXPORT" > "$tmp" && mv "$tmp" "$EXPORT"
 }
+
+# reason id text — the close reason bd keeps on a closed item, as `close_reason`.
+reason() {
+    local tmp
+    tmp="$(mktemp)"
+    jq -c --arg id "$1" --arg r "$2" 'if .id == $id then .close_reason = $r else . end' "$EXPORT" > "$tmp" && mv "$tmp" "$EXPORT"
+}
