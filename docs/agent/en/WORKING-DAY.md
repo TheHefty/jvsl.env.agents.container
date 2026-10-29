@@ -70,11 +70,27 @@ things: what it discovered, with how it found each one and why it matters; what 
 went wrong; and everything it decided alone. The developer writes or approves the line on what they
 learned. The agent never writes that line on its own.
 
-The day's entry lives in the tracker, not in a file. It is a `chore` labelled `journal`, closed when
-it is written so no planning offers it as work, and keyed by metadata `day`. The day is the local date,
-so a retro held late in the evening belongs to that day. `journal-write` writes it, and a second
-retro on the same day rewrites the same entry. Its sections, in this order and named exactly so,
-because the planning and the study skill read them:
+**The journal is the developer's, not the project's.** The tracker travels with the project's
+remote, which may be public, so the day's entry never goes there. It goes to a private repository of
+the developer's, named once in `~/.claude/agent-container/journal.json` as
+`{"repository": "<owner>/<repo>"}`, as one file per day at `<project>/<day>.md`. A public repository
+is refused: the entry waits rather than going where anyone can read it. The day is the local date,
+so a retro held late in the evening belongs to that day, and a second retro on the same day rewrites
+that day's file.
+
+`journal-write` first keeps the entry in the outbox, `~/.claude/agent-container/journal-outbox/`, on
+the host's disk so it outlives a rebuild, and `journal-flush` sends it through GitHub's API with the
+sandbox's own `gh`. It leaves the outbox only once GitHub has confirmed it. Offline, with no
+repository named, or with one that refuses it, the entry waits and the retro says why; the next
+retro or planning sends it. The planning reads yesterday's entry from the repository and from the
+outbox, and says when one has not been sent yet.
+
+Entries a tracker holds from before the journal moved are moved with `journal-move`, with the
+developer's yes: each is copied, read back, and only then deleted. The tracker's history still holds
+them, since a delete does not rewrite `refs/dolt/data`.
+
+Its sections, in this order and named exactly so, because the planning and the study skill read
+them:
 
 ```
 ## Discovered
@@ -92,7 +108,7 @@ Blog candidate: yes | no
 
 `journal-write` refuses an entry without "What I learned", or with "Decided alone" empty; that
 section says "Nothing." when there was nothing. `Blog candidate: yes` marks a discovery the developer
-chose to write about, and labels the entry `blog-candidate` for the study skill. When the last day
+chose to write about, and the study skill lists it as a topic. When the last day
 with work has no entry, the next planning says the retro was skipped.
 
 ## What a task records

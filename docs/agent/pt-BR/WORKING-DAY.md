@@ -70,11 +70,26 @@ que descobriu, com como achou cada uma e por que importa; o que o surpreendeu; o
 tudo o que decidiu sozinho. O desenvolvedor escreve ou aprova a linha sobre o que aprendeu. O agente
 nunca escreve essa linha por conta própria.
 
-A entrada do dia fica no rastreador, não num arquivo. É um `chore` com a label `journal`, fechado
-quando é escrito para que nenhum planning o ofereça como trabalho, e com a chave no metadado `day`. O
-dia é a data local, então uma retro feita tarde da noite pertence àquele dia. `journal-write` a
-escreve, e uma segunda retro no mesmo dia reescreve a mesma entrada. As seções, nesta ordem e com
-estes nomes exatos, porque o planning e a skill de estudo as leem:
+**O diário é do desenvolvedor, não do projeto.** O rastreador viaja com o remoto do projeto, que pode
+ser público, então a entrada do dia nunca vai para lá. Ela vai para um repositório privado do
+desenvolvedor, nomeado uma vez em `~/.claude/agent-container/journal.json` como
+`{"repository": "<owner>/<repo>"}`, como um arquivo por dia em `<project>/<day>.md`. Um repositório
+público é recusado: a entrada espera em vez de ir para onde qualquer um a lê. O dia é a data local,
+então uma retro feita tarde da noite pertence àquele dia, e uma segunda retro no mesmo dia reescreve
+o arquivo daquele dia.
+
+`journal-write` primeiro guarda a entrada na caixa de saída, `~/.claude/agent-container/journal-outbox/`,
+no disco do host para que sobreviva a um rebuild, e `journal-flush` a envia pela API do GitHub com o
+próprio `gh` do sandbox. Ela só sai da caixa de saída depois que o GitHub a confirma. Offline, sem
+repositório nomeado, ou com um que a recusa, a entrada espera e a retro diz por quê; a próxima retro
+ou o próximo planning a envia. O planning lê a entrada de ontem do repositório e da caixa de saída, e
+diz quando uma ainda não foi enviada.
+
+Entradas que um rastreador guarda de antes de o diário mudar de lugar são movidas com
+`journal-move`, com o sim do desenvolvedor: cada uma é copiada, lida de volta, e só então apagada. O
+histórico do rastreador ainda as guarda, porque apagar não reescreve `refs/dolt/data`.
+
+As seções, nesta ordem e com estes nomes exatos, porque o planning e a skill de estudo as leem:
 
 ```
 ## Discovered
@@ -92,7 +107,7 @@ Blog candidate: yes | no
 
 `journal-write` recusa uma entrada sem "What I learned", ou com "Decided alone" vazio; essa seção diz
 "Nothing." quando não houve nada. `Blog candidate: yes` marca uma descoberta sobre a qual o
-desenvolvedor escolheu escrever, e põe a label `blog-candidate` na entrada para a skill de estudo.
+desenvolvedor escolheu escrever, e a skill de estudo a lista como tópico.
 Quando o último dia com trabalho não tem entrada, o planning seguinte diz que a retro foi pulada.
 
 ## O que uma task registra

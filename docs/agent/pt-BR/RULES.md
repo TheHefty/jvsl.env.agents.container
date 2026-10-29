@@ -290,6 +290,9 @@ Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
   Aceitar exige as palavras dele, e a task fecha quando o seu pull request entra, não quando é aceita.
 - **A retro nunca é pulada.** Num dia curto ela é curta. A linha sobre o que foi aprendido é do
   desenvolvedor, nunca só sua, e "Decided alone" lista tudo o que você escolheu sem perguntar.
+- **O diário é do desenvolvedor, não do projeto.** A entrada da retro vai para um repositório privado
+  dele, nomeado em `~/.claude/agent-container/journal.json`, e nunca para o rastreador, que viaja com
+  o remoto do projeto. Onde ela espera até ser enviada está em [O dia de trabalho](WORKING-DAY.md).
 - **Registre o pull request de uma task quando o abrir**, com `bd update <id> --set-metadata pr=<n>`.
   O review o lê; nada mais liga a mudança à task.
 
