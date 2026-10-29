@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# journal-flush: sends every journal entry waiting in the outbox to the
+# developer's private repository (story
+# the-retro-writes-the-entry-to-the-developers-private-repository). Run by
+# journal-write, and by the planning, so an entry kept while the network or
+# the repository was away is sent the next time either runs.
+#
+# One line per entry: `sent: <repo>:<project>/<day>.md`, or
+# `waiting: <project>/<day>.md: <why>`. An entry leaves the outbox only after
+# GitHub has confirmed it; a failure at any step keeps it, said with gh's own
+# words. **A public repository is refused as the journal**: an entry is kept
+# rather than sent where anyone can read it.
+#
+# Through GitHub's contents API with the gh the sandbox already has, $REVIEW_GH
+# for the tests: no clone, no credential of its own.
+set -uo pipefail
+
+GH="${REVIEW_GH:-gh}"
+HOME_DIR="${JOURNAL_HOME:-/config/.claude/agent-container}"
+BOX="$HOME_DIR/journal-outbox"
+CONFIG="$HOME_DIR/journal.json"
+
+[ -d "$BOX" ] || exit 0
+mapfile -t entries < <(cd "$BOX" && find . -mindepth 2 -maxdepth 2 -type f -name '*.md' | sed 's|^\./||' | sort)
+[ "${#entries[@]}" -gt 0 ] || exit 0
+
+why=""
+err="$(mktemp)"; trap 'rm -f "$err"' EXIT
+if [ ! -f "$CONFIG" ]; then
+    why="no journal repository is named: write {\"repository\": \"<owner>/<repo>\"} to $CONFIG, naming a private repository of yours"
+else
+    repo="$(jq -r '.repository // empty' "$CONFIG" 2>/dev/null)"
+    if ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+        why="$CONFIG does not name a repository as \"<owner>/<repo>\""
+    elif ! private="$("$GH" api "repos/$repo" --jq .private 2>"$err")"; then
+        if grep -q 'HTTP 404' "$err"; then why="$repo does not exist, or this gh cannot see it"
+        else why="$repo could not be reached: $(tail -n 1 "$err")"; fi
+    elif [ "$private" != true ]; then
+        why="$repo is public, and the journal's repository must be private: what is written there is the developer's own"
+    fi
+fi
+
+rc=0
+for rel in "${entries[@]}"; do
+    if [ -n "$why" ]; then echo "waiting: $rel: $why"; continue; fi
+    sha=""
+    if ! sha="$("$GH" api "repos/$repo/contents/$rel" --jq .sha 2>"$err")"; then
+        if grep -q 'HTTP 404' "$err"; then sha=""
+        else echo "waiting: $rel: its current version in $repo could not be read: $(tail -n 1 "$err")"; rc=1; continue; fi
+    fi
+    args=(api -X PUT "repos/$repo/contents/$rel" -f "message=journal: ${rel%.md}" -f "content=$(base64 -w0 "$BOX/$rel")")
+    [ -n "$sha" ] && args+=(-f "sha=$sha")
+    if ! "$GH" "${args[@]}" >/dev/null 2>"$err"; then
+        echo "waiting: $rel: $repo did not take it: $(tail -n 1 "$err")"; rc=1; continue
+    fi
+    rm -f -- "$BOX/$rel"
+    echo "sent: $repo:$rel"
+done
+exit "$rc"

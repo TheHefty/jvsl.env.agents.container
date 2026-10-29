@@ -169,16 +169,15 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
     REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
     printf "settled=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].status")"
-    # The journal against the same real bd: two retros on one day leave one
-    # entry, closed, labelled journal, keyed by its day, with the second body.
+    # The journal on the tools of the image, offline and with no repository
+    # named: the entry is kept in the outbox, the retro is told how to name
+    # one, and the tracker gets nothing (story the-retro-writes-the-entry-to-
+    # the-developers-private-repository).
     printf "%s\n" "## Discovered" "## Surprised" "## Went wrong" "## Decided alone" "Nothing." \
         "## What I learned" "first" "## Left open" "## Links" > /tmp/j1.md
-    sed "s/^first$/second/" /tmp/j1.md > /tmp/j2.md
-    j1="$(JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j1.md 2>/dev/null | tail -n 1)"
-    j2="$(JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j2.md 2>/dev/null | tail -n 1)"
-    printf "journal=%s\n" "$(bd list --label journal --all --json 2>/dev/null | jq -r "length")"
-    printf "same=%s\n" "$([ -n "$j1" ] && [ "$j1" = "$j2" ] && echo yes || echo no)"
-    printf "entry=%s\n" "$(bd show "$j1" --json 2>/dev/null | jq -r ".[0] | [.status, .metadata.day, (.description | test(\"second\"))] | join(\" \")")"
+    H="$(mktemp -d)"
+    j1="$(JOURNAL_HOME="$H" JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j1.md 2>/dev/null; echo "rc=$?")"
+    printf "journal=%s\n" "$(printf "%s" "$j1" | grep -c "^waiting in the outbox: .*journal.json") $(printf "%s" "$j1" | tail -n 1) $(find "$H/journal-outbox" -name 2026-10-28.md | wc -l) $(bd list --label journal --all --json 2>/dev/null | jq -r "length")"
     # Refinement against the same real bd: a task proposed under an agreed
     # story is not offered by the planning; once agreed, it is.
     s="$(bd create story -t feature --acceptance "Scenario: x" --silent 2>/dev/null)"
@@ -226,10 +225,9 @@ would refuse every topic"
 [ "$(dfield before) $(dfield after)" = "0 1" ] || fail "against the real bd, a proposed task was \
 offered by the planning, or an agreed one was not (before=$(dfield before) after=$(dfield after)): either a \
 draft reaches a planning as work, or agreement leaves it unreachable"
-[ "$(dfield journal) $(dfield same) $(dfield entry)" = "1 yes closed 2026-10-28 true" ] || fail "against \
-the real bd, two retros on one day did not leave one closed entry keyed by its day with the second body \
-(journal=$(dfield journal) same=$(dfield same) entry=$(dfield entry)): the planning would read the wrong \
-day's Left open, or a day would show two entries"
+[ "$(dfield journal)" = "1 rc=0 1 0" ] || fail "with no journal repository named, journal-write did \
+not keep the entry in the outbox and say how to name one, or wrote to the tracker (journal=$(dfield journal)): \
+a retro would lose the entry, or put the developer journal where a public repository carries it"
 [ "$(dfield listed) $(dfield settled)" = "1 closed" ] || fail "against the real bd, the review \
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \

@@ -66,8 +66,13 @@ Then run:
 ${CLAUDE_PLUGIN_ROOT}/bin/journal-write <file>
 ```
 
-It writes today's entry, or rewrites it if the retro already ran today. It refuses an entry missing a section, an empty "What I learned", or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
+It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "What I learned", or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
 
 ## 6. Hand over
 
-Tell the developer the entry's id. Refinement comes next.
+Tell the developer where the entry is, from the last line `journal-write` printed:
+
+- `sent: <repo>:<path>`: it is in their private repository.
+- `waiting in the outbox: <why>`: it is kept on their machine and sent the next time the retro or the planning runs. Say why, in its words. If no repository is named, ask the developer for a **private** repository of theirs and write it as `{"repository": "<owner>/<repo>"}` to the file the line names. Never name a public one.
+
+Refinement comes next.
