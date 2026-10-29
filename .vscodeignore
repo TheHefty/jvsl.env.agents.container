@@ -55,6 +55,7 @@ docs/*.md
 docs/DEBTS/**
 docs/PLANNING/**
 docs/SRS/**
+docs/study/**
 docs/**/*.test.sh
 src/**
 tools/**
