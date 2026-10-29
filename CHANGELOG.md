@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.11.1...v1.12.0) (2026-10-29)
+
+
+### Features
+
+* journal-move takes a tracker's journal entries to the private repository ([afbb067](https://github.com/TheHefty/jvsl.env.agents.container/commit/afbb067deed9d81e4c77f6f858523ce765a15f55))
+* the working agreement says the journal is the developer's, in a private repository of theirs ([20a4c7b](https://github.com/TheHefty/jvsl.env.agents.container/commit/20a4c7bf76148a836626a91ac422fadc7b479bd6))
+
 ## [1.11.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.11.0...v1.11.1) (2026-10-29)
 
 
