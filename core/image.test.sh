@@ -191,7 +191,7 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     . "$B/journal-gh-stub.sh" && journal_gh_stub /tmp/gh-journal
     MH="$(mktemp -d)" && printf "%s" "{\"repository\": \"o/journal\"}" > "$MH/journal.json"
     mo="$(GH_CALLS=/tmp/gh-calls GH_STORE=/tmp/gh-store REVIEW_GH=/tmp/gh-journal JOURNAL_HOME="$MH" JOURNAL_PROJECT=demo "$B/journal-move" 2>&1)"
-    printf "moved=%s\n" "$(printf "%s\n" "$mo" | grep -c "^moved: $m ") $(ls /tmp/gh-store/demo 2>/dev/null) $(bd show "$m" --json >/dev/null 2>&1 && echo still || echo gone)"
+    printf "journalmove=%s\n" "$(printf "%s\n" "$mo" | grep -c "^moved: $m ") $(ls /tmp/gh-store/demo 2>/dev/null) $(bd show "$m" --json >/dev/null 2>&1 && echo still || echo gone)"
     # Refinement against the same real bd: a task proposed under an agreed
     # story is not offered by the planning; once agreed, it is.
     s="$(bd create story -t feature --acceptance "Scenario: x" --silent 2>/dev/null)"
@@ -242,8 +242,8 @@ draft reaches a planning as work, or agreement leaves it unreachable"
 [ "$(dfield journal)" = "1 rc=0 1 0" ] || fail "with no journal repository named, journal-write did \
 not keep the entry in the outbox and say how to name one, or wrote to the tracker (journal=$(dfield journal)): \
 a retro would lose the entry, or put the developer journal where a public repository carries it"
-[ "$(dfield moved)" = "1 2026-10-20.md gone" ] || fail "against the real bd, journal-move did not copy a \
-journal item to the repository and then delete it (moved=$(dfield moved)): the export or bd delete no longer \
+[ "$(dfield journalmove)" = "1 2026-10-20.md gone" ] || fail "against the real bd, journal-move did not copy a \
+journal item to the repository and then delete it (journalmove=$(dfield journalmove)): the export or bd delete no longer \
 behave as the move reads them, so an entry would stay public in the tracker, or be deleted unconfirmed"
 [ "$(dfield leftopen)" = "1 1 1 0" ] || fail "with no journal repository named, the planning did not \
 read the entry waiting in the outbox, say it is not sent and why, and call no day skipped \
