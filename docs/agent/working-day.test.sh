@@ -39,6 +39,8 @@ section() { awk -v h="$2" '$0 == h {on = 1; print; next} on && /^#{1,3} / {on = 
 declare -A heading=([en]="### The working day" [pt-BR]="### O dia de trabalho")
 declare -A never=([en]="never skipped" [pt-BR]="nunca é pulada")
 declare -A explain=([en]="explain" [pt-BR]="explic")
+declare -A private=([en]="private repository" [pt-BR]="repositório privado")
+declare -A oldclaim=([en]="labelled \`journal\`" [pt-BR]="com a label \`journal\`")
 
 for lang in en pt-BR; do
     rules="$(section "$lang" "${heading[$lang]}")"
@@ -57,6 +59,18 @@ for lang in en pt-BR; do
     for s in Discovered Surprised "Went wrong" "Decided alone" "What I learned" "Left open" Links; do
         check "$lang: the journal's section \"## $s\" is named as journal-write reads it" "$(grep -cx "## $s" "$day" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
     done
+
+    # The journal is the developer's, in a private repository of theirs (story
+    # the-working-agreement-says-the-journal-is-private): where it goes, how it
+    # is named, what waits, and what moves the old entries — in each language,
+    # and never the old claim that it lives in the tracker.
+    for name in journal.json journal-outbox journal-flush journal-move; do
+        check "$lang: WORKING-DAY.md names $name" "$(grep -c -- "$name" "$day" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
+    done
+    check "$lang: it says the journal's repository is private" "$(grep -ci "${private[$lang]}" "$day" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
+    check "$lang: it no longer says the entry is a tracker item labelled journal" "$(grep -c "${oldclaim[$lang]}" "$day" || true)" "0"
+    check "$lang: RULES.md's working-day section says the journal goes to a private repository named in journal.json" \
+        "$(printf '%s\n' "$rules" | grep -c 'journal.json' | sed 's/^[1-9][0-9]*$/yes/') $(printf '%s\n' "$rules" | grep -ci "${private[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes yes"
 done
 
 # Code is code in either language: the commands and names in backticks agree.

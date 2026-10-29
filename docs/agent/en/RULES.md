@@ -286,6 +286,10 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
   needs their own words, and the task closes when its pull request merges, not when it is accepted.
 - **The retro is never skipped.** On a short day it is short. The line on what was learned is the
   developer's, never yours alone, and "Decided alone" lists everything you chose without asking.
+- **The journal is the developer's, not the project's.** The retro's entry goes to a
+  private repository of theirs, named in `~/.claude/agent-container/journal.json`, and never to the
+  tracker, which travels with the project's remote. Where it waits until it is sent is in
+  [The working day](WORKING-DAY.md).
 - **Record a task's pull request when you open it**, with `bd update <id> --set-metadata pr=<n>`.
   The review reads it; nothing else links the change to the task.
 
