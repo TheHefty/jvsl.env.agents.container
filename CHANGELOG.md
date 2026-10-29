@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.9.0...v1.10.0) (2026-10-29)
+
+
+### Features
+
+* the practice leaves the study, and a topic is its guide ([04999fe](https://github.com/TheHefty/jvsl.env.agents.container/commit/04999fef5c9728ce30d964c21cf356b9d9043a6d))
+
+
+### Bug Fixes
+
+* the planning brief's test passes in any timezone ([faac36c](https://github.com/TheHefty/jvsl.env.agents.container/commit/faac36c5df7ad17f1916a93802bf5252c8ad94b9))
+
 ## [1.9.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.8.0...v1.9.0) (2026-10-28)
 
 
