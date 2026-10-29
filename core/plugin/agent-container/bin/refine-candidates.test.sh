@@ -49,14 +49,33 @@ dep t-dp d-proposed-only parent-child
 item d-done bug closed 2 '["defect"]'
 item b-plain bug open 2
 
+# --- done, rejected, or still being worked (debt ay8) ------------------------------
+# What refine-reject really writes when it closes a draft: its own close reason,
+# taken from the real script with bd standing in, so the agenda and the script
+# cannot drift apart while the fixture stays green.
+mkdir -p "$work/bin"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$@" > "$BD_ARGS"' > "$work/bin/bd"; chmod +x "$work/bin/bd"
+BD_ARGS="$work/bd-args" REVIEW_BD="$work/bin/bd" bash "$HERE/refine-reject" t-r "not worth it" > /dev/null
+rejected="$(sed -n '/^--reason$/{n;p;}' "$work/bd-args")"
+
+item s-verify feature open 2 null "Scenario: x"
+item t-v task closed 2 null "c"; dep t-v s-verify parent-child; reason t-v "Merged in #1"
+item d-verify bug open 2 '["defect"]'
+item t-dv task closed 2 null "c"; dep t-dv d-verify parent-child; reason t-dv "Merged in #2"
+item s-more feature open 2 null "Scenario: x"
+item t-m1 task closed 2 null "c"; dep t-m1 s-more parent-child; reason t-m1 "Merged in #3"
+item t-m2 task open 2 null "c"; dep t-m2 s-more parent-child
+item s-rejected feature open 2 null "Scenario: x"
+item t-r task closed 2 null "c"; dep t-r s-rejected parent-child; reason t-r "$rejected"
+
 out="$(TRACKER_EXPORT="$EXPORT" bash "$HERE/refine-candidates")"
 section() { printf '%s\n' "$out" | awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on && /^- / {print $2}' | paste -sd' ' -; }
 
 check "open proposals await agreement, a task proposed under a debt among them" "$(section 'Awaiting agreement')" "p-task t-dp"
 check "naming what they are proposed under" "$(printf '%s\n' "$out" | grep -c '^- p-task .*under s-empty')" "1"
-check "an agreed story with no agreed task under it is listed, a proposed one not counting" "$(section 'Stories with no agreed task')" "s-empty"
+check "an agreed story with no agreed task under it is listed, a proposed one or a rejected one not counting" "$(section 'Stories with no agreed task')" "s-empty s-rejected"
 check "a task with no criterion is listed for one" "$(section 'Tasks with no done criterion')" "t-old"
-check "what tomorrow's planning can pick is shown, a debt's task included" "$(section 'Agreed and ready')" "t-ready t-d"
+check "what tomorrow's planning can pick is shown, a debt's task included" "$(section 'Agreed and ready')" "t-ready t-d t-m2"
 check "rejected, closed and journal items appear nowhere" "$(printf '%s\n' "$out" | grep -cE '^- (s-gone|t-gone|j1) ' || true)" "0"
 
 check "an agreed debt with no task is listed for one, a proposed task not counting" "$(section 'Debts with no agreed task')" "d-empty d-proposed-only"
@@ -64,6 +83,13 @@ check "a debt with an agreed task, a closed one, and a bug that is not a debt ar
     "$(section 'Debts with no agreed task' | tr ' ' '\n' | grep -cxE 'd-planned|d-done|b-plain' || true)" "0"
 check "the debt's task is ready for tomorrow's planning" "$(section 'Agreed and ready' | tr ' ' '\n' | grep -cx t-d)" "1"
 check "a debt is never listed as a story" "$(section 'Stories with no agreed task' | tr ' ' '\n' | grep -c '^d-' || true)" "0"
+
+check "a story and a debt whose tasks are all done await verification, not a task" "$(section 'Awaiting verification')" "s-verify d-verify"
+check "and are not among those that need a task" \
+    "$(printf '%s\n' "$(section 'Stories with no agreed task') $(section 'Debts with no agreed task')" | tr ' ' '\n' | grep -cxE 's-verify|d-verify' || true)" "0"
+check "a story with more work planned after a done task is in neither list" \
+    "$(printf '%s\n' "$out" | grep -c '^- s-more ' || true)" "0"
+check "the reason refine-reject writes is read as a rejection" "$(printf '%s' "$rejected" | grep -c '^Rejected in refinement: not worth it$')" "1"
 
 if [ "$failures" -gt 0 ]; then
     echo "refine-candidates.test: $failures failure(s)"

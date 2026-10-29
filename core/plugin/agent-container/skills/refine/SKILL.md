@@ -27,12 +27,15 @@ Run:
 ${CLAUDE_PLUGIN_ROOT}/bin/refine-candidates
 ```
 
-It lists four things:
+It lists:
 - proposals awaiting agreement;
 - agreed stories with no agreed task (nothing in a planning can come from them yet);
 - agreed debts with no agreed task (their fix is not planned yet);
+- stories and debts **awaiting verification**: their tasks are done, and none is open;
 - tasks with no done criterion (the planning would refuse them);
 - what tomorrow's planning can already pick.
+
+**Awaiting verification is not work to plan.** For each one, ask the developer whether it was verified live. With a yes, close it with `bd close <id> --reason "…"`, saying how it was verified. Otherwise leave it as it is. Never propose a task for it to get it off the list.
 
 Ask the developer what to refine: something from the agenda, or a new idea of theirs.
 

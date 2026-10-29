@@ -6,3 +6,8 @@
 # not a debt by the rules' definition, and the ceremonies do not treat it as one.
 def debt_kinds: ["defect", "hotfix", "shortcut"];
 def is_debt: .issue_type == "bug" and ((.labels // []) | any(. as $l | debt_kinds | index($l)));
+
+# A task closed by refine-reject, from the reason it writes: rejected, not done.
+# refine-candidates.test.sh feeds it the real script's reason, so the two cannot
+# drift apart (debt ay8).
+def rejected: (.close_reason // "") | startswith("Rejected in refinement:");
