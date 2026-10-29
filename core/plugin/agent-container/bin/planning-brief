@@ -8,21 +8,34 @@
 #                         how many items each unblocks, then oldest first; one
 #                         without a done criterion is marked, so the planning asks
 #   Left open yesterday   the "## Left open" section of the latest journal
-#                         entry from before today, found by its metadata
-#                         `day`; and, first, a line when the last day with
-#                         work before today has no entry: its retro was
-#                         skipped. Days are local ($PLANNING_TODAY, or today),
-#                         so a late retro is the day it was held.
+#                         entry from before today, read by journal-read from
+#                         the developer's private repository and the outbox,
+#                         and said not to be sent yet when it still waits;
+#                         and, first, a line when the last day with work
+#                         before today has no entry: its retro was skipped.
+#                         When the repository cannot be read, that is said
+#                         instead, and no day is called skipped. Days are
+#                         local ($PLANNING_TODAY, or today), so a late retro
+#                         is the day it was held.
 #
 # The same reading as planning-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
-# Journal entries carry the label `journal` and are never offered as work.
+# Journal entries left in the tracker, labelled `journal`, are never offered as
+# work nor read: the journal is the developer's, not the project's.
+#
+# The outbox is sent first (journal-flush), so what waited since the last retro
+# is in the repository before it is read; what still fails stays waiting.
 set -uo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TODAY="${PLANNING_TODAY:-$(date +%F)}"
 if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
-export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
+bash "$HERE/journal-flush" > /dev/null 2>&1
+journal="$(mktemp)"; trap 'rm -f "$journal"' EXIT
+bash "$HERE/journal-read" > "$journal"
+
+export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" --slurpfile journal "$journal" '
     (map({key: .id, value: .status}) | from_entries) as $status
     | def labels: (.labels // []);
       def open_blockers: [(.dependencies // [])[] | select(.type == "blocks") | .depends_on_id
@@ -44,17 +57,20 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" '
       "",
       "## Left open yesterday",
       ( def localday: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | localtime | strftime("%F");
-        def day: (.metadata.day // (.created_at | localday));
-        map(select(labels | index("journal"))) as $journal
-        | ($journal | map(day)) as $days
+        ($journal | map(select(.error)) | first) as $err
+        | ($journal | map(select(.day))) as $entries
+        | ($entries | map(.day)) as $days
         | ($work | map(.updated_at | localday) | map(select(. < $today)) | max) as $lastwork
-        | (if $lastwork != null and ($days | index($lastwork) | not)
+        | (if $err != null
+           then "The journal could not be read\(if $err.repository then " from \($err.repository)" else "" end): \($err.error). Only entries waiting on this machine are shown."
+           elif $lastwork != null and ($days | index($lastwork) | not)
            then "No journal for \($lastwork), which had work: its retro was skipped." else empty end),
-          ( $journal | map(select(day < $today)) | sort_by(day) | last
+          ( $entries | map(select(.day < $today)) | last
             | if . == null then "No journal entry yet."
-              else (.description // "") | split("\n")
+              else (if .sent then empty else "The entry for \(.day) is not sent yet: it waits in the outbox on this machine." end),
+                   ( .body | split("\n")
                    | (index("## Left open")) as $at
                    | if $at == null then "The latest entry has no Left open section."
                      else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
-                          | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end
+                          | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end )
               end ) )'

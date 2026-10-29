@@ -174,10 +174,15 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     # one, and the tracker gets nothing (story the-retro-writes-the-entry-to-
     # the-developers-private-repository).
     printf "%s\n" "## Discovered" "## Surprised" "## Went wrong" "## Decided alone" "Nothing." \
-        "## What I learned" "first" "## Left open" "## Links" > /tmp/j1.md
+        "## What I learned" "first" "## Left open" "- carried over" "## Links" > /tmp/j1.md
     H="$(mktemp -d)"
     j1="$(JOURNAL_HOME="$H" JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j1.md 2>/dev/null; echo "rc=$?")"
     printf "journal=%s\n" "$(printf "%s" "$j1" | grep -c "^waiting in the outbox: .*journal.json") $(printf "%s" "$j1" | tail -n 1) $(find "$H/journal-outbox" -name 2026-10-28.md | wc -l) $(bd list --label journal --all --json 2>/dev/null | jq -r "length")"
+    # The next morning the planning reads that entry from the outbox, says it
+    # is not sent yet and why the repository could not be read, and calls no
+    # day skipped.
+    lo="$(JOURNAL_HOME="$H" PLANNING_TODAY=2026-10-29 "$B/planning-brief" 2>/dev/null | sed -n "/^## Left open yesterday/,\$p")"
+    printf "leftopen=%s\n" "$(printf "%s\n" "$lo" | grep -c "^The journal could not be read: no journal repository is named") $(printf "%s\n" "$lo" | grep -c "^The entry for 2026-10-28 is not sent yet") $(printf "%s\n" "$lo" | grep -c "^- carried over$") $(printf "%s\n" "$lo" | grep -c skipped)"
     # Refinement against the same real bd: a task proposed under an agreed
     # story is not offered by the planning; once agreed, it is.
     s="$(bd create story -t feature --acceptance "Scenario: x" --silent 2>/dev/null)"
@@ -228,6 +233,9 @@ draft reaches a planning as work, or agreement leaves it unreachable"
 [ "$(dfield journal)" = "1 rc=0 1 0" ] || fail "with no journal repository named, journal-write did \
 not keep the entry in the outbox and say how to name one, or wrote to the tracker (journal=$(dfield journal)): \
 a retro would lose the entry, or put the developer journal where a public repository carries it"
+[ "$(dfield leftopen)" = "1 1 1 0" ] || fail "with no journal repository named, the planning did not \
+read the entry waiting in the outbox, say it is not sent and why, and call no day skipped \
+(leftopen=$(dfield leftopen)): the morning would lose yesterday open points, or blame a retro that was held"
 [ "$(dfield listed) $(dfield settled)" = "1 closed" ] || fail "against the real bd, the review \
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \

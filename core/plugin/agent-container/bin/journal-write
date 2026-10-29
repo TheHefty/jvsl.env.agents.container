@@ -49,8 +49,7 @@ blank() { [ -z "$(section "$1" | tr -d '[:space:]')" ]; }
 blank "What I learned" && refuse "\"What I learned\" is empty: that line is the developer's own, written or approved by them, and never the agent's alone."
 blank "Decided alone" && refuse "\"Decided alone\" is empty: list what was chosen without asking, or write \"Nothing.\" when there was nothing."
 
-project="${JOURNAL_PROJECT:-$(basename "$(git remote get-url origin 2>/dev/null)" .git)}"
-[ -n "$project" ] && [ "$project" != . ] || project="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+project="$(bash "$HERE/journal-project")"
 box="$HOME_DIR/journal-outbox/$project"
 
 # Kept before anything is sent: no failure past this line can lose the entry.

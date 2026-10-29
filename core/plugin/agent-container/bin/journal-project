@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# journal-project: the name of this project's folder in the developer's
+# journal — $JOURNAL_PROJECT, or the name of the origin remote's repository,
+# or the checkout's folder when there is no origin. journal-write and the
+# journal's readers all ask this one script, because a writer and a reader
+# naming the project differently would each be right and find nothing
+# (story the-journals-readers-read-it-from-the-private-repository).
+set -uo pipefail
+
+if [ -n "${JOURNAL_PROJECT:-}" ]; then echo "$JOURNAL_PROJECT"; exit 0; fi
+project="$(basename "$(git remote get-url origin 2>/dev/null)" .git)"
+[ -n "$project" ] && [ "$project" != . ] || project="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+echo "$project"
