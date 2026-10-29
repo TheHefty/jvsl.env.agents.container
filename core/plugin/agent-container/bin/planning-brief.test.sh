@@ -111,6 +111,11 @@ check "yesterday's open points come from the entry for the latest day before tod
 item j-old chore closed 2 '["journal"]' "" 2026-10-20T18:00:00Z "$(body x Nothing. no '- from the tracker')"
 check "and journal entries left in the tracker are neither tasks to offer nor read" \
     "$(section Ready | tr ' ' '\n' | grep -c '^j-' || true) $(left_open | grep -c 'from the tracker' || true)" "0 0"
+check "but the brief says they are there, and what moves them (story the-entries-in-a-tracker-move-to-the-private-repository)" \
+    "$(left_open | grep -c '^The tracker still holds 1 journal entry from before the journal moved: journal-move moves it to the private repository\.$')" "1"
+item j-older chore closed 2 '["journal"]' "" 2026-10-19T18:00:00Z "$(body x Nothing. no '- older')"
+check "two are counted as two" "$(left_open | grep -c '^The tracker still holds 2 journal entries from before the journal moved: journal-move moves them to the private repository\.$')" "1"
+grep -v '"id":"j-older"' "$EXPORT" > "$work/e2"; mv "$work/e2" "$EXPORT"
 
 # Touched on the 27th, and the 27th has its entry: nothing was skipped.
 item t-27 task open 2 null "c" 2026-10-27T15:00:00Z
