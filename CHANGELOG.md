@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.1...v1.12.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* a Gradle build with no wrapper is warned about at open, naming the wrapper that fixes it ([866016e](https://github.com/TheHefty/jvsl.env.agents.container/commit/866016e82a4289e4bbfd1148d7d1f55fb31b1b33))
+* the image's editor settings reach an editor that already exists, keeping the developer's own ([57e72ce](https://github.com/TheHefty/jvsl.env.agents.container/commit/57e72ce75433ffe68e94e055c2aa962acff93caa))
+
 ## [1.12.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.0...v1.12.1) (2026-10-29)
 
 
