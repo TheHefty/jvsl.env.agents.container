@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.11.0...v1.11.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* the build from Windows shows docker's output again: the terminal is detached only off Windows ([0749844](https://github.com/TheHefty/jvsl.env.agents.container/commit/07498440644056c5df3e75db5d2c2d7d2fd66939))
+
 ## [1.11.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.10.0...v1.11.0) (2026-10-29)
 
 
