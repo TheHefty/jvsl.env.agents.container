@@ -40,12 +40,12 @@ test('with the tracker unreachable, every topic is still listed, its state unkno
 
 test('a broken topic is a row with its first problem, never left out', () => {
   const rows = topicRows(
-    [folder('ok'), folder('broken', [{ file: 'practice.json', path: '/items', rule: 'minContains', message: 'needs at least 2 items with kind "exercise", found 1' }])],
+    [folder('ok'), folder('broken', [{ file: 'guide.md', path: '', rule: 'section', message: 'has no "## Sources" section' }])],
     { ok: true, items: [task('ok', 'open'), task('broken', 'open')] },
   )
   const broken = rows.find((r) => r.slug === 'broken')
   assert.ok(broken)
-  assert.equal(broken.problem, 'practice.json: /items: needs at least 2 items with kind "exercise", found 1')
+  assert.equal(broken.problem, 'guide.md: /: has no "## Sources" section')
 })
 
 test('topics are listed in a stable order', () => {
@@ -56,7 +56,6 @@ test('topics are listed in a stable order', () => {
 // --- reading the folders through the project's files ---------------------------
 
 import { readTopics } from './topics.ts'
-import { loadSchemas } from './contract.ts'
 import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
 import type { ProjectFiles } from '../host/files.ts'
@@ -74,19 +73,25 @@ const fakeFiles = (tree: Record<string, string>): ProjectFiles => ({
 })
 const example = (slug: string) => ({
   [`docs/study/${slug}/guide.md`]: readFileSync(join(EXAMPLE, 'guide.md'), 'utf8'),
-  [`docs/study/${slug}/practice.json`]: readFileSync(join(EXAMPLE, 'practice.json'), 'utf8').replace('"bd-labels-are-null"', `"${slug}"`),
 })
 
 test('topic folders are read through the files they are given, titled by their guide', () => {
-  const topics = readTopics(fakeFiles({ ...example('bd-labels-are-null'), 'docs/study/.gitignore': '*/attempts.json\n' }), loadSchemas(join(EXAMPLE, '../..')))
+  const topics = readTopics(fakeFiles({ ...example('bd-labels-are-null'), 'docs/study/.gitignore': '*/attempts.json\n' }))
   assert.deepEqual(topics.map((t) => [t.slug, t.title, t.problems.length]), [['bd-labels-are-null', 'bd prints labels as null, not as an empty list', 0]])
 })
 
 test('a hidden folder is not a topic, even with a guide in it', () => {
   const tree = { ...example('bd-labels-are-null'), 'docs/study/.drafts/guide.md': '# draft\n' }
-  assert.deepEqual(readTopics(fakeFiles(tree), loadSchemas(join(EXAMPLE, '../..'))).map((t) => t.slug), ['bd-labels-are-null'])
+  assert.deepEqual(readTopics(fakeFiles(tree)).map((t) => t.slug), ['bd-labels-are-null'])
 })
 
 test('no docs/study at all is no topics, not an error', () => {
-  assert.deepEqual(readTopics(fakeFiles({}), loadSchemas(join(EXAMPLE, '../..'))), [])
+  assert.deepEqual(readTopics(fakeFiles({})), [])
+})
+
+test('a topic built before the practice left is listed whole, its leftover files ignored', () => {
+  const tree = { ...example('old-topic'), 'docs/study/old-topic/practice.json': '{ broken', 'docs/study/old-topic/attempts.json': '{}' }
+  const [topic] = readTopics(fakeFiles(tree))
+  assert.equal(topic?.slug, 'old-topic')
+  assert.deepEqual(topic?.problems, [])
 })

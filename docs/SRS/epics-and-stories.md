@@ -484,8 +484,8 @@ mechanical — delivery, refusal, the tracker's state — is tested like everyth
 
 ## Epic: the developer studies a topic before writing about it
 
-**A topic the agent found becomes study material the developer works through, answers hidden until
-attempted, and is tracked until published.**
+**A topic the agent found becomes a guide the developer reads before writing, tracked until
+published.**
 
 Agreed on 2026-10-28, from #227, and after the epic above, whose journal carries the
 `blog-candidate` marks. Writing about what the agent discovered without studying it first publishes
@@ -515,6 +515,13 @@ The Study view sits beside *Show the Work* and reads the tracker the way the boa
 | 3 | the study skill builds a topic | needs the contract; creates the topic's tracker item |
 | 4 | the Study view | needs material to show |
 | 5 | the view moves the topic in the tracker | needs the view; ready to write and published |
+
+**Amended on 2026-10-28 by João Lima, after studying the first topic in the view: the practice
+leaves the study.** A topic is its `guide.md` alone. There is no `practice.json`, no `attempts.json`
+and no hidden answers. Opening a topic starts the study, and *ready to write* is the developer's word
+rather than every item attempted: nothing a script can check stands in for having studied, so it is
+not pretended. The decisions above about attempts no longer apply.
+
 
 ## Epic: the container keeps the developer's time
 

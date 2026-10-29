@@ -40,7 +40,7 @@ has() { grep -c -- "$1" "$BD_CALLS" || true; }
 check "a first build tracks the topic" "$(run bd-labels-are-null 'bd prints labels as null')" "0"
 check "as one task labelled study" "$(has $'^create\tbd prints labels as null\t-t\ttask\t--labels\tstudy\t')" "1"
 check "keyed by its slug, and pointing at its folder" "$(has '"study":"bd-labels-are-null","folder":"docs/study/bd-labels-are-null"')" "1"
-check "with its done criterion" "$(has 'every practice item has an attempt')" "1"
+check "with its done criterion, the developer's word and the post's link" "$(has 'Ready to write when the developer says so; done when the post is published, with its link.')" "1"
 check "left not studied: nothing claims or closes it" "$(has '^close\|--claim\|--status')" "0"
 check "printing its id" "$(tail -n 1 "$work/out")" "st-1"
 

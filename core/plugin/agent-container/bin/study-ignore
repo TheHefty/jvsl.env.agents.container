@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# study-ignore <docs/study>: makes sure every topic's attempts.json is ignored
-# by git before one is written (story the-study-material-has-a-contract). What
-# the developer writes while getting it wrong does not go into a repository
-# that may be public. The rule is withAttemptsIgnored in study/validate.mjs,
-# which the Study view applies too, so the two cannot drift.
-set -uo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec node "$HERE/../study/ignore.mjs" "$@"

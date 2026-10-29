@@ -3,7 +3,7 @@ import * as vscode from 'vscode'
 import { showWork } from './board/board.ts'
 import { build } from './build/command.ts'
 import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, MIGRATE, PICK, CREATE, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
-import { StudyView, schemasFrom } from './study/study-view.ts'
+import { StudyView } from './study/study-view.ts'
 import { openTopic } from './study/study-panel.ts'
 import { configure, pick } from './configure/command.ts'
 import { create } from './create/command.ts'
@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // The Study view (story the-study-view): read-only, and the topic page's
     // one write is an attempt, through the project's own files.
     vscode.commands.registerCommand(OPEN_TOPIC, (slug: unknown) => {
-      if (typeof slug === 'string') openTopic(slug, schemasFrom(context.extensionPath), dockerFor, write, () => study.refresh())
+      if (typeof slug === 'string') openTopic(slug, dockerFor, write, () => study.refresh())
     }),
     vscode.commands.registerCommand(REFRESH_STUDY, () => study.refresh()),
   )

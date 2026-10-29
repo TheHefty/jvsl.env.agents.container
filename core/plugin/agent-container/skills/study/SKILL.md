@@ -1,6 +1,6 @@
 ---
 name: study
-description: Build study material for a topic the developer wants to understand before writing about it — a guide and a practice set with hidden answers in docs/study/<slug>/, tracked as a study task. Use when the developer asks to study a topic, to turn a blog candidate or a report topic into study material, or to prepare before writing a post. Never writes the post.
+description: Build study material for a topic the developer wants to understand before writing about it — a guide in docs/study/<slug>/, tracked as a study task. Use when the developer asks to study a topic, to turn a blog candidate or a report topic into study material, or to prepare before writing a post. Never writes the post.
 ---
 
 # Study material
@@ -45,7 +45,7 @@ Research the topic in the project's code, its documents, its history (`git log`,
 
 ## 5. Write the material in `docs/study/<slug>/`
 
-**`guide.md`**: the material to read. It has seven sections, with the headings exactly as the contract names them, and the prose in the project's documentation language:
+**`guide.md`** is the material, and the whole of it. It has seven sections, with the headings exactly as the contract names them, and the prose in the project's documentation language:
 
 ```
 ## The problem
@@ -60,23 +60,17 @@ Research the topic in the project's code, its documents, its history (`git log`,
 - Every reference to the project cites **file and line**.
 - In Trade-offs, keep three things apart: decisions that were recorded, decisions that are implicit, and what the agent discovered.
 - Library behaviour you could not confirm is marked `(inference)`, with where to check it.
-- **No answer to any practice item appears in the guide.**
-
-**`practice.json`**, by the contract in `${CLAUDE_PLUGIN_ROOT}/study/README.md`:
-- 2 to 4 exercises and 5 to 8 questions;
-- at least one "what if…?" (`"variation": true`);
-- at least one about when the solution is the wrong one (`"angle": "when-not-to-use"`).
+- Write it to be studied, not skimmed: the mechanism, worked through, so the developer can explain it in their own words before writing about it.
 
 ## 6. Check it
 
 Run:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/study-ignore docs/study
 ${CLAUDE_PLUGIN_ROOT}/bin/study-validate docs/study/<slug>
 ```
 
-Fix every line `study-validate` names, an answer found in the guide included, until it is silent.
+Fix every line it names until it is silent.
 
 ## 7. Track it
 
@@ -93,11 +87,11 @@ It creates the topic's task once, or updates a rebuilt one without touching its 
 Run:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/report-guard end docs/study/<slug>/ docs/study/.gitignore
+${CLAUDE_PLUGIN_ROOT}/bin/report-guard end docs/study/<slug>/
 ```
 
 If it fails, tell the developer exactly what changed. A post, or any other file, is not this skill's to write.
 
 ## 9. Hand over
 
-Tell the developer the topic is ready to study in the Study view, and name the task's id. Do not summarise the answers.
+Tell the developer the topic is ready to study in the Study view, and name the task's id.
