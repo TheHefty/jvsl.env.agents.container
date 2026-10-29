@@ -58,9 +58,14 @@ const crlf = (s: string) => s.replace(/\r?\n/g, '\r\n')
 export function hostProcessTerminal(
   command: string,
   args: readonly string[],
-  /** Text for the process's input, which then ends; without it there is none. */
-  options: { input?: string } = {},
+  options: {
+    /** Text for the process's input, which then ends; without it there is none. */
+    input?: string
+    /** Where it runs: process.platform, given by a test to drive the other one's spawn. */
+    platform?: NodeJS.Platform
+  } = {},
 ): HostTerminal {
+  const platform = options.platform ?? process.platform
   const write = emitter<string>()
   const close = emitter<number | void>()
   let child: ReturnType<typeof spawn> | undefined
@@ -88,11 +93,18 @@ export function hostProcessTerminal(
     onDidClose: close.event,
     exited,
     open() {
-      // Its own process group, so closing the terminal stops everything it
-      // started, not only the first process: a `sh -c` build leaves docker
-      // running otherwise, holding the output open.
+      // Its own process group on Linux, so closing the terminal stops
+      // everything it started, not only the first process: a `sh -c` build
+      // leaves docker running otherwise, holding the output open. **Never on
+      // Windows**, where detached means no console, and wsl.exe then writes
+      // nothing: the build's terminal stayed blank (debt
+      // the-build-from-windows-prints-nothing-because-wsl-exe-is-spawned-detached).
+      // Stopping there is taskkill /T, by pid, which needs no group.
       const input = options.input
-      child = spawn(command, [...args], { stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'], detached: true })
+      child = spawn(command, [...args], {
+        stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+        detached: platform !== 'win32',
+      })
       if (input !== undefined) {
         // A reader gone early (EPIPE) is the process's own failure to report,
         // through its exit, not an exception here.
@@ -124,7 +136,7 @@ export function hostProcessTerminal(
         ended = true
         settle(undefined)
         if (child?.pid && child.exitCode === null) {
-          const stop = stopTree(child.pid, process.platform)
+          const stop = stopTree(child.pid, platform)
           if (stop.kind === 'group') {
             try { process.kill(-stop.pid, 'SIGTERM') } catch { child.kill('SIGTERM') }
           } else {
