@@ -403,6 +403,8 @@ meta_file="$(docker run --rm --network none --entrypoint /bin/cat "$IMAGE" /opt/
     || fail "/opt/jvsl/devcontainer-metadata.json in $IMAGE is not the devcontainer.metadata label. The composer writes both from one value; 35-editor-extensions.sh reads the file."
 docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/35-editor-extensions.sh' \
     || fail "$IMAGE does not install core/cont-init/35-editor-extensions.sh, so a stack added later would never bring its extension"
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/36-editor-settings.sh' \
+    || fail "$IMAGE does not install core/cont-init/36-editor-settings.sh, so a stack's editor settings would never reach an editor that already exists (debt rjj)"
 
 # **The docker client is there, with its plugins** (issue #169, debt
 # the-image-has-a-docker-daemon-and-no-cli). The nested daemon answered on

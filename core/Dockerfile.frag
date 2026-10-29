@@ -433,6 +433,13 @@ RUN chmod +x /custom-cont-init.d/30-editor-leftovers.sh
 COPY core/cont-init/35-editor-extensions.sh /custom-cont-init.d/35-editor-extensions.sh
 RUN chmod +x /custom-cont-init.d/35-editor-extensions.sh
 
+# The image's editor settings reach an editor that already exists: Dev
+# Containers writes Machine settings once, on the persistent volume, and this
+# writes the image's settings on every boot, keeping any the developer changed.
+# It reads the same /opt/jvsl/devcontainer-metadata.json. Debt rjj.
+COPY core/cont-init/36-editor-settings.sh /custom-cont-init.d/36-editor-settings.sh
+RUN chmod +x /custom-cont-init.d/36-editor-settings.sh
+
 # 5.1 LinuxServer custom-cont-init.d hook, aligning the in-container 'kvm'
 # group's gid with the host device's — only acts when the caller passed
 # KVM_GID (i.e. the host exposed /dev/kvm; see stacks/android/Dockerfile.frag,
