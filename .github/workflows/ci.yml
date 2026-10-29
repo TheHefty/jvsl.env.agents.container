@@ -355,6 +355,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/review-settle.test.sh
       - name: the journal goes to a private repository or waits in the outbox, one entry per local day, never in the tracker
         run: bash core/plugin/agent-container/bin/journal-write.test.sh
+      - name: a tracker's journal entries move to the private repository, removed only once they are there
+        run: bash core/plugin/agent-container/bin/journal-move.test.sh
       - name: the retro gathers the items and commits of the developer's day, by its local date
         run: bash core/plugin/agent-container/bin/retro-gather.test.sh
       - name: refinement proposes whole, in the right place, with what the chain needs

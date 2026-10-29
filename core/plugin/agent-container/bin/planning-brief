@@ -21,7 +21,8 @@
 # The same reading as planning-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
 # Journal entries left in the tracker, labelled `journal`, are never offered as
-# work nor read: the journal is the developer's, not the project's.
+# work nor read: the journal is the developer's, not the project's. While any
+# are left, a line says so, and that journal-move moves them.
 #
 # The outbox is sent first (journal-flush), so what waited since the last retro
 # is in the repository before it is read; what still fails stays waiting.
@@ -61,7 +62,11 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" --sl
         | ($journal | map(select(.day))) as $entries
         | ($entries | map(.day)) as $days
         | ($work | map(.updated_at | localday) | map(select(. < $today)) | max) as $lastwork
-        | (if $err != null
+        | ([.[] | select(labels | index("journal"))] | length) as $left
+        | (if $left == 1 then "The tracker still holds 1 journal entry from before the journal moved: journal-move moves it to the private repository."
+           elif $left > 1 then "The tracker still holds \($left) journal entries from before the journal moved: journal-move moves them to the private repository."
+           else empty end),
+          (if $err != null
            then "The journal could not be read\(if $err.repository then " from \($err.repository)" else "" end): \($err.error). Only entries waiting on this machine are shown."
            elif $lastwork != null and ($days | index($lastwork) | not)
            then "No journal for \($lastwork), which had work: its retro was skipped." else empty end),

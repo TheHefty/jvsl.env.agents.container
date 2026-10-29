@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# journal-move: moves this project's journal entries out of its tracker, into
+# the developer's private repository (story
+# the-entries-in-a-tracker-move-to-the-private-repository). The tracker
+# travels with the project's repository as refs/dolt/data, so what the retro
+# wrote there before the journal moved is readable by whoever can read the
+# project. Run once, by hand, after the developer's yes.
+#
+# Each item labelled `journal` goes to <project>/<day>.md, its day the
+# metadata `day` or else the local date it was written, through the outbox and
+# journal-flush. **An item is deleted only once a read-back finds its entry in
+# the repository, with the same content**: offline, refused, or anything
+# unconfirmed, it stays in the tracker. **A day already holding a different
+# entry**, in the repository or in the outbox, is a retro that ran there: it
+# is neither overwritten nor deleted, and is named.
+#
+# A delete does not rewrite the tracker's history, and the last line says so.
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BD="${REVIEW_BD:-bd}"
+HOME_DIR="${JOURNAL_HOME:-/config/.claude/agent-container}"
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { "$BD" export; }; fi
+repo="$(jq -r '.repository // empty' "$HOME_DIR/journal.json" 2>/dev/null)"
+repo="${repo:-the journal repository}"
+project="$(bash "$HERE/journal-project")"
+box="$HOME_DIR/journal-outbox/$project"
+
+tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+export_of | jq -c 'select(._type == "issue" and ((.labels // []) | index("journal")))
+    | def localday: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | localtime | strftime("%F");
+      {id, day: (.metadata.day // (.created_at | localday)), body: (.description // "")}' > "$tmp/items"
+if [ ! -s "$tmp/items" ]; then
+    echo "Nothing to move: the tracker holds no journal entries."
+    exit 0
+fi
+
+# What the repository holds, read before anything is written: a day it holds
+# differently is never overwritten, and a repository that cannot be read
+# cannot say a day is free.
+bash "$HERE/journal-read" > "$tmp/before"
+unread="$(jq -r 'select(.error) | .error' "$tmp/before")"
+# The same entry, whatever its trailing newlines.
+held() { jq -r --arg day "$2" --argjson sent "$3" 'select(.day == $day and .sent == $sent) | .body | sub("\\s+$"; "")' "$1"; }
+
+rc=0
+mkdir -p "$box"
+while IFS= read -r it; do
+    id="$(jq -r .id <<<"$it")"; day="$(jq -r .day <<<"$it")"
+    body="$(jq -r '.body | sub("\\s+$"; "")' <<<"$it")"
+    if [ -n "$unread" ]; then
+        echo "kept: $id: the entry is not in $repo, which could not be read ($unread), so nothing was written and the item stays in the tracker."
+        rc=1; continue
+    fi
+    there="$(held "$tmp/before" "$day" true)"
+    if [ -n "$there" ] && [ "$there" != "$body" ]; then
+        echo "kept: $id: $day already has a different entry in $repo; nothing was written, and the item stays in the tracker. Compare the two, and remove the item by hand once one is kept."
+        rc=1; continue
+    fi
+    waiting="$(held "$tmp/before" "$day" false)"
+    if [ -n "$waiting" ] && [ "$waiting" != "$body" ]; then
+        echo "kept: $id: $day already has a different entry waiting in the outbox ($box/$day.md); nothing was written, and the item stays in the tracker."
+        rc=1; continue
+    fi
+    [ -n "$there" ] || [ -n "$waiting" ] || printf '%s\n' "$body" > "$box/$day.md"
+    printf '%s\n' "$it" >> "$tmp/movable"
+done < "$tmp/items"
+
+[ -s "$tmp/movable" ] || exit "$rc"
+bash "$HERE/journal-flush" > "$tmp/flush" 2>&1
+bash "$HERE/journal-read" > "$tmp/after"
+
+removed=0
+while IFS= read -r it; do
+    id="$(jq -r .id <<<"$it")"; day="$(jq -r .day <<<"$it")"
+    body="$(jq -r '.body | sub("\\s+$"; "")' <<<"$it")"
+    if [ "$(held "$tmp/after" "$day" true)" != "$body" ]; then
+        why="$(grep -F -- "$project/$day.md: " "$tmp/flush" | tail -n 1 | sed "s|^waiting: $project/$day.md: ||")"
+        echo "kept: $id: the entry is not in $repo yet (${why:-it was not found there after sending}); it waits in the outbox, and the item stays in the tracker. Run journal-move again once it can be sent."
+        rc=1; continue
+    fi
+    if ! "$BD" delete "$id" --force > "$tmp/del" 2>&1; then
+        echo "kept: $id: the entry is in $repo, but the tracker refused to remove the item: $(tail -n 1 "$tmp/del")"
+        rc=1; continue
+    fi
+    echo "moved: $id to $repo:$project/$day.md"
+    removed=$((removed + 1))
+done < "$tmp/movable"
+
+if [ "$removed" -gt 0 ]; then
+    echo "Removed $removed from the tracker, but its history (refs/dolt/data on the remote) still holds what was removed: a delete does not rewrite it. The removal reaches the remote with the next approved push."
+fi
+exit "$rc"
