@@ -236,6 +236,19 @@ jobs:
       - name: a changed extension list lets the editor install again, and only then
         run: bash core/cont-init/35-editor-extensions.test.sh
 
+  editor-settings:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The editor writes its Machine settings once and keeps them on the
+    # persistent volume; this hook writes the image's settings on every boot.
+    # Guarded: the developer's own values are kept, a settings.json it cannot
+    # parse is never touched, and a stack's later change still arrives.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the image's editor settings arrive, and the developer's own are kept
+        run: bash core/cont-init/36-editor-settings.test.sh
+
   agent-rules:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -812,7 +825,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, ai-memory, reaper, beads, gradle-defaults, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, beads, gradle-defaults, jail-wrappers, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
