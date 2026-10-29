@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
-# journal-write <body-file>: writes the day's journal entry (story
-# the-retro-and-its-journal). One entry per working day: a chore labelled
-# `journal`, closed when it is created so no planning offers it as work, titled
-# `Journal <day>` and found by its metadata `day` — a title can be edited, a key
-# is a key. A second retro on the same day rewrites that entry.
+# journal-write <body-file>: writes the day's journal entry (stories
+# the-retro-and-its-journal, the-retro-writes-the-entry-to-the-developers-
+# private-repository). The journal is the developer's: it goes to a private
+# repository of theirs, named in $JOURNAL_HOME/journal.json, as
+# <project>/<day>.md — **never to the project's tracker**, which travels with a
+# repository that may be public. A second retro on the same day rewrites the
+# same file.
+#
+# **Kept first, sent second.** The entry is written to the outbox,
+# $JOURNAL_HOME/journal-outbox/<project>/<day>.md, before anything is sent, and
+# journal-flush removes it only once GitHub has confirmed it. The last line
+# says where it is: `sent: <repo>:<path>`, or `waiting in the outbox: <why>`.
+# $JOURNAL_HOME is the host's ~/.claude/agent-container: the rest of /config is
+# a tmpfs inside the sandbox, and an outbox there would die with the session.
 #
 # **The day is the local date** ($JOURNAL_TODAY, or the date of $JOURNAL_NOW in
-# seconds, or now), so a retro at 22:00 at -0300 is that day's and not
-# tomorrow's in UTC.
+# seconds, or now), so a retro at 22:00 at -0300 is that day's.
 #
 # **Refused, writing nothing**, when the body lacks a section, has them out of
 # order, or leaves empty either of the two parts the agent cannot supply: the
 # developer's own "What I learned" line, and "Decided alone", which says
-# "Nothing." when there is nothing. `blog-candidate` follows the body.
+# "Nothing." when there is nothing.
 set -uo pipefail
 
-BD="${REVIEW_BD:-bd}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOME_DIR="${JOURNAL_HOME:-/config/.claude/agent-container}"
 SECTIONS=("Discovered" "Surprised" "Went wrong" "Decided alone" "What I learned" "Left open" "Links")
-if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 file="${1:-}"
 if [ -z "$file" ] || [ ! -f "$file" ]; then
@@ -41,17 +49,17 @@ blank() { [ -z "$(section "$1" | tr -d '[:space:]')" ]; }
 blank "What I learned" && refuse "\"What I learned\" is empty: that line is the developer's own, written or approved by them, and never the agent's alone."
 blank "Decided alone" && refuse "\"Decided alone\" is empty: list what was chosen without asking, or write \"Nothing.\" when there was nothing."
 
-id="$(export_of | jq -r --arg day "$day" 'select(._type == "issue" and ((.labels // []) | index("journal")) and .metadata.day == $day) | .id' | head -n 1)"
-if [ -n "$id" ]; then
-    "$BD" update "$id" --body-file "$file" >/dev/null || exit 1
-else
-    id="$("$BD" create "Journal $day" -t chore --labels journal --body-file "$file" --metadata "{\"day\":\"$day\"}" --silent)" || exit 1
-    [ -n "$id" ] || { echo "journal-write: bd created no entry for $day" >&2; exit 1; }
-    "$BD" close "$id" --reason "Journal entry for $day." >/dev/null || exit 1
-fi
-if grep -qiE '^Blog candidate:[[:space:]]*yes' "$file"; then
-    "$BD" label add "$id" blog-candidate >/dev/null || exit 1
-else
-    "$BD" label remove "$id" blog-candidate >/dev/null 2>&1 || true
-fi
-echo "$id"
+project="${JOURNAL_PROJECT:-$(basename "$(git remote get-url origin 2>/dev/null)" .git)}"
+[ -n "$project" ] && [ "$project" != . ] || project="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+box="$HOME_DIR/journal-outbox/$project"
+
+# Kept before anything is sent: no failure past this line can lose the entry.
+mkdir -p "$box" && cp -- "$file" "$box/$day.md" || {
+    echo "journal-write: the entry for $day could not be kept in $box, so nothing was written. Check that $HOME_DIR is writable."
+    exit 1
+}
+line="$(JOURNAL_HOME="$HOME_DIR" bash "$HERE/journal-flush" | grep -F -- "$project/$day.md" | tail -n 1)"
+case "$line" in
+    sent:*) echo "$line" ;;
+    *) echo "waiting in the outbox: ${line#waiting: $project/$day.md: }" ;;
+esac

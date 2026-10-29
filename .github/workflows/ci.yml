@@ -353,7 +353,7 @@ jobs:
         run: bash core/plugin/agent-container/bin/review-accept.test.sh
       - name: an accepted task closes when its pull request merges, and only then
         run: bash core/plugin/agent-container/bin/review-settle.test.sh
-      - name: one journal entry per local day, never without the developer's line or the agent's own decisions
+      - name: the journal goes to a private repository or waits in the outbox, one entry per local day, never in the tracker
         run: bash core/plugin/agent-container/bin/journal-write.test.sh
       - name: the retro gathers the items and commits of the developer's day, by its local date
         run: bash core/plugin/agent-container/bin/retro-gather.test.sh
