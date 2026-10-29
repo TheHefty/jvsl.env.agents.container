@@ -9,9 +9,11 @@
 # Closed items — finished or rejected — and journal entries appear nowhere.
 set -uo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
-export_of | jq -c 'select(._type == "issue")' | jq -sr '
+export_of | jq -c 'select(._type == "issue")' | jq -L "$HERE" -sr 'include "work";
     (map({key: .id, value: .status}) | from_entries) as $status
     | def labels: (.labels // []);
       def proposal: (.status == "deferred" or (labels | index("proposed")));
@@ -27,6 +29,9 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr '
       "",
       "## Stories with no agreed task",
       ($agreed | map(select(.issue_type == "feature" and (.id as $s | $with_tasks | index($s) | not))) | .[] | line),
+      "",
+      "## Debts with no agreed task",
+      ($agreed | map(select(is_debt and (.id as $d | $with_tasks | index($d) | not))) | .[] | line),
       "",
       "## Tasks with no done criterion",
       ($agreed | map(select(.issue_type == "task" and ((.acceptance_criteria // "") | length) == 0)) | .[] | line),

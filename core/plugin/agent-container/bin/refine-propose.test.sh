@@ -37,6 +37,13 @@ item s1 feature open 2 null "Scenario: x"
 item s-prop feature deferred 2 '["proposed"]' "Scenario: x"
 item s-closed feature closed 2 null "Scenario: x"
 item t1 task open 2 null "c"
+# Debts (task refinement-plans-a-debts-fix-as-tasks-under-it): a bug labelled
+# defect, hotfix or shortcut is like a story, and its fix is planned as tasks.
+item d1 bug open 2 '["defect"]'
+item d-hot bug in_progress 2 '["hotfix"]'
+item d-prop bug deferred 2 '["defect","proposed"]'
+item d-closed bug closed 2 '["defect"]'
+item b-plain bug open 2
 printf 'What it is for.\n' > "$work/body"
 printf 'Done when the planning lists it.\n' > "$work/crit"
 printf 'Feature: f\n  Scenario: it happens\n    Then it is so\n' > "$work/scen"
@@ -78,6 +85,14 @@ check "a child under a closed item is refused" "$(refused task s-closed t "$work
 check "a parent the tracker does not have is refused" "$(refused task s-ghost t "$work/body" "$work/crit")" "1 0"
 check "an empty title is refused" "$(refused task s1 '  ' "$work/body" "$work/crit")" "1 0"
 check "an empty body is refused" "$(refused task s1 t "$work/empty" "$work/crit")" "1 0"
+check "a task under an agreed debt is proposed" "$(run task d1 'fix it' "$work/body" "$work/crit")" "0"
+check "as a task under that debt, both halves of a proposal" "$(created | grep -c $'\t-t\ttask\t--parent\td1\t--labels\tproposed\t--status\tdeferred')" "1"
+check "a debt in progress takes a task too" "$(run task d-hot 'fix it' "$work/body" "$work/crit")" "0"
+check "a bug that is not a debt is refused as a parent" "$(refused task b-plain t "$work/body" "$work/crit")" "1 0"
+check "saying it is to be recorded as a debt" "$(grep -c 'not a debt' "$work/out")" "1"
+check "a debt that is itself a proposal is refused" "$(refused task d-prop t "$work/body" "$work/crit")" "1 0"
+check "a closed debt is refused" "$(refused task d-closed t "$work/body" "$work/crit")" "1 0"
+check "a story under a debt is refused: a debt holds tasks" "$(refused story d1 s "$work/body" "$work/scen")" "1 0"
 check "an epic is not refinement's to propose" "$(refused epic e1 t "$work/body" "$work/crit")" "2 0"
 
 if [ "$failures" -gt 0 ]; then

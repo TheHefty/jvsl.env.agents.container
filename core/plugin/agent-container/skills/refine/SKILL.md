@@ -30,6 +30,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/refine-candidates
 It lists four things:
 - proposals awaiting agreement;
 - agreed stories with no agreed task (nothing in a planning can come from them yet);
+- agreed debts with no agreed task (their fix is not planned yet);
 - tasks with no done criterion (the planning would refuse them);
 - what tomorrow's planning can already pick.
 
@@ -55,13 +56,15 @@ Write the body and the acceptance to files, then run:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/bin/refine-propose story <epic-id> "<title>" <body-file> <scenarios-file>
-${CLAUDE_PLUGIN_ROOT}/bin/refine-propose task <story-id> "<title>" <body-file> <criterion-file> [<id it waits on>...]
+${CLAUDE_PLUGIN_ROOT}/bin/refine-propose task <story-or-debt-id> "<title>" <body-file> <criterion-file> [<id it waits on>...]
 ```
 
 - A story's acceptance is its scenarios, in Gherkin (`Scenario:` / `Given` / `When` / `Then`), in the project's documentation language.
 - A task's acceptance is its done criterion.
 
-The script refuses a story outside an agreed epic, a task outside an agreed story, a task with no criterion, and a story with no scenario. Fix what it names.
+**A debt is like a story**: its fix is proposed as tasks under it, the debt's regression scenario playing the part a story's scenarios play.
+
+The script refuses a story outside an agreed epic, a task outside an agreed story or debt, a task with no criterion, and a story with no scenario. Fix what it names.
 
 ## 5. The developer's word
 

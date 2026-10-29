@@ -43,6 +43,8 @@ item t-done-blocker task closed 1 null "criterion"
 item t-unblocked task open 2 null "criterion"
 dep t-unblocked t-done-blocker blocks
 item t-nocrit task open 2
+item d1 bug open 2 '["defect"]'
+item b-plain bug open 2
 
 run() {
     local code=0
@@ -66,6 +68,10 @@ check "a closed task is refused" "$(run t-closed) $(line t-closed | grep -c 'clo
 check "a blocked task is refused, naming what blocks it" "$(run t-blocked) $(line t-blocked | grep -c 'blocked by t-blocker')" "1 1"
 check "a task with no done criterion is refused, as such" "$(run t-nocrit) $(line t-nocrit | grep -c 'no done criterion')" "1 1"
 check "an id the tracker does not have is refused" "$(run t-ghost) $(line t-ghost | grep -c 'not in the tracker')" "1 1"
+
+check "a debt is refused as a debt, its tasks planned at refinement" "$(run d1) $(line d1 | grep -c '^d1: a debt: refinement plans its tasks')" "1 1"
+check "and never called a story" "$(line d1 | grep -c story || true)" "0"
+check "a bug that is not a debt says to record it as one" "$(run b-plain) $(line b-plain | grep -c 'not a debt')" "1 1"
 
 check "several ids: one line each, and any refusal fails the whole" \
     "$(run t-ok t-nocrit t-unblocked) $(wc -l < "$work/out" | tr -d ' ')" "1 3"

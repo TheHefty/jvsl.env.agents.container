@@ -271,6 +271,11 @@ maioria não tem. Para esses, nada mais nestas regras muda.
   do sim, registre-o como dívida, `bd create --type bug --labels defect`, com as seções do template de
   dívida. Registrar não começa a correção. Este é o único item que você pode criar sem um gate
   próprio, e só porque o usuário disse sim.
+- **Uma dívida é como uma story: a sua correção é planejada em tasks dentro dela.** No refinement,
+  proponha-as com `refine-propose task <debt-id> …`, cada uma com o seu critério de pronto, e o
+  planning as oferece como qualquer outra task. A dívida fecha quando as suas tasks entraram e o seu
+  cenário de regressão foi verificado. Um `bug` sem a label `defect`, `hotfix` ou `shortcut` ainda não
+  é uma dívida.
 
 ### O dia de trabalho
 

@@ -23,7 +23,8 @@ Caminhos fora desta pasta são escritos como código, não como links, pelo moti
 **As cerimônias são o calendário da cadeia, não um atalho em volta dela.** Todo elo da cadeia do
 [Workflow](WORKFLOW.md) continua acordado antes de ser escrito. O refinement é onde stories e tasks
 são propostas e acordadas, e o planning só pega o que foi acordado. Um item que chega cru num planning
-volta para o refinement em vez de ser construído naquele dia.
+volta para o refinement em vez de ser construído naquele dia. Uma dívida é planejada do mesmo jeito: a sua correção
+vira tasks dentro dela no refinement, e o planning oferece essas.
 
 Cada cerimônia roda `needs-tracker` primeiro e para, numa linha dizendo como ligar o rastreador, num
 projeto cujo manifest não diz `"beads": true`.

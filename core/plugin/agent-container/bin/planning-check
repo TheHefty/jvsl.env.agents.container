@@ -15,6 +15,8 @@
 # prints and core/image.test.sh checks against the real one.
 set -uo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ "$#" -eq 0 ]; then
     echo "usage: planning-check <id>...  — says, for each, whether the planning can start it" >&2
     exit 2
@@ -27,13 +29,15 @@ items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || {
 
 rc=0
 for id in "$@"; do
-    verdict="$(jq -r --arg id "$id" '
+    verdict="$(jq -L "$HERE" -r --arg id "$id" 'include "work";
         (map({key: .id, value: .status}) | from_entries) as $status
         | (map(select(.id == $id)) | first) as $it
         | if $it == null then "not in the tracker"
           elif $it.status == "closed" then "closed"
           elif (($it.labels // []) | index("proposed")) then "a proposal, not agreed yet — refinement"
           elif $it.status == "deferred" then "deferred, not agreed for now — refinement"
+          elif ($it | is_debt) then "a debt: refinement plans its tasks under it — refinement"
+          elif $it.issue_type == "bug" then "a bug that is not a debt — record it as one (label defect, hotfix or shortcut), then refinement plans its tasks"
           elif $it.issue_type == "epic" then "an epic, not a task — refinement breaks it into stories and tasks"
           elif $it.issue_type != "task" then "not a task: a story with no agreed task under it — refinement"
           else ([($it.dependencies // [])[] | select(.type == "blocks") | .depends_on_id

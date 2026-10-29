@@ -268,6 +268,10 @@ Most do not. Everything else in these rules is unchanged for them.
   record it as a debt, `bd create --type bug --labels defect`, with the debt template's sections.
   Recording it does not start the fix. This is the one item you may create without a gate of its
   own, and only because the user said yes.
+- **A debt is like a story: its fix is planned as tasks under it.** At refinement, propose them
+  with `refine-propose task <debt-id> …`, each with its done criterion, and the planning offers them
+  like any other task. The debt closes when its tasks have merged and its regression scenario has
+  been verified. A `bug` without a `defect`, `hotfix` or `shortcut` label is not a debt yet.
 
 ### The working day
 
