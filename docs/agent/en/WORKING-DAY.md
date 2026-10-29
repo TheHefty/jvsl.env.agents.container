@@ -23,7 +23,8 @@ Paths outside this folder are written as code rather than as links, for the reas
 **The ceremonies are the chain's calendar, not a way around it.** Every link of the chain in
 [Workflow](WORKFLOW.md) is still agreed before it is written. Refinement is where stories and tasks
 are proposed and agreed, and the planning picks only what was agreed. An item that reaches a planning raw
-goes back to refinement rather than being built that day.
+goes back to refinement rather than being built that day. A debt is planned the same way: its fix becomes tasks
+under it at refinement, and the planning offers those.
 
 Each ceremony runs `needs-tracker` first and stops, in one line saying how to turn the tracker on,
 in a project whose manifest does not say `"beads": true`.

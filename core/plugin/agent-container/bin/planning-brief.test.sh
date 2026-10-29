@@ -59,6 +59,9 @@ item t-child task open 2 null "criterion" 2026-10-03T00:00:00Z
 dep t-child s1 parent-child
 item t-done task closed 2 null "criterion"
 item t-nocrit task open 2 null "" 2026-10-04T00:00:00Z
+item d1 bug open 2 '["defect"]'
+item t-debt task open 4 null "c" 2026-10-05T00:00:00Z
+dep t-debt d1 parent-child
 
 check "in progress lists what is being worked on" "$(section 'In progress')" "t-going"
 check "a blocked task is never offered as ready" "$(section Ready | tr ' ' '\n' | grep -cx t-blocked || true)" "0"
@@ -67,7 +70,9 @@ check "naming what blocks it" "$(brief | grep -c '^- t-blocked .*blocked by t-hi
 check "a closed blocker no longer blocks" "$(section Ready | tr ' ' '\n' | grep -cx t-was-blocked)" "1"
 check "a parent is not a blocker" "$(section Ready | tr ' ' '\n' | grep -cx t-child)" "1"
 check "ready is ordered by priority, then by what each unblocks, then by age" \
-    "$(section Ready)" "t-high t-tie-key t-tie-old t-was-blocked t-child t-nocrit t-low"
+    "$(section Ready)" "t-high t-tie-key t-tie-old t-was-blocked t-child t-nocrit t-low t-debt"
+check "a task whose parent is a debt is offered like any other, and the debt itself is not" \
+    "$(section Ready | tr ' ' '\n' | grep -cx t-debt) $(section Ready | tr ' ' '\n' | grep -cx d1 || true)" "1 0"
 check "a task with no criterion is offered, marked so the planning asks for one" \
     "$(brief | grep -c '^- t-nocrit .*no done criterion')" "1"
 check "proposals, stories and closed tasks are not offered" \

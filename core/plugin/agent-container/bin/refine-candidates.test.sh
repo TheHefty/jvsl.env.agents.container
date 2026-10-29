@@ -39,16 +39,31 @@ dep p-task s-empty parent-child
 item s-gone feature closed 2 '["proposed"]' "Scenario: x"
 item t-gone task closed 2 null "c"
 item j1 chore closed 2 '["journal"]'
+item d-empty bug open 2 '["defect"]'
+item d-planned bug open 2 '["shortcut"]'
+item t-d task open 2 null "c"
+dep t-d d-planned parent-child
+item d-proposed-only bug open 2 '["hotfix"]'
+item t-dp task deferred 2 '["proposed"]' "c"
+dep t-dp d-proposed-only parent-child
+item d-done bug closed 2 '["defect"]'
+item b-plain bug open 2
 
 out="$(TRACKER_EXPORT="$EXPORT" bash "$HERE/refine-candidates")"
 section() { printf '%s\n' "$out" | awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on && /^- / {print $2}' | paste -sd' ' -; }
 
-check "open proposals await agreement" "$(section 'Awaiting agreement')" "p-task"
+check "open proposals await agreement, a task proposed under a debt among them" "$(section 'Awaiting agreement')" "p-task t-dp"
 check "naming what they are proposed under" "$(printf '%s\n' "$out" | grep -c '^- p-task .*under s-empty')" "1"
 check "an agreed story with no agreed task under it is listed, a proposed one not counting" "$(section 'Stories with no agreed task')" "s-empty"
 check "a task with no criterion is listed for one" "$(section 'Tasks with no done criterion')" "t-old"
-check "what tomorrow's planning can pick is shown" "$(section 'Agreed and ready')" "t-ready"
+check "what tomorrow's planning can pick is shown, a debt's task included" "$(section 'Agreed and ready')" "t-ready t-d"
 check "rejected, closed and journal items appear nowhere" "$(printf '%s\n' "$out" | grep -cE '^- (s-gone|t-gone|j1) ' || true)" "0"
+
+check "an agreed debt with no task is listed for one, a proposed task not counting" "$(section 'Debts with no agreed task')" "d-empty d-proposed-only"
+check "a debt with an agreed task, a closed one, and a bug that is not a debt are not" \
+    "$(section 'Debts with no agreed task' | tr ' ' '\n' | grep -cxE 'd-planned|d-done|b-plain' || true)" "0"
+check "the debt's task is ready for tomorrow's planning" "$(section 'Agreed and ready' | tr ' ' '\n' | grep -cx t-d)" "1"
+check "a debt is never listed as a story" "$(section 'Stories with no agreed task' | tr ' ' '\n' | grep -c '^d-' || true)" "0"
 
 if [ "$failures" -gt 0 ]; then
     echo "refine-candidates.test: $failures failure(s)"

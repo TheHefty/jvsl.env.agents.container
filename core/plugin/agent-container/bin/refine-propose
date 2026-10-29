@@ -14,6 +14,8 @@
 # refinement's: they are agreed at the SRS gate. Refused, it writes nothing.
 set -uo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BD="${REVIEW_BD:-bd}"
 if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
@@ -22,7 +24,7 @@ usage() { echo "usage: refine-propose <story|task> <parent> <title> <body-file> 
 kind="$1" parent="$2" title="$3" body="$4" acc="$5"; shift 5
 case "$kind" in
     story) type=feature; parent_type=epic ;;
-    task) type=task; parent_type=feature ;;
+    task) type=task; parent_type=feature-or-debt ;;
     *) echo "refine-propose: refinement proposes stories and tasks; an epic is agreed at the SRS gate, with its sentence." >&2; exit 2 ;;
 esac
 refuse() { echo "refine-propose: \"$title\" was not proposed. $*"; exit 1; }
@@ -36,11 +38,15 @@ else
     grep -q 'Scenario' "$acc" || refuse "A story's acceptance is its scenarios, and this one has no Scenario."
 fi
 
-state="$(export_of | jq -r --arg id "$parent" 'select(._type == "issue" and .id == $id)
-    | "\(.issue_type) \(.status) \(if ((.labels // []) | index("proposed")) then "proposed" else "-" end)"' | head -n 1)"
+state="$(export_of | jq -L "$HERE" -r --arg id "$parent" 'include "work"; select(._type == "issue" and .id == $id)
+    | "\(if is_debt then "debt" else .issue_type end) \(.status) \(if ((.labels // []) | index("proposed")) then "proposed" else "-" end)"' | head -n 1)"
 [ -n "$state" ] || refuse "Its parent $parent is not in the tracker."
 read -r ptype pstatus plabel <<<"$state"
-[ "$ptype" = "$parent_type" ] || refuse "A $kind goes under $( [ "$kind" = story ] && echo "an epic" || echo "a story" ), and $parent is a $ptype."
+[ "$ptype" != bug ] || refuse "Its parent $parent is a bug that is not a debt: record it as one (label defect, hotfix or shortcut) before planning its fix."
+case "$parent_type:$ptype" in
+    epic:epic|feature-or-debt:feature|feature-or-debt:debt) ;;
+    *) refuse "A $kind goes under $( [ "$kind" = story ] && echo "an epic" || echo "a story or a debt" ), and $parent is a $ptype." ;;
+esac
 [ "$pstatus" != closed ] || refuse "Its parent $parent is closed."
 [ "$pstatus" != deferred ] && [ "$plabel" != proposed ] || refuse "Its parent $parent is itself a proposal: agree it first, so the chain is agreed in order."
 
