@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.3](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.2...v1.12.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* the wrapperless Gradle warning reaches a project that is only opened ([2806873](https://github.com/TheHefty/jvsl.env.agents.container/commit/280687326b3fc9eaa90f9dd36cb093c3ed4bbd0c))
+
 ## [1.12.2](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.1...v1.12.2) (2026-10-29)
 
 
