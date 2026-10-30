@@ -556,3 +556,22 @@ test('Create from a WSL window refuses a distro folder that already holds someth
     process.env.PATH = path
   }
 })
+
+// --- Open on the window's own folder asks for its manifest (debt y6w, task y6w.1)
+//
+// Found on 2026-10-30: in a window open on a folder with no manifest, Open on
+// that same folder prepared it without asking the questions that write one.
+// Driven through the built bundle's Open command, the questions answered by
+// their defaults.
+
+test('Open on the window\'s own folder with no manifest asks the questions, writes it, and prepares here', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'own-folder-'))
+  const registered = new Map<string, (...args: unknown[]) => unknown>()
+  const calls: unknown[][] = []
+  const picked = { scheme: 'file', authority: '', path: dir, fsPath: dir, toString: () => `file://${dir}` }
+  await stubEditor(dir, undefined, [], [], { registered, calls, openDialog: [picked], defaults: true })
+  await registered.get('jvsl.agentContainer.open')!()
+  assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'the manifest was written')
+  assert.ok(calls.some((c) => c[0] === 'jvsl.agentContainer.prepare'), JSON.stringify(calls))
+  assert.equal(calls.some((c) => c[0] === 'vscode.openFolder'), false, 'no second window onto the same folder')
+})
