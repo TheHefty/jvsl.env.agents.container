@@ -209,3 +209,28 @@ test('the distro\'s search is bounded, prunes what the walk skips, and follows n
   assert.ok(!GRADLE_FIND.includes(' -L') && !GRADLE_FIND.includes('-follow'))
   assert.match(GRADLE_FIND, /head -n \d+/)
 })
+
+// --- an agent's worktree is not a build of the project (debt rjj, task rjj.3)
+//
+// Found in kotodori on 2026-10-29: a Claude Code worktree under .claude/worktrees/
+// carries a copy of every build, build-logic's included, so a scan that walks
+// into it names the copy in the warning and counts its wrapper in the version.
+
+import { execFileSync } from 'node:child_process'
+
+const withWorktree = (): string => {
+  const root = tree()
+  put(root, '2-backend/build-logic/settings.gradle.kts')
+  put(root, '.claude/worktrees/some-task/2-backend/build-logic/settings.gradle.kts')
+  put(root, '.claude/worktrees/some-task/2-backend/core/settings.gradle.kts')
+  return root
+}
+
+test('the walk does not go into .claude, where an agent keeps its worktrees', () => {
+  assert.deepEqual(findGradleBuilds(withWorktree()).builds.map((b) => b.dir), ['2-backend/build-logic'])
+})
+
+test("the distro's find does not either", () => {
+  const listing = execFileSync('sh', ['-c', GRADLE_FIND, 'sh', withWorktree()], { encoding: 'utf8' })
+  assert.deepEqual(listing.trim().split('\n'), ['./2-backend/build-logic/settings.gradle.kts'])
+})

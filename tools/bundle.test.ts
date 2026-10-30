@@ -129,6 +129,8 @@ interface EditorScript {
   commands?: string[]
   /** Every line written to the extension's output channel. */
   channel?: string[]
+  /** The project's workspaceState, kept by the test so it outlives an activation. */
+  workspaceState?: Map<string, unknown>
 }
 
 function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = [], script: EditorScript = {}) {
@@ -172,6 +174,10 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
     subscriptions: [],
     extensionPath: join(import.meta.dirname, '..'),
     globalState: { get: () => handedOver, update: (_k: string, v: unknown) => { updates.push(v); return Promise.resolve(undefined) } },
+    workspaceState: {
+      get: (k: string) => script.workspaceState?.get(k),
+      update: (k: string, v: unknown) => { script.workspaceState?.set(k, v); return Promise.resolve(undefined) },
+    },
   }
   return loaded.activate(context)
 }
@@ -319,4 +325,58 @@ test('dismissing the question recreates nothing, and the channel says what waits
   } finally {
     restore()
   }
+})
+
+// --- the wrapperless-build warning reaches a project that is only opened
+// (debt rjj, task rjj.3)
+//
+// Found in kotodori on 2026-10-29 with 1.12.2: rjj.2's warning lived only in
+// prepare, and opening an existing project does not prepare, so it never
+// showed. Driven where it was found: the built bundle, in a window opened on a
+// project with a current configuration and a build-logic with no wrapper.
+
+function openedGradleProject(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'gradle-notice-'))
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":["java"]}\n')
+  mkdirSync(join(dir, '.devcontainer'))
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), JSON.stringify({ image: 'x-dev', 'x-jvsl-generated': { extension: '0.0.1', generation: 99 } }))
+  for (const b of ['2-backend/core', '2-backend/build-logic']) {
+    mkdirSync(join(dir, b), { recursive: true })
+    writeFileSync(join(dir, b, 'settings.gradle.kts'), '')
+  }
+  mkdirSync(join(dir, '2-backend/core/gradle/wrapper'), { recursive: true })
+  writeFileSync(join(dir, '2-backend/core/gradle/wrapper/gradle-wrapper.properties'),
+    'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip\n')
+  return dir
+}
+
+const gradleNotice = (m: string) => m.includes('`2-backend/build-logic`') && m.includes('gradle wrapper --gradle-version 8.14.3')
+
+test('opening a project with a wrapperless Gradle build shows the warning, naming the build and the wrapper that fixes it', async () => {
+  const dir = openedGradleProject()
+  const messages: string[] = []
+  await stubEditor(dir, undefined, [], messages, { workspaceState: new Map() })
+  await until(() => messages.some(gradleNotice))
+  assert.ok(messages.some(gradleNotice), JSON.stringify(messages))
+})
+
+test('the same warning is not shown again on the next open, and still reaches the channel; a changed one is', async () => {
+  const dir = openedGradleProject()
+  const state = new Map<string, unknown>()
+  await stubEditor(dir, undefined, [], [], { workspaceState: state })
+  await settle()
+
+  const again: string[] = []
+  const channel: string[] = []
+  await stubEditor(dir, undefined, [], again, { workspaceState: state, channel })
+  await settle()
+  assert.deepEqual(again.filter(gradleNotice), [], 'shown once, not at every open')
+  assert.ok(channel.some((l) => l.includes('2-backend/build-logic')), JSON.stringify(channel))
+
+  mkdirSync(join(dir, 'tools/plugin'), { recursive: true })
+  writeFileSync(join(dir, 'tools/plugin/settings.gradle'), '')
+  const changed: string[] = []
+  await stubEditor(dir, undefined, [], changed, { workspaceState: state })
+  await until(() => changed.some((m) => m.includes('`tools/plugin`')))
+  assert.ok(changed.some((m) => m.includes('`tools/plugin`')), JSON.stringify(changed))
 })

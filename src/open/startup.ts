@@ -7,6 +7,7 @@ import { hostChecks, sandboxConditions } from '../host/checks.ts'
 import { describe, extensionVersion } from '../host/detected.ts'
 import { hostProject, readOrNull } from '../host/project.ts'
 import { projectContainer } from '../build/command.ts'
+import { findGradleBuildsFor, gradleVersion } from '../build/gradle.ts'
 import { dockerFor } from '../host/docker.ts'
 import { prepare } from './command.ts'
 import { HANDOVER_KEY, startupAction } from './handover.ts'
@@ -75,6 +76,7 @@ export async function startup(
   if (startupAction(handedOver, folder, Date.now()) !== 'prepare') {
     write(['open flow: nothing written: this folder was opened, not asked to be prepared. Open in container, from the panel, prepares it.'])
     offerRegeneration(context, channel, write, project)
+    offerGradleNotice(context, write, project)
     return
   }
   if (project.kind === 'host') adoptManifest(project.path, write)
@@ -147,6 +149,39 @@ export function watchManifest(onChange: () => void): vscode.Disposable {
     return watcher
   })
   return { dispose: () => { for (const w of watchers) w.dispose() } }
+}
+
+/** Where the warnings already shown for this project are remembered. */
+export const GRADLE_NOTICE_KEY = 'jvsl.agentContainer.gradleNoticesShown'
+
+/**
+ * A Gradle build with no wrapper, said in a window that was only opened (debt
+ * rjj, task rjj.3). prepare says it as a note, but opening an existing project
+ * does not prepare, so the warning never reached the project it was found in.
+ * The channel has it on every open; the notification **once per project and
+ * per text**, so it is neither repeated until it is dismissed unread nor
+ * silent when the builds change. Never throws: nothing here is worth stopping
+ * startup for.
+ */
+function offerGradleNotice(
+  context: vscode.ExtensionContext,
+  write: (lines: string[]) => void,
+  project: ReturnType<typeof hostProject>,
+): void {
+  if (project.kind === 'none') return
+  try {
+    const scan = findGradleBuildsFor(project, filesFor(project))
+    const gradle = gradleVersion(scan.builds)
+    write([...scan.log, ...gradle.log])
+    const shown = context.workspaceState.get<string[]>(GRADLE_NOTICE_KEY) ?? []
+    const fresh = gradle.warnings.filter((w) => !shown.includes(w))
+    for (const w of gradle.warnings) write([`gradle: warning: ${w}`])
+    if (fresh.length === 0) return
+    for (const w of fresh) void vscode.window.showWarningMessage(w)
+    void context.workspaceState.update(GRADLE_NOTICE_KEY, gradle.warnings)
+  } catch (error) {
+    write([`gradle: the project's builds could not be checked for a missing wrapper: ${String(error)}`])
+  }
 }
 
 /**

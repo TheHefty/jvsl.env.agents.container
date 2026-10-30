@@ -46,7 +46,9 @@ export interface Scan {
  * settings file under `node_modules` is somebody else's build, and walking
  * `build/` or `.git/` on every open is the cost this bound exists to refuse.
  */
-const SKIPPED = new Set(['.git', '.gradle', '.kotlin', '.idea', 'build', 'node_modules', 'target', 'dist', 'out'])
+// `.claude` holds an agent's worktrees: copies of the project's builds, not builds
+// of it (debt rjj, found in kotodori on 2026-10-29).
+const SKIPPED = new Set(['.git', '.claude', '.gradle', '.kotlin', '.idea', 'build', 'node_modules', 'target', 'dist', 'out'])
 
 const SETTINGS = ['settings.gradle', 'settings.gradle.kts']
 const BUILD_FILES = ['build.gradle', 'build.gradle.kts']
@@ -261,7 +263,7 @@ function isDirectory(path: string): boolean {
  * never part of the script.
  */
 export const GRADLE_FIND =
-  'cd -- "$1" && find . -maxdepth 9 \\( -name .git -o -name .gradle -o -name .kotlin -o -name .idea ' +
+  'cd -- "$1" && find . -maxdepth 9 \\( -name .git -o -name .claude -o -name .gradle -o -name .kotlin -o -name .idea ' +
   '-o -name build -o -name node_modules -o -name target -o -name dist -o -name out \\) -prune ' +
   '-o -type f \\( -name settings.gradle -o -name settings.gradle.kts -o -name build.gradle ' +
   '-o -name build.gradle.kts \\) -print | head -n 20000'
