@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.4](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.3...v1.12.4) (2026-10-30)
+
+
+### Bug Fixes
+
+* the wrapperless Gradle warning gives the one-time cleanup that following it needs ([016b8b5](https://github.com/TheHefty/jvsl.env.agents.container/commit/016b8b5498a16c2359594ee685584e3c3b45d04a))
+
 ## [1.12.3](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.2...v1.12.3) (2026-10-30)
 
 
