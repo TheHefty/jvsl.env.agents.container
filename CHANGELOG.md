@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.13.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.4...v1.13.0) (2026-10-30)
+
+
+### Features
+
+* the Work board switches between Tasks, Stories by epic and All items, and remembers the choice ([539f237](https://github.com/TheHefty/jvsl.env.agents.container/commit/539f237f4f907494c51bd08210bf17640c3ec0cf))
+* the Work view hides closed items by default, says how many, and shows them on request ([afd86b1](https://github.com/TheHefty/jvsl.env.agents.container/commit/afd86b19316e4cde32f32e11f365dad22c7ee636))
+* the Work view shows each item's place in the chain: awaiting verification, ready, its PR, its priority ([ffae3ed](https://github.com/TheHefty/jvsl.env.agents.container/commit/ffae3ed1fc32e4ab0be99a13f7100f99c537b78c))
+* the Work view's filters include, exclude and combine, on the board and the backlog alike ([3f6dd0c](https://github.com/TheHefty/jvsl.env.agents.container/commit/3f6dd0c4d503db5f1f5a8786ba78f55546c236e8))
+
+
+### Bug Fixes
+
+* the Java stack tells the editor not to import what is under .claude ([c8fee20](https://github.com/TheHefty/jvsl.env.agents.container/commit/c8fee206824b0f9ee2be9733c926a02204f15d29))
+
 ## [1.12.4](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.3...v1.12.4) (2026-10-30)
 
 
