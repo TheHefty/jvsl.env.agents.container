@@ -19,7 +19,7 @@ const wsl = { kind: 'wsl', distro: 'archlinux', path: '\\\\wsl.localhost\\archli
 // --- the shell never sees the path or the content as code -------------------
 
 test('every distro operation is a fixed script, with the path as an argument and the content on input', () => {
-  for (const op of ['read', 'write', 'exists', 'mkdir'] as const) {
+  for (const op of ['read', 'write', 'exists', 'mkdir', 'remove'] as const) {
     const a = wslFileArgv('archlinux', op, '/home/h/p/a b\'$(rm -rf ~)".json')
     assert.equal(a.command, 'wsl.exe')
     assert.deepEqual(a.args.slice(0, 5), ['-d', 'archlinux', '--exec', 'sh', '-c'])
@@ -129,4 +129,28 @@ test('a host project lists a folder from its disk, and null when it is not there
   const files = filesFor({ kind: 'host', path: root })
   assert.deepEqual(files.list('docs/study'), ['a', 'b'])
   assert.equal(files.list('docs/nowhere'), null)
+})
+
+// --- a file removed, here or in the distro (story d27.1, task d27.1.1)
+//
+// Turning ai-memory off removes the project's .ai-memory.toml, and nothing else.
+
+test('remove deletes a file on this machine, and a file already gone is not an error', () => {
+  const root = mkdtempSync(join(tmpdir(), 'files-remove-'))
+  writeFileSync(join(root, '.ai-memory.toml'), 'x')
+  const files = filesFor({ kind: 'host', path: root })
+  files.remove('.ai-memory.toml')
+  assert.equal(files.exists('.ai-memory.toml'), false)
+  files.remove('.ai-memory.toml')
+})
+
+test('remove in a distro is rm -f there, on the Linux path, and a failure names the distro', () => {
+  const calls: string[][] = []
+  const ok: Exec = (command, args) => { calls.push([command, ...args]); return { status: 0, stdout: '', stderr: '' } }
+  filesFor(wsl, ok).remove('.ai-memory.toml')
+  assert.equal(calls.length, 1)
+  assert.match(calls[0]![6] ?? '', /rm -f/)
+  assert.equal(calls[0]!.at(-1), '/home/h/p/.ai-memory.toml')
+  const no: Exec = () => ({ status: 1, stdout: '', stderr: 'Read-only file system' })
+  assert.throws(() => filesFor(wsl, no).remove('.ai-memory.toml'), /archlinux.*Read-only file system/)
 })

@@ -40,6 +40,25 @@ export interface Answers {
    * a second place to say it.
    */
   aiMemory?: boolean
+  /**
+   * Whether the project uses the work tracker: the manifest's `"beads": true`,
+   * which the image's boot hook reads (story d27.1). Absent means not asked,
+   * and the manifest keeps what it had.
+   */
+  beads?: boolean
+}
+
+/**
+ * The two choices for a switch, the project's current state first and marked,
+ * so a rerun keeps what was there by taking the first (story d27.1).
+ */
+export function switchChoices(on: boolean): [string, string] {
+  return on ? ['Yes (as it is)', 'No'] : ['No (as it is)', 'Yes']
+}
+
+/** A choice back to its answer; Escape is no answer. */
+export function switchAnswer(choice: string | undefined): boolean | undefined {
+  return choice === undefined ? undefined : choice.startsWith('Yes')
 }
 
 /**
@@ -147,7 +166,7 @@ export function nextManifest(
   answers: Answers,
   knownStacks: readonly string[],
 ): Record<string, unknown> {
-  const owned = new Set<string>([...knownStacks, 'limits'])
+  const owned = new Set<string>([...knownStacks, 'limits', 'beads'])
   const next: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(current)) {
     if (!owned.has(key)) next[key] = value
@@ -159,6 +178,9 @@ export function nextManifest(
   if (answers.limits.memorySwap) limits.memorySwap = answers.limits.memorySwap
   if (answers.limits.cpus !== undefined) limits.cpus = answers.limits.cpus
   next.limits = limits
+  // **Kept when not asked** (story d27.1): a skipped question loses nothing.
+  const beads = answers.beads ?? current['beads'] === true
+  if (beads) next.beads = true
   return next
 }
 

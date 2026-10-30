@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { ProjectOnHost } from './locate.ts'
@@ -36,6 +36,8 @@ export interface ProjectFiles {
   list(rel: string): string[] | null
   /** An absolute directory, as this project's machine names it (the credentials directory). */
   mkdirAbsolute(path: string): void
+  /** A file removed; one already gone is not an error. Never a directory (story d27.1). */
+  remove(rel: string): void
 }
 
 export type Exec = (command: string, args: string[], input?: string) => { status: number | null; stdout: string; stderr: string }
@@ -60,6 +62,8 @@ const SCRIPTS = {
   // half-way leaves the old file, never a truncated one.
   write: 'mkdir -p -- "$(dirname -- "$1")" && tmp="$1.tmp.$$" && cat > "$tmp" && mv -f "$tmp" "$1"',
   exists: '[ -e "$1" ]',
+  // A file only, and one already gone is not a failure (story d27.1).
+  remove: 'rm -f -- "$1"',
   list: `[ -d "$1" ] || exit ${ABSENT}; ls -1A -- "$1"`,
   mkdir: 'mkdir -p -- "$1"',
 } as const
@@ -95,6 +99,11 @@ export function filesFor(project: Exclude<ProjectOnHost, { kind: 'none' }>, exec
     exists(rel) {
       return run('exists', at(rel)).status === 0
     },
+    remove(rel) {
+      const path = at(rel)
+      const r = run('remove', path)
+      if (r.status !== 0) fail('remove', path, r)
+    },
     list(rel) {
       const path = at(rel)
       const r = run('list', path)
@@ -128,6 +137,9 @@ function localFiles(root: string): ProjectFiles {
     },
     exists(rel) {
       return existsSync(join(root, rel))
+    },
+    remove(rel) {
+      rmSync(join(root, rel), { force: true })
     },
     list(rel) {
       try {

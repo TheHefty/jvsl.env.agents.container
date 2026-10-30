@@ -70,6 +70,7 @@ const fakeFiles = (tree: Record<string, string>): ProjectFiles => ({
     return names.size === 0 ? null : [...names].sort()
   },
   mkdirAbsolute: () => undefined,
+  remove: () => undefined,
 })
 const example = (slug: string) => ({
   [`docs/study/${slug}/guide.md`]: readFileSync(join(EXAMPLE, 'guide.md'), 'utf8'),
