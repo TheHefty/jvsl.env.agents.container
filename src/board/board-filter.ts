@@ -17,6 +17,8 @@ export interface FilterRow {
   state: string
   tags: string[]
   title: string
+  /** bd's 0 to 4 as text, '' when unset (story nmf.3). */
+  priority: string
 }
 
 export interface Filter {
@@ -99,12 +101,15 @@ export function hiddenClosed(rows: readonly FilterRow[], filter: Filter): number
  */
 export function orderedIds(
   rows: readonly FilterRow[],
-  column: 'id' | 'title' | 'state' | 'tags',
+  column: 'id' | 'title' | 'state' | 'tags' | 'priority',
   direction: 'asc' | 'desc',
 ): string[] {
   const ids = new Set(rows.map((r) => r.id))
   const index = new Map(rows.map((r, i) => [r.id, i]))
-  const key = (r: FilterRow): string => (column === 'tags' ? r.tags.join(' ') : r[column])
+  // An unset priority sorts after every one bd allows (0 to 4): the comparison
+  // below is numeric, and punctuation such as '~' would sort before the digits.
+  const key = (r: FilterRow): string =>
+    column === 'tags' ? r.tags.join(' ') : column === 'priority' ? (r.priority === '' ? '99' : r.priority) : r[column]
   const sign = direction === 'asc' ? 1 : -1
   const children = new Map<string, FilterRow[]>()
   const roots: FilterRow[] = []

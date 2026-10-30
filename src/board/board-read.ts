@@ -28,6 +28,8 @@ export interface Item {
   /** The ids this item waits on through a `blocks` dependency. */
   blockedBy: string[]
   debtKind?: DebtKind
+  /** bd's 0 (highest) to 4; unset when the export has none (story nmf.3). */
+  priority?: number
   /** bd's metadata, when the item has any: a study topic's `study`, a task's `pr`. */
   metadata?: Record<string, unknown>
 }
@@ -73,6 +75,7 @@ export function parseExport(jsonl: string): Item[] {
       closeReason: text(row['close_reason']),
       parent: text(deps.find((d) => d.type === 'parent-child')?.depends_on_id),
       blockedBy: deps.filter((d) => d.type === 'blocks').map((d) => String(d.depends_on_id)),
+      ...(typeof row['priority'] === 'number' ? { priority: row['priority'] } : {}),
       ...(kind === undefined ? {} : { debtKind: kind }),
       ...(row['metadata'] !== null && typeof row['metadata'] === 'object' && !Array.isArray(row['metadata'])
         ? { metadata: row['metadata'] as Record<string, unknown> }
@@ -176,12 +179,20 @@ export interface BacklogRow {
  */
 export function backlogRows(items: readonly Item[]): BacklogRow[] {
   const rows: BacklogRow[] = []
+  // Siblings by priority, unset last, ties in export order (story nmf.3); the
+  // walk keeps every child under its parent whatever the order.
   const walk = (nodes: readonly Node[], depth: number) => {
-    for (const n of nodes) {
+    for (const n of byPriority(nodes, (x) => x.item)) {
       rows.push({ item: n.item, depth, hasChildren: n.children.length > 0 })
       walk(n.children, depth + 1)
     }
   }
   walk(tree(items), 0)
   return rows
+}
+
+/** A stable order by priority, 0 first and unset last (story nmf.3). */
+export function byPriority<T>(list: readonly T[], itemOf: (t: T) => Item): T[] {
+  const rank = (t: T) => itemOf(t).priority ?? Number.POSITIVE_INFINITY
+  return list.map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t)
 }

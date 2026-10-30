@@ -6,14 +6,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { parseExport, type Item } from './board-read.ts'
-import { boardView, VIEWS, type BoardView } from './board-view.ts'
+import { boardView, chainMarks, VIEWS, type BoardView } from './board-view.ts'
 
 /**
  * The board's three views (story nmf.2, task nmf.2.1). One export, in the shape
  * `bd export` prints, feeds both these functions and the real refine-candidates,
  * so the Stories view cannot drift from refinement's agenda unseen.
  */
-const line = (o: Record<string, unknown>) => JSON.stringify({ _type: 'issue', priority: 2, labels: null, ...o })
+// Dated as bd dates every item: planning-brief reads updated_at, and fails on an item without one.
+const line = (o: Record<string, unknown>) => JSON.stringify({
+  _type: 'issue', priority: 2, labels: null, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z', ...o,
+})
 const child = (from: string, to: string) => ({ issue_id: from, depends_on_id: to, type: 'parent-child' })
 const blocks = (from: string, to: string) => ({ issue_id: from, depends_on_id: to, type: 'blocks' })
 const REJECTED = 'Rejected in refinement: not worth it'
@@ -148,4 +151,57 @@ test('the Stories view and refinement\'s agenda put the same stories and debts i
   const v = boardView(ITEMS, 'stories')
   assert.deepEqual(ids(v, 'no_task'), [...section('Stories with no agreed task'), ...section('Debts with no agreed task')].sort())
   assert.deepEqual(ids(v, 'awaiting_verification'), section('Awaiting verification'))
+})
+
+// --- where each item is in the chain (story nmf.3, task nmf.3.1)
+
+const script = (name: string) => join(import.meta.dirname, '..', '..', 'core', 'plugin', 'agent-container', 'bin', name)
+const sectionOf = (out: string, h: string) => {
+  const lines = out.split('\n')
+  const rest = lines.slice(lines.indexOf(`## ${h}`) + 1)
+  const end = rest.findIndex((l) => l.startsWith('## '))
+  return (end === -1 ? rest : rest.slice(0, end)).filter((l) => l.startsWith('- ')).map((l) => l.split(' ')[1]!).sort()
+}
+const runOn = (name: string, extra: Record<string, string> = {}) => {
+  const dir = mkdtempSync(join(tmpdir(), 'chain-marks-'))
+  writeFileSync(join(dir, 'export.jsonl'), EXPORT)
+  // The brief also reads the journal: an empty home and a gh that always fails
+  // keep this test off the network, and the journal is not what is compared.
+  return execFileSync('bash', [script(name)], {
+    env: { ...process.env, TRACKER_EXPORT: join(dir, 'export.jsonl'), JOURNAL_HOME: dir, REVIEW_GH: 'false', ...extra },
+    encoding: 'utf8',
+  })
+}
+const marked = (what: 'awaitingVerification' | 'ready' | 'noCriterion') =>
+  [...chainMarks(ITEMS)].filter(([, m]) => m[what]).map(([id]) => id).sort()
+
+test('Awaiting verification is marked on what refinement\'s agenda lists there', () => {
+  assert.deepEqual(marked('awaitingVerification'), sectionOf(runOn('refine-candidates'), 'Awaiting verification'))
+  assert.ok(marked('awaitingVerification').includes('s-verify'))
+})
+
+test('Ready is marked on what the planning\'s brief offers, and no done criterion where the brief says so', () => {
+  const brief = runOn('planning-brief', { PLANNING_TODAY: '2026-10-30' })
+  assert.deepEqual(marked('ready'), sectionOf(brief, 'Ready'))
+  const noCriterion = brief.split('\n').filter((l) => l.startsWith('- ') && l.endsWith('no done criterion')).map((l) => l.split(' ')[1]!).sort()
+  assert.deepEqual(marked('noCriterion'), noCriterion)
+  assert.ok(marked('ready').includes('t-ready') && !marked('ready').includes('t-blocked'))
+})
+
+// --- priority orders the work ---
+
+const P = [
+  line({ id: 'e9', title: 'Epic', status: 'open', issue_type: 'epic', priority: 3 }),
+  line({ id: 's-low', title: 'Low', status: 'open', issue_type: 'feature', priority: 4, dependencies: [child('s-low', 'e9')] }),
+  line({ id: 's-unset', title: 'Unset', status: 'open', issue_type: 'feature', priority: null, dependencies: [child('s-unset', 'e9')] }),
+  line({ id: 's-high', title: 'High', status: 'open', issue_type: 'feature', priority: 0, dependencies: [child('s-high', 'e9')] }),
+  line({ id: 's-tie-a', title: 'Tie A', status: 'open', issue_type: 'feature', priority: 2, dependencies: [child('s-tie-a', 'e9')] }),
+  line({ id: 's-tie-b', title: 'Tie B', status: 'open', issue_type: 'feature', priority: 2, dependencies: [child('s-tie-b', 'e9')] }),
+  '',
+].join('\n')
+
+test('within a column, items are ordered by priority, unset last, ties as they were', () => {
+  const v = boardView(parseExport(P), 'stories')
+  const noTask = v.lanes.find((l) => l.key === 'e9')!.columns.find((c) => c.key === 'no_task')!
+  assert.deepEqual(noTask.items.map((i) => i.id), ['s-high', 's-tie-a', 's-tie-b', 's-low', 's-unset'])
 })
