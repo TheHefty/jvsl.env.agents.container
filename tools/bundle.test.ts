@@ -131,6 +131,9 @@ interface EditorScript {
   channel?: string[]
   /** The project's workspaceState, kept by the test so it outlives an activation. */
   workspaceState?: Map<string, unknown>
+  /** What inspect() answers for a setting, by its full key, and every update() made. */
+  inspect?: Record<string, unknown>
+  updates?: Array<[string, unknown, unknown]>
 }
 
 function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = [], script: EditorScript = {}) {
@@ -149,8 +152,13 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
         workspace: {
           workspaceFolders: [{ uri: { fsPath: folder, authority: '' } }],
           createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
-          getConfiguration: () => ({ get: () => undefined }),
+          getConfiguration: (section?: string) => ({
+            get: () => undefined,
+            inspect: (k: string) => script.inspect?.[`${section}.${k}`],
+            update: (k: string, v: unknown, t: unknown) => { script.updates?.push([`${section}.${k}`, v, t]); return Promise.resolve(undefined) },
+          }),
         },
+        ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
         commands: {
           registerCommand: () => noop,
           executeCommand: (c: string) => { script.executed?.push(c); return Promise.resolve(undefined) },
@@ -379,4 +387,48 @@ test('the same warning is not shown again on the next open, and still reaches th
   await stubEditor(dir, undefined, [], changed, { workspaceState: state })
   await until(() => changed.some((m) => m.includes('`tools/plugin`')))
   assert.ok(changed.some((m) => m.includes('`tools/plugin`')), JSON.stringify(changed))
+})
+
+// --- on Windows, Dev Containers' Wayland mount is turned off (debt chf, task chf.1)
+//
+// Found on 2026-10-30: a project on the Windows filesystem did not open through
+// Docker Desktop, because Dev Containers mounted WSLg's Wayland socket from a
+// WSL distro Docker Desktop could not reach. Driven at activation, since the
+// person may reopen through Dev Containers' own command and never through ours.
+// CI is Linux, so the platform is the seam.
+
+function withPlatform<T>(platform: NodeJS.Platform, run: () => Promise<T>): Promise<T> {
+  const was = Object.getOwnPropertyDescriptor(process, 'platform')!
+  Object.defineProperty(process, 'platform', { value: platform })
+  return run().finally(() => Object.defineProperty(process, 'platform', was))
+}
+
+function windowsProject(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'wayland-'))
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":[]}\n')
+  mkdirSync(join(dir, '.devcontainer'))
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), JSON.stringify({ image: 'x-dev', 'x-jvsl-generated': { extension: '0.0.1', generation: 99 } }))
+  return dir
+}
+
+const WAYLAND = 'dev.containers.mountWaylandSocket'
+
+test('activated on Windows for a project there, the extension turns the Wayland mount off and says so', async () => {
+  const updates: Array<[string, unknown, unknown]> = []
+  const messages: string[] = []
+  const channel: string[] = []
+  await withPlatform('win32', async () => {
+    await stubEditor(windowsProject(), undefined, [], messages, { inspect: { [WAYLAND]: { key: WAYLAND, defaultValue: true } }, updates, channel })
+    await until(() => updates.length > 0)
+  })
+  assert.deepEqual(updates, [[WAYLAND, false, 1]], 'turned off in the user settings')
+  assert.ok(messages.some((m) => m.includes('mountWaylandSocket')), JSON.stringify(messages))
+  assert.ok(channel.some((l) => l.includes('mountWaylandSocket')), JSON.stringify(channel))
+})
+
+test('on Linux, the same project leaves the setting untouched', async () => {
+  const updates: Array<[string, unknown, unknown]> = []
+  await stubEditor(windowsProject(), undefined, [], [], { inspect: { [WAYLAND]: { key: WAYLAND, defaultValue: true } }, updates })
+  await settle()
+  assert.deepEqual(updates, [])
 })
