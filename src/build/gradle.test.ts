@@ -234,3 +234,25 @@ test("the distro's find does not either", () => {
   const listing = execFileSync('sh', ['-c', GRADLE_FIND, 'sh', withWorktree()], { encoding: 'utf8' })
   assert.deepEqual(listing.trim().split('\n'), ['./2-backend/build-logic/settings.gradle.kts'])
 })
+
+// --- following the warning has to leave the build working (debt rjj, task rjj.4)
+//
+// Measured in kotodori on 2026-10-30: with build-logic given its 8.14.3 wrapper,
+// the import still failed, because the execution history other Gradle versions
+// had left there recorded compilePluginsBlocks's output as empty, and the task
+// stayed UP-TO-DATE with plugins-blocks/compiled missing. One --rerun-tasks
+// cleared it; a wrapper alone did not.
+
+test('the warning gives the one-time cleanup after the wrapper, in every case that offers one', () => {
+  const cases: GradleBuild[][] = [
+    kotodori,
+    [{ dir: '.', wrapper: null }],
+    [{ dir: 'build-logic', wrapper: null }, { dir: 'core', wrapper: wrapper('8.14.3') }, { dir: 'iam', wrapper: wrapper('9.1.0') }],
+    [{ dir: 'build-logic', wrapper: null }, { dir: 'core', wrapper: 'distributionUrl=https\\://mirror.example/x.zip\n' }],
+  ]
+  for (const builds of cases) {
+    const w = gradleVersion(builds).warnings[0] ?? ''
+    assert.ok(w.includes('`./gradlew --rerun-tasks`'), w)
+    assert.match(w, /once/, w)
+  }
+})
