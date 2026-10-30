@@ -177,7 +177,9 @@ export function gradleVersion(builds: GradleBuild[]): GradleVersion {
   const fix = (version?: string) =>
     `Give each of them a wrapper of its own (\`gradle wrapper${version ? ` --gradle-version ${version}` : ''}\` in that directory), ` +
     `or editor extensions open it as a build of its own with the Gradle they bundle, whatever \`${IMPORT_SETTING}\` says, ` +
-    "which corrupts what the project's wrapper writes there."
+    "which corrupts what the project's wrapper writes there. " +
+    'Then run `./gradlew --rerun-tasks` once in that build: state other Gradle versions left there can keep tasks ' +
+    'UP-TO-DATE with their output missing, and a wrapper alone does not undo it.'
 
   if (unreadable.length > 0) {
     return {
