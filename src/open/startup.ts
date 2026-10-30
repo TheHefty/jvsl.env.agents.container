@@ -16,6 +16,7 @@ import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-mani
 import { filesFor } from '../host/files.ts'
 import { CONFIG_PATH, REOPEN_COMMAND } from './open.ts'
 import { afterRegenerate, staleness } from './stale.ts'
+import { WAYLAND_SETTING, waylandWorkaround } from '../host/wayland.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
 /**
@@ -70,6 +71,8 @@ export async function startup(
   // manifest and write .devcontainer, CLAUDE.md and AGENTS.md here. The record
   // is consumed whatever it says, so a stale one cannot act later.
   const project = hostProject()
+  // Before anything opens, ours or Dev Containers' own Reopen (debt chf).
+  await turnOffWaylandMount(project, write)
   const handedOver = context.globalState.get(HANDOVER_KEY)
   if (handedOver !== undefined) await context.globalState.update(HANDOVER_KEY, undefined)
   const folder = project.kind === 'host' ? project.path : undefined
@@ -149,6 +152,25 @@ export function watchManifest(onChange: () => void): vscode.Disposable {
     return watcher
   })
   return { dispose: () => { for (const w of watchers) w.dispose() } }
+}
+
+/**
+ * Dev Containers' Wayland mount, turned off on Windows so a project there opens
+ * through Docker Desktop (debt chf). See waylandWorkaround for when. Never
+ * throws: a setting that cannot be read or written is said, not fatal.
+ */
+async function turnOffWaylandMount(project: ReturnType<typeof hostProject>, write: (lines: string[]) => void): Promise<void> {
+  try {
+    const config = vscode.workspace.getConfiguration('dev.containers')
+    const decision = waylandWorkaround({ platform: process.platform, project, setting: config.inspect(WAYLAND_SETTING) })
+    if (decision.action === 'leave') return
+    write([`host: ${decision.message}`])
+    if (decision.action === 'warn') return
+    await config.update(WAYLAND_SETTING, false, vscode.ConfigurationTarget.Global)
+    void vscode.window.showInformationMessage(decision.message)
+  } catch (error) {
+    write([`host: Dev Containers' Wayland mount could not be checked or turned off: ${String(error)}`])
+  }
 }
 
 /** Where the warnings already shown for this project are remembered. */
