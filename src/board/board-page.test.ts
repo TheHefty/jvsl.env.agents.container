@@ -66,10 +66,11 @@ test('both views and every item are on the page', () => {
 })
 
 test('nothing on the page offers to change the tracker', () => {
-  // The only messages the page sends are to read again and to open an item.
   const html = boardPage({ nonce: NONCE, items: [item({})], rendered: new Map() })
   const sent = [...html.matchAll(/postMessage\(\{\s*type:\s*'([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual([...new Set(sent)].sort(), ['refresh'])
+  // Since story nmf.2 the page also asks to remember the board view, which
+  // writes the workspace's own memory (board-message.ts), never the tracker.
+  assert.deepEqual([...new Set(sent)].sort(), ['refresh', 'view'])
   // No form and no textarea. The inputs are the backlog's keyword search and,
   // since story nmf.1, the "Show closed" checkbox: both filter the page and
   // write nothing, and they are named here one by one, so any other input fails.
@@ -259,4 +260,48 @@ test('the page applies the toggle when it loads, not only when an input changes'
   assert.match(script, /showClosed: field\('show-closed'\)\.checked/)
   assert.match(script, /\nrelayout\(\);\n/, 'relayout runs once on load')
   assert.match(script, /field\('show-closed'\)\.addEventListener\('change'/)
+})
+
+// --- the board switches between views (story nmf.2, task nmf.2.1)
+
+const viewItems: Item[] = [
+  item({ id: 'e1', title: 'An epic', type: 'epic' }),
+  item({ id: 's1', title: 'A story', type: 'feature', parent: 'e1' }),
+  item({ id: 't1', title: 'A task', type: 'task', parent: 's1', status: 'in_progress' }),
+  item({ id: 'd1', title: 'A debt', type: 'bug', labels: ['defect'], debtKind: 'defect' }),
+]
+
+test('the board offers its three views, the chosen one pressed', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'stories' })
+  for (const [name, title] of [['tasks', 'Tasks'], ['stories', 'Stories by epic'], ['all', 'All items']]) {
+    assert.match(html, new RegExp(`<button data-board-view="${name}" aria-pressed="${name === 'stories'}">${title}</button>`))
+  }
+})
+
+test('each view is rendered, and only the chosen one is shown', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'tasks' })
+  assert.match(html, /<div data-board="tasks">/)
+  assert.match(html, /<div data-board="stories" hidden>/)
+  assert.match(html, /<div data-board="all" hidden>/)
+})
+
+test('with no view given, the board opens on All items, as it was', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map() })
+  assert.match(html, /<div data-board="all">/)
+})
+
+test('Stories by epic draws a lane per epic and one for what has no epic', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'stories' })
+  const stories = html.slice(html.indexOf('<div data-board="stories"'), html.indexOf('<div data-board="all"'))
+  assert.match(stories, /<section class="lane" data-lane="e1" data-lane-closed="false"><h3>An epic<\/h3>/)
+  assert.match(stories, /<section class="lane" data-lane="" data-lane-closed="false"><h3>No epic<\/h3>/)
+  assert.match(stories, /data-column="in_development"[^]*A story/)
+  assert.match(stories, /data-column="no_task"[^]*A debt/)
+})
+
+test('choosing a view tells the extension, and the Done columns follow Show closed', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /vscode\.postMessage\(\{ type: 'view', view: /)
+  assert.match(script, /\[data-column="done"\]/)
 })

@@ -14,6 +14,7 @@ import type { Docker } from '../host/docker.ts'
 import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
+import { onBoardMessage, rememberedView, VIEW_KEY } from './board-message.ts'
 import { readTracker } from './tracker.ts'
 import type { Item } from './board-read.ts'
 
@@ -24,7 +25,12 @@ let panel: vscode.WebviewPanel | undefined
 
 export { BOARD_READ_MS, READ_COMMAND } from './tracker.ts'
 
-export async function showWork(dockerOf: (project: ProjectOnHost) => Docker, write: (lines: string[]) => void): Promise<void> {
+export async function showWork(
+  dockerOf: (project: ProjectOnHost) => Docker,
+  write: (lines: string[]) => void,
+  /** The workspace's own memory: where the board view chosen is kept (story nmf.2). */
+  memory: vscode.Memento,
+): Promise<void> {
   if (panel === undefined) {
     panel = vscode.window.createWebviewPanel('jvsl.agentContainer.board', 'Work', vscode.ViewColumn.Active, {
       enableScripts: true,
@@ -36,20 +42,22 @@ export async function showWork(dockerOf: (project: ProjectOnHost) => Docker, wri
       panel = undefined
     })
     panel.webview.onDidReceiveMessage((message: unknown) => {
-      if ((message as { type?: unknown })?.type === 'refresh' && panel !== undefined) {
-        void render(panel, dockerOf, write)
-      }
+      onBoardMessage(message, {
+        refresh: () => { if (panel !== undefined) void render(panel, dockerOf, write, memory) },
+        remember: (view) => { void memory.update(VIEW_KEY, view) },
+      })
     })
   } else {
     panel.reveal()
   }
-  await render(panel, dockerOf, write)
+  await render(panel, dockerOf, write, memory)
 }
 
 async function render(
   target: vscode.WebviewPanel,
   dockerOf: (project: ProjectOnHost) => Docker,
   write: (lines: string[]) => void,
+  memory: vscode.Memento,
 ): Promise<void> {
   const nonce = randomBytes(16).toString('hex')
   const say = (title: string, body: string) => {
@@ -76,7 +84,8 @@ async function render(
 
   const { rendered, notice } = await renderAll(items)
   write([`board: ${items.length} item(s) read from ${read.container}`])
-  target.webview.html = boardPage({ nonce, items, rendered, ...(notice === undefined ? {} : { notice }) })
+  const view = rememberedView(memory.get(VIEW_KEY))
+  target.webview.html = boardPage({ nonce, items, rendered, view, ...(notice === undefined ? {} : { notice }) })
 }
 
 /**

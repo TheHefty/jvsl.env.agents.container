@@ -1,0 +1,151 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { parseExport, type Item } from './board-read.ts'
+import { boardView, VIEWS, type BoardView } from './board-view.ts'
+
+/**
+ * The board's three views (story nmf.2, task nmf.2.1). One export, in the shape
+ * `bd export` prints, feeds both these functions and the real refine-candidates,
+ * so the Stories view cannot drift from refinement's agenda unseen.
+ */
+const line = (o: Record<string, unknown>) => JSON.stringify({ _type: 'issue', priority: 2, labels: null, ...o })
+const child = (from: string, to: string) => ({ issue_id: from, depends_on_id: to, type: 'parent-child' })
+const blocks = (from: string, to: string) => ({ issue_id: from, depends_on_id: to, type: 'blocks' })
+const REJECTED = 'Rejected in refinement: not worth it'
+
+const EXPORT = [
+  line({ id: 'e1', title: 'Open epic', status: 'open', issue_type: 'epic' }),
+  line({ id: 'e2', title: 'Closed epic', status: 'closed', issue_type: 'epic' }),
+  line({ id: 'e3', title: 'Proposed epic', status: 'deferred', issue_type: 'epic', labels: ['proposed'] }),
+  // Stories under e1, one per column.
+  line({ id: 's-none', title: 'No task yet', status: 'open', issue_type: 'feature', dependencies: [child('s-none', 'e1')] }),
+  line({ id: 's-dev', title: 'Being built', status: 'in_progress', issue_type: 'feature', dependencies: [child('s-dev', 'e1')] }),
+  line({ id: 't-dev', title: 'Building it', status: 'in_progress', issue_type: 'task', dependencies: [child('t-dev', 's-dev')] }),
+  line({ id: 's-verify', title: 'Built', status: 'open', issue_type: 'feature', dependencies: [child('s-verify', 'e1')] }),
+  line({ id: 't-done', title: 'Built it', status: 'closed', issue_type: 'task', close_reason: 'Merged in #1', dependencies: [child('t-done', 's-verify')] }),
+  line({ id: 's-rejected', title: 'Only rejected tasks', status: 'open', issue_type: 'feature', dependencies: [child('s-rejected', 'e1')] }),
+  line({ id: 't-rej', title: 'Rejected', status: 'closed', issue_type: 'task', close_reason: REJECTED, dependencies: [child('t-rej', 's-rejected')] }),
+  line({ id: 's-proposed-task', title: 'Only a proposed task', status: 'open', issue_type: 'feature', dependencies: [child('s-proposed-task', 'e1')] }),
+  line({ id: 't-prop', title: 'A draft', status: 'deferred', issue_type: 'task', labels: ['proposed'], dependencies: [child('t-prop', 's-proposed-task')] }),
+  line({ id: 's-blocked', title: 'Blocked story', status: 'open', issue_type: 'feature', dependencies: [child('s-blocked', 'e1'), blocks('s-blocked', 's-none')] }),
+  line({ id: 's-closed', title: 'Finished', status: 'closed', issue_type: 'feature', dependencies: [child('s-closed', 'e1')] }),
+  // An open story under a closed epic, and a task still open under a closed story.
+  line({ id: 's-late', title: 'Open under a closed epic', status: 'open', issue_type: 'feature', dependencies: [child('s-late', 'e2')] }),
+  line({ id: 's-gone', title: 'Closed story', status: 'closed', issue_type: 'feature', dependencies: [child('s-gone', 'e2')] }),
+  line({ id: 't-orphaned', title: 'Open under a closed story', status: 'open', issue_type: 'task', dependencies: [child('t-orphaned', 's-gone')] }),
+  // Debts, with no epic: one planned, one not.
+  line({ id: 'd-plan', title: 'Planned debt', status: 'in_progress', issue_type: 'bug', labels: ['defect'] }),
+  line({ id: 't-debt', title: 'Fixing the debt', status: 'open', issue_type: 'task', dependencies: [child('t-debt', 'd-plan')] }),
+  line({ id: 'd-new', title: 'Unplanned debt', status: 'open', issue_type: 'bug', labels: ['hotfix'] }),
+  line({ id: 'b-plain', title: 'A bug that is not a debt', status: 'open', issue_type: 'bug' }),
+  // A story with no epic, a proposed story, a deferred task, a blocked task.
+  line({ id: 's-loose', title: 'No epic', status: 'open', issue_type: 'feature' }),
+  line({ id: 's-draft', title: 'Draft story', status: 'deferred', issue_type: 'feature', labels: ['proposed'], dependencies: [child('s-draft', 'e1')] }),
+  line({ id: 't-aside', title: 'Put aside', status: 'deferred', issue_type: 'task', dependencies: [child('t-aside', 's-loose')] }),
+  line({ id: 't-blocked', title: 'Waiting', status: 'open', issue_type: 'task', dependencies: [child('t-blocked', 's-loose'), blocks('t-blocked', 't-dev')] }),
+  line({ id: 't-ready', title: 'Can start', status: 'open', issue_type: 'task', dependencies: [child('t-ready', 's-loose'), blocks('t-ready', 't-done')] }),
+  line({ id: 'j1', title: 'Journal 2026-10-28', status: 'closed', issue_type: 'chore', labels: ['journal'] }),
+  '',
+].join('\n')
+const ITEMS: Item[] = parseExport(EXPORT)
+
+/** Where each item landed: its lane and column, every time it appears. */
+const places = (v: BoardView) =>
+  v.lanes.flatMap((lane) => lane.columns.flatMap((c) => c.items.map((i) => ({ id: i.id, lane: lane.key, column: c.key }))))
+const column = (v: BoardView, id: string) => places(v).filter((p) => p.id === id).map((p) => p.column)
+const ids = (v: BoardView, key: string) => places(v).filter((p) => p.column === key).map((p) => p.id).sort()
+
+test('the three views exist, in the order the picker shows them', () => {
+  assert.deepEqual(VIEWS.map((v) => v.name), ['tasks', 'stories', 'all'])
+  assert.deepEqual(VIEWS.map((v) => v.title), ['Tasks', 'Stories by epic', 'All items'])
+})
+
+// --- Tasks ---
+
+test('Tasks shows the tasks, the debts\' included, in Ready, Blocked, In progress and Done', () => {
+  const v = boardView(ITEMS, 'tasks')
+  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['Ready', 'Blocked', 'In progress', 'Done'])
+  assert.deepEqual(ids(v, 'ready'), ['t-debt', 't-orphaned', 't-ready'])
+  assert.deepEqual(ids(v, 'blocked'), ['t-blocked'])
+  assert.deepEqual(ids(v, 'in_progress'), ['t-dev'])
+  assert.deepEqual(ids(v, 'done'), ['t-done', 't-rej'])
+})
+
+test('a task that is a proposal or deferred is not work, and is not in the Tasks view', () => {
+  const v = boardView(ITEMS, 'tasks')
+  assert.deepEqual([...column(v, 't-prop'), ...column(v, 't-aside')], [])
+  assert.deepEqual(places(v).filter((p) => !p.id.startsWith('t-')), [], 'only tasks')
+})
+
+// --- Stories by epic ---
+
+test('Stories by epic has one lane per open epic, the closed epic that still has open work, and No epic', () => {
+  const v = boardView(ITEMS, 'stories')
+  assert.deepEqual(v.lanes.map((l) => l.key), ['e1', 'e2', ''])
+  assert.equal(v.lanes.find((l) => l.key === '')?.title, 'No epic')
+  assert.equal(v.lanes.some((l) => l.key === 'e3'), false, 'a proposed epic is not a lane')
+  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['No task', 'In development', 'Awaiting verification', 'Done'])
+})
+
+test('each story sits in the column its tasks say', () => {
+  const v = boardView(ITEMS, 'stories')
+  assert.deepEqual(column(v, 's-none'), ['no_task'])
+  assert.deepEqual(column(v, 's-dev'), ['in_development'])
+  assert.deepEqual(column(v, 's-verify'), ['awaiting_verification'])
+  assert.deepEqual(column(v, 's-rejected'), ['no_task'], 'a rejected task is not work done')
+  assert.deepEqual(column(v, 's-proposed-task'), ['no_task'], 'a proposed task is not an agreed one')
+  assert.deepEqual(column(v, 's-closed'), ['done'])
+  assert.deepEqual(column(v, 'd-plan'), ['in_development'])
+  assert.deepEqual(column(v, 'd-new'), ['no_task'])
+})
+
+test('debts and stories with no epic are in the No epic lane; a bug that is not a debt is not a story', () => {
+  const v = boardView(ITEMS, 'stories')
+  const loose = places(v).filter((p) => p.lane === '').map((p) => p.id).sort()
+  assert.deepEqual(loose, ['d-new', 'd-plan', 's-loose'])
+  assert.deepEqual(column(v, 'b-plain'), [])
+  assert.deepEqual(column(v, 's-draft'), [], 'a proposed story is left to All items')
+})
+
+// --- every item of a view's kinds lands in exactly one place ---
+
+test('every task, and every agreed story and debt, is in exactly one place in its view', () => {
+  const tasks = ITEMS.filter((i) => i.type === 'task' && i.status !== 'deferred' && !i.labels.includes('proposed'))
+  const stories = ITEMS.filter((i) => (i.type === 'feature' || i.debtKind !== undefined) && i.status !== 'deferred' && !i.labels.includes('proposed'))
+  for (const [view, wanted] of [['tasks', tasks], ['stories', stories]] as const) {
+    const v = boardView(ITEMS, view)
+    for (const item of wanted) assert.equal(column(v, item.id).length, 1, `${view}: ${item.id} is in ${column(v, item.id).length} places`)
+    assert.equal(places(v).length, wanted.length, `${view}: nothing else`)
+  }
+  const all = boardView(ITEMS, 'all')
+  for (const item of ITEMS) assert.equal(column(all, item.id).length, 1, `all: ${item.id}`)
+})
+
+test('All items keeps today\'s six columns', () => {
+  const v = boardView(ITEMS, 'all')
+  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['Proposals', 'Open', 'In progress', 'Blocked', 'Deferred', 'Closed'])
+})
+
+// --- the Stories view and refinement's agenda agree ---
+
+test('the Stories view and refinement\'s agenda put the same stories and debts in the same buckets', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'board-view-'))
+  const file = join(dir, 'export.jsonl')
+  writeFileSync(file, EXPORT)
+  const script = join(import.meta.dirname, '..', '..', 'core', 'plugin', 'agent-container', 'bin', 'refine-candidates')
+  const agenda = execFileSync('bash', [script], { env: { ...process.env, TRACKER_EXPORT: file }, encoding: 'utf8' })
+  const section = (h: string) => {
+    const at = agenda.split('\n').indexOf(`## ${h}`)
+    const rest = agenda.split('\n').slice(at + 1)
+    const end = rest.findIndex((l) => l.startsWith('## '))
+    return (end === -1 ? rest : rest.slice(0, end)).filter((l) => l.startsWith('- ')).map((l) => l.split(' ')[1]!).sort()
+  }
+  const v = boardView(ITEMS, 'stories')
+  assert.deepEqual(ids(v, 'no_task'), [...section('Stories with no agreed task'), ...section('Debts with no agreed task')].sort())
+  assert.deepEqual(ids(v, 'awaiting_verification'), section('Awaiting verification'))
+})

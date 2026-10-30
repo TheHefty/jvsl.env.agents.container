@@ -13,7 +13,8 @@
  * Nothing on it changes the tracker (FR-118).
  */
 import { hiddenClosed, orderedIds, visibleIds } from './board-filter.ts'
-import { backlogRows, columns, typeLook, type Item } from './board-read.ts'
+import { backlogRows, typeLook, type Item } from './board-read.ts'
+import { boardView, VIEWS, type ViewName } from './board-view.ts'
 
 export interface Rendered {
   description?: string
@@ -45,6 +46,9 @@ nav button, .card { font: inherit; color: inherit; cursor: pointer; }
 nav button { background: none; border: 1px solid var(--vscode-panel-border); padding: 4px 10px; }
 nav button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 nav .spacer { flex: 1; }
+.lane { margin-bottom: 14px; }
+.lane > h3 { margin: 4px 0 6px; font-size: 1em; }
+.views button[aria-pressed="true"] { font-weight: bold; }
 .columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 10px; overflow-x: auto; }
 .column h2 { font-size: 0.9em; text-transform: uppercase; opacity: 0.8; }
 .card { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 6px 8px;
@@ -133,16 +137,27 @@ const relayout = () => {
   field('no-match').hidden = any;
   // Closed work out of the way (story nmf.1): the board's Closed column follows
   // the toggle, and each view says how many closed items it is not showing.
-  const closedColumn = document.querySelector('[data-column="closed"]');
-  if (closedColumn) closedColumn.hidden = !f.showClosed;
+  // Every view's done column (All items calls it Closed), and a lane whose
+  // epic is closed once nothing open is left in it (story nmf.2).
+  document.querySelectorAll('[data-column="closed"], [data-column="done"]').forEach((c) => { c.hidden = !f.showClosed; });
+  document.querySelectorAll('[data-lane-closed="true"]').forEach((l) => {
+    l.hidden = !f.showClosed && !l.querySelector('[data-column]:not([data-column="done"]) .card');
+  });
   const say = (n) => n === 0 ? '' : n + ' closed ' + (n === 1 ? 'item' : 'items') + ' hidden. Turn on Show closed to see ' + (n === 1 ? 'it' : 'them') + '.';
-  const onBoard = f.showClosed ? 0 : document.querySelectorAll('[data-column="closed"] .card').length;
+  const shownBoard = document.querySelector('[data-board]:not([hidden])');
+  const onBoard = f.showClosed || !shownBoard ? 0 : shownBoard.querySelectorAll('[data-column="closed"] .card, [data-column="done"] .card').length;
   document.querySelectorAll('[data-view="board"] .hidden-closed').forEach((p) => { p.textContent = say(onBoard); p.hidden = onBoard === 0; });
   const inBacklog = hiddenClosed(data, f);
   document.querySelectorAll('[data-view="backlog"] .hidden-closed').forEach((p) => { p.textContent = say(inBacklog); p.hidden = inBacklog === 0; });
 };
 ['f-text', 'f-type', 'f-state', 'f-tag'].forEach((id) => field(id).addEventListener('input', relayout));
 field('show-closed').addEventListener('change', relayout);
+document.querySelectorAll('[data-board-view]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-board-view]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  document.querySelectorAll('[data-board]').forEach((v) => { v.hidden = v.dataset.board !== b.dataset.boardView; });
+  vscode.postMessage({ type: 'view', view: b.dataset.boardView });
+  relayout();
+}));
 document.querySelectorAll('[data-toggle]').forEach((t) => t.addEventListener('click', () => {
   t.setAttribute('aria-expanded', String(t.getAttribute('aria-expanded') !== 'true')); relayout();
 }));
@@ -278,11 +293,25 @@ export function boardPage(input: {
   items: readonly Item[]
   rendered: ReadonlyMap<string, Rendered>
   notice?: string
+  /** The board view to open on (story nmf.2); All items when not given. */
+  view?: ViewName
 }): string {
   const { nonce, items, rendered, notice } = input
-  const board = columns(items)
-    .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map(card).join('')}</div>`)
-    .join('')
+  const active = input.view ?? 'all'
+  const picker = '<p class="views">' + VIEWS
+    .map((v) => `<button data-board-view="${v.name}" aria-pressed="${v.name === active}">${escape(v.title)}</button>`)
+    .join(' ') + '</p>'
+  const board = picker + VIEWS.map(({ name }) => {
+    const lanes = boardView(items, name).lanes.map((lane) => {
+      const cols = lane.columns
+        .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map(card).join('')}</div>`)
+        .join('')
+      return lane.title === ''
+        ? `<div class="columns">${cols}</div>`
+        : `<section class="lane" data-lane="${escape(lane.key)}" data-lane-closed="${lane.closed}"><h3>${escape(lane.title)}</h3><div class="columns">${cols}</div></section>`
+    }).join('')
+    return `<div data-board="${name}"${name === active ? '' : ' hidden'}>${lanes}</div>`
+  }).join('')
   const byId = new Map(items.map((i) => [i.id, i]))
   const childrenOf = (id: string) => items.filter((i) => i.parent === id)
   const body = [
@@ -294,7 +323,7 @@ export function boardPage(input: {
     '<span class="spacer"></span>',
     '<button id="refresh">Read again</button>',
     '</nav>',
-    `<div data-view="board"><p class="hidden-closed" hidden></p><div class="columns">${board}</div></div>`,
+    `<div data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
     `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
       `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
