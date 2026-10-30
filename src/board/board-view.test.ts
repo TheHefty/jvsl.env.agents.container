@@ -64,8 +64,8 @@ const column = (v: BoardView, id: string) => places(v).filter((p) => p.id === id
 const ids = (v: BoardView, key: string) => places(v).filter((p) => p.column === key).map((p) => p.id).sort()
 
 test('the three views exist, in the order the picker shows them', () => {
-  assert.deepEqual(VIEWS.map((v) => v.name), ['tasks', 'stories', 'all'])
-  assert.deepEqual(VIEWS.map((v) => v.title), ['Tasks', 'Stories by epic', 'All items'])
+  assert.deepEqual(VIEWS.map((v) => v.name), ['tasks', 'by-story', 'stories', 'all'])
+  assert.deepEqual(VIEWS.map((v) => v.title), ['Tasks', 'Tasks by story', 'Stories by epic', 'All items'])
 })
 
 // --- Tasks ---
@@ -204,4 +204,65 @@ test('within a column, items are ordered by priority, unset last, ties as they w
   const v = boardView(parseExport(P), 'stories')
   const noTask = v.lanes.find((l) => l.key === 'e9')!.columns.find((c) => c.key === 'no_task')!
   assert.deepEqual(noTask.items.map((i) => i.id), ['s-high', 's-tie-a', 's-tie-b', 's-low', 's-unset'])
+})
+
+// --- Tasks by story (story nmf.5, task nmf.5.1)
+
+test('Tasks by story puts each task in its story\'s or debt\'s lane, in the Tasks view\'s columns', () => {
+  const v = boardView(ITEMS, 'by-story')
+  assert.deepEqual(v.lanes.map((l) => l.key), ['s-dev', 's-verify', 's-rejected', 's-gone', 'd-plan', 's-loose'])
+  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['Ready', 'Blocked', 'In progress', 'Done'])
+  const where = (id: string) => places(v).filter((p) => p.id === id).map((p) => `${p.lane}/${p.column}`)
+  assert.deepEqual(where('t-dev'), ['s-dev/in_progress'])
+  assert.deepEqual(where('t-debt'), ['d-plan/ready'], "a debt's task is in its debt's lane")
+  assert.deepEqual(where('t-orphaned'), ['s-gone/ready'], 'under a closed story, still in its lane')
+  assert.deepEqual(where('t-blocked'), ['s-loose/blocked'])
+  assert.deepEqual([...where('t-prop'), ...where('t-aside')], [], 'proposals and deferred tasks are not work')
+})
+
+test('a lane is titled Epic › Story, or by its own title when it has no epic, and a closed story\'s lane is marked', () => {
+  const v = boardView(ITEMS, 'by-story')
+  const lane = (k: string) => v.lanes.find((l) => l.key === k)!
+  assert.equal(lane('s-dev').title, 'Open epic › Being built')
+  assert.equal(lane('s-gone').title, 'Closed epic › Closed story')
+  assert.equal(lane('d-plan').title, 'Planned debt')
+  assert.equal(lane('s-gone').closed, true)
+  assert.equal(lane('s-dev').closed, false)
+})
+
+const BY = [
+  line({ id: 'e', title: 'Epic', status: 'open', issue_type: 'epic' }),
+  line({ id: 's-lo', title: 'Lo', status: 'open', issue_type: 'feature', priority: 3, dependencies: [child('s-lo', 'e')] }),
+  line({ id: 't2', title: 'T2', status: 'open', issue_type: 'task', dependencies: [child('t2', 's-lo')] }),
+  line({ id: 's-un', title: 'Unset', status: 'open', issue_type: 'feature', priority: null }),
+  line({ id: 't3', title: 'T3', status: 'open', issue_type: 'task', dependencies: [child('t3', 's-un')] }),
+  line({ id: 's-tie1', title: 'Tie one', status: 'open', issue_type: 'feature', priority: 1, dependencies: [child('s-tie1', 'e')] }),
+  line({ id: 't4', title: 'T4', status: 'open', issue_type: 'task', dependencies: [child('t4', 's-tie1')] }),
+  line({ id: 's-hi', title: 'Hi', status: 'open', issue_type: 'feature', priority: 0, dependencies: [child('s-hi', 'e')] }),
+  line({ id: 't1', title: 'T1', status: 'open', issue_type: 'task', dependencies: [child('t1', 's-hi')] }),
+  line({ id: 's-tie2', title: 'Tie two', status: 'open', issue_type: 'feature', priority: 1, dependencies: [child('s-tie2', 'e')] }),
+  line({ id: 't5', title: 'T5', status: 'open', issue_type: 'task', dependencies: [child('t5', 's-tie2')] }),
+  line({ id: 's-empty', title: 'No tasks', status: 'open', issue_type: 'feature', priority: 0, dependencies: [child('s-empty', 'e')] }),
+  line({ id: 't-epic', title: 'Straight under the epic', status: 'open', issue_type: 'task', dependencies: [child('t-epic', 'e')] }),
+  line({ id: 't-none', title: 'No parent', status: 'open', issue_type: 'task' }),
+  line({ id: 't-sub', title: 'Under a task', status: 'open', issue_type: 'task', dependencies: [child('t-sub', 't-none')] }),
+  '',
+].join('\n')
+
+test('lanes follow the story\'s priority, ties as exported, unset last, then No story', () => {
+  const v = boardView(parseExport(BY), 'by-story')
+  assert.deepEqual(v.lanes.map((l) => l.key), ['s-hi', 's-tie1', 's-tie2', 's-lo', 's-un', ''])
+  assert.equal(v.lanes.at(-1)?.title, 'No story')
+  assert.equal(v.lanes.some((l) => l.key === 's-empty'), false, 'a story with no task has no lane here')
+})
+
+test('a task with no story, under an epic, or under another task is in No story; every task is in exactly one place', () => {
+  const items = parseExport(BY)
+  const v = boardView(items, 'by-story')
+  const noStory = v.lanes.find((l) => l.key === '')!.columns.flatMap((c) => c.items.map((i) => i.id)).sort()
+  assert.deepEqual(noStory, ['t-epic', 't-none', 't-sub'])
+  for (const t of [...items, ...ITEMS].filter((i) => i.type === 'task' && i.status !== 'deferred' && !i.labels.includes('proposed'))) {
+    const from = items.includes(t) ? v : boardView(ITEMS, 'by-story')
+    assert.equal(column(from, t.id).length, 1, `${t.id} is in ${column(from, t.id).length} places`)
+  }
 })

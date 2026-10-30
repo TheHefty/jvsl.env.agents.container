@@ -44,3 +44,10 @@ test('the view opened is the one remembered, or All items when nothing valid is'
   assert.equal(rememberedView(undefined), 'all')
   assert.equal(rememberedView('nonsense'), 'all')
 })
+
+test('Tasks by story is accepted and remembered like the other views (story nmf.5)', () => {
+  const { calls, deps: d } = deps()
+  onBoardMessage({ type: 'view', view: 'by-story' }, d)
+  assert.deepEqual(calls, ['remember by-story'])
+  assert.equal(rememberedView('by-story'), 'by-story')
+})
