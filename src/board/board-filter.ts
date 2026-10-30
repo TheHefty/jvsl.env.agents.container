@@ -26,6 +26,11 @@ export interface Filter {
   type: string
   state: string
   tag: string
+  /**
+   * Whether closed rows can match (story nmf.1). Off, a closed row is shown
+   * only as context above an open one, or when the state filter names Closed.
+   */
+  showClosed: boolean
 }
 
 /**
@@ -40,7 +45,8 @@ export function visibleIds(rows: readonly FilterRow[], filter: Filter): { shown:
     (text === '' || r.id.toLowerCase().includes(text) || r.title.toLowerCase().includes(text)) &&
     (filter.type === '' || r.type === filter.type) &&
     (filter.state === '' || r.state === filter.state) &&
-    (filter.tag === '' || r.tags.includes(filter.tag))
+    (filter.tag === '' || r.tags.includes(filter.tag)) &&
+    (filter.showClosed || filter.state === 'Closed' || r.state !== 'Closed')
   const shown = new Set<string>()
   const context = new Set<string>()
   for (const r of rows) {
@@ -55,6 +61,34 @@ export function visibleIds(rows: readonly FilterRow[], filter: Filter): { shown:
     }
   }
   return { shown, context }
+}
+
+/**
+ * How many closed rows the "Show closed" toggle alone is hiding: those that
+ * match every other part of the filter (story nmf.1). Zero when the toggle is
+ * on or the state filter names Closed. Self-contained, like visibleIds, and
+ * for the same reason: the page runs this source.
+ */
+export function hiddenClosed(rows: readonly FilterRow[], filter: Filter): number {
+  if (filter.showClosed || filter.state === 'Closed') return 0
+  const text = filter.text.trim().toLowerCase()
+  const matches = (r: FilterRow): boolean =>
+    (text === '' || r.id.toLowerCase().includes(text) || r.title.toLowerCase().includes(text)) &&
+    (filter.type === '' || r.type === filter.type) &&
+    (filter.state === '' || r.state === filter.state) &&
+    (filter.tag === '' || r.tags.includes(filter.tag))
+  // A closed row above an open match is on screen anyway, as context: not hidden.
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  const above = new Set<string>()
+  for (const r of rows) {
+    if (r.state === 'Closed' || !matches(r)) continue
+    let up = r.parent === undefined ? undefined : byId.get(r.parent)
+    while (up !== undefined && !above.has(up.id)) {
+      above.add(up.id)
+      up = up.parent === undefined ? undefined : byId.get(up.parent)
+    }
+  }
+  return rows.filter((r) => r.state === 'Closed' && matches(r) && !above.has(r.id)).length
 }
 
 /**

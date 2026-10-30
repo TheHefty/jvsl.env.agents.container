@@ -12,7 +12,7 @@
  * hidden until opened, so the only message the page sends is to read again.
  * Nothing on it changes the tracker (FR-118).
  */
-import { orderedIds, visibleIds } from './board-filter.ts'
+import { hiddenClosed, orderedIds, visibleIds } from './board-filter.ts'
 import { backlogRows, columns, typeLook, type Item } from './board-read.ts'
 
 export interface Rendered {
@@ -94,6 +94,7 @@ pre.raw { white-space: pre-wrap; font-family: var(--vscode-editor-font-family); 
  */
 const SCRIPT = `const visibleIds = (${visibleIds.toString()});
 const orderedIds = (${orderedIds.toString()});
+const hiddenClosed = (${hiddenClosed.toString()});
 // -- page --
 const vscode = acquireVsCodeApi();
 document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('click', () => {
@@ -113,7 +114,8 @@ const rows = [...document.querySelectorAll('tr[data-row]')];
 const data = rows.map((r) => ({ id: r.dataset.row, parent: r.dataset.parent || undefined, type: r.dataset.type,
   state: r.dataset.state, tags: r.dataset.tags ? r.dataset.tags.split('\\u001f') : [], title: r.dataset.title }));
 const field = (id) => document.getElementById(id);
-const filter = () => ({ text: field('f-text').value, type: field('f-type').value, state: field('f-state').value, tag: field('f-tag').value });
+const filter = () => ({ text: field('f-text').value, type: field('f-type').value, state: field('f-state').value, tag: field('f-tag').value,
+  showClosed: field('show-closed').checked });
 const expanded = (id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); return !t || t.getAttribute('aria-expanded') === 'true'; };
 const parentOf = new Map(data.map((d) => [d.id, d.parent]));
 const underCollapsed = (id) => { for (let p = parentOf.get(id); p; p = parentOf.get(p)) { if (!expanded(p)) return true; } return false; };
@@ -129,8 +131,18 @@ const relayout = () => {
     if (!hide) any = true;
   });
   field('no-match').hidden = any;
+  // Closed work out of the way (story nmf.1): the board's Closed column follows
+  // the toggle, and each view says how many closed items it is not showing.
+  const closedColumn = document.querySelector('[data-column="closed"]');
+  if (closedColumn) closedColumn.hidden = !f.showClosed;
+  const say = (n) => n === 0 ? '' : n + ' closed ' + (n === 1 ? 'item' : 'items') + ' hidden. Turn on Show closed to see ' + (n === 1 ? 'it' : 'them') + '.';
+  const onBoard = f.showClosed ? 0 : document.querySelectorAll('[data-column="closed"] .card').length;
+  document.querySelectorAll('[data-view="board"] .hidden-closed').forEach((p) => { p.textContent = say(onBoard); p.hidden = onBoard === 0; });
+  const inBacklog = hiddenClosed(data, f);
+  document.querySelectorAll('[data-view="backlog"] .hidden-closed').forEach((p) => { p.textContent = say(inBacklog); p.hidden = inBacklog === 0; });
 };
 ['f-text', 'f-type', 'f-state', 'f-tag'].forEach((id) => field(id).addEventListener('input', relayout));
+field('show-closed').addEventListener('change', relayout);
 document.querySelectorAll('[data-toggle]').forEach((t) => t.addEventListener('click', () => {
   t.setAttribute('aria-expanded', String(t.getAttribute('aria-expanded') !== 'true')); relayout();
 }));
@@ -145,6 +157,7 @@ document.querySelectorAll('th[data-sort]').forEach((th) => th.addEventListener('
   orderedIds(data, th.dataset.sort, dir).forEach((id) => tbody.append(byId.get(id)));
   tbody.append(field('no-match'));
 }));
+relayout();
 `
 
 /** A page with this extension's policy: shared by the board and the Study view. */
@@ -268,7 +281,7 @@ export function boardPage(input: {
 }): string {
   const { nonce, items, rendered, notice } = input
   const board = columns(items)
-    .map((c) => `<div class="column"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map(card).join('')}</div>`)
+    .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map(card).join('')}</div>`)
     .join('')
   const byId = new Map(items.map((i) => [i.id, i]))
   const childrenOf = (id: string) => items.filter((i) => i.parent === id)
@@ -277,11 +290,12 @@ export function boardPage(input: {
     '<nav>',
     '<button data-tab="board" aria-pressed="true">Board</button>',
     '<button data-tab="backlog" aria-pressed="false">Backlog</button>',
+    '<label class="toggle-closed"><input type="checkbox" id="show-closed"> Show closed</label>',
     '<span class="spacer"></span>',
     '<button id="refresh">Read again</button>',
     '</nav>',
-    `<div data-view="board" class="columns">${board}</div>`,
-    `<div data-view="backlog" hidden>${backlog(items)}</div>`,
+    `<div data-view="board"><p class="hidden-closed" hidden></p><div class="columns">${board}</div></div>`,
+    `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
       `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
   ].join('\n')
