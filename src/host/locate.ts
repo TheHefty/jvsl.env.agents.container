@@ -229,3 +229,16 @@ export function mountPath(project: Exclude<ProjectOnHost, { kind: 'none' }>): st
 export function uncFor(distro: string, linuxPath: string): string {
   return `\\\\wsl.localhost\\${distro}${linuxPath.replace(/\//g, '\\')}`
 }
+
+/**
+ * The project a folder picked in the folder dialog is (debt ck8). **From its
+ * scheme and authority, never its fsPath**: in a window connected to WSL the
+ * picker returns `vscode-remote://wsl+<distro>/...`, whose fsPath reads as a
+ * Windows path, and opening that took the project out of WSL. A folder on any
+ * other remote is refused by name: it is not on a machine this extension reaches.
+ */
+export function pickedProject(uri: { scheme: string; authority: string; path: string; fsPath: string }): ProjectOnHost {
+  if (uri.scheme === 'file') return { kind: 'host', path: uri.fsPath }
+  if (uri.scheme === 'vscode-remote' && uri.authority.startsWith('wsl+')) return wslProject(uri.authority, uri.path)
+  return { kind: 'none', reason: `the folder chosen is on "${uri.authority || uri.scheme}", which is not this machine or one of its WSL distros` }
+}

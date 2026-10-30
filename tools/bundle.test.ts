@@ -134,6 +134,15 @@ interface EditorScript {
   /** What inspect() answers for a setting, by its full key, and every update() made. */
   inspect?: Record<string, unknown>
   updates?: Array<[string, unknown, unknown]>
+  /** The window's remote, and its folder's address, for a window that is not local. */
+  remoteName?: string
+  folderUri?: { fsPath: string; authority: string; path: string; scheme: string }
+  /** Every command the extension registers, so a test can run one. */
+  registered?: Map<string, (...args: unknown[]) => unknown>
+  /** What the folder picker returns. */
+  openDialog?: unknown[]
+  /** Every executeCommand, with its arguments. */
+  calls?: unknown[][]
 }
 
 function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = [], script: EditorScript = {}) {
@@ -148,9 +157,13 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
           showWarningMessage: say,
           showInformationMessage: say,
           showErrorMessage: say,
+          showOpenDialog: () => Promise.resolve(script.openDialog),
+          // A question asked is answered like Escape: what was asked shows in the outcome.
+          showQuickPick: () => Promise.resolve(undefined),
+          showInputBox: () => Promise.resolve(undefined),
         },
         workspace: {
-          workspaceFolders: [{ uri: { fsPath: folder, authority: '' } }],
+          workspaceFolders: [{ uri: script.folderUri ?? { fsPath: folder, authority: '' } }],
           createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
           getConfiguration: (section?: string) => ({
             get: () => undefined,
@@ -160,12 +173,12 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
         },
         ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
         commands: {
-          registerCommand: () => noop,
-          executeCommand: (c: string) => { script.executed?.push(c); return Promise.resolve(undefined) },
+          registerCommand: (id: string, cb: (...args: unknown[]) => unknown) => { script.registered?.set(id, cb); return noop },
+          executeCommand: (c: string, ...args: unknown[]) => { script.executed?.push(c); script.calls?.push([c, ...args]); return Promise.resolve(undefined) },
           getCommands: () => Promise.resolve(script.commands ?? []),
         },
         extensions: { all: [] },
-        env: { remoteName: undefined },
+        env: { remoteName: script.remoteName },
         EventEmitter: class { event = () => noop; fire() {} dispose() {} },
         TreeItem: class {},
         ThemeIcon: class {},
@@ -431,4 +444,39 @@ test('on Linux, the same project leaves the setting untouched', async () => {
   await stubEditor(windowsProject(), undefined, [], [], { inspect: { [WAYLAND]: { key: WAYLAND, defaultValue: true } }, updates })
   await settle()
   assert.deepEqual(updates, [])
+})
+
+// --- Open, from a WSL window, keeps the folder in its distro (debt ck8, task ck8.1)
+//
+// Found on 2026-10-30: Open kept only the picked folder's fsPath and opened
+// Uri.file of it, so the project left WSL for Windows' Docker. Driven where it
+// was found: the built bundle's Open command, in a window connected to WSL,
+// with the picker returning a vscode-remote address. A wsl.exe on PATH runs the
+// distro's script here and logs it, so the manifest check is seen going there.
+
+test('Open from a WSL window opens the picked folder by its own address, checking it through the distro', async () => {
+  const linux = mkdtempSync(join(tmpdir(), 'wsl-picked-'))
+  writeFileSync(join(linux, '.agent-container.stack.json'), '{"stacks":[]}\n')
+  const bin = mkdtempSync(join(tmpdir(), 'fake-wsl-'))
+  const log = join(bin, 'calls')
+  writeFileSync(join(bin, 'wsl.exe'), ['#!/bin/sh', `printf '%s\\n' "$*" >> '${log}'`, 'shift 3', 'exec "$@"'].join('\n'), { mode: 0o755 })
+  const path = process.env.PATH
+  process.env.PATH = `${bin}:${path ?? ''}`
+  try {
+    const picked = { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: linux, fsPath: linux.replace(/\//g, '\\'), toString: () => `vscode-remote://wsl+archlinux${linux}` }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const calls: unknown[][] = []
+    await stubEditor(linux, undefined, [], [], {
+      remoteName: 'wsl',
+      folderUri: { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: '/home/heftier/another', fsPath: '\\home\\heftier\\another' },
+      registered, calls, openDialog: [picked],
+    })
+    await registered.get('jvsl.agentContainer.open')!()
+    const open = calls.find((c) => c[0] === 'vscode.openFolder')
+    assert.ok(open, JSON.stringify(calls))
+    assert.equal(open[1], picked, 'opened with the picked address itself, not Uri.file of a path')
+    assert.match(readFileSync(log, 'utf8'), /-d archlinux --exec sh -c/, 'the manifest was looked for in the distro')
+  } finally {
+    process.env.PATH = path
+  }
 })

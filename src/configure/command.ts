@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { build } from '../build/command.ts'
@@ -13,7 +11,7 @@ import { filesFor } from '../host/files.ts'
 import { dockerFor } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { homeFor } from '../host/home.ts'
-import { mountPath, type ProjectOnHost } from '../host/locate.ts'
+import { mountPath, pickedProject, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
@@ -45,13 +43,13 @@ export async function configure(
   view: SelectionView,
   extensionPath: string,
   extensionVersion: string,
-  forRoot?: string,
+  /** The project a picked folder is: on this machine, or in a WSL distro (debt ck8). */
+  forProject?: Exclude<ProjectOnHost, { kind: 'none' }>,
 ): Promise<ConfigureResult> {
-  let root = forRoot
-  // Where the project lives, for regenerating its configuration: a folder the
-  // picker chose is on this machine.
-  let location: Exclude<ProjectOnHost, { kind: 'none' }> | undefined =
-    forRoot === undefined ? undefined : { kind: 'host', path: forRoot }
+  let root = forProject?.path
+  // Where the project lives, for regenerating its configuration and writing its
+  // manifest: through the distro for a WSL project.
+  let location: Exclude<ProjectOnHost, { kind: 'none' }> | undefined = forProject
   if (root === undefined) {
     const project = hostProject()
     if (project.kind === 'none') {
@@ -134,7 +132,7 @@ export async function configure(
   // **Not awaited when somebody else asked**, because a caller that passed a
   // root is driving a longer sequence and will build the folder it chose —
   // building twice is seven minutes spent on a cache hit nobody is watching.
-  if (forRoot === undefined) await build(write, view, extensionPath)
+  if (forProject === undefined) await build(write, view, extensionPath)
 
   return { wrote: true, root, stacks: picked }
 }
@@ -160,11 +158,20 @@ export async function pick(
     canSelectMany: false,
     openLabel: 'Open as Dev Container Project',
   })
-  const chosen = picked?.[0]?.fsPath
+  // **The picked address, kept whole** (debt ck8): from a WSL window it names a
+  // folder in the distro, and its fsPath alone would name one on Windows.
+  const uri = picked?.[0]
+  const project = uri === undefined ? undefined : pickedProject(uri)
+  if (project?.kind === 'none') {
+    write([`open: refused — ${project.reason}`])
+    void vscode.window.showWarningMessage(`Open: ${project.reason}.`)
+    return
+  }
+  const current = hostProject()
   const decision = decidePick({
-    chosen,
-    currentFolder: (() => { const p = hostProject(); return p.kind === 'host' ? p.path : undefined })(),
-    hasManifest: chosen !== undefined && existsSync(join(chosen, MANIFEST)),
+    chosen: project?.path,
+    currentFolder: current.kind === 'none' ? undefined : current.path,
+    hasManifest: project !== undefined && filesFor(project).exists(MANIFEST),
   })
 
   if (decision.action === 'nothing') {
@@ -189,7 +196,7 @@ export async function pick(
 
   if (decision.action === 'configure') {
     write([`open: ${decision.because}`])
-    const outcome = configureOutcome(await configure(write, view, extensionPath, extensionVersion, decision.folder))
+    const outcome = configureOutcome(await configure(write, view, extensionPath, extensionVersion, project))
     write([`open: ${outcome.message}`])
     if (!outcome.proceed) {
       void vscode.window.showInformationMessage(outcome.message)
@@ -204,11 +211,7 @@ export async function pick(
   // The window that opens the folder prepares it only because this asked:
   // activation alone writes nothing (story opening-a-folder-writes-nothing).
   await handOver(decision.folder)
-  await vscode.commands.executeCommand(
-    'vscode.openFolder',
-    vscode.Uri.file(decision.folder),
-    { forceNewWindow: decision.newWindow },
-  )
+  await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: decision.newWindow })
 }
 
 /** An input box whose undefined means escape, which the caller treats as abandon. */

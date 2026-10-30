@@ -32,3 +32,14 @@ export function startupAction(handover: unknown, folder: string | undefined, now
   if (now - h.at > HANDOVER_MS || now < h.at) return 'nothing'
   return 'prepare'
 }
+
+/**
+ * The folder a window's handover record is matched against (debt ck8): the
+ * project's path, for a WSL project as much as for one on this machine. Open
+ * hands a picked folder over by the same path (pickedProject), so a new window
+ * connected to WSL prepares what was asked, as a local one does. Matching only
+ * a local project's path left a WSL window with nothing to match.
+ */
+export function handoverFolder(project: { kind: string; path?: string }): string | undefined {
+  return project.kind === 'host' || project.kind === 'wsl' ? project.path : undefined
+}

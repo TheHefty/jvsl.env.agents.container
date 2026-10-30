@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { HANDOVER_MS, startupAction } from './handover.ts'
+import { HANDOVER_MS, handoverFolder, startupAction } from './handover.ts'
 
 /**
  * Story opening-a-folder-writes-nothing: activation prepares a folder only when
@@ -32,4 +32,15 @@ test('a malformed handover, or a window with no folder, prepares nothing', () =>
     assert.equal(startupAction(bad, '/home/me/p', now), 'nothing', JSON.stringify(bad))
   }
   assert.equal(startupAction({ folder: '/home/me/p', at: now }, undefined, now), 'nothing')
+})
+
+// --- a WSL window prepares what Open handed it (debt ck8, task ck8.1)
+
+test('a WSL window matches the handover by its project path, as a local one does', () => {
+  const wsl = { kind: 'wsl', distro: 'archlinux', path: '\\\\wsl.localhost\\archlinux\\home\\x', linux: '/home/x' }
+  const folder = handoverFolder(wsl)
+  assert.equal(folder, wsl.path)
+  assert.equal(startupAction({ folder: wsl.path, at: 1000 }, folder, 2000), 'prepare')
+  assert.equal(handoverFolder({ kind: 'host', path: 'c:\\x' }), 'c:\\x')
+  assert.equal(handoverFolder({ kind: 'none' }), undefined)
 })

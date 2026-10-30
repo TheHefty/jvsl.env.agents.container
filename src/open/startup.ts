@@ -10,7 +10,7 @@ import { projectContainer } from '../build/command.ts'
 import { findGradleBuildsFor, gradleVersion } from '../build/gradle.ts'
 import { dockerFor } from '../host/docker.ts'
 import { prepare } from './command.ts'
-import { HANDOVER_KEY, startupAction } from './handover.ts'
+import { HANDOVER_KEY, handoverFolder, startupAction } from './handover.ts'
 import { olderCopyNotice } from './older-copy.ts'
 import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-manifest.ts'
 import { filesFor } from '../host/files.ts'
@@ -75,7 +75,7 @@ export async function startup(
   await turnOffWaylandMount(project, write)
   const handedOver = context.globalState.get(HANDOVER_KEY)
   if (handedOver !== undefined) await context.globalState.update(HANDOVER_KEY, undefined)
-  const folder = project.kind === 'host' ? project.path : undefined
+  const folder = handoverFolder(project)
   if (startupAction(handedOver, folder, Date.now()) !== 'prepare') {
     write(['open flow: nothing written: this folder was opened, not asked to be prepared. Open in container, from the panel, prepares it.'])
     offerRegeneration(context, channel, write, project)
