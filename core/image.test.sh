@@ -428,6 +428,14 @@ for pkg in ${CORE_TEST_PACKAGES:-}; do
         || fail "the manifest listed $pkg and $IMAGE does not have it installed. the composer (src/build/compose.ts) turns \"packages\" into an install step"
 done
 
+# **OpenCode is there, behind its wrapper** (story
+# opencode-is-installed-and-runs-sandboxed-keeping-its-login): the `opencode`
+# PATH resolves is the sandboxing wrapper, and the CLI it re-execs runs.
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c \
+    '[ "$(command -v opencode)" = /usr/local/bin/opencode ] && /usr/bin/opencode --version >/dev/null' \
+    || fail "opencode in $IMAGE is not the wrapper at /usr/local/bin/opencode, or /usr/bin/opencode does not run. \
+core/Dockerfile.frag installs opencode-ai with npm and copies core/bin/opencode.sh over it"
+
 # **ps runs, because Codex cannot start without it.** Codex records its
 # background server's process with `ps`, and on 2026-10-07 it stopped at start
 # with "failed to invoke ps … No such file or directory": the base image ships

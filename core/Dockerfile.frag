@@ -487,6 +487,16 @@ RUN npm install -g @anthropic-ai/claude-code
 # solve was a *second* file one level up, and Codex does not have one.
 RUN npm install -g @openai/codex
 
+# 6.0.1 The OpenCode CLI, the third agent, sandboxed by the same wrapper
+# machinery (story opencode-is-installed-and-runs-sandboxed-keeping-its-login).
+# Unpinned for the same reason as the two above, decided by the operator on
+# 2026-10-30. ai-jail 2.6.4 carries an `opencode` preset, and --agent-state maps
+# ~/.config/opencode and ~/.local/share/opencode, so nothing about the sandbox
+# was widened. Its login and sessions live under ~/.local/share/opencode, on
+# the persistent volume; core/cont-init/45-agent-state-dirs.sh creates both
+# directories at boot, since ai-jail maps only what already exists.
+RUN npm install -g opencode-ai
+
 # 6.1 Keeps the CLI's whole state inside /config/.claude — the directory
 # `start` bind-mounts from the host — instead of only its credentials. By
 # default the credentials land in ~/.claude (mounted, so they survive) but
@@ -574,7 +584,8 @@ COPY core/bin/migrate-planning.mjs /usr/local/bin/migrate-planning
 RUN chmod +x /usr/local/bin/migrate-planning
 COPY core/bin/claude.sh /usr/local/bin/claude
 COPY core/bin/codex.sh /usr/local/bin/codex
-RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex
+COPY core/bin/opencode.sh /usr/local/bin/opencode
+RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex /usr/local/bin/opencode
 
 # The plugin the claude wrapper loads with --plugin-dir: the ceremonies of a
 # working day with the agent, each added by its own story, and needs-tracker,

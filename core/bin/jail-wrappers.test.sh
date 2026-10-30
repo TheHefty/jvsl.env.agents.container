@@ -52,7 +52,7 @@ chmod +x "$work/bin/ai-jail"
 plugin="$work/plugin"; mkdir -p "$plugin"
 argv() {
     local agent="$1"; shift
-    AGENT_PLUGIN="$plugin" env -u CLAUDE_JAILED -u CODEX_JAILED "$@" \
+    AGENT_PLUGIN="$plugin" env -u CLAUDE_JAILED -u CODEX_JAILED -u OPENCODE_JAILED "$@" \
         JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/$agent.sh"
 }
 count() { { grep -c -- "$1" || true; } }
@@ -145,6 +145,35 @@ check "and the key's value is never printed" \
 check "and nothing about it reaches the sandbox" \
     "$(argv codex -u RUSTUP_HOME OPENAI_API_KEY=sk-test-not-real | count OPENAI)" "0"
 
+# **OpenCode, the third agent, under the same sandbox** (story
+# opencode-is-installed-and-runs-sandboxed-keeping-its-login). The shared list as
+# a prefix, only its own marker after it, the caller's arguments unchanged, and
+# no provider key forwarded: OpenCode authenticates from the file `opencode auth
+# login` writes under ~/.local/share/opencode, which --agent-state maps.
+check "opencode is handed the same shared list" \
+    "$(argv opencode -u RUSTUP_HOME | head -n "$n")" "$common"
+check "and opencode adds only what is OpenCode's" \
+    "$(argv opencode -u RUSTUP_HOME | rest)" \
+    "--env OPENCODE_JAILED=1 opencode"
+check "the caller's arguments follow opencode, unchanged and in order" \
+    "$(env -u CLAUDE_JAILED -u CODEX_JAILED -u OPENCODE_JAILED -u RUSTUP_HOME JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" \
+        bash "$HERE/opencode.sh" run --model 'two words' | tail -n 4 | paste -sd'|' -)" \
+    "opencode|run|--model|two words"
+for key in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY; do
+    oc_err="$(env -u CLAUDE_JAILED -u CODEX_JAILED -u OPENCODE_JAILED -u RUSTUP_HOME "$key=sk-test-not-real" \
+        JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" bash "$HERE/opencode.sh" 2>&1 >/dev/null)"
+    check "with $key set, opencode's wrapper says how to store it instead" \
+        "$(printf '%s' "$oc_err" | count 'opencode auth login')" "1"
+    check "and $key's value is never printed" "$(printf '%s' "$oc_err" | count 'sk-test-not-real')" "0"
+    check "and nothing of $key reaches the sandbox" \
+        "$(argv opencode -u RUSTUP_HOME "$key=sk-test-not-real" | count "$key")" "0"
+done
+check "opencode is handed its own re-entry marker" \
+    "$(argv opencode | count '^OPENCODE_JAILED=1$')" "1"
+check "and the marker short-circuits to the real CLI" \
+    "$(OPENCODE_JAILED=1 JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" \
+        bash "$HERE/opencode.sh" 2>/dev/null | count -- '--network')" "0"
+
 # Failure 2 — the recursion guard. /usr is read-only inside the sandbox, so the
 # wrapper is still the first `codex` on PATH in there and ai-jail's preset
 # resolves back to it. Without the marker this is not a weak sandbox, it is an
@@ -182,7 +211,7 @@ check "the marker short-circuits to the real CLI" \
 # GH_TOKEN is not forwarded at all any more, in either form. The sandbox is
 # given gh's configuration directory instead and gh reads its own credentials
 # from it — nothing secret crosses as an argument.
-for agent in claude codex; do
+for agent in claude codex opencode; do
     check "$agent does not forward GH_TOKEN by name" \
         "$(argv "$agent" GH_TOKEN=sekrit | count '^GH_TOKEN$')" "0"
     check "$agent does not forward GH_TOKEN by value either" \
@@ -202,7 +231,7 @@ done
 # the host's timezone into the container's TZ; --clearenv would drop it, and the
 # agent's date, commits and ceremonies would keep UTC with nothing saying so.
 # Forwarded by name only when it is set: an empty TZ is UTC to glibc.
-for agent in claude codex; do
+for agent in claude codex opencode; do
     check "$agent hands the sandbox TZ when the container has one" \
         "$(argv "$agent" TZ=America/Sao_Paulo | count '^TZ$')" "1"
     check "$agent hands nothing when TZ is unset" "$(argv "$agent" -u TZ | count '^TZ')" "0"
