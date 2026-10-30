@@ -6,17 +6,19 @@ import { byPriority, columns, type Item } from './board-read.ts'
  * lands is a unit test rather than something to look at in an editor.
  *
  * **Tasks** is the day's work: the tasks, the debts' tasks included, from ready
- * to done. **Stories by epic** is the chain one level up: each agreed story and
+ * to done. **Tasks by story** is the same tasks in a lane for each story or
+ * debt they belong to (story nmf.5). **Stories by epic** is the chain one level up: each agreed story and
  * debt in a lane for its epic, in the column refinement's agenda would put it
  * in. **All items** is the board as it was, every type in the stored states.
  *
  * A proposal, or anything deferred, is not work (FR-106), so only All items
  * shows it — as refine-candidates reads it: deferred or labelled `proposed`.
  */
-export type ViewName = 'tasks' | 'stories' | 'all'
+export type ViewName = 'tasks' | 'by-story' | 'stories' | 'all'
 
 export const VIEWS: ReadonlyArray<{ name: ViewName; title: string }> = [
   { name: 'tasks', title: 'Tasks' },
+  { name: 'by-story', title: 'Tasks by story' },
   { name: 'stories', title: 'Stories by epic' },
   { name: 'all', title: 'All items' },
 ]
@@ -75,7 +77,7 @@ function unordered(items: readonly Item[], view: ViewName): BoardView {
   }
   const closed = new Set(items.filter((i) => i.status === 'closed').map((i) => i.id))
 
-  if (view === 'tasks') {
+  if (view === 'tasks' || view === 'by-story') {
     const tasks = items.filter((i) => i.type === 'task' && !isProposal(i))
     const columnOf = (t: Item): string => {
       if (t.status === 'closed') return 'done'
@@ -83,6 +85,9 @@ function unordered(items: readonly Item[], view: ViewName): BoardView {
       if (t.status === 'blocked' || t.blockedBy.some((id) => !closed.has(id))) return 'blocked'
       return 'ready'
     }
+    const taskColumns = (list: readonly Item[]): ViewColumn[] =>
+      TASK_COLUMNS.map((c) => ({ ...c, items: list.filter((t) => columnOf(t) === c.key) }))
+    if (view === 'by-story') return { name: view, lanes: storyLanes(items, tasks, taskColumns) }
     return {
       name: view,
       lanes: [{
@@ -158,4 +163,30 @@ export function chainMarks(items: readonly Item[]): Map<string, ChainMark> {
     }
   }
   return marks
+}
+
+/**
+ * Tasks by story's lanes (story nmf.5): one per story or debt holding a task,
+ * titled Epic › Story, in the story's priority order, and a last "No story"
+ * lane for a task whose parent is neither — none, an epic, another task.
+ * A closed story's lane is marked, so the page hides it while Show closed is
+ * off and nothing open is left in it.
+ */
+function storyLanes(items: readonly Item[], tasks: readonly Item[], taskColumns: (list: readonly Item[]) => ViewColumn[]): Lane[] {
+  const byId = new Map(items.map((i) => [i.id, i]))
+  const storyOf = (t: Item): Item | undefined => {
+    const parent = t.parent === undefined ? undefined : byId.get(t.parent)
+    return parent !== undefined && isStoryLike(parent) ? parent : undefined
+  }
+  const stories = byPriority(items.filter((i) => isStoryLike(i) && tasks.some((t) => storyOf(t) === i)), (i) => i)
+  const title = (s: Item) => {
+    const epic = s.parent === undefined ? undefined : byId.get(s.parent)
+    return epic !== undefined && epic.type === 'epic' ? `${epic.title} › ${s.title}` : s.title
+  }
+  const lanes: Lane[] = stories.map((s) => ({
+    key: s.id, title: title(s), closed: s.status === 'closed', columns: taskColumns(tasks.filter((t) => storyOf(t) === s)),
+  }))
+  const loose = tasks.filter((t) => storyOf(t) === undefined)
+  if (loose.length > 0) lanes.push({ key: '', title: 'No story', closed: false, columns: taskColumns(loose) })
+  return lanes
 }

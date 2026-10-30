@@ -400,3 +400,11 @@ test('the page reads the value buttons, and filters the board\'s cards with the 
   assert.match(script, /\[data-field="' \+ name \+ '"\] \[data-value\]/)
   assert.match(script, /visibleIds\(cardRows, f\)/)
 })
+
+test('the picker offers Tasks by story, and draws its lanes as Epic › Story (story nmf.5)', () => {
+  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'by-story' })
+  assert.match(html, /<button data-board-view="by-story" aria-pressed="true">Tasks by story<\/button>/)
+  const lanes = html.slice(html.indexOf('<div data-board="by-story"'), html.indexOf('<div data-board="stories"'))
+  assert.match(lanes, /<section class="lane" data-lane="s1" data-lane-closed="false"><h3>An epic › A story<\/h3>/)
+  assert.match(lanes, /data-column="in_progress"[^]*A task/)
+})
