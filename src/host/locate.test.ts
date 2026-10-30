@@ -262,3 +262,35 @@ test('a container created but never started is not the running one', () => {
   ]
   assert.equal(containerFor('/home/h/p', rows).kind, 'many')
 })
+
+// --- a folder picked from a WSL window stays in its distro (debt ck8, task ck8.1)
+//
+// Found on 2026-10-30: Open, run from a window connected to WSL, kept only the
+// picked folder's fsPath and opened Uri.file of it, so the project left WSL and
+// went to Windows' Docker. The picked Uri says where the folder is.
+
+import { pickedProject } from './locate.ts'
+
+test('a picked file: folder is a project on this machine', () => {
+  assert.deepEqual(pickedProject({ scheme: 'file', authority: '', path: '/c:/projetos/x', fsPath: 'c:\\projetos\\x' }), { kind: 'host', path: 'c:\\projetos\\x' })
+})
+
+test("a folder picked from a WSL window is a project in that distro, never the fsPath's Windows reading", () => {
+  const p = pickedProject({ scheme: 'vscode-remote', authority: 'wsl+archlinux', path: '/home/heftier/x', fsPath: '\\home\\heftier\\x' })
+  assert.equal(p.kind, 'wsl')
+  assert.equal(p.kind === 'wsl' && p.distro, 'archlinux')
+  assert.equal(p.kind === 'wsl' && p.linux, '/home/heftier/x')
+})
+
+test('a folder on any other remote is refused, naming it', () => {
+  const p = pickedProject({ scheme: 'vscode-remote', authority: 'ssh-remote+box', path: '/srv/x', fsPath: '\\srv\\x' })
+  assert.equal(p.kind, 'none')
+  assert.match(p.kind === 'none' ? p.reason : '', /ssh-remote\+box/)
+})
+
+test('the picked folder and the WSL window that opens it name the project the same way, so the handover matches', () => {
+  const picked = pickedProject({ scheme: 'vscode-remote', authority: 'wsl+archlinux', path: '/home/heftier/x', fsPath: '\\home\\heftier\\x' })
+  const window = projectOnHost({ remoteName: 'wsl', folder: { fsPath: '\\home\\heftier\\x', authority: 'wsl+archlinux', path: '/home/heftier/x' } })
+  assert.ok(picked.kind === 'wsl' && window.kind === 'wsl')
+  assert.equal(picked.kind === 'wsl' && picked.path, window.kind === 'wsl' && window.path)
+})
