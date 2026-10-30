@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.13.0...v1.14.0) (2026-10-30)
+
+
+### Features
+
+* the Work board gains a Tasks by story view ([266b5fa](https://github.com/TheHefty/jvsl.env.agents.container/commit/266b5fab0d7aaddbb884713a00024e2e05026595))
+
 ## [1.13.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.12.4...v1.13.0) (2026-10-30)
 
 
