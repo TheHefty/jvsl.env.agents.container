@@ -55,5 +55,18 @@ done
 find /proc/self/fd/ -maxdepth 1 -type l -printf '%l\n' >/dev/null 2>&1 \
     || fail "find has no -printf here; $kind reads open files with it"
 
+# The editor is told not to import what is under .claude, where Claude Code
+# keeps its worktrees (debt the-editor-imports-claude-codes-worktrees-as-java-
+# projects): in kotodori on 2026-10-29 a worktree's copy of build-logic was
+# imported, and brought a Gradle 9.8.1 daemon of its own. Read from the file
+# 36-editor-settings.sh delivers to the editor. Setting the key replaces
+# redhat.java's own defaults, so each of them has to be in the list too.
+meta="${STACK_METADATA:-/opt/jvsl/devcontainer-metadata.json}"
+exclusions="$(jq -c '[.[] | .customizations.vscode.settings["java.import.exclusions"] // empty] | last // []' "$meta" 2>/dev/null)"
+for pattern in '**/.claude/**' '**/node_modules/**' '**/.metadata/**' '**/archetype-resources/**' '**/META-INF/maven/**'; do
+    jq -e --arg p "$pattern" 'index($p) != null' <<<"${exclusions:-[]}" >/dev/null \
+        || fail "java.import.exclusions in $meta lacks $pattern (it is ${exclusions:-absent}); the editor would import it as Java projects"
+done
+
 [ "$failures" -eq 0 ] && echo "ok   $link is a JDK $got, and JAVA_HOME names it; the Gradle defaults are installed and the hook merges them"
 exit "$failures"

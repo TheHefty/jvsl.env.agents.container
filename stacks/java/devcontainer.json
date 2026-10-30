@@ -15,6 +15,13 @@
             }
           ],
           "java.server.launchMode": "Standard",
+          "java.import.exclusions": [
+            "**/node_modules/**",
+            "**/.metadata/**",
+            "**/archetype-resources/**",
+            "**/META-INF/maven/**",
+            "**/.claude/**"
+          ],
           "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1536m -Xms100m -Xlog:disable"
         }
       }
