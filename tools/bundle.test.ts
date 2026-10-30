@@ -143,6 +143,8 @@ interface EditorScript {
   openDialog?: unknown[]
   /** Every executeCommand, with its arguments. */
   calls?: unknown[][]
+  /** Answer every question with its default: no stacks, the first option, the box's value. */
+  defaults?: boolean
 }
 
 function stubEditor(folder: string, handedOver: unknown, updates: unknown[], messages: string[] = [], script: EditorScript = {}) {
@@ -158,9 +160,10 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
           showInformationMessage: say,
           showErrorMessage: say,
           showOpenDialog: () => Promise.resolve(script.openDialog),
-          // A question asked is answered like Escape: what was asked shows in the outcome.
-          showQuickPick: () => Promise.resolve(undefined),
-          showInputBox: () => Promise.resolve(undefined),
+          // A question asked is answered like Escape, unless the test asks for the defaults.
+          showQuickPick: (items: unknown, o?: { canPickMany?: boolean }) =>
+            Promise.resolve(!script.defaults ? undefined : o?.canPickMany ? [] : Array.isArray(items) ? items[0] : undefined),
+          showInputBox: (o?: { value?: string }) => Promise.resolve(script.defaults ? o?.value ?? '' : undefined),
         },
         workspace: {
           workspaceFolders: [{ uri: script.folderUri ?? { fsPath: folder, authority: '' } }],
@@ -477,6 +480,79 @@ test('Open from a WSL window opens the picked folder by its own address, checkin
     assert.equal(open[1], picked, 'opened with the picked address itself, not Uri.file of a path')
     assert.match(readFileSync(log, 'utf8'), /-d archlinux --exec sh -c/, 'the manifest was looked for in the distro')
   } finally {
+    process.env.PATH = path
+  }
+})
+
+// --- Create, from a WSL window, writes the project in its distro (debt ck8, task ck8.2)
+//
+// Found on 2026-10-30: Create from a WSL window checked and wrote the bare Linux
+// path on the Windows disk (C:\\home\\...), and opened Uri.file of it. Driven
+// through the built bundle's Create command in a WSL-shaped window, with the
+// picker returning a vscode-remote address and a wsl.exe on PATH that runs the
+// distro's script here and logs it. The test runs in a scratch directory, so a
+// write made with the mangled path lands there and is seen.
+
+test('Create from a WSL window writes through the distro and opens the picked address', async () => {
+  const linux = join(mkdtempSync(join(tmpdir(), 'wsl-create-')), 'new-project')
+  const bin = mkdtempSync(join(tmpdir(), 'fake-wsl-'))
+  const log = join(bin, 'calls')
+  writeFileSync(join(bin, 'wsl.exe'), ['#!/bin/sh', `printf '%s\\n' "$*" >> '${log}'`, 'shift 3', 'exec "$@"'].join('\n'), { mode: 0o755 })
+  const scratch = mkdtempSync(join(tmpdir(), 'wsl-create-cwd-'))
+  const path = process.env.PATH
+  const cwd = process.cwd()
+  process.env.PATH = `${bin}:${path ?? ''}`
+  process.chdir(scratch)
+  try {
+    const fsPath = linux.replace(/\//g, '\\')
+    const picked = { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: linux, fsPath, toString: () => `vscode-remote://wsl+archlinux${linux}` }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const calls: unknown[][] = []
+    await stubEditor(scratch, undefined, [], [], {
+      remoteName: 'wsl',
+      folderUri: { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: '/home/heftier/another', fsPath: '\\home\\heftier\\another' },
+      registered, calls, openDialog: [picked], defaults: true,
+    })
+    await registered.get('jvsl.agentContainer.create')!()
+    const open = calls.find((c) => c[0] === 'vscode.openFolder')
+    assert.ok(open, JSON.stringify(calls))
+    assert.equal(open[1], picked, 'opened with the picked address itself')
+    assert.match(readFileSync(log, 'utf8'), /-d archlinux --exec sh -c mkdir -p/, 'the scaffold went through the distro')
+    assert.ok(existsSync(join(linux, '.agent-container.stack.json')), 'and is where the distro put it')
+    assert.deepEqual(readdirSync(scratch), [], 'nothing was written with the Windows reading of the path')
+  } finally {
+    process.chdir(cwd)
+    process.env.PATH = path
+  }
+})
+
+test('Create from a WSL window refuses a distro folder that already holds something', async () => {
+  const linux = mkdtempSync(join(tmpdir(), 'wsl-occupied-'))
+  writeFileSync(join(linux, 'README.md'), 'mine\n')
+  const bin = mkdtempSync(join(tmpdir(), 'fake-wsl-'))
+  writeFileSync(join(bin, 'wsl.exe'), ['#!/bin/sh', 'shift 3', 'exec "$@"'].join('\n'), { mode: 0o755 })
+  // In a scratch directory, so a write made with the Windows reading of the path lands there.
+  const scratch = mkdtempSync(join(tmpdir(), 'wsl-occupied-cwd-'))
+  const path = process.env.PATH
+  const cwd = process.cwd()
+  process.env.PATH = `${bin}:${path ?? ''}`
+  process.chdir(scratch)
+  try {
+    const picked = { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: linux, fsPath: linux.replace(/\//g, '\\'), toString: () => `vscode-remote://wsl+archlinux${linux}` }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const calls: unknown[][] = []
+    const messages: string[] = []
+    await stubEditor(linux, undefined, [], messages, {
+      remoteName: 'wsl',
+      folderUri: { scheme: 'vscode-remote', authority: 'wsl+archlinux', path: '/home/heftier/another', fsPath: '\\home\\heftier\\another' },
+      registered, calls, openDialog: [picked], defaults: true,
+    })
+    await registered.get('jvsl.agentContainer.create')!()
+    assert.equal(calls.some((c) => c[0] === 'vscode.openFolder'), false, 'nothing opened')
+    assert.ok(messages.some((m) => m.includes('README.md')), JSON.stringify(messages))
+    assert.deepEqual(readdirSync(scratch), [], 'nothing was written with the Windows reading of the path')
+  } finally {
+    process.chdir(cwd)
     process.env.PATH = path
   }
 })

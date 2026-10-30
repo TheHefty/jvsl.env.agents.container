@@ -1,12 +1,13 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { carried } from '../build/template.ts'
 import { askAnswers } from '../configure/command.ts'
 import { stacksAvailable } from '../configure/questions.ts'
-import { decideCreate, type Applied } from './create.ts'
-import { checkLocation } from './location.ts'
+import { filesFor } from '../host/files.ts'
+import { pickedProject } from '../host/locate.ts'
+import { apply } from './apply.ts'
+import { decideCreate } from './create.ts'
+import { checkLocation, checkLocationIn } from './location.ts'
 import { scaffoldPlan } from './scaffold.ts'
 
 /**
@@ -35,10 +36,20 @@ export async function create(
     openLabel: 'Create the Project Here',
     title: 'An empty directory, or one that does not exist yet',
   })
-  const root = picked?.[0]?.fsPath
-  if (root === undefined) return
+  // **The picked address, kept whole** (debt ck8): from a WSL window it names a
+  // folder in the distro, and its fsPath alone names one on the Windows disk.
+  const uri = picked?.[0]
+  if (uri === undefined) return
+  const project = pickedProject(uri)
+  if (project.kind === 'none') {
+    write([`create: refused — ${project.reason}`])
+    void vscode.window.showWarningMessage(`Create: ${project.reason}.`)
+    return
+  }
+  const root = project.path
+  const files = filesFor(project)
 
-  const location = checkLocation(root)
+  const location = project.kind === 'host' ? checkLocation(root) : checkLocationIn(files, root)
   if (!location.usable) {
     write([`create: refused — ${location.because ?? 'the location will not do'}`])
     void vscode.window.showWarningMessage(location.because ?? 'That location will not do.')
@@ -57,7 +68,7 @@ export async function create(
   }
   const answers = { ...asked, location: root, aiMemory: await askAiMemory() }
   const plan = scaffoldPlan({ root, assetsDir: carried(extensionPath, 'assets', 'project'), answers })
-  const applied = plan.refused === undefined ? apply(root, plan.writes, write) : undefined
+  const applied = plan.refused === undefined ? apply(files, plan.writes, write) : undefined
   const decision = decideCreate({ plan, applied })
 
   write([`create: ${decision.message}`])
@@ -72,28 +83,9 @@ export async function create(
   // The new window prepares the project because this asked: activation alone
   // writes nothing (story opening-a-folder-writes-nothing).
   await handOver(root)
-  await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), {
+  await vscode.commands.executeCommand('vscode.openFolder', uri, {
     forceNewWindow: vscode.workspace.workspaceFolders !== undefined,
   })
-}
-
-/** Applies a plan, reporting both halves rather than throwing on the first failure. */
-export function apply(root: string, writes: { path: string; contents: string }[],
-               write: (lines: string[]) => void): Applied {
-  const written: string[] = []
-  const failed: string[] = []
-  for (const w of writes) {
-    try {
-      const target = join(root, w.path)
-      mkdirSync(dirname(target), { recursive: true })
-      writeFileSync(target, w.contents, 'utf8')
-      written.push(w.path)
-    } catch (error) {
-      write([`create: could not write ${w.path}: ${String(error)}`])
-      failed.push(w.path)
-    }
-  }
-  return { written, failed }
 }
 
 export async function askAiMemory(): Promise<boolean> {

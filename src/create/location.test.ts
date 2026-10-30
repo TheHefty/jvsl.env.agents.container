@@ -65,3 +65,30 @@ test('the ai-memory marker says what it switches on', () => {
   assert.ok(m.split('\n').filter((l) => l.startsWith('#')).length >= 3, m)
   assert.match(m, /off in a project that does not carry|not carry this file/i)
 })
+
+// --- a location in a WSL distro is checked there (debt ck8, task ck8.2)
+//
+// Found on 2026-10-30: Create, run from a window connected to WSL, checked the
+// bare Linux path on the Windows disk, and wrote the project to C:\home\....
+// A WSL location is looked at through the distro's files.
+
+import { checkLocationIn } from './location.ts'
+
+const seen = (exists: boolean, entries: string[] | null) => ({ exists: () => exists, list: () => entries })
+
+test('a WSL location that is not there yet, or is empty, will do', () => {
+  assert.equal(checkLocationIn(seen(false, null), '\\\\wsl.localhost\\archlinux\\home\\x').usable, true)
+  assert.equal(checkLocationIn(seen(true, []), '\\\\wsl.localhost\\archlinux\\home\\x').usable, true)
+})
+
+test('a WSL directory that holds something is refused, naming what the distro listed', () => {
+  const c = checkLocationIn(seen(true, ['README.md', 'src']), '\\\\wsl.localhost\\archlinux\\home\\x')
+  assert.equal(c.usable, false)
+  assert.match(c.because ?? '', /README\.md, src/)
+})
+
+test('a WSL path that is a file is refused for being one', () => {
+  const c = checkLocationIn(seen(true, null), '\\\\wsl.localhost\\archlinux\\home\\x')
+  assert.equal(c.usable, false)
+  assert.match(c.because ?? '', /is a file/)
+})
