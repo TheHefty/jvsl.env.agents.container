@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
+import { hiddenClosed } from './board-filter.ts'
 import { CSP, boardPage, messagePage } from './board-page.ts'
 import type { Item } from './board-read.ts'
 
@@ -69,10 +70,13 @@ test('nothing on the page offers to change the tracker', () => {
   const html = boardPage({ nonce: NONCE, items: [item({})], rendered: new Map() })
   const sent = [...html.matchAll(/postMessage\(\{\s*type:\s*'([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual([...new Set(sent)].sort(), ['refresh'])
-  // No form and no textarea; the one input is the backlog's keyword search,
-  // which filters the page and writes nothing.
+  // No form and no textarea. The inputs are the backlog's keyword search and,
+  // since story nmf.1, the "Show closed" checkbox: both filter the page and
+  // write nothing, and they are named here one by one, so any other input fails.
   assert.ok(!/<(form|textarea)\b/.test(html))
-  for (const input of html.match(/<input\b[^>]*>/g) ?? []) assert.match(input, /type="search"/)
+  for (const input of html.match(/<input\b[^>]*>/g) ?? []) {
+    assert.match(input, /type="search"|type="checkbox" id="show-closed"/, input)
+  }
 })
 
 test('a page that only says something carries the same policy', () => {
@@ -199,14 +203,21 @@ test('the page runs the same filter and sort the tests prove', () => {
   const embedded = script.slice(0, script.indexOf('// -- page --'))
   // const declarations do not become properties of a vm context, so the
   // embedded source is asked to hand both functions back.
-  const ctx = vm.runInContext(`${embedded}; ({ visibleIds, orderedIds })`, vm.createContext({})) as {
+  const ctx = vm.runInContext(`${embedded}; ({ visibleIds, orderedIds, hiddenClosed })`, vm.createContext({})) as {
     visibleIds: typeof visibleIds
     orderedIds: typeof orderedIds
+    hiddenClosed: typeof hiddenClosed
   }
-  const rows = tree.map((i) => ({ id: i.id, parent: i.parent, type: 'x', state: 'Open', tags: [], title: i.title }))
+  const rows = tree.map((i, n) => ({ id: i.id, parent: i.parent, type: 'x', state: n % 2 === 0 ? 'Open' : 'Closed', tags: [], title: i.title }))
+  const f = { text: 'task', type: '', state: '', tag: '', showClosed: false }
   assert.deepEqual([...ctx.orderedIds(rows, 'title', 'desc')], orderedIds(rows, 'title', 'desc'))
-  assert.deepEqual([...ctx.visibleIds(rows, { text: 'task', type: '', state: '', tag: '' }).shown],
-    [...visibleIds(rows, { text: 'task', type: '', state: '', tag: '' }).shown])
+  assert.deepEqual([...ctx.visibleIds(rows, f).shown], [...visibleIds(rows, f).shown])
+  // Flat rows, so no closed one is an open one's context: the count is not 0,
+  // and a page that counted differently could not agree with it by chance.
+  const flat = rows.map((x) => ({ ...x, parent: undefined }))
+  const all = { ...f, text: '' }
+  assert.ok(hiddenClosed(flat, all) > 0, 'the fixture hides something')
+  assert.equal(ctx.hiddenClosed(flat, all), hiddenClosed(flat, all))
 })
 
 test('every form is inside one dialog, opened over the view and closed with a button', () => {
@@ -216,4 +227,36 @@ test('every form is inside one dialog, opened over the view and closed with a bu
   for (const id of ['e-1', 's-1', 't-1']) assert.ok(dialog.includes(`data-detail="${id}"`), id)
   assert.ok(dialog.includes('id="close-detail"'))
   assert.ok(html.includes('showModal()') && html.includes('.close()'))
+})
+
+// --- closed work stays out of the way (story nmf.1, task nmf.1.1)
+
+test('one "Show closed" toggle, off, serves the board and the backlog', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const nav = html.slice(html.indexOf('<nav>'), html.indexOf('</nav>'))
+  assert.match(nav, /<input type="checkbox" id="show-closed"(?![^>]*checked)[^>]*>/)
+  assert.match(nav, /Show closed/)
+})
+
+test('each view has a place to say how many closed items are hidden', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  for (const view of ['board', 'backlog']) {
+    const at = html.indexOf(`data-view="${view}"`)
+    const next = html.indexOf('data-view=', at + 1)
+    const part = html.slice(at, next === -1 ? undefined : next)
+    assert.match(part, /class="hidden-closed"/, `${view} has no hidden count`)
+  }
+})
+
+test("the board's Closed column is the one the toggle hides", () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  assert.match(html, /<div class="column" data-column="closed"/)
+})
+
+test('the page applies the toggle when it loads, not only when an input changes', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /showClosed: field\('show-closed'\)\.checked/)
+  assert.match(script, /\nrelayout\(\);\n/, 'relayout runs once on load')
+  assert.match(script, /field\('show-closed'\)\.addEventListener\('change'/)
 })

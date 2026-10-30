@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { orderedIds, visibleIds, type FilterRow } from './board-filter.ts'
+import { hiddenClosed, orderedIds, visibleIds, type FilterRow } from './board-filter.ts'
 
 const r = (id: string, parent: string | undefined, o: Partial<FilterRow> = {}): FilterRow => ({
   id, parent, type: 'Task', state: 'Open', tags: [], title: id, ...o,
@@ -16,7 +16,9 @@ const ROWS: FilterRow[] = [
   r('s2', 'e1', { type: 'User Story', title: 'Another', state: 'Proposal', tags: ['Proposal'] }),
   r('o1', undefined, { type: 'Bug', title: 'Orphan <script>', tags: ['hotfix'] }),
 ]
-const NONE = { text: '', type: '', state: '', tag: '' }
+// The tests below were written before closed items were hidden: they keep their
+// meaning with the toggle on. The ones after them hold the default, off.
+const NONE = { text: '', type: '', state: '', tag: '', showClosed: true }
 
 test('with no filter everything is shown and nothing is context', () => {
   const v = visibleIds(ROWS, NONE)
@@ -83,3 +85,55 @@ test('the functions are self-contained, so the page can run the same source', ()
   assert.deepEqual(again(ROWS, 'id', 'asc'), orderedIds(ROWS, 'id', 'asc'))
 })
 /* eslint-enable @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call */
+
+// --- closed work stays out of the way (story nmf.1, task nmf.1.1)
+//
+// On 2026-10-30, 210 of this tracker's 233 items were closed, and they filled
+// the board's Closed column and the backlog.
+
+const HIDE = { ...NONE, showClosed: false }
+// e2 (closed) > s3 (closed) > t3 (open);  e2 > t4 (closed)
+const LIVE: FilterRow[] = [
+  ...ROWS,
+  r('e2', undefined, { type: 'Epic', title: 'Finished epic', state: 'Closed' }),
+  r('s3', 'e2', { type: 'User Story', title: 'Finished story', state: 'Closed' }),
+  r('t3', 's3', { title: 'A task still open' }),
+  r('t4', 'e2', { title: 'Closed alpha', state: 'Closed' }),
+]
+
+test('closed items are hidden by default', () => {
+  const v = visibleIds(LIVE, HIDE)
+  assert.equal(v.shown.has('t1'), false)
+  assert.equal(v.shown.has('t4'), false)
+  assert.ok(v.shown.has('t2') && v.shown.has('o1'))
+})
+
+test('and shown when the developer asks for them', () => {
+  const v = visibleIds(LIVE, { ...HIDE, showClosed: true })
+  assert.ok(v.shown.has('t1') && v.shown.has('t4'))
+})
+
+test('an open item under a closed parent stays, with its closed ancestors as context', () => {
+  const v = visibleIds(LIVE, HIDE)
+  assert.ok(v.shown.has('t3'))
+  assert.ok(v.shown.has('s3') && v.context.has('s3'), 'the closed story is shown above it, dimmed')
+  assert.ok(v.shown.has('e2') && v.context.has('e2'))
+})
+
+test('the hidden count is what the toggle alone hides', () => {
+  // t1, e2, s3, t4 are closed; e2 and s3 are shown anyway, as context.
+  assert.equal(hiddenClosed(LIVE, HIDE), 2)
+  // Under a text filter it counts only the closed rows that filter would show.
+  assert.equal(hiddenClosed(LIVE, { ...HIDE, text: 'alpha' }), 1)
+  // Matches only: an ancestor brought in as context is not something the toggle hid.
+  const matched = (f: typeof HIDE) => { const v = visibleIds(LIVE, f); return [...v.shown].filter((id) => !v.context.has(id)).length }
+  assert.equal(matched({ ...HIDE, text: 'alpha', showClosed: true }) - matched({ ...HIDE, text: 'alpha' }), 1,
+    'it agrees with the matches turning the toggle on adds')
+  assert.equal(hiddenClosed(LIVE, { ...HIDE, showClosed: true }), 0)
+})
+
+test('an explicit State: Closed shows closed items with the toggle off', () => {
+  const v = visibleIds(LIVE, { ...HIDE, state: 'Closed' })
+  assert.ok(v.shown.has('t1') && v.shown.has('t4'))
+  assert.equal(hiddenClosed(LIVE, { ...HIDE, state: 'Closed' }), 0)
+})
