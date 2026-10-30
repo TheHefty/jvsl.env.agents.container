@@ -1,4 +1,4 @@
-import { columns, type Item } from './board-read.ts'
+import { byPriority, columns, type Item } from './board-read.ts'
 
 /**
  * The board's three views (story nmf.2, the-board-switches-between-views):
@@ -63,6 +63,13 @@ const STORY_COLUMNS = [
 ] as const
 
 export function boardView(items: readonly Item[], view: ViewName): BoardView {
+  const v = unordered(items, view)
+  // Within each column, by priority (story nmf.3).
+  for (const lane of v.lanes) for (const c of lane.columns) c.items = byPriority(c.items, (i) => i)
+  return v
+}
+
+function unordered(items: readonly Item[], view: ViewName): BoardView {
   if (view === 'all') {
     return { name: view, lanes: [{ key: '', title: '', closed: false, columns: columns(items) }] }
   }
@@ -88,15 +95,7 @@ export function boardView(items: readonly Item[], view: ViewName): BoardView {
   // Stories by epic: the same buckets as refine-candidates. An agreed task is
   // open and neither deferred nor proposed; a done one is closed and not
   // rejected. board-view.test.ts runs the real script on the same export.
-  const tasks = items.filter((i) => i.type === 'task')
-  const openUnder = new Set(tasks.filter((t) => t.status !== 'closed' && !isProposal(t)).map((t) => t.parent))
-  const doneUnder = new Set(tasks.filter((t) => t.status === 'closed' && !isRejected(t)).map((t) => t.parent))
-  const columnOf = (s: Item): string => {
-    if (s.status === 'closed') return 'done'
-    if (openUnder.has(s.id)) return 'in_development'
-    if (doneUnder.has(s.id)) return 'awaiting_verification'
-    return 'no_task'
-  }
+  const columnOf = storyBucket(items)
   const stories = items.filter((i) => isStoryLike(i) && !isProposal(i))
   const byId = new Map(items.map((i) => [i.id, i]))
   const epicOf = (s: Item): string => {
@@ -115,4 +114,48 @@ export function boardView(items: readonly Item[], view: ViewName): BoardView {
     name: view,
     lanes: [...epics.map((e) => lane(e.id, e.title, e.status === 'closed')), lane('', 'No epic', false)],
   }
+}
+
+/**
+ * The bucket refine-candidates puts a story or debt in. An agreed task is open
+ * and neither deferred nor proposed; a done one is closed and not rejected.
+ */
+function storyBucket(items: readonly Item[]): (s: Item) => string {
+  const tasks = items.filter((i) => i.type === 'task')
+  const openUnder = new Set(tasks.filter((t) => t.status !== 'closed' && !isProposal(t)).map((t) => t.parent))
+  const doneUnder = new Set(tasks.filter((t) => t.status === 'closed' && !isRejected(t)).map((t) => t.parent))
+  return (s) => {
+    if (s.status === 'closed') return 'done'
+    if (openUnder.has(s.id)) return 'in_development'
+    if (doneUnder.has(s.id)) return 'awaiting_verification'
+    return 'no_task'
+  }
+}
+
+export interface ChainMark {
+  /** A story or debt whose tasks are done and none open, as refinement's agenda lists it. */
+  awaitingVerification?: true
+  /** A task the planning can pick, as planning-brief's Ready lists it. */
+  ready?: true
+  /** A ready task with no done criterion, which the brief marks so the planning asks for one. */
+  noCriterion?: true
+}
+
+/**
+ * Where each item stands in the chain (story nmf.3), by the ceremonies' own
+ * rules: board-view.test.ts runs planning-brief and refine-candidates on the
+ * same export and requires the same ids.
+ */
+export function chainMarks(items: readonly Item[]): Map<string, ChainMark> {
+  const bucket = storyBucket(items)
+  const closed = new Set(items.filter((i) => i.status === 'closed').map((i) => i.id))
+  const marks = new Map<string, ChainMark>()
+  for (const i of items) {
+    if (isProposal(i) || i.labels.includes('journal')) continue
+    if (isStoryLike(i) && bucket(i) === 'awaiting_verification') marks.set(i.id, { awaitingVerification: true })
+    if (i.type === 'task' && i.status === 'open' && !i.blockedBy.some((id) => !closed.has(id))) {
+      marks.set(i.id, { ready: true, ...((i.acceptance ?? '') === '' ? { noCriterion: true as const } : {}) })
+    }
+  }
+  return marks
 }

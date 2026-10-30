@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { hiddenClosed, orderedIds, visibleIds, type FilterRow } from './board-filter.ts'
 
 const r = (id: string, parent: string | undefined, o: Partial<FilterRow> = {}): FilterRow => ({
-  id, parent, type: 'Task', state: 'Open', tags: [], title: id, ...o,
+  id, parent, type: 'Task', state: 'Open', tags: [], title: id, priority: '', ...o,
 })
 
 // e1 > s1 > (t1, t2);  e1 > s2;  orphan o1
@@ -136,4 +136,15 @@ test('an explicit State: Closed shows closed items with the toggle off', () => {
   const v = visibleIds(LIVE, { ...HIDE, state: 'Closed' })
   assert.ok(v.shown.has('t1') && v.shown.has('t4'))
   assert.equal(hiddenClosed(LIVE, { ...HIDE, state: 'Closed' }), 0)
+})
+
+test('sorting by priority puts unset last, and keeps each child under its parent (story nmf.3)', () => {
+  const rows = [
+    r('e', undefined, { priority: '2' }),
+    r('a', 'e', { priority: '' }),
+    r('b', 'e', { priority: '0' }),
+    r('c', 'e', { priority: '3' }),
+    r('c1', 'c', { priority: '1' }),
+  ]
+  assert.deepEqual(orderedIds(rows, 'priority', 'asc'), ['e', 'b', 'c', 'c1', 'a'])
 })

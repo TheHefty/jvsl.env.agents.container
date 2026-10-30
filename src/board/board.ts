@@ -14,7 +14,9 @@ import type { Docker } from '../host/docker.ts'
 import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
+import { filesFor } from '../host/files.ts'
 import { onBoardMessage, rememberedView, VIEW_KEY } from './board-message.ts'
+import { originUrl } from './pr-link.ts'
 import { readTracker } from './tracker.ts'
 import type { Item } from './board-read.ts'
 
@@ -85,7 +87,17 @@ async function render(
   const { rendered, notice } = await renderAll(items)
   write([`board: ${items.length} item(s) read from ${read.container}`])
   const view = rememberedView(memory.get(VIEW_KEY))
-  target.webview.html = boardPage({ nonce, items, rendered, view, ...(notice === undefined ? {} : { notice }) })
+  // The origin a task's PR link is built from (story nmf.3), read through the
+  // project's own files. A project that cannot be read shows the number only.
+  let remote: string | undefined
+  try {
+    remote = originUrl(filesFor(project).read('.git/config'))
+  } catch (error) {
+    write([`board: the project's origin could not be read, so pull requests show as numbers: ${String(error)}`])
+  }
+  target.webview.html = boardPage({
+    nonce, items, rendered, view, ...(remote === undefined ? {} : { remote }), ...(notice === undefined ? {} : { notice }),
+  })
 }
 
 /**

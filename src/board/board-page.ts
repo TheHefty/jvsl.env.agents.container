@@ -14,7 +14,8 @@
  */
 import { hiddenClosed, orderedIds, visibleIds } from './board-filter.ts'
 import { backlogRows, typeLook, type Item } from './board-read.ts'
-import { boardView, VIEWS, type ViewName } from './board-view.ts'
+import { boardView, chainMarks, VIEWS, type ChainMark, type ViewName } from './board-view.ts'
+import { prLink } from './pr-link.ts'
 
 export interface Rendered {
   description?: string
@@ -47,6 +48,10 @@ nav button { background: none; border: 1px solid var(--vscode-panel-border); pad
 nav button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 nav .spacer { flex: 1; }
 .lane { margin-bottom: 14px; }
+.mark, .prio { font-size: 0.75em; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 0 4px; margin-right: 4px; }
+.mark.warn { border-color: var(--vscode-editorWarning-foreground, #cca700); }
+.card-wrap { display: grid; }
+.pr { font-size: 0.8em; margin: 2px 0 6px 6px; }
 .lane > h3 { margin: 4px 0 6px; font-size: 1em; }
 .views button[aria-pressed="true"] { font-weight: bold; }
 .columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 10px; overflow-x: auto; }
@@ -116,7 +121,8 @@ document.getElementById('refresh').addEventListener('click', () => vscode.postMe
 const tbody = document.querySelector('table.backlog tbody');
 const rows = [...document.querySelectorAll('tr[data-row]')];
 const data = rows.map((r) => ({ id: r.dataset.row, parent: r.dataset.parent || undefined, type: r.dataset.type,
-  state: r.dataset.state, tags: r.dataset.tags ? r.dataset.tags.split('\\u001f') : [], title: r.dataset.title }));
+  state: r.dataset.state, tags: r.dataset.tags ? r.dataset.tags.split('\\u001f') : [], title: r.dataset.title,
+  priority: r.dataset.priority || '' }));
 const field = (id) => document.getElementById(id);
 const filter = () => ({ text: field('f-text').value, type: field('f-type').value, state: field('f-state').value, tag: field('f-tag').value,
   showClosed: field('show-closed').checked });
@@ -220,13 +226,39 @@ const KNOWN_TYPES = ['epic', 'feature', 'task', 'bug']
 const typeClass = (item: Item) => `type-${KNOWN_TYPES.includes(item.type) ? item.type : 'other'}`
 const MAX_DEPTH = 6
 
-function card(item: Item): string {
-  const proposed = isProposal(item) ? ' proposed' : ''
-  return `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">${head(item)}` +
-    `<span class="title">${escape(item.title)}</span><span class="meta">${escape(stateOf(item))}</span>${tags(item)}</button>`
+/** What every card and row is drawn with: the chain's marks and the remote PR links point at. */
+interface Context {
+  marks: ReadonlyMap<string, ChainMark>
+  remote: string | undefined
 }
 
-function backlog(items: readonly Item[]): string {
+/** Where the item stands in the chain (story nmf.3), and its priority. */
+function marks(item: Item, ctx: Context): string {
+  const m = ctx.marks.get(item.id)
+  return (m?.awaitingVerification ? '<span class="mark">Awaiting verification</span>' : '') +
+    (m?.ready ? '<span class="mark">Ready</span>' : '') +
+    (m?.noCriterion ? '<span class="mark warn">no done criterion</span>' : '') +
+    (item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`)
+}
+
+/** The task's pull request, outside any button: an anchor inside one is invalid and would open the dialog. */
+function pr(item: Item, ctx: Context): string {
+  const link = prLink(ctx.remote, item.metadata?.['pr'])
+  if (link === undefined) return ''
+  return link.href === undefined
+    ? `<span class="pr">${escape(link.text)}</span>`
+    : `<a class="pr" href="${escape(link.href)}">${escape(link.text)}</a>`
+}
+
+function card(item: Item, ctx: Context): string {
+  const proposed = isProposal(item) ? ' proposed' : ''
+  const button = `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">${head(item)}` +
+    `<span class="title">${escape(item.title)}</span><span class="meta">${escape(stateOf(item))}</span>${marks(item, ctx)}${tags(item)}</button>`
+  const link = pr(item, ctx)
+  return link === '' ? button : `<div class="card-wrap">${button}${link}</div>`
+}
+
+function backlog(items: readonly Item[], ctx: Context): string {
   const body = backlogRows(items)
     .map(({ item, depth, hasChildren }) => {
       const toggle = hasChildren
@@ -235,11 +267,12 @@ function backlog(items: readonly Item[]): string {
       const shownTags = [...(isProposal(item) ? ['Proposal'] : []), ...item.labels.filter((l) => l !== 'proposed')]
       return `<tr data-row="${escape(item.id)}" data-parent="${escape(item.parent ?? '')}" ` +
         `data-type="${escape(typeLook(item.type).name)}" data-state="${escape(stateOf(item))}" ` +
-        `data-tags="${escape(shownTags.join('\u001f'))}" data-title="${escape(item.title)}">` +
+        `data-tags="${escape(shownTags.join('\u001f'))}" data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">` +
         `<td>${escape(item.id)}</td>` +
         `<td class="title-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}">${toggle}` +
-        `<button class="link" data-open="${escape(item.id)}"><span class="type">${escape(typeLook(item.type).name)}</span>${escape(item.title)}</button></td>` +
-        `<td>${escape(stateOf(item))}</td><td>${tags(item)}</td></tr>`
+        `<button class="link" data-open="${escape(item.id)}"><span class="type">${escape(typeLook(item.type).name)}</span>${escape(item.title)}</button>` +
+        `${marks({ ...item, priority: undefined }, ctx)}${pr(item, ctx)}</td>` +
+        `<td>${item.priority === undefined ? '' : `P${item.priority}`}</td><td>${escape(stateOf(item))}</td><td>${tags(item)}</td></tr>`
     })
     .join('')
   const options = (values: Iterable<string>) =>
@@ -252,8 +285,8 @@ function backlog(items: readonly Item[]): string {
     '</div>'
   const th = (key: string, label: string) => `<th data-sort="${key}" aria-sort="none">${label}</th>`
   return filters + '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
-    `<table class="backlog"><thead><tr>${th('id', 'ID')}${th('title', 'Title')}${th('state', 'State')}${th('tags', 'Tags')}</tr></thead>` +
-    `<tbody>${body}<tr id="no-match" hidden><td colspan="4">No items match this filter.</td></tr></tbody></table>`
+    `<table class="backlog"><thead><tr>${th('id', 'ID')}${th('title', 'Title')}${th('priority', 'Priority')}${th('state', 'State')}${th('tags', 'Tags')}</tr></thead>` +
+    `<tbody>${body}<tr id="no-match" hidden><td colspan="5">No items match this filter.</td></tr></tbody></table>`
 }
 
 const FIELDS: ReadonlyArray<{ key: keyof Rendered; title: string }> = [
@@ -295,8 +328,11 @@ export function boardPage(input: {
   notice?: string
   /** The board view to open on (story nmf.2); All items when not given. */
   view?: ViewName
+  /** The project's origin remote, which a task's PR link is built from (story nmf.3). */
+  remote?: string
 }): string {
   const { nonce, items, rendered, notice } = input
+  const ctx: Context = { marks: chainMarks(items), remote: input.remote }
   const active = input.view ?? 'all'
   const picker = '<p class="views">' + VIEWS
     .map((v) => `<button data-board-view="${v.name}" aria-pressed="${v.name === active}">${escape(v.title)}</button>`)
@@ -304,7 +340,7 @@ export function boardPage(input: {
   const board = picker + VIEWS.map(({ name }) => {
     const lanes = boardView(items, name).lanes.map((lane) => {
       const cols = lane.columns
-        .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map(card).join('')}</div>`)
+        .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map((i) => card(i, ctx)).join('')}</div>`)
         .join('')
       return lane.title === ''
         ? `<div class="columns">${cols}</div>`
@@ -324,7 +360,7 @@ export function boardPage(input: {
     '<button id="refresh">Read again</button>',
     '</nav>',
     `<div data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
-    `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items)}</div>`,
+    `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items, ctx)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
       `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
   ].join('\n')

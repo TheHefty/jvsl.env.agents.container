@@ -110,3 +110,23 @@ test('the backlog lists every item exactly once, depth first, orphans at the top
     [['p-1', 0, true], ['p-1.1', 1, true], ['p-1.1.1', 2, false], ['p-1.1.2', 2, false], ['p-1.1.3', 0, false]],
   )
 })
+
+test('priority is read, and absent or null is unset (story nmf.3)', () => {
+  const items = parseExport([
+    JSON.stringify({ _type: 'issue', id: 'a', status: 'open', issue_type: 'task', priority: 0 }),
+    JSON.stringify({ _type: 'issue', id: 'b', status: 'open', issue_type: 'task', priority: null }),
+    JSON.stringify({ _type: 'issue', id: 'c', status: 'open', issue_type: 'task' }),
+  ].join('\n'))
+  assert.deepEqual(items.map((i) => i.priority), [0, undefined, undefined])
+})
+
+test('the backlog puts siblings in priority order, every child still under its parent', () => {
+  const rows = backlogRows(parseExport([
+    JSON.stringify({ _type: 'issue', id: 'e', status: 'open', issue_type: 'epic', priority: 2 }),
+    JSON.stringify({ _type: 'issue', id: 's-low', status: 'open', issue_type: 'feature', priority: 3, dependencies: [{ depends_on_id: 'e', type: 'parent-child' }] }),
+    JSON.stringify({ _type: 'issue', id: 't-under-low', status: 'open', issue_type: 'task', priority: 0, dependencies: [{ depends_on_id: 's-low', type: 'parent-child' }] }),
+    JSON.stringify({ _type: 'issue', id: 's-unset', status: 'open', issue_type: 'feature', dependencies: [{ depends_on_id: 'e', type: 'parent-child' }] }),
+    JSON.stringify({ _type: 'issue', id: 's-high', status: 'open', issue_type: 'feature', priority: 1, dependencies: [{ depends_on_id: 'e', type: 'parent-child' }] }),
+  ].join('\n')))
+  assert.deepEqual(rows.map((r) => `${r.depth}:${r.item.id}`), ['0:e', '1:s-high', '1:s-low', '2:t-under-low', '1:s-unset'])
+})

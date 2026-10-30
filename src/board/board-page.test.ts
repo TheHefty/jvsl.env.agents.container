@@ -209,7 +209,7 @@ test('the page runs the same filter and sort the tests prove', () => {
     orderedIds: typeof orderedIds
     hiddenClosed: typeof hiddenClosed
   }
-  const rows = tree.map((i, n) => ({ id: i.id, parent: i.parent, type: 'x', state: n % 2 === 0 ? 'Open' : 'Closed', tags: [], title: i.title }))
+  const rows = tree.map((i, n) => ({ id: i.id, parent: i.parent, type: 'x', state: n % 2 === 0 ? 'Open' : 'Closed', tags: [], title: i.title, priority: '' }))
   const f = { text: 'task', type: '', state: '', tag: '', showClosed: false }
   assert.deepEqual([...ctx.orderedIds(rows, 'title', 'desc')], orderedIds(rows, 'title', 'desc'))
   assert.deepEqual([...ctx.visibleIds(rows, f).shown], [...visibleIds(rows, f).shown])
@@ -304,4 +304,41 @@ test('choosing a view tells the extension, and the Done columns follow Show clos
   const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
   assert.match(script, /vscode\.postMessage\(\{ type: 'view', view: /)
   assert.match(script, /\[data-column="done"\]/)
+})
+
+// --- where each item is in the chain (story nmf.3, task nmf.3.1)
+
+const chain: Item[] = [
+  item({ id: 's-v', title: 'Built story', type: 'feature', priority: 1 }),
+  item({ id: 't-v', title: 'Done task', type: 'task', parent: 's-v', status: 'closed', closeReason: 'Merged in #9' }),
+  item({ id: 't-r', title: 'Pickable', type: 'task', acceptance: 'done when x', priority: 2, metadata: { pr: 278 } }),
+  item({ id: 't-n', title: 'No criterion', type: 'task' }),
+]
+
+test('cards and rows carry their place in the chain', () => {
+  const html = boardPage({ nonce: NONCE, items: chain, rendered: new Map(), view: 'all' })
+  const card = (id: string) => html.slice(html.indexOf(`data-open="${id}"`), html.indexOf('</button>', html.indexOf(`data-open="${id}"`)))
+  assert.match(card('s-v'), /<span class="mark">Awaiting verification<\/span>/)
+  assert.match(card('t-r'), /<span class="mark">Ready<\/span>/)
+  assert.match(card('t-n'), /<span class="mark">Ready<\/span><span class="mark warn">no done criterion<\/span>/)
+  assert.match(card('t-r'), /<span class="prio">P2<\/span>/)
+})
+
+test('a task\'s pull request is a link beside its card, never inside the button', () => {
+  const html = boardPage({ nonce: NONCE, items: chain, rendered: new Map(), view: 'all', remote: 'git@github.com:TheHefty/x.git' })
+  assert.match(html, /<\/button><a class="pr" href="https:\/\/github\.com\/TheHefty\/x\/pull\/278">#278<\/a>/)
+  for (const b of html.match(/<button\b[^]*?<\/button>/g) ?? []) assert.doesNotMatch(b, /<a\b/, 'an anchor inside a button')
+})
+
+test('with a remote that is not GitHub the number is shown as text', () => {
+  const html = boardPage({ nonce: NONCE, items: chain, rendered: new Map(), view: 'all', remote: 'https://gitlab.com/a/b.git' })
+  assert.match(html, /<span class="pr">#278<\/span>/)
+  assert.doesNotMatch(html, /<a class="pr"/)
+})
+
+test('the backlog has a Priority column, and sorts by it', () => {
+  const html = boardPage({ nonce: NONCE, items: chain, rendered: new Map() })
+  assert.match(html, /<th data-sort="priority" aria-sort="none">Priority<\/th>/)
+  assert.match(html, /data-row="t-r"[^>]*data-priority="2"/)
+  assert.match(html, /data-row="t-n"[^>]*data-priority=""/)
 })
