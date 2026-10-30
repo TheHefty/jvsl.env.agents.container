@@ -5,7 +5,8 @@ import { carried } from '../build/template.ts'
 import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
-import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, versionsOf, type Answers } from './questions.ts'
+import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, switchAnswer, switchChoices, versionsOf, type Answers } from './questions.ts'
+import { applySwitches, MEMORY_MARKER } from './switches.ts'
 import { findGradleBuildsFor } from '../build/gradle.ts'
 import { filesFor } from '../host/files.ts'
 import { dockerFor } from '../host/docker.ts'
@@ -100,7 +101,10 @@ export async function configure(
   }
 
   const selectedNow = available.filter((name) => name in current)
-  const answers = await askAnswers(stacksDir, available, current)
+  const answers = await askAnswers(stacksDir, available, current, {
+    beads: current['beads'] === true,
+    aiMemory: files.exists(MEMORY_MARKER),
+  })
   if (answers === undefined) return { wrote: false, root, stacks: [] }
   const picked = Object.keys(answers.stacks)
 
@@ -117,6 +121,12 @@ export async function configure(
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
     `  stacks after:  ${picked.join(' ') || '(none)'}`,
   ])
+  try {
+    applySwitches(files, answers, write)
+  } catch (error) {
+    write([`configure: ai-memory's marker could not be changed: ${String(error)}`])
+    void vscode.window.showErrorMessage(`Could not change ${MEMORY_MARKER}: ${String(error)}`)
+  }
   if (location !== undefined) await regenerate(location, extensionVersion, write)
 
   // **Confirming builds, even when nothing changed.** `docker build` against an
@@ -245,6 +255,8 @@ export async function askAnswers(
   stacksDir: string,
   available: string[],
   current: Record<string, unknown>,
+  /** Where the project's switches are now, so each question starts there (story d27.1). */
+  now: { beads: boolean; aiMemory: boolean } = { beads: current['beads'] === true, aiMemory: false },
 ): Promise<Answers | undefined> {
   const picked = await vscode.window.showQuickPick(available, {
     canPickMany: true,
@@ -283,6 +295,18 @@ export async function askAnswers(
   const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
   if (cpus === undefined) return undefined
 
+  // The project's switches, asked like the rest, starting where it is (story d27.1).
+  const beads = switchAnswer(await vscode.window.showQuickPick(switchChoices(now.beads), {
+    title: 'Does this project use the work tracker (beads)?',
+    placeHolder: 'Its board, ceremonies and journal. Off keeps any .beads/ as it is.',
+  }))
+  if (beads === undefined) return undefined
+  const aiMemory = switchAnswer(await vscode.window.showQuickPick(switchChoices(now.aiMemory), {
+    title: 'Should this project record what the agent was told (ai-memory)?',
+    placeHolder: 'Captured to disk, on this machine, per project. Off keeps the store it has.',
+  }))
+  if (aiMemory === undefined) return undefined
+
   const answers: Answers = {
     stacks,
     limits: {
@@ -290,6 +314,8 @@ export async function askAnswers(
       ...(swap ? { memorySwap: swap } : {}),
       ...(cpus ? { cpus: Number(cpus) } : {}),
     },
+    beads,
+    aiMemory,
   }
 
   return answers

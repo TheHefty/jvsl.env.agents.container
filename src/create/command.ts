@@ -66,7 +66,7 @@ export async function create(
     write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
     return
   }
-  const answers = { ...asked, location: root, aiMemory: await askAiMemory() }
+  const answers = { ...asked, location: root }
   const plan = scaffoldPlan({ root, assetsDir: carried(extensionPath, 'assets', 'project'), answers })
   const applied = plan.refused === undefined ? apply(files, plan.writes, write) : undefined
   const decision = decideCreate({ plan, applied })
@@ -88,10 +88,3 @@ export async function create(
   })
 }
 
-export async function askAiMemory(): Promise<boolean> {
-  const answer = await vscode.window.showQuickPick(['No', 'Yes'], {
-    title: 'Should this project record what the agent was told?',
-    placeHolder: 'ai-memory: off unless asked for. Captured to disk, on this machine, per project.',
-  })
-  return answer === 'Yes'
-}

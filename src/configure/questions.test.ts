@@ -227,3 +227,30 @@ test('configuring stacks and limits keeps the project\'s packages exactly as the
   const next = nextManifest(current, answers, ['java', 'node', 'rust'])
   assert.deepEqual(next.packages, ['libsdl2-dev', 'tree'])
 })
+
+// --- beads and ai-memory are asked (story d27.1, task d27.1.1)
+
+import { nextManifest as next, switchChoices, switchAnswer } from './questions.ts'
+
+const LIMITS = { memory: '4g' }
+
+test('a yes to beads writes "beads": true, a no removes it', () => {
+  assert.equal(next({}, { stacks: {}, limits: LIMITS, beads: true }, [])['beads'], true)
+  assert.equal('beads' in next({ beads: true }, { stacks: {}, limits: LIMITS, beads: false }, []), false)
+})
+
+test('no beads answer keeps what the project had, so a skipped question loses nothing', () => {
+  assert.equal(next({ beads: true }, { stacks: {}, limits: LIMITS }, [])['beads'], true)
+  assert.equal('beads' in next({}, { stacks: {}, limits: LIMITS }, []), false)
+})
+
+test('the choices start where the project is, marked so', () => {
+  assert.deepEqual(switchChoices(true), ['Yes (as it is)', 'No'])
+  assert.deepEqual(switchChoices(false), ['No (as it is)', 'Yes'])
+  for (const on of [true, false]) {
+    const [first, other] = switchChoices(on)
+    assert.equal(switchAnswer(first), on, 'the first choice keeps the project as it is')
+    assert.equal(switchAnswer(other), !on)
+  }
+  assert.equal(switchAnswer(undefined), undefined, 'Escape is no answer')
+})
