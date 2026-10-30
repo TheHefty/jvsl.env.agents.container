@@ -18,7 +18,11 @@ const ROWS: FilterRow[] = [
 ]
 // The tests below were written before closed items were hidden: they keep their
 // meaning with the toggle on. The ones after them hold the default, off.
-const NONE = { text: '', type: '', state: '', tag: '', showClosed: true }
+// A field with nothing chosen keeps everything; inc and exc choose values.
+const ANY = { include: [] as string[], exclude: [] as string[], all: false }
+const inc = (...v: string[]) => ({ ...ANY, include: v })
+const exc = (...v: string[]) => ({ ...ANY, exclude: v })
+const NONE = { text: '', type: ANY, state: ANY, tag: ANY, showClosed: true }
 
 test('with no filter everything is shown and nothing is context', () => {
   const v = visibleIds(ROWS, NONE)
@@ -33,9 +37,9 @@ test('a match keeps every ancestor, and the ancestors that do not match are cont
 })
 
 test('type, state and tag filter, and all of them must hold', () => {
-  assert.deepEqual([...visibleIds(ROWS, { ...NONE, type: 'Bug' }).shown], ['o1'])
-  assert.deepEqual([...visibleIds(ROWS, { ...NONE, state: 'In progress' }).shown].sort(), ['e1', 's1', 't2'])
-  assert.deepEqual([...visibleIds(ROWS, { ...NONE, tag: 'defect', state: 'Open' }).shown], [])
+  assert.deepEqual([...visibleIds(ROWS, { ...NONE, type: inc('Bug') }).shown], ['o1'])
+  assert.deepEqual([...visibleIds(ROWS, { ...NONE, state: inc('In progress') }).shown].sort(), ['e1', 's1', 't2'])
+  assert.deepEqual([...visibleIds(ROWS, { ...NONE, tag: inc('defect'), state: inc('Open') }).shown], [])
 })
 
 test('the keyword matches the ID and the title, ignoring case, as text', () => {
@@ -133,9 +137,9 @@ test('the hidden count is what the toggle alone hides', () => {
 })
 
 test('an explicit State: Closed shows closed items with the toggle off', () => {
-  const v = visibleIds(LIVE, { ...HIDE, state: 'Closed' })
+  const v = visibleIds(LIVE, { ...HIDE, state: inc('Closed') })
   assert.ok(v.shown.has('t1') && v.shown.has('t4'))
-  assert.equal(hiddenClosed(LIVE, { ...HIDE, state: 'Closed' }), 0)
+  assert.equal(hiddenClosed(LIVE, { ...HIDE, state: inc('Closed') }), 0)
 })
 
 test('sorting by priority puts unset last, and keeps each child under its parent (story nmf.3)', () => {
@@ -147,4 +151,58 @@ test('sorting by priority puts unset last, and keeps each child under its parent
     r('c1', 'c', { priority: '1' }),
   ]
   assert.deepEqual(orderedIds(rows, 'priority', 'asc'), ['e', 'b', 'c', 'c1', 'a'])
+})
+
+// --- filters combine (story nmf.4, task nmf.4.1)
+
+// t-a has defect and hotfix; t-b only defect; s-x is Study; p-y is a Proposal.
+const MANY: FilterRow[] = [
+  r('t-a', undefined, { tags: ['defect', 'hotfix'] }),
+  r('t-b', undefined, { tags: ['defect'] }),
+  r('b-c', undefined, { type: 'Bug', tags: ['hotfix'] }),
+  r('s-x', undefined, { type: 'User Story', tags: ['study'] }),
+  r('p-y', undefined, { type: 'User Story', state: 'Proposal', tags: ['Proposal'] }),
+  r('e-z', undefined, { type: 'Epic' }),
+]
+const shown = (f: Partial<typeof NONE>) => [...visibleIds(MANY, { ...NONE, ...f }).shown].sort()
+
+test('a value can be excluded: every type except Bug', () => {
+  assert.deepEqual(shown({ type: exc('Bug') }), ['e-z', 'p-y', 's-x', 't-a', 't-b'])
+})
+
+test('several values of one field, any of them: study or Proposal', () => {
+  assert.deepEqual(shown({ tag: inc('study', 'Proposal') }), ['p-y', 's-x'])
+})
+
+test('several tags, all of them: defect and hotfix', () => {
+  assert.deepEqual(shown({ tag: { ...inc('defect', 'hotfix'), all: true } }), ['t-a'])
+  assert.deepEqual(shown({ tag: inc('defect', 'hotfix') }), ['b-c', 't-a', 't-b'], 'any of them, when all is off')
+})
+
+test('filters on different fields all apply: Task, and not defect', () => {
+  assert.deepEqual(shown({ type: inc('Task'), tag: exc('defect') }), [])
+  assert.deepEqual(shown({ type: inc('Bug', 'Task'), tag: exc('defect') }), ['b-c'])
+})
+
+test('an exclude wins over an include of the same value, and excluding everything shows nothing', () => {
+  assert.deepEqual(shown({ type: { include: ['Bug', 'Task'], exclude: ['Bug'], all: false } }), ['t-a', 't-b'])
+  assert.deepEqual(shown({ type: exc('Task', 'Bug', 'User Story', 'Epic') }), [])
+})
+
+test('all applies to tags only: type and state hold one value per item, and ignore it', () => {
+  assert.deepEqual(shown({ type: { ...inc('Bug', 'Task'), all: true } }), ['b-c', 't-a', 't-b'])
+  assert.deepEqual(shown({ state: { ...inc('Open', 'Proposal'), all: true } }), MANY.map((x) => x.id).sort())
+})
+
+test('an excluded parent still stands above a child that matches, as context', () => {
+  const v = visibleIds(ROWS, { ...NONE, type: exc('User Story', 'Epic') })
+  assert.ok(v.shown.has('t2') && v.context.has('s1') && v.context.has('e1'))
+})
+
+test('the hidden-closed count follows the same rules as what is shown', () => {
+  const rows = [...MANY, r('t-c', undefined, { state: 'Closed', tags: ['defect', 'hotfix'] }), r('t-d', undefined, { state: 'Closed', tags: ['defect'] })]
+  const f = { ...NONE, showClosed: false, tag: { ...inc('defect', 'hotfix'), all: true } }
+  assert.equal(hiddenClosed(rows, f), 1)
+  assert.equal(hiddenClosed(rows, { ...f, tag: exc('hotfix') }), 1)
+  assert.equal(hiddenClosed(rows, { ...f, state: inc('Closed') }), 0, 'an explicit Closed shows them')
 })

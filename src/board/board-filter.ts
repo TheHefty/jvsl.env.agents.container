@@ -21,13 +21,24 @@ export interface FilterRow {
   priority: string
 }
 
+/**
+ * One field of the filter (story nmf.4): a row passes when it has none of the
+ * excluded values and any of the included ones — all of them, for tags with
+ * `all` on. Nothing included means any. An exclude wins over an include.
+ */
+export interface FieldFilter {
+  include: string[]
+  exclude: string[]
+  /** Tags only: type and state hold one value per item, so they ignore it. */
+  all: boolean
+}
+
 export interface Filter {
   /** Matched against the ID and the title, ignoring case, as plain text. */
   text: string
-  /** '' means any. */
-  type: string
-  state: string
-  tag: string
+  type: FieldFilter
+  state: FieldFilter
+  tag: FieldFilter
   /**
    * Whether closed rows can match (story nmf.1). Off, a closed row is shown
    * only as context above an open one, or when the state filter names Closed.
@@ -43,12 +54,16 @@ export interface Filter {
 export function visibleIds(rows: readonly FilterRow[], filter: Filter): { shown: Set<string>; context: Set<string> } {
   const byId = new Map(rows.map((r) => [r.id, r]))
   const text = filter.text.trim().toLowerCase()
+  const passes = (values: string[], f: FieldFilter, many: boolean): boolean =>
+    !values.some((v) => f.exclude.includes(v)) &&
+    (f.include.length === 0 || (many && f.all ? f.include.every((v) => values.includes(v)) : f.include.some((v) => values.includes(v))))
+  const askedClosed = filter.state.include.includes('Closed') && !filter.state.exclude.includes('Closed')
   const matches = (r: FilterRow): boolean =>
     (text === '' || r.id.toLowerCase().includes(text) || r.title.toLowerCase().includes(text)) &&
-    (filter.type === '' || r.type === filter.type) &&
-    (filter.state === '' || r.state === filter.state) &&
-    (filter.tag === '' || r.tags.includes(filter.tag)) &&
-    (filter.showClosed || filter.state === 'Closed' || r.state !== 'Closed')
+    passes([r.type], filter.type, false) &&
+    passes([r.state], filter.state, false) &&
+    passes(r.tags, filter.tag, true) &&
+    (filter.showClosed || askedClosed || r.state !== 'Closed')
   const shown = new Set<string>()
   const context = new Set<string>()
   for (const r of rows) {
@@ -72,13 +87,16 @@ export function visibleIds(rows: readonly FilterRow[], filter: Filter): { shown:
  * for the same reason: the page runs this source.
  */
 export function hiddenClosed(rows: readonly FilterRow[], filter: Filter): number {
-  if (filter.showClosed || filter.state === 'Closed') return 0
+  if (filter.showClosed || (filter.state.include.includes('Closed') && !filter.state.exclude.includes('Closed'))) return 0
   const text = filter.text.trim().toLowerCase()
+  const passes = (values: string[], f: FieldFilter, many: boolean): boolean =>
+    !values.some((v) => f.exclude.includes(v)) &&
+    (f.include.length === 0 || (many && f.all ? f.include.every((v) => values.includes(v)) : f.include.some((v) => values.includes(v))))
   const matches = (r: FilterRow): boolean =>
     (text === '' || r.id.toLowerCase().includes(text) || r.title.toLowerCase().includes(text)) &&
-    (filter.type === '' || r.type === filter.type) &&
-    (filter.state === '' || r.state === filter.state) &&
-    (filter.tag === '' || r.tags.includes(filter.tag))
+    passes([r.type], filter.type, false) &&
+    passes([r.state], filter.state, false) &&
+    passes(r.tags, filter.tag, true)
   // A closed row above an open match is on screen anyway, as context: not hidden.
   const byId = new Map(rows.map((r) => [r.id, r]))
   const above = new Set<string>()
