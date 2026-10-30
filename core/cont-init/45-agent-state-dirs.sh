@@ -30,13 +30,29 @@ ROOT="${AGENT_STATE_ROOT:-/config}"
 # Not a loop over everything an agent might keep: each entry is a directory some
 # agent's own tooling expects to find and will not create for itself inside the
 # sandbox. Adding one is a decision, so they are written out.
-for dir in "$ROOT/.claude" "$ROOT/.codex"; do
-    # -p so an existing directory is left exactly as it is: this runs on every
-    # boot, and a credential already in there must not be disturbed.
-    mkdir -p "$dir"
-    # Not -R. A recursive chown here would walk agent credentials, shell history
-    # and whatever else has accumulated on every boot of every project — the
-    # cost 10-state-ownership.sh refuses for the same reason. The directory
-    # itself is what has to be writable by the user the container runs as.
+# OpenCode keeps its config under ~/.config/opencode and its login and sessions
+# under ~/.local/share/opencode (story
+# opencode-is-installed-and-runs-sandboxed-keeping-its-login).
+for dir in "$ROOT/.claude" "$ROOT/.codex" "$ROOT/.config/opencode" "$ROOT/.local/share/opencode"; do
+    # **Every directory created on the way is abc's, and only those.** mkdir -p
+    # as root would leave ~/.config or ~/.local root-owned, and every other tool
+    # that writes there would fail; one that already exists is somebody's, and
+    # is left exactly as it is. Walked from the root, one component at a time.
+    path="$ROOT"
+    rest="${dir#"$ROOT"/}"
+    IFS=/ read -ra parts <<<"$rest"
+    for part in "${parts[@]}"; do
+        path="$path/$part"
+        if [ ! -d "$path" ]; then
+            mkdir "$path"
+            # The agent's own directory is chowned below, on every boot.
+            [ "$path" = "$dir" ] || chown abc:abc "$path"
+        fi
+    done
+    # The agent's own directory is writable by the user the container runs as,
+    # on every boot, as it always was. Not -R: a recursive chown would walk agent
+    # credentials, shell history and whatever else has accumulated, on every
+    # boot of every project, the cost 10-state-ownership.sh refuses for the same
+    # reason.
     chown abc:abc "$dir"
 done
