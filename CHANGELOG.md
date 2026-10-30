@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.14.0...v1.14.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* Create, from a WSL window, writes the new project inside its distro and opens it there ([75ff3d1](https://github.com/TheHefty/jvsl.env.agents.container/commit/75ff3d117151f37e16ef38a8256bf94915b021ea))
+* on Windows, the extension turns off Dev Containers' Wayland mount so a project there opens ([068f68b](https://github.com/TheHefty/jvsl.env.agents.container/commit/068f68b83f10d33c333361899a8c6f0d350cd926))
+* Open, from a WSL window, keeps the chosen folder in its distro ([e8bed38](https://github.com/TheHefty/jvsl.env.agents.container/commit/e8bed387f1928f3fd335f38cc13b7ea69c285fe3))
+
 ## [1.14.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.13.0...v1.14.0) (2026-10-30)
 
 
