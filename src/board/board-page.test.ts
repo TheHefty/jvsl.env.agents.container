@@ -176,13 +176,13 @@ const tree = [
   item({ id: 't-1', type: 'task', title: 'Task <b>', parent: 's-1', status: 'closed' }),
 ]
 
-test('the backlog has a keyword box and type, state and tag filters built from the items present', () => {
+test('the filter bar has a keyword box and type, state and tag values built from the items present', () => {
   const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
   assert.match(html, /<input id="f-text" type="search"/)
-  for (const id of ['f-type', 'f-state', 'f-tag']) assert.ok(html.includes(`<select id="${id}"`), id)
-  assert.ok(html.includes('<option value="User Story">User Story</option>'))
-  assert.ok(html.includes('<option value="Closed">Closed</option>'))
-  assert.ok(html.includes('<option value="ux">ux</option>'))
+  const value = (field: string, v: string) => new RegExp(`data-field="${field}"[^]*?<button class="value" data-value="${v}" data-mode="">${v}</button>`)
+  assert.match(html, value('type', 'User Story'))
+  assert.match(html, value('state', 'Closed'))
+  assert.match(html, value('tag', 'ux'))
 })
 
 test('each backlog row carries what the filter reads, escaped', () => {
@@ -210,7 +210,8 @@ test('the page runs the same filter and sort the tests prove', () => {
     hiddenClosed: typeof hiddenClosed
   }
   const rows = tree.map((i, n) => ({ id: i.id, parent: i.parent, type: 'x', state: n % 2 === 0 ? 'Open' : 'Closed', tags: [], title: i.title, priority: '' }))
-  const f = { text: 'task', type: '', state: '', tag: '', showClosed: false }
+  const ANY = { include: [] as string[], exclude: [] as string[], all: false }
+  const f = { text: 'task', type: ANY, state: ANY, tag: ANY, showClosed: false }
   assert.deepEqual([...ctx.orderedIds(rows, 'title', 'desc')], orderedIds(rows, 'title', 'desc'))
   assert.deepEqual([...ctx.visibleIds(rows, f).shown], [...visibleIds(rows, f).shown])
   // Flat rows, so no closed one is an open one's context: the count is not 0,
@@ -341,4 +342,61 @@ test('the backlog has a Priority column, and sorts by it', () => {
   assert.match(html, /<th data-sort="priority" aria-sort="none">Priority<\/th>/)
   assert.match(html, /data-row="t-r"[^>]*data-priority="2"/)
   assert.match(html, /data-row="t-n"[^>]*data-priority=""/)
+})
+
+// --- filters combine (story nmf.4, task nmf.4.1)
+
+test('one filter bar stands above both tabs', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const bar = html.indexOf('<div class="filters">')
+  assert.ok(bar > html.indexOf('</nav>') && bar < html.indexOf('data-view="board"'), 'after the nav, before the views')
+  assert.equal(html.split('<div class="filters">').length - 1, 1, 'only one')
+})
+
+test('tags have an Any/All switch; type and state do not', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  assert.match(html, /<button id="tag-all" aria-pressed="false">All of<\/button>/)
+  assert.equal(html.split('All of</button>').length - 1, 1)
+})
+
+test('the board and the backlog keep the same items for the same filter', () => {
+  const items: Item[] = [
+    item({ id: 'e', type: 'epic', title: 'Epic' }),
+    item({ id: 'a', type: 'task', title: 'A', parent: 'e', labels: ['defect', 'hotfix'] }),
+    item({ id: 'b', type: 'task', title: 'B', parent: 'e', labels: ['defect'] }),
+    item({ id: 'c', type: 'bug', title: 'C', labels: ['hotfix', 'defect'], debtKind: 'defect' }),
+    item({ id: 'd', type: 'feature', title: 'D', parent: 'e', labels: ['study'] }),
+  ]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map(), view: 'all' })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`) + `<script nonce="${NONCE}">`.length, html.lastIndexOf('</script>'))
+  const ctx = vm.runInContext(`${script.slice(0, script.indexOf('// -- page --'))}; ({ visibleIds })`, vm.createContext({})) as { visibleIds: typeof visibleIds }
+  const attr = (tag: string, name: string) => (tag.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? '').replace(/&amp;/g, '&')
+  const rowsOf = (pattern: RegExp, idAttr: string, withParent: boolean) => (html.match(pattern) ?? []).map((t) => ({
+    id: attr(t, idAttr), parent: withParent ? attr(t, 'data-parent') || undefined : undefined,
+    type: attr(t, 'data-type'), state: attr(t, 'data-state'), title: attr(t, 'data-title'), priority: attr(t, 'data-priority'),
+    tags: attr(t, 'data-tags') === '' ? [] : attr(t, 'data-tags').split('\u001f'),
+  }))
+  const allBoard = html.slice(html.indexOf('<div data-board="all"'))
+  const cards = rowsOf(/<div class="card-wrap" data-card="[^"]*"[^>]*>/g, 'data-card', false)
+    .filter((c) => allBoard.includes(`data-card="${c.id}"`))
+  const rows = rowsOf(/<tr data-row="[^"]*"[^>]*>/g, 'data-row', true)
+  const ANY = { include: [] as string[], exclude: [] as string[], all: false }
+  for (const f of [
+    { text: '', type: { ...ANY, exclude: ['Bug'] }, state: ANY, tag: ANY, showClosed: true },
+    { text: '', type: ANY, state: ANY, tag: { include: ['defect', 'hotfix'], exclude: [], all: true }, showClosed: true },
+    { text: '', type: { ...ANY, include: ['Task'] }, state: ANY, tag: { ...ANY, exclude: ['hotfix'] }, showClosed: true },
+  ]) {
+    const board = [...ctx.visibleIds(cards, f).shown].sort()
+    const v = ctx.visibleIds(rows, f)
+    const backlog = [...v.shown].filter((id) => !v.context.has(id)).sort()
+    assert.deepEqual(board, backlog, JSON.stringify(f))
+    assert.deepEqual([...ctx.visibleIds(cards, f).context], [], 'no context on the board')
+  }
+})
+
+test('the page reads the value buttons, and filters the board\'s cards with the same function', () => {
+  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /\[data-field="' \+ name \+ '"\] \[data-value\]/)
+  assert.match(script, /visibleIds\(cardRows, f\)/)
 })

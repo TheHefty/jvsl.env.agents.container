@@ -48,6 +48,13 @@ nav button { background: none; border: 1px solid var(--vscode-panel-border); pad
 nav button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 nav .spacer { flex: 1; }
 .lane { margin-bottom: 14px; }
+.filters .field { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 12px 4px 0; }
+.filters .label { opacity: 0.75; margin-right: 2px; }
+.value[data-mode="include"] { outline: 2px solid var(--vscode-focusBorder); }
+.value[data-mode="include"]::before { content: "+ "; }
+.value[data-mode="exclude"] { text-decoration: line-through; opacity: 0.7; }
+.value[data-mode="exclude"]::before { content: "− "; }
+#tag-all[aria-pressed="true"] { font-weight: bold; }
 .mark, .prio { font-size: 0.75em; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 0 4px; margin-right: 4px; }
 .mark.warn { border-color: var(--vscode-editorWarning-foreground, #cca700); }
 .card-wrap { display: grid; }
@@ -124,14 +131,28 @@ const data = rows.map((r) => ({ id: r.dataset.row, parent: r.dataset.parent || u
   state: r.dataset.state, tags: r.dataset.tags ? r.dataset.tags.split('\\u001f') : [], title: r.dataset.title,
   priority: r.dataset.priority || '' }));
 const field = (id) => document.getElementById(id);
-const filter = () => ({ text: field('f-text').value, type: field('f-type').value, state: field('f-state').value, tag: field('f-tag').value,
+// Each field's value buttons: off, include, exclude (story nmf.4).
+const fieldOf = (name) => {
+  const f = { include: [], exclude: [], all: false };
+  document.querySelectorAll('[data-field="' + name + '"] [data-value]').forEach((b) => {
+    if (b.dataset.mode === 'include') f.include.push(b.dataset.value);
+    if (b.dataset.mode === 'exclude') f.exclude.push(b.dataset.value);
+  });
+  return f;
+};
+const filter = () => ({ text: field('f-text').value, type: fieldOf('type'), state: fieldOf('state'),
+  tag: { ...fieldOf('tag'), all: field('tag-all').getAttribute('aria-pressed') === 'true' },
   showClosed: field('show-closed').checked });
+const cardEls = [...document.querySelectorAll('[data-card]')];
+const cardRows = cardEls.map((c) => ({ id: c.dataset.card, parent: undefined, type: c.dataset.type, state: c.dataset.state,
+  tags: c.dataset.tags ? c.dataset.tags.split('\\u001f') : [], title: c.dataset.title, priority: c.dataset.priority || '' }));
 const expanded = (id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); return !t || t.getAttribute('aria-expanded') === 'true'; };
 const parentOf = new Map(data.map((d) => [d.id, d.parent]));
 const underCollapsed = (id) => { for (let p = parentOf.get(id); p; p = parentOf.get(p)) { if (!expanded(p)) return true; } return false; };
 const relayout = () => {
   const f = filter();
-  const active = f.text.trim() !== '' || f.type !== '' || f.state !== '' || f.tag !== '';
+  const chosen = (x) => x.include.length > 0 || x.exclude.length > 0;
+  const active = f.text.trim() !== '' || chosen(f.type) || chosen(f.state) || chosen(f.tag);
   const v = visibleIds(data, f);
   if (active) v.context.forEach((id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); if (t) t.setAttribute('aria-expanded', 'true'); });
   let any = false;
@@ -141,22 +162,31 @@ const relayout = () => {
     if (!hide) any = true;
   });
   field('no-match').hidden = any;
+  // The board's cards, by the same function (story nmf.4).
+  const onCards = visibleIds(cardRows, f);
+  cardEls.forEach((c) => { c.hidden = !onCards.shown.has(c.dataset.card); });
   // Closed work out of the way (story nmf.1): the board's Closed column follows
   // the toggle, and each view says how many closed items it is not showing.
   // Every view's done column (All items calls it Closed), and a lane whose
   // epic is closed once nothing open is left in it (story nmf.2).
   document.querySelectorAll('[data-column="closed"], [data-column="done"]').forEach((c) => { c.hidden = !f.showClosed; });
-  document.querySelectorAll('[data-lane-closed="true"]').forEach((l) => {
-    l.hidden = !f.showClosed && !l.querySelector('[data-column]:not([data-column="done"]) .card');
+  document.querySelectorAll('section.lane').forEach((l) => {
+    const open = l.querySelector('[data-column]:not([data-column="done"]) [data-card]:not([hidden])');
+    l.hidden = (l.dataset.laneClosed === 'true' && !f.showClosed && !open) || (active && !l.querySelector('[data-card]:not([hidden])'));
   });
   const say = (n) => n === 0 ? '' : n + ' closed ' + (n === 1 ? 'item' : 'items') + ' hidden. Turn on Show closed to see ' + (n === 1 ? 'it' : 'them') + '.';
   const shownBoard = document.querySelector('[data-board]:not([hidden])');
-  const onBoard = f.showClosed || !shownBoard ? 0 : shownBoard.querySelectorAll('[data-column="closed"] .card, [data-column="done"] .card').length;
+  const onBoard = !shownBoard ? 0 : hiddenClosed(cardRows.filter((r) => shownBoard.querySelector('[data-card="' + CSS.escape(r.id) + '"]')), f);
   document.querySelectorAll('[data-view="board"] .hidden-closed').forEach((p) => { p.textContent = say(onBoard); p.hidden = onBoard === 0; });
   const inBacklog = hiddenClosed(data, f);
   document.querySelectorAll('[data-view="backlog"] .hidden-closed').forEach((p) => { p.textContent = say(inBacklog); p.hidden = inBacklog === 0; });
 };
-['f-text', 'f-type', 'f-state', 'f-tag'].forEach((id) => field(id).addEventListener('input', relayout));
+field('f-text').addEventListener('input', relayout);
+const next = { '': 'include', include: 'exclude', exclude: '' };
+document.querySelectorAll('[data-value]').forEach((b) => b.addEventListener('click', () => { b.dataset.mode = next[b.dataset.mode || '']; relayout(); }));
+field('tag-all').addEventListener('click', () => {
+  field('tag-all').setAttribute('aria-pressed', String(field('tag-all').getAttribute('aria-pressed') !== 'true')); relayout();
+});
 field('show-closed').addEventListener('change', relayout);
 document.querySelectorAll('[data-board-view]').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('[data-board-view]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -254,8 +284,33 @@ function card(item: Item, ctx: Context): string {
   const proposed = isProposal(item) ? ' proposed' : ''
   const button = `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">${head(item)}` +
     `<span class="title">${escape(item.title)}</span><span class="meta">${escape(stateOf(item))}</span>${marks(item, ctx)}${tags(item)}</button>`
-  const link = pr(item, ctx)
-  return link === '' ? button : `<div class="card-wrap">${button}${link}</div>`
+  // The wrapper carries what the filter reads, as a backlog row does (story nmf.4).
+  return `<div class="card-wrap" data-card="${escape(item.id)}" data-type="${escape(typeLook(item.type).name)}" ` +
+    `data-state="${escape(stateOf(item))}" data-tags="${escape(shownTags(item).join('\u001f'))}" ` +
+    `data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">${button}${pr(item, ctx)}</div>`
+}
+
+/** The tags shown and filtered on: a proposal says so, and the stored label is not shown twice. */
+function shownTags(item: Item): string[] {
+  return [...(isProposal(item) ? ['Proposal'] : []), ...item.labels.filter((l) => l !== 'proposed')]
+}
+
+/**
+ * One filter for both tabs (story nmf.4): the keyword box, and each field's
+ * values as buttons that cycle off, include, exclude. Tags can require all of
+ * the included ones. Buttons, not inputs: they filter the page and send nothing.
+ */
+function filterBar(items: readonly Item[]): string {
+  const values = (name: string, label: string, list: Iterable<string>, extra = '') =>
+    `<div class="field" data-field="${name}"><span class="label">${label}</span>` +
+    [...new Set(list)].sort().map((v) => `<button class="value" data-value="${escape(v)}" data-mode="">${escape(v)}</button>`).join('') +
+    extra + '</div>'
+  return '<div class="filters">' +
+    '<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title">' +
+    values('type', 'Type', items.map((i) => typeLook(i.type).name)) +
+    values('state', 'State', items.map(stateOf)) +
+    values('tag', 'Tags', items.flatMap(shownTags), '<button id="tag-all" aria-pressed="false">All of</button>') +
+    '</div>'
 }
 
 function backlog(items: readonly Item[], ctx: Context): string {
@@ -264,10 +319,9 @@ function backlog(items: readonly Item[], ctx: Context): string {
       const toggle = hasChildren
         ? `<button class="toggle" data-toggle="${escape(item.id)}" aria-expanded="true" aria-label="Expand or collapse">▾</button>`
         : '<span class="toggle"></span>'
-      const shownTags = [...(isProposal(item) ? ['Proposal'] : []), ...item.labels.filter((l) => l !== 'proposed')]
       return `<tr data-row="${escape(item.id)}" data-parent="${escape(item.parent ?? '')}" ` +
         `data-type="${escape(typeLook(item.type).name)}" data-state="${escape(stateOf(item))}" ` +
-        `data-tags="${escape(shownTags.join('\u001f'))}" data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">` +
+        `data-tags="${escape(shownTags(item).join('\u001f'))}" data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">` +
         `<td>${escape(item.id)}</td>` +
         `<td class="title-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}">${toggle}` +
         `<button class="link" data-open="${escape(item.id)}"><span class="type">${escape(typeLook(item.type).name)}</span>${escape(item.title)}</button>` +
@@ -275,16 +329,8 @@ function backlog(items: readonly Item[], ctx: Context): string {
         `<td>${item.priority === undefined ? '' : `P${item.priority}`}</td><td>${escape(stateOf(item))}</td><td>${tags(item)}</td></tr>`
     })
     .join('')
-  const options = (values: Iterable<string>) =>
-    [...new Set(values)].sort().map((v) => `<option value="${escape(v)}">${escape(v)}</option>`).join('')
-  const filters = '<div class="filters">' +
-    '<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title">' +
-    `<select id="f-type" aria-label="Type"><option value="">Any type</option>${options(items.map((i) => typeLook(i.type).name))}</select>` +
-    `<select id="f-state" aria-label="State"><option value="">Any state</option>${options(items.map(stateOf))}</select>` +
-    `<select id="f-tag" aria-label="Tag"><option value="">Any tag</option>${options(items.flatMap((i) => [...(isProposal(i) ? ['Proposal'] : []), ...i.labels.filter((l) => l !== 'proposed')]))}</select>` +
-    '</div>'
   const th = (key: string, label: string) => `<th data-sort="${key}" aria-sort="none">${label}</th>`
-  return filters + '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
+  return '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
     `<table class="backlog"><thead><tr>${th('id', 'ID')}${th('title', 'Title')}${th('priority', 'Priority')}${th('state', 'State')}${th('tags', 'Tags')}</tr></thead>` +
     `<tbody>${body}<tr id="no-match" hidden><td colspan="5">No items match this filter.</td></tr></tbody></table>`
 }
@@ -359,6 +405,7 @@ export function boardPage(input: {
     '<span class="spacer"></span>',
     '<button id="refresh">Read again</button>',
     '</nav>',
+    filterBar(items),
     `<div data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
     `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items, ctx)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
