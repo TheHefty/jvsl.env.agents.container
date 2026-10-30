@@ -14,6 +14,22 @@ export interface LocationCheck {
   because?: string
 }
 
+/**
+ * The same check for a location in a WSL distro (debt ck8), through the
+ * project's own files: the distro's `list` answers null for a path that is not
+ * a directory, and `exists` tells a file from nothing. Create from a WSL window
+ * used to look at the bare Linux path on the Windows disk instead.
+ */
+export function checkLocationIn(files: { exists(rel: string): boolean; list(rel: string): string[] | null }, shown: string): LocationCheck {
+  const entries = files.list('.')
+  if (entries === null) {
+    return files.exists('.')
+      ? { usable: false, because: `${shown} is a file. A project needs a directory of its own — give a path that does not exist yet and it will be created.` }
+      : { usable: true }
+  }
+  return occupied(shown, entries)
+}
+
 export function checkLocation(path: string): LocationCheck {
   let entries: string[]
   try {
@@ -33,6 +49,10 @@ export function checkLocation(path: string): LocationCheck {
     return { usable: true }
   }
 
+  return occupied(path, entries)
+}
+
+function occupied(path: string, entries: readonly string[]): LocationCheck {
   if (entries.length > 0) {
     // **Named rather than counted.** "3 entries" tells somebody nothing about
     // whether they chose the wrong directory or the right one twice.
