@@ -57,3 +57,27 @@ test('a folder with no manifest is asked about rather than refused', () => {
   // And it must not read as a defect in the extension.
   assert.doesNotMatch(d.because ?? '', /error|failed|broken/i)
 })
+
+// --- the manifest is looked for first (debt y6w, task y6w.1)
+//
+// Found on 2026-10-30: Open on the window's own folder, which had no
+// .agent-container.stack.json, prepared it without asking the questions that
+// write one, because the own-folder check came first.
+
+test('the window\'s own folder without a manifest is configured here, not prepared without one', () => {
+  const d = decidePick({ ...base, chosen: '/work/a-project', currentFolder: '/work/a-project', hasManifest: false })
+  assert.equal(d.action, 'configure')
+  assert.equal(d.action === 'configure' && d.here, true, 'and prepared in this window afterwards')
+  assert.equal(d.action === 'configure' && d.newWindow, false)
+})
+
+test('another folder without a manifest is configured and then opened, as before', () => {
+  const d = decidePick({ ...base, chosen: '/work/other', currentFolder: '/work/a-project', hasManifest: false })
+  assert.equal(d.action, 'configure')
+  assert.equal(d.action === 'configure' && d.here, false)
+  assert.equal(d.action === 'configure' && d.newWindow, true)
+})
+
+test('the window\'s own folder with its manifest is still prepared here', () => {
+  assert.equal(decidePick({ ...base, chosen: '/work/a-project', currentFolder: '/work/a-project', hasManifest: true }).action, 'prepare')
+})

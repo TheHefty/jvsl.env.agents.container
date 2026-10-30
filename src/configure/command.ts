@@ -202,6 +202,13 @@ export async function pick(
       void vscode.window.showInformationMessage(outcome.message)
       return
     }
+    // The window's own folder is prepared where it is, as 'prepare' does: never
+    // handed over to a second window onto the same folder (debt y6w).
+    if (decision.here) {
+      write(["open: this window's folder, configured and prepared here"])
+      await vscode.commands.executeCommand(OPEN)
+      return
+    }
     // **Falls through to opening the folder it just configured.** The third
     // failure scenario is the one where nothing fails: asking five questions,
     // writing the file, and then appearing to forget.

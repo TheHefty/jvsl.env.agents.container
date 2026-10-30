@@ -39,7 +39,11 @@ export type PickDecision =
    * is not open.** `configure` read the workspace and told somebody to open a
    * project first, which is exactly what they were trying to do.
    */
-  | { action: 'configure'; folder: string; newWindow: boolean; because: string }
+  | {
+      action: 'configure'; folder: string; newWindow: boolean; because: string
+      /** The window's own folder: prepared here once configured, never opened again (debt y6w). */
+      here: boolean
+    }
   | { action: 'refuse'; because: string }
 
 /** Trailing slashes: a dialog and a workspace folder disagree about them. */
@@ -53,17 +57,19 @@ export function decidePick(pick: Pick): PickDecision {
   // anything about it is the extension telling them off for using it.
   if (pick.chosen === undefined) return { action: 'nothing' }
 
-  if (pick.currentFolder !== undefined && same(pick.chosen, pick.currentFolder)) {
-    return { action: 'prepare' }
-  }
+  const here = pick.currentFolder !== undefined && same(pick.chosen, pick.currentFolder)
 
+  // **The manifest first** (debt y6w): the window's own folder with none used to
+  // be prepared here without the questions that write one.
   if (!pick.hasManifest) {
     return {
       action: 'configure',
       folder: pick.chosen,
+      here,
       // The same rule as opening: a window with a folder in it is somebody's
-      // work, and configuring first does not change that.
-      newWindow: pick.currentFolder !== undefined,
+      // work, and configuring first does not change that. Its own folder is
+      // prepared where it is.
+      newWindow: pick.currentFolder !== undefined && !here,
       because:
         `${pick.chosen} has no \`${MANIFEST}\` yet, so the questions that write one ` +
         `are asked about it now. The folder is named here because the questions themselves do ` +
@@ -71,6 +77,8 @@ export function decidePick(pick: Pick): PickDecision {
         `the only record of what that project selected.`,
     }
   }
+
+  if (here) return { action: 'prepare' }
 
   // **A new window whenever this one has a folder.** `openFolder` defaults to
   // replacing the current window, and an unsaved editor in an unrelated project
