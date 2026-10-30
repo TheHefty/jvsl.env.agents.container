@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.14.1...v1.15.0) (2026-10-30)
+
+
+### Features
+
+* Open and Create ask whether the project uses beads and ai-memory ([6f2b216](https://github.com/TheHefty/jvsl.env.agents.container/commit/6f2b216a09e204de9795daf36056844d005690f8))
+
+
+### Bug Fixes
+
+* Open on the window's own folder asks for its manifest instead of preparing without one ([d5b3a06](https://github.com/TheHefty/jvsl.env.agents.container/commit/d5b3a06f018ffa1d23e49ce11bb90cb1da9345da))
+
 ## [1.14.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.14.0...v1.14.1) (2026-10-30)
 
 
