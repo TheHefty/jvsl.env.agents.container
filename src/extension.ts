@@ -60,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath, extensionVersion(context), handOver)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath, extensionVersion(context))),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
-    vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerFor, write)),
+    vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerFor, write, context.workspaceState)),
     vscode.commands.registerCommand(MIGRATE, () => migrate(write, () => channel.show(true))),
     // The Study view (story the-study-view): read-only, and the topic page's
     // one write is an attempt, through the project's own files.
