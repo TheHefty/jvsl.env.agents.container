@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.15.0...v1.16.0) (2026-10-30)
+
+
+### Features
+
+* OpenCode runs in the container, sandboxed like Claude and Codex ([49c317a](https://github.com/TheHefty/jvsl.env.agents.container/commit/49c317aba07dbfb8ec1b932cb7e1053f3b35a1a0))
+
 ## [1.15.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.14.1...v1.15.0) (2026-10-30)
 
 
