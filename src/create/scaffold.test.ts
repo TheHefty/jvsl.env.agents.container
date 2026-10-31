@@ -57,6 +57,17 @@ test('the ai-memory marker is absent unless asked for', () => {
   assert.match(marker.contents, /project_strategy/)
 })
 
+test('the developer-global journal destination is not scaffolded into a project', () => {
+  const plan = scaffoldPlan({
+    ...base,
+    answers: { ...base.answers, beads: true, journalRepository: 'TheHefty/journal' },
+  })
+  assert.ok(!plan.writes.some((write) => /journal\.json|journalRepository/.test(write.path + write.contents)))
+  const manifest = plan.writes.find((write) => write.path === MANIFEST)
+  assert.ok(manifest)
+  assert.doesNotMatch(manifest.contents, /journalRepository|TheHefty\/journal/)
+})
+
 test('the instruction files come from the assets, not from this repository', () => {
   const plan = scaffoldPlan(base)
   const claude = plan.writes.find((w) => w.path === 'CLAUDE.md')

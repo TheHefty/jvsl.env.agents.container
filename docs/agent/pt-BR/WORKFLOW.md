@@ -157,10 +157,12 @@ que já foi acordado.
 
 ## Releases
 
-O release-please corta releases incrementalmente a partir dos conventional commits conforme eles
-entram — veja "Versionamento e releases" no panorama do próprio template para a mecânica. O épico
-não segura uma release: ele é a unidade de *planejamento* e a frase do changelog, não um gate de
-merge. O único gate mecânico num merge é a CI — um build vermelho barra e nada mais barra.
+O release-please só roda quando o desenvolvedor o dispara em `master`; merges comuns não o iniciam.
+O primeiro disparo abre ou atualiza o PR de release; depois que esse PR é mesclado, dispare-o outra
+vez para publicar a tag e a release do GitHub. Veja "Versionamento e releases" no panorama do
+próprio template para a mecânica. O épico não segura uma release: ele é a unidade de *planejamento*
+e a frase do changelog, não um gate de merge. O único gate mecânico num merge é a CI — um build
+vermelho barra e nada mais barra.
 
 A release que termina um épico é a que vale nomear: é o ponto em que a frase do épico virou verdade,
 e tudo antes dela naquele épico é um incremento em direção a isso.

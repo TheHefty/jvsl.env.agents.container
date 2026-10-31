@@ -33,7 +33,7 @@ export type PickDecision =
   | { action: 'prepare' }
   | { action: 'open'; folder: string; newWindow: boolean; because?: string }
   /**
-   * Ask the five questions about this folder, then carry on.
+   * Ask the shared setup questions about this folder, then carry on.
    *
    * **This was a refusal until the questions could be asked about a folder that
    * is not open.** `configure` read the workspace and told somebody to open a

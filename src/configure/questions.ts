@@ -46,6 +46,8 @@ export interface Answers {
    * and the manifest keeps what it had.
    */
   beads?: boolean
+  /** The developer's shared journal repository; never a project manifest key. */
+  journalRepository?: string
 }
 
 /**
@@ -157,6 +159,8 @@ export function missingDependencies(
  * is also what keeps "a deselected stack disappears" true without any uninstall
  * logic.
  *
+ * `journalRepository` is intentionally ignored here: it belongs in the
+ * developer's `~/.claude/agent-container/journal.json`, not in this project.
  * `limits` is replaced whole rather than merged, because `setup` replaces it
  * whole: two shapes of the same field depending on which door the answer came
  * through is worse than either shape.

@@ -239,6 +239,17 @@ test('a yes to beads writes "beads": true, a no removes it', () => {
   assert.equal('beads' in next({ beads: true }, { stacks: {}, limits: LIMITS, beads: false }, []), false)
 })
 
+test('the developer-global journal repository is not written into the project manifest', () => {
+  const manifest = next({}, {
+    stacks: {},
+    limits: LIMITS,
+    beads: true,
+    journalRepository: 'TheHefty/journal',
+  }, [])
+  assert.deepEqual(manifest, { beads: true, limits: LIMITS })
+  assert.doesNotMatch(JSON.stringify(manifest), /TheHefty\/journal/)
+})
+
 test('no beads answer keeps what the project had, so a skipped question loses nothing', () => {
   assert.equal(next({ beads: true }, { stacks: {}, limits: LIMITS }, [])['beads'], true)
   assert.equal('beads' in next({}, { stacks: {}, limits: LIMITS }, []), false)

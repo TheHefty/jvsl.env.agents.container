@@ -198,10 +198,11 @@ pessoa depurando às três da manhã descobre por que parou.
 
 ### Commits e releases
 
-- **Conventional commits sustentam a estrutura, não são decoração.** Releases são cortadas pelo
-  release-please a partir do histórico: só `feat` e `fix` chegam ao changelog, e uma release só é
-  proposta quando um dos dois entra. Um `chore` que devia ser um `fix` é uma release que nunca
-  acontece.
+- **Conventional commits sustentam a estrutura, não são decoração.** Quando o desenvolvedor dispara
+  manualmente o release-please em `master`, ele lê o histórico: só `feat` e `fix` chegam ao changelog.
+  Merges comuns não o iniciam. O primeiro disparo abre ou atualiza o PR de release; depois que esse
+  PR é mesclado, um segundo disparo publica a tag e a release. Um `chore` que devia ser um `fix` é
+  uma release que nunca acontece.
 - **Uma mudança nos documentos normativos é `feat` ou `fix`, não `docs`.** Como esses arquivos vêm
   do template e chegam a um projeto por um bump, alterar uma regra altera como todo projeto que
   bumpar é trabalhado — isso é mudança de comportamento vestida de documento. `docs` fica para o que
@@ -232,9 +233,9 @@ pessoa depurando às três da manhã descobre por que parou.
   da primeira task de qualquer um deles. Trabalho encontrado no caminho também é planejado inteiro,
   antes do próprio código.
 - **O épico não segura uma release.** O release-please corta releases incrementalmente a partir dos
-  commits conforme eles entram; o épico é a frase do changelog e a unidade de planejamento, não um
-  gate de merge. O único gate mecânico num merge é a CI. A release que torna a frase de um épico
-  verdadeira é a que vale nomear.
+  commits quando o desenvolvedor pede que rode; o épico é a frase do changelog e a unidade de
+  planejamento, não um gate de merge. O único gate mecânico num merge é a CI. A release que torna a
+  frase de um épico verdadeira é a que vale nomear.
 
 ### O rastreador de trabalho
 
@@ -290,9 +291,11 @@ Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
   Aceitar exige as palavras dele, e a task fecha quando o seu pull request entra, não quando é aceita.
 - **A retro nunca é pulada.** Num dia curto ela é curta. A linha sobre o que foi aprendido é do
   desenvolvedor, nunca só sua, e "Decided alone" lista tudo o que você escolheu sem perguntar.
-- **O diário é do desenvolvedor, não do projeto.** A entrada da retro vai para um repositório privado
-  dele, nomeado em `~/.claude/agent-container/journal.json`, e nunca para o rastreador, que viaja com
-  o remoto do projeto. Onde ela espera até ser enviada está em [O dia de trabalho](WORKING-DAY.md).
+- **O diário é do desenvolvedor, não do projeto.** Create, Configure e Open perguntam pelo
+  repositório privado quando Beads está ligado e o salvam em
+  `~/.claude/agent-container/journal.json`, compartilhado entre projetos; num projeto WSL, escrevem
+  no home do usuário da distro. A entrada da retro vai para lá, nunca para o rastreador, que viaja
+  com o remoto do projeto. Onde ela espera até ser enviada está em [O dia de trabalho](WORKING-DAY.md).
 - **Registre o pull request de uma task quando o abrir**, com `bd update <id> --set-metadata pr=<n>`.
   O review o lê; nada mais liga a mudança à task.
 

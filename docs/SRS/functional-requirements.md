@@ -220,7 +220,9 @@ nothing else: no submodule, no `setup`, no second repository to bump.
   missing image.
 - **FR-90** — A new project is scaffolded into a directory the user chooses: the manifest, the
   instruction files of FR-83, and `.ai-memory.toml` when asked for. The questions are the ones
-  FR-61 already asks, plus `ai-memory` and the location.
+  FR-61 already asks, plus Beads, `ai-memory`, the location, and the developer's private journal
+  repository when Beads is on (FR-131). The journal destination is saved in the developer's home,
+  never in the new project.
 - **FR-91** — Scaffolding initialises git and commits once, **and only into a directory that is
   empty or not already a repository.** Anything else is somebody's work: it refuses and names what
   it found. The same rule as FR-83, for the same reason.
@@ -315,9 +317,10 @@ manual hand-off is accepted rather than designed around.
   state of work. Both tools ship a memory, so the boundary is written down rather than left to
   whichever one the agent reaches for first — two stores of the same kind of thing is how both become
   untrustworthy.
-- **FR-108** — The create-project flow asks about Beads exactly as it asks about `ai-memory`, and
-  writes the marker of FR-101 when asked. The one moment somebody is deciding what a project *is* is
-  the right moment to ask.
+- **FR-108** — Create, Configure and Open's configuration flow ask whether the project uses Beads and
+  `ai-memory`, and write their switches as FR-101 specifies. The one moment somebody is deciding
+  what a project *is* is the right moment to ask. The developer-global journal destination is asked
+  only for a Beads-enabled project, as FR-131 specifies.
 - **FR-109** — **A guard fails when an epic, story, task or debt survives as markdown under `docs/`,
   or when a status appears in a document that stays.** Debts joined on 2026-10-07, when FR-117 moved
   them into the tracker. The folders `docs/PLANNING/` and `docs/DEBTS/` stay, holding only a
@@ -491,4 +494,10 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   for a record naming its own folder from the last two minutes, and consumes the record either way.
   Found on 2026-10-15: `code <folder>` wrote `.devcontainer`, `CLAUDE.md` and `AGENTS.md` into
   projects nobody had asked to prepare. Follows FR-88: a project is opened from the extension.
-
+- **FR-131** — **A beads-enabled setup asks where the developer's private journal lives.** Create,
+  Configure and Open's configuration flow prefill the developer-global repository from
+  `~/.claude/agent-container/journal.json`, accept a GitHub repository URL or `owner/repo`, and save
+  the normalized `owner/repo` there. An empty answer removes the repository setting so entries use
+  the outbox. Local projects write to this machine's home; WSL projects write through the distro to
+  the home the container binds. The link never enters the project's manifest or files. The journal
+  writer still refuses to send entries to a public repository.
