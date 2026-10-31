@@ -9,8 +9,14 @@ Guidance for Claude Code working in this repository.
 
 - **The mode is Pair Programming Mode.** The agent drives, the user navigates. It governs every
   session until somebody says otherwise.
-- **The documentation language is English**, including commit messages. Change this line if that is
-  wrong for this project, and it stops being true the moment you do.
+- **The documentation language is English**, including commit messages.
+
+They are standing answers once initialization is done, and defaults before it: while this file still
+carries the line pointing at `/opt/jvsl/docs/agent/en/INITIALIZATION.md`, the mode and the language
+are two of initialization's questions — ask the developer to confirm or change each rather than
+treating these lines as decided, and record the confirmed answers here in their place. When that line
+is deleted, the two above are standing answers: they govern every session until somebody says
+otherwise, and neither is re-asked every session.
 
 ## Where the rules are
 
