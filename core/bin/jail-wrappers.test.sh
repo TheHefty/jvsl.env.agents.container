@@ -91,6 +91,25 @@ done
 check "codex is handed the same one" \
     "$(argv codex -u RUSTUP_HOME | head -n "$n")" "$common"
 
+# The skills are image-owned. A read-only map is deliberately narrower than
+# --agent-state: it exposes only ~/.agents/skills, never the rest of ~/.agents.
+map_skills="$(bash -c 'set -euo pipefail; source "$1"; for ((i=0; i<${#JAIL_COMMON_ARGS[@]}; i++)); do if [[ "${JAIL_COMMON_ARGS[i]}" == --map && "${JAIL_COMMON_ARGS[i+1]:-}" == /config/.agents/skills ]]; then printf yes; fi; done' _ "$COMMON")"
+check "the shared image skills root is mapped read-only" "$map_skills" "yes"
+
+# A symlink at either component would make this read-only map expose a path the
+# image did not create. Refuse to build any wrapper argv in that case.
+mkdir -p "$work/skills-outside"
+ln -s "$work/skills-outside" "$work/skills-parent"
+if symlinked_map="$(AGENT_SKILLS_ROOT="$work/skills-parent/skills" \
+    bash -c 'set -euo pipefail; source "$1"; echo loaded' _ "$COMMON" 2>&1)"; then
+    symlinked_map_rc=0
+else
+    symlinked_map_rc=$?
+fi
+check "a symlinked parent is rejected before it is mapped" "$symlinked_map_rc" "1"
+check "the refusal names the unexpected skills path" \
+    "$(printf '%s' "$symlinked_map" | grep -c 'refused: .*symlink' || true)" "1"
+
 # The prefix alone does not catch the drift it was written for: a flag added to
 # one wrapper *after* the shared list leaves the prefix intact and sails
 # through. Found by adding --no-landlock to claude.sh and watching this file
@@ -170,9 +189,11 @@ for key in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY; d
 done
 check "opencode is handed its own re-entry marker" \
     "$(argv opencode | count '^OPENCODE_JAILED=1$')" "1"
+# A version query makes the real CLI return when present in the test image;
+# otherwise an unmarked wrapper would enter an interactive TUI and hang here.
 check "and the marker short-circuits to the real CLI" \
     "$(OPENCODE_JAILED=1 JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" \
-        bash "$HERE/opencode.sh" 2>/dev/null | count -- '--network')" "0"
+        bash "$HERE/opencode.sh" --version 2>/dev/null | count -- '--network')" "0"
 
 # Failure 2 — the recursion guard. /usr is read-only inside the sandbox, so the
 # wrapper is still the first `codex` on PATH in there and ai-jail's preset
@@ -188,7 +209,7 @@ check "and claude's, which is a different name" \
 # — what matters is that no jail argv was produced.
 check "the marker short-circuits to the real CLI" \
     "$(CODEX_JAILED=1 JAIL_COMMON="$COMMON" PATH="$work/bin:$PATH" \
-        bash "$HERE/codex.sh" 2>/dev/null | count -- '--network')" "0"
+        bash "$HERE/codex.sh" --version 2>/dev/null | count -- '--network')" "0"
 
 # Failure 3 — a credential written as NAME=VALUE. `--env NAME` copies the value
 # across without it entering *this* process's argv; the pair form puts the

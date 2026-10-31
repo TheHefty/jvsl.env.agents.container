@@ -30,10 +30,17 @@ ROOT="${AGENT_STATE_ROOT:-/config}"
 # Not a loop over everything an agent might keep: each entry is a directory some
 # agent's own tooling expects to find and will not create for itself inside the
 # sandbox. Adding one is a decision, so they are written out.
+# ~/.agents is Codex's current user skill root and OpenCode's compatibility
+# skill root; the image populates only its skills/ child (story
+# the-skills-the-image-carries-are-discovered-only-by-the-claude-sessions).
 # OpenCode keeps its config under ~/.config/opencode and its login and sessions
 # under ~/.local/share/opencode (story
 # opencode-is-installed-and-runs-sandboxed-keeping-its-login).
-for dir in "$ROOT/.claude" "$ROOT/.codex" "$ROOT/.config/opencode" "$ROOT/.local/share/opencode"; do
+for dir in "$ROOT/.claude" "$ROOT/.codex" "$ROOT/.agents" "$ROOT/.config/opencode" "$ROOT/.local/share/opencode"; do
+    if [ "$dir" = "$ROOT/.agents" ] && [ -L "$dir" ]; then
+        echo "45-agent-state-dirs: refused: $dir is a symlink; leaving the link and its target untouched."
+        continue
+    fi
     # **Every directory created on the way is abc's, and only those.** mkdir -p
     # as root would leave ~/.config or ~/.local root-owned, and every other tool
     # that writes there would fail; one that already exists is somebody's, and

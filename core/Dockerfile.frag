@@ -353,7 +353,8 @@ RUN mkdir -p /config/.claude /config/.codex \
 # created empty, costs nothing otherwise, and leaves the image honest when read
 # on its own. See docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
 COPY core/cont-init/45-agent-state-dirs.sh /custom-cont-init.d/45-agent-state-dirs.sh
-RUN chmod +x /custom-cont-init.d/45-agent-state-dirs.sh
+COPY core/cont-init/46-agent-skills.sh /custom-cont-init.d/46-agent-skills.sh
+RUN chmod +x /custom-cont-init.d/45-agent-state-dirs.sh /custom-cont-init.d/46-agent-skills.sh
 
 # 5.0 A login shell for 'abc'. The base image gives it /bin/false, which was
 # sound while the only way in was an editor running inside the container as
@@ -589,9 +590,11 @@ RUN chmod +x /usr/local/bin/claude /usr/local/bin/codex /usr/local/bin/opencode
 
 # The plugin the claude wrapper loads with --plugin-dir: the ceremonies of a
 # working day with the agent, each added by its own story, and needs-tracker,
-# the refusal each runs first. Read-only under /opt/jvsl, which the sandbox
-# sees, because ~/.claude in the container is the developer's own, bound from
-# the host, and the image writes nothing there. Its tests are not shipped.
+# the refusal each runs first. Codex and OpenCode discover its skills through
+# links into /config/.agents/skills, reconciled at boot. Read-only under
+# /opt/jvsl, which the sandbox sees, because ~/.claude in the container is the
+# developer's own, bound from the host, and the image writes nothing there. Its
+# tests are not shipped.
 COPY core/plugin/agent-container /opt/jvsl/plugins/agent-container
 RUN rm -f /opt/jvsl/plugins/agent-container/bin/*.test.sh /opt/jvsl/plugins/agent-container/bin/*-fixture.sh /opt/jvsl/plugins/agent-container/bin/*-stubs.sh \
     && chmod 0755 /opt/jvsl/plugins/agent-container/bin/*
