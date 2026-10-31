@@ -268,6 +268,29 @@ loaded, so no ceremony would be available"
 [ "$(pfield version)" = "1" ] || fail "claude --plugin-dir <plugin> --version does not run: the argument the \
 wrapper adds would break every invocation"
 
+# Codex and OpenCode discover the image skills through ~/.agents/skills.
+# This asks each CLI's own local discovery command in a clean directory with no
+# project-local skills, credentials or network. The booted test exercises their
+# real jail wrappers where the runner permits it.
+agent_skills="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
+    set -eu
+    /custom-cont-init.d/45-agent-state-dirs.sh
+    /custom-cont-init.d/46-agent-skills.sh
+    cd /tmp
+    codex="$(s6-setuidgid abc env HOME=/config /usr/bin/codex debug prompt-input 2>/dev/null)"
+    opencode="$(s6-setuidgid abc env HOME=/config XDG_CACHE_HOME=/tmp/opencode-cache /usr/bin/opencode debug skill 2>/dev/null)"
+    for skill in planning review retro refine project-report study; do
+        printf "codex_%s=%s\n" "$skill" "$(printf "%s" "$codex" | grep -Ec "r[0-9]+/$skill/SKILL.md" || true)"
+        printf "opencode_%s=%s\n" "$skill" "$(printf "%s" "$opencode" | grep -Fc "\"location\": \"/config/.agents/skills/$skill/SKILL.md\"" || true)"
+    done
+' 2>/dev/null || true)"
+for skill in planning review retro refine project-report study; do
+    [ "$(printf '%s' "$agent_skills" | sed -n "s/^codex_$skill=//p")" -ge 1 ] 2>/dev/null \
+        || fail "Codex does not list $skill from the image's ~/.agents/skills root; output: $agent_skills"
+    [ "$(printf '%s' "$agent_skills" | sed -n "s/^opencode_$skill=//p")" = "1" ] \
+        || fail "OpenCode does not list $skill from the image's ~/.agents/skills root; output: $agent_skills"
+done
+
 # TZ has an effect only if the zone files are here: glibc falls back to UTC
 # with no error otherwise, and /usr/share/zoneinfo is owned by no package in
 # this image (measured 2026-10-28), so a change of base could take it away
@@ -405,6 +428,8 @@ docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /cust
     || fail "$IMAGE does not install core/cont-init/35-editor-extensions.sh, so a stack added later would never bring its extension"
 docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/36-editor-settings.sh' \
     || fail "$IMAGE does not install core/cont-init/36-editor-settings.sh, so a stack's editor settings would never reach an editor that already exists (debt rjj)"
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'test -x /custom-cont-init.d/46-agent-skills.sh' \
+    || fail "$IMAGE does not install 46-agent-skills.sh, so Codex and OpenCode would start without the ceremonies"
 
 # **The docker client is there, with its plugins** (issue #169, debt
 # the-image-has-a-docker-daemon-and-no-cli). The nested daemon answered on

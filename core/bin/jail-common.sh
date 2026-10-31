@@ -108,6 +108,19 @@ GH_CONFIG_DIR="${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}"
 mkdir -p "$GH_CONFIG_DIR" 2>/dev/null || true
 [ -d "$GH_CONFIG_DIR" ] && JAIL_COMMON_ARGS+=(--map "$GH_CONFIG_DIR")
 
+# Codex and OpenCode discover shared skills from ~/.agents/skills. The image
+# owns this directory: 45-agent-state-dirs.sh creates its parent and
+# 46-agent-skills.sh populates it before any wrapper starts. --map is
+# read-only; passing it unconditionally makes a missing boot setup fail loudly
+# at ai-jail instead of starting those CLIs without the ceremonies.
+AGENT_SKILLS_ROOT="${AGENT_SKILLS_ROOT:-/config/.agents/skills}"
+AGENT_SKILLS_PARENT="${AGENT_SKILLS_ROOT%/skills}"
+if [ -L "$AGENT_SKILLS_PARENT" ] || [ -L "$AGENT_SKILLS_ROOT" ]; then
+  echo "jail-common: refused: $AGENT_SKILLS_ROOT or its parent is a symlink, so the jail will not map it." >&2
+  return 1
+fi
+JAIL_COMMON_ARGS+=(--map "$AGENT_SKILLS_ROOT")
+
 # The two files in a project that something *outside* the sandbox executes.
 #
 # `.vscode/tasks.json` can declare `runOn: folderOpen`, which the editor runs

@@ -339,6 +339,17 @@ jobs:
       - name: each agent's state directories exist at boot, and only what the hook made is abc's
         run: bash core/cont-init/45-agent-state-dirs.test.sh
 
+  agent-skills:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # These are image-owned shared skills: the hook reconciles links, preserves
+    # user entries, and removes only retired links into the plugin source.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: boot reconciles image skills into the shared agent root without overwriting user skills
+        run: bash core/cont-init/46-agent-skills.test.sh
+
   jail-wrappers:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'

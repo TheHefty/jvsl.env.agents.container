@@ -358,9 +358,9 @@ else
     echo "booted.test: SKIPPED the reaper check, not passed: $IMAGE has no svc-reaper (the stand-in has no s6)"
 fi
 
-# --- the agent's sandbox actually opens -------------------------------------
+# --- the agent sandboxes actually open and discover their skills ------------
 #
-# **The image can build, boot and pass every check above while `claude` cannot
+# **The image can build, boot and pass every check above while an agent cannot
 # start.** On 2026-10-06 the ai-jail pin moved from v1.20.1 to v2.6.4 with every
 # flag the wrappers pass verified to still exist — and the jail died before the
 # CLI opened. v2.5.0 had turned on dev-toolchain cache persistence by default; it
@@ -369,10 +369,11 @@ fi
 # so bwrap could not create the mount point. Found by the operator, reproduced
 # outside the editor.
 #
-# Checking that flags exist is not checking that the thing runs. This runs it:
-# the real wrapper, as the user the editor connects as, through the real jail.
+# Checking that flags exist is not checking that the thing runs. This runs them:
+# the real wrappers, as the user the editor connects as, through the real jail;
+# then each non-Claude CLI's own listing command proves the image skills arrived.
 #
-# The stand-in has neither ai-jail nor claude, so the check is skipped there —
+# The stand-in has neither ai-jail nor the agent CLIs, so the check is skipped there —
 # and REQUIRE_JAIL makes that skip a failure for the real image, so the one
 # place this matters can never pass by not trying.
 #
@@ -383,19 +384,49 @@ fi
 # "skipped" would read as a pass in the log, so the variable is the sentence.
 if [ -n "${SKIP_JAIL:-}" ]; then
     echo "booted.test: SKIPPED the jail check, not passed: $SKIP_JAIL"
-elif docker exec "$NAME" sh -c 'command -v ai-jail >/dev/null && command -v claude >/dev/null'; then
-    jail_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" claude --version 2>&1)" \
-        || { echo "--- what the jail said ---" >&2; printf '%s\n' "$jail_out" | tail -20 >&2
-             fail "claude does not start through its sandbox. The output above is ai-jail's or \
+elif docker exec "$NAME" sh -c 'command -v ai-jail >/dev/null && command -v claude >/dev/null && command -v codex >/dev/null && command -v opencode >/dev/null'; then
+    for agent in claude codex opencode; do
+        jail_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" "$agent" --version 2>&1)" \
+            || { echo "--- what the $agent jail said ---" >&2; printf '%s\n' "$jail_out" | tail -20 >&2
+                 fail "$agent does not start through its sandbox. The output above is ai-jail's or \
 bwrap's own; a mount-point error under /usr means a toolchain path the image never created"; }
-    echo "booted.test: claude starts through the jail: $(printf '%s' "$jail_out" | tail -1)"
+        echo "booted.test: $agent starts through the jail: $(printf '%s' "$jail_out" | tail -1)"
+    done
+
+    skills_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" bash -c '
+        set -eu
+        cd /tmp
+        codex="$(codex debug prompt-input 2>/dev/null)"
+        opencode="$(XDG_CACHE_HOME=/tmp/opencode-cache opencode debug skill 2>/dev/null)"
+        for skill in planning review retro refine project-report study; do
+            printf "%s\n" "$codex" | grep -Eq "r[0-9]+/$skill/SKILL.md" \
+                || { echo "Codex did not discover $skill in ~/.agents/skills"; exit 1; }
+            printf "%s\n" "$opencode" | grep -Fq "\"location\": \"/config/.agents/skills/$skill/SKILL.md\"" \
+                || { echo "OpenCode did not discover $skill in ~/.agents/skills"; exit 1; }
+        done
+        echo "codex=6 opencode=6"
+    ' 2>&1)" || { echo "--- skill discovery through the jail ---" >&2; printf '%s\n' "$skills_out" | tail -20 >&2
+                  fail "Codex and OpenCode do not both discover all six image skills through their jailed paths"; }
+    [ "$skills_out" = "codex=6 opencode=6" ] \
+        || fail "unexpected skill-discovery result through the jail: $skills_out"
+    echo "booted.test: Codex and OpenCode discover all six image skills through the jail"
+
+    readonly_out="$(docker exec -u "$USER_NAME" -e HOME=/config "$NAME" bash -c '
+        set -euo pipefail
+        source /usr/local/lib/jail-common.sh
+        ai-jail "${JAIL_COMMON_ARGS[@]}" bash -c "touch /config/.agents/skills/.jail-write-probe"
+    ' 2>&1 || true)"
+    docker exec "$NAME" rm -f /config/.agents/skills/.jail-write-probe >/dev/null 2>&1 || true
+    [[ "$readonly_out" == *"Read-only file system"* ]] \
+        || fail "the jailed shared skill root was not proven read-only (ai-jail output: $readonly_out)"
+    echo "booted.test: the shared image skill root is read-only inside the jail"
 elif [ -n "${REQUIRE_JAIL:-}" ]; then
-    fail "REQUIRE_JAIL is set but $IMAGE has no ai-jail or no claude, so the sandbox was not \
+    fail "REQUIRE_JAIL is set but $IMAGE has no ai-jail or one of claude, codex and opencode, so the sandbox was not \
 exercised at all"
 fi
 
 echo "booted.test: after init, $USER_NAME has a usable login shell ($shell) and it runs; a \
 root-owned $damaged is repaired on the next boot and reported by name; the boot after that \
-changes nothing; with /config shadowed by a tmpfs both agent state directories still exist and \
+changes nothing; with /config shadowed by a tmpfs all agent state directories still exist and \
 belong to $USER_NAME; and a project whose manifest asks for a tracker gets one owned by \
 $USER_NAME."
