@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.17.0...v1.17.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* the scaffold's standing answers are defaults until initialization ends, and the agent asks ([3016218](https://github.com/TheHefty/jvsl.env.agents.container/commit/3016218c8e6eae9f8fb0222b1a0668e1cb712fb3))
+
 ## [1.17.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.16.0...v1.17.0) (2026-10-31)
 
 
