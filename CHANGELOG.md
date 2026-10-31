@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.17.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.16.0...v1.17.0) (2026-10-31)
+
+
+### Features
+
+* make release cuts manual and configure the private journal ([afc1feb](https://github.com/TheHefty/jvsl.env.agents.container/commit/afc1feb7292aed95741d7f3a125ec59e2bbda04f))
+* make releases explicit and journal settings developer-global ([5e6490a](https://github.com/TheHefty/jvsl.env.agents.container/commit/5e6490a246200f8e19b8dedd5964250cf2bf705b))
+
+
+### Bug Fixes
+
+* include the agent-skills job in ci-green ([3c47bd8](https://github.com/TheHefty/jvsl.env.agents.container/commit/3c47bd82baa396a0c72840a765b3dbd9e29cc377))
+* the image skills reach Codex and OpenCode ([41f20c6](https://github.com/TheHefty/jvsl.env.agents.container/commit/41f20c6434c804d2de8e866722e60a3b71a82162))
+* the image skills reach Codex and OpenCode ([111cf06](https://github.com/TheHefty/jvsl.env.agents.container/commit/111cf06f31a0f51bbd1457eeccd1b0c63f236368))
+
 ## [1.16.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.15.0...v1.16.0) (2026-10-30)
 
 
