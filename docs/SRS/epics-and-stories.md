@@ -97,7 +97,7 @@ and the second is the whole of the first after its scaffolding step:
 
 | | |
 |---|---|
-| **New project** | ask the stacks and versions, whether to use `ai-memory`, and where the project goes → write the scaffolding and initialise git → compose, build, and reopen the host editor in the container |
+| **New project** | ask the stacks and versions, whether to use Beads and `ai-memory`, the private journal repository when Beads is on, and where the project goes → write the scaffolding and initialise git → compose, build, and reopen the host editor in the container |
 | **Open project** | choose the folder → a manifest there means compose and build for it → no manifest means the same stack panel the new-project flow uses |
 
 **It merges three epics that were named separately** — *starting a new project*, *adopting the
@@ -578,6 +578,7 @@ blog candidates there.
 | 2 | the journal's readers read it from the private repository | the planning and the study skill, with the outbox |
 | 3 | the entries in a tracker move to the private repository | needs 1 to write them somewhere first |
 | 4 | the working agreement says the journal is private | normative, both languages; last, so it describes what exists |
+| 5 | project setup asks for the developer's journal repository | Create, Configure and Open ask only when Beads is on, storing it in the shared developer home |
 
 ## Epic: the Work view shows the live work the way the developer asks to see it
 

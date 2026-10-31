@@ -6,6 +6,13 @@ import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, switchAnswer, switchChoices, versionsOf, type Answers } from './questions.ts'
+import {
+  JOURNAL_CONFIG_PATH,
+  journalFilesFor,
+  normalizeJournalRepository,
+  persistJournalRepository,
+  readJournalRepository,
+} from './journal.ts'
 import { applySwitches, MEMORY_MARKER } from './switches.ts'
 import { findGradleBuildsFor } from '../build/gradle.ts'
 import { filesFor } from '../host/files.ts'
@@ -19,14 +26,16 @@ import { MANIFEST } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
 /**
- * Asks the five questions and writes the manifest. Nothing else — the build is a
- * separate story, and this is useful without it because `setup` reads what this
- * writes.
+ * Asks the project questions and writes its manifest. When beads is on, the
+ * final question also sets the developer's shared journal destination. The
+ * build is a separate story, and this is useful without it because `setup`
+ * reads what this writes.
  *
- * **Every decision in here is in `questions.ts`**, which is testable without an
- * editor. What is left is five calls and the rule that escaping any of them
- * writes nothing: a half-answered manifest is worse than none, because `setup`
- * would read it and build something nobody chose, successfully.
+ * **Manifest decisions are in `questions.ts` and journal-file decisions are in
+ * `journal.ts`**, both testable without an editor. What is left is the UI
+ * sequence and the rule that escaping any question writes nothing: a
+ * half-answered manifest is worse than none, because `setup` would read it and
+ * build something nobody chose, successfully.
  */
 /**
  * **The root is a parameter, and that is the whole reason this task existed.**
@@ -80,7 +89,8 @@ export async function configure(
   }
 
   // Where the project lives: through the distro for a WSL project.
-  const files = filesFor(location ?? { kind: 'host', path: root })
+  const projectLocation = location ?? { kind: 'host', path: root }
+  const files = filesFor(projectLocation)
   let current: Record<string, unknown> = {}
   try {
     // Only a manifest that exists and cannot be read is a refusal; an absent one
@@ -101,11 +111,34 @@ export async function configure(
   }
 
   const selectedNow = available.filter((name) => name in current)
-  const answers = await askAnswers(stacksDir, available, current, {
+  let answers = await askAnswers(stacksDir, available, current, {
     beads: current['beads'] === true,
     aiMemory: files.exists(MEMORY_MARKER),
   })
   if (answers === undefined) return { wrote: false, root, stacks: [] }
+  let journalFiles: ReturnType<typeof journalFilesFor> | undefined
+  if (answers.beads === true) {
+    const home = await homeFor(projectLocation)
+    if (!home.ok) {
+      const message = `the private journal repository could not be configured: ${home.reason}`
+      write([`configure: refused — ${message}. Nothing was written.`])
+      void vscode.window.showErrorMessage(`Configure: ${message}. Nothing was written.`)
+      return { wrote: false, root, stacks: [] }
+    }
+    journalFiles = journalFilesFor(projectLocation, home.home)
+    let currentJournal: string
+    try {
+      currentJournal = readJournalRepository(journalFiles)
+    } catch (error) {
+      const message = `the private journal setting could not be read: ${String(error)}`
+      write([`configure: refused — ${message}. Nothing was written.`])
+      void vscode.window.showErrorMessage(`Configure: ${message}. Nothing was written.`)
+      return { wrote: false, root, stacks: [] }
+    }
+    const journalRepository = await askJournalRepository(currentJournal)
+    if (journalRepository === undefined) return { wrote: false, root, stacks: [] }
+    answers = { ...answers, journalRepository }
+  }
   const picked = Object.keys(answers.stacks)
 
   const next = nextManifest(current, answers, available)
@@ -126,6 +159,19 @@ export async function configure(
   } catch (error) {
     write([`configure: ai-memory's marker could not be changed: ${String(error)}`])
     void vscode.window.showErrorMessage(`Could not change ${MEMORY_MARKER}: ${String(error)}`)
+  }
+  if (journalFiles !== undefined && answers.journalRepository !== undefined) {
+    try {
+      if (persistJournalRepository(journalFiles, answers.beads, answers.journalRepository)) {
+        write(answers.journalRepository === ''
+          ? ['configure: no developer journal repository is configured; journal entries will use the outbox']
+          : [`configure: saved the developer's journal repository in ${JOURNAL_CONFIG_PATH}`])
+      }
+    } catch (error) {
+      const message = `the journal repository was not saved: ${String(error)}. Journal entries will use the outbox or the previous repository.`
+      write([`configure: ${message}`])
+      void vscode.window.showWarningMessage(`Configure: ${message}`)
+    }
   }
   if (location !== undefined) await regenerate(location, extensionVersion, write)
 
@@ -220,7 +266,7 @@ export async function pick(
       return
     }
     // **Falls through to opening the folder it just configured.** The third
-    // failure scenario is the one where nothing fails: asking five questions,
+    // failure scenario is the one where nothing fails: asking the setup questions,
     // writing the file, and then appearing to forget.
   }
 
@@ -237,12 +283,13 @@ export async function ask(title: string, value: string): Promise<string | undefi
 }
 
 /**
- * The five questions, without writing anything.
+ * The stacks, limits and project switches, without writing anything. The
+ * developer-global journal destination is asked separately when beads is on.
  *
  * **Extracted because creating a project needs the answers and not the write.**
  * `configure` asked and wrote in one pass, which is right when the manifest is
  * the only thing being changed — and wrong for creation, where the manifest is
- * one of five files a plan writes together. Calling `configure` from the create
+ * one of the files a plan writes together. Calling `configure` from the create
  * flow would have written the manifest into a directory that then failed
  * `scaffoldPlan`'s empty check, and written it a second time from fabricated
  * answers.
@@ -319,6 +366,22 @@ export async function askAnswers(
   }
 
   return answers
+}
+
+/** Ask for the developer-global private journal, with empty selecting the outbox. */
+export async function askJournalRepository(current: string): Promise<string | undefined> {
+  const value = await vscode.window.showInputBox({
+    title: 'Private journal repository for the working day',
+    value: current,
+    prompt: 'GitHub URL or owner/repo. Clear the value to use the local outbox.',
+    validateInput: (input) => {
+      const result = normalizeJournalRepository(input)
+      return result.ok ? undefined : result.reason
+    },
+  })
+  if (value === undefined) return undefined
+  const result = normalizeJournalRepository(value)
+  return result.ok ? result.repository : undefined
 }
 
 /**

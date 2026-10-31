@@ -150,10 +150,12 @@ not unplan what was already agreed.
 
 ## Releases
 
-release-please cuts releases incrementally from the conventional commits as they land — see
-"Versioning and releases" in the template's own overview for the mechanics. The epic does not hold
-a release: it is the *planning* unit and the changelog's sentence, not a merge gate. The only
-mechanical gate on a merge is CI — a red build blocks it and nothing else does.
+release-please runs only when the developer dispatches it on `master`; ordinary merges do not start
+it. The first dispatch opens or updates the release PR; after that PR merges, dispatch it again to
+publish the tag and GitHub release. See "Versioning and releases" in the template's own overview for
+the mechanics. The epic does not hold a release: it is the *planning* unit and the changelog's
+sentence, not a merge gate. The only mechanical gate on a merge is CI — a red build blocks it and
+nothing else does.
 
 The release that finishes an epic is the one worth naming: it is the point where the epic's
 sentence became true, and everything before it in that epic is an increment toward it.

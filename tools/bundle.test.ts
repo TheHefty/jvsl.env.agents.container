@@ -141,6 +141,9 @@ interface EditorScript {
   registered?: Map<string, (...args: unknown[]) => unknown>
   /** What the folder picker returns. */
   openDialog?: unknown[]
+  /** Overrides picker/input answers by question options. */
+  quickPick?: (items: unknown, options?: { canPickMany?: boolean; title?: string }) => unknown
+  inputBox?: (options?: { value?: string; title?: string; prompt?: string }) => string | undefined
   /** Every executeCommand, with its arguments. */
   calls?: unknown[][]
   /** Answer every question with its default: no stacks, the first option, the box's value. */
@@ -161,9 +164,10 @@ function stubEditor(folder: string, handedOver: unknown, updates: unknown[], mes
           showErrorMessage: say,
           showOpenDialog: () => Promise.resolve(script.openDialog),
           // A question asked is answered like Escape, unless the test asks for the defaults.
-          showQuickPick: (items: unknown, o?: { canPickMany?: boolean }) =>
-            Promise.resolve(!script.defaults ? undefined : o?.canPickMany ? [] : Array.isArray(items) ? items[0] : undefined),
-          showInputBox: (o?: { value?: string }) => Promise.resolve(script.defaults ? o?.value ?? '' : undefined),
+          showQuickPick: (items: unknown, o?: { canPickMany?: boolean; title?: string }) =>
+            Promise.resolve(script.quickPick ? script.quickPick(items, o) : !script.defaults ? undefined : o?.canPickMany ? [] : Array.isArray(items) ? items[0] : undefined),
+          showInputBox: (o?: { value?: string; title?: string; prompt?: string }) =>
+            Promise.resolve(script.inputBox ? script.inputBox(o) : script.defaults ? o?.value ?? '' : undefined),
         },
         workspace: {
           workspaceFolders: [{ uri: script.folderUri ?? { fsPath: folder, authority: '' } }],
@@ -557,6 +561,49 @@ test('Create from a WSL window refuses a distro folder that already holds someth
   }
 })
 
+test('Create asks for the private journal when beads is on and stores it outside the project', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'create-journal-project-'))
+  const home = mkdtempSync(join(tmpdir(), 'create-journal-home-'))
+  const previousHome = process.env.HOME
+  process.env.HOME = home
+  try {
+    const picked = { scheme: 'file', authority: '', path: project, fsPath: project, toString: () => `file://${project}` }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const calls: unknown[][] = []
+    const inputTitles: string[] = []
+    await stubEditor(project, undefined, [], [], {
+      registered,
+      calls,
+      openDialog: [picked],
+      quickPick: (items, options) => {
+        const choices: unknown[] = Array.isArray(items) ? items : []
+        if (options?.canPickMany) return ['node']
+        if (options?.title?.includes('work tracker')) return choices[1]
+        return choices[0]
+      },
+      inputBox: (options) => {
+        inputTitles.push(options?.title ?? '')
+        if (options?.title?.includes('journal')) return 'https://github.com/TheHefty/journal'
+        return options?.value ?? ''
+      },
+    })
+
+    await registered.get('jvsl.agentContainer.create')!()
+
+    const config = JSON.parse(readFileSync(join(home, '.claude/agent-container/journal.json'), 'utf8')) as { repository: string }
+    const manifest = JSON.parse(readFileSync(join(project, '.agent-container.stack.json'), 'utf8')) as Record<string, unknown>
+    assert.equal(config.repository, 'TheHefty/journal')
+    assert.equal(manifest.beads, true)
+    assert.ok(!('journalRepository' in manifest))
+    assert.ok(!existsSync(join(project, '.claude/agent-container/journal.json')))
+    assert.ok(inputTitles.some((title) => title.includes('journal')), inputTitles.join('\n'))
+    assert.ok(calls.some((call) => call[0] === 'vscode.openFolder'), JSON.stringify(calls))
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME
+    else process.env.HOME = previousHome
+  }
+})
+
 // --- Open on the window's own folder asks for its manifest (debt y6w, task y6w.1)
 //
 // Found on 2026-10-30: in a window open on a folder with no manifest, Open on
@@ -564,14 +611,43 @@ test('Create from a WSL window refuses a distro folder that already holds someth
 // Driven through the built bundle's Open command, the questions answered by
 // their defaults.
 
-test('Open on the window\'s own folder with no manifest asks the questions, writes it, and prepares here', async () => {
+test('Open on an unconfigured folder asks for beads and the journal, then prepares it here', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'own-folder-'))
+  const home = mkdtempSync(join(tmpdir(), 'open-journal-home-'))
+  mkdirSync(join(home, '.claude/agent-container'), { recursive: true })
+  writeFileSync(join(home, '.claude/agent-container/journal.json'), '{"repository":"TheHefty/journal"}\n')
+  const previousHome = process.env.HOME
+  process.env.HOME = home
   const registered = new Map<string, (...args: unknown[]) => unknown>()
   const calls: unknown[][] = []
+  let journalDefault: string | undefined
   const picked = { scheme: 'file', authority: '', path: dir, fsPath: dir, toString: () => `file://${dir}` }
-  await stubEditor(dir, undefined, [], [], { registered, calls, openDialog: [picked], defaults: true })
-  await registered.get('jvsl.agentContainer.open')!()
-  assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'the manifest was written')
-  assert.ok(calls.some((c) => c[0] === 'jvsl.agentContainer.prepare'), JSON.stringify(calls))
-  assert.equal(calls.some((c) => c[0] === 'vscode.openFolder'), false, 'no second window onto the same folder')
+  try {
+    await stubEditor(dir, undefined, [], [], {
+      registered,
+      calls,
+      openDialog: [picked],
+      quickPick: (items, options) => {
+        const choices: unknown[] = Array.isArray(items) ? items : []
+        if (options?.canPickMany) return ['node']
+        if (options?.title?.includes('work tracker')) return choices[1]
+        return choices[0]
+      },
+      inputBox: (options) => {
+        if (options?.title?.includes('journal')) journalDefault = options.value
+        return options?.value ?? ''
+      },
+    })
+    await registered.get('jvsl.agentContainer.open')!()
+    assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'the manifest was written')
+    assert.ok(calls.some((c) => c[0] === 'jvsl.agentContainer.prepare'), JSON.stringify(calls))
+    assert.equal(calls.some((c) => c[0] === 'vscode.openFolder'), false, 'no second window onto the same folder')
+    assert.equal(journalDefault, 'TheHefty/journal', 'the developer-global link is the input default')
+    const journal = JSON.parse(readFileSync(join(home, '.claude/agent-container/journal.json'), 'utf8')) as { repository: string }
+    assert.equal(journal.repository, 'TheHefty/journal')
+    assert.ok(!existsSync(join(dir, '.claude/agent-container/journal.json')), 'the link stays out of the project')
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME
+    else process.env.HOME = previousHome
+  }
 })

@@ -78,6 +78,11 @@ is refused: the entry waits rather than going where anyone can read it. The day 
 so a retro held late in the evening belongs to that day, and a second retro on the same day rewrites
 that day's file.
 
+Create, Configure and Open's configuration flow ask for this repository when the project uses Beads.
+The current repository is the input default; clear it to use the outbox. A GitHub URL or `owner/repo`
+is normalized to `owner/repo`. On WSL, the setting is written in the distro user's home, which the
+container binds.
+
 `journal-write` first keeps the entry in the outbox, `~/.claude/agent-container/journal-outbox/`, on
 the host's disk so it outlives a rebuild, and `journal-flush` sends it through GitHub's API with the
 sandbox's own `gh`. It leaves the outbox only once GitHub has confirmed it. Offline, with no

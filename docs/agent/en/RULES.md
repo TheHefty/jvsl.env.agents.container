@@ -196,10 +196,11 @@ person debugging it at three in the morning finds out why it stopped.
 
 ### Commits and releases
 
-- **Conventional commits are load-bearing, not decoration.** Releases are cut by release-please
-  from the commit history: only `feat` and `fix` reach the changelog, and a release is proposed
-  only when one of them lands. A `chore` that should have been a `fix` is a release that never
-  happens.
+- **Conventional commits are load-bearing, not decoration.** When the developer manually dispatches
+  release-please on `master`, it reads the commit history: only `feat` and `fix` reach the changelog.
+  Routine merges do not start it. The first dispatch opens or updates the release PR; after that PR
+  merges, a second dispatch publishes the tag and release. A `chore` that should have been a `fix`
+  is a release that never happens.
 - **A change to the normative documents is `feat` or `fix`, not `docs`.** Since these files ship
   from the template and reach a project through a bump, altering a rule alters how every project
   that bumps is worked on — that is a behaviour change wearing a document's clothes. `docs` stays
@@ -228,10 +229,10 @@ person debugging it at three in the morning finds out why it stopped.
 - **A round of work is planned whole before any of it is built.** Every epic the user's request
   gives rise to, and every story under each with its scenarios, is agreed before the first task of
   any of them. Work found along the way is planned whole too, before its own code.
-- **The epic does not hold a release.** release-please cuts releases incrementally from the commits
-  as they land; the epic is the changelog's sentence and the planning unit, not a merge gate. The
-  only mechanical gate on a merge is CI. The release that makes an epic's sentence true is the one
-  worth naming.
+- **The epic does not hold a release.** release-please cuts incrementally from the commits when the
+  developer asks it to run; the epic is the changelog's sentence and the planning unit, not a merge
+  gate. The only mechanical gate on a merge is CI. The release that makes an epic's sentence true is
+  the one worth naming.
 
 ### The work tracker
 
@@ -286,10 +287,11 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
   needs their own words, and the task closes when its pull request merges, not when it is accepted.
 - **The retro is never skipped.** On a short day it is short. The line on what was learned is the
   developer's, never yours alone, and "Decided alone" lists everything you chose without asking.
-- **The journal is the developer's, not the project's.** The retro's entry goes to a
-  private repository of theirs, named in `~/.claude/agent-container/journal.json`, and never to the
-  tracker, which travels with the project's remote. Where it waits until it is sent is in
-  [The working day](WORKING-DAY.md).
+- **The journal is the developer's, not the project's.** Create, Configure and Open's configuration
+  flow ask for a private repository when Beads is on, and save it in
+  `~/.claude/agent-container/journal.json`, shared across projects; a WSL project writes to the
+  distro user's home. The retro's entry goes there, never to the tracker that travels with the
+  project's remote. Where it waits until it is sent is in [The working day](WORKING-DAY.md).
 - **Record a task's pull request when you open it**, with `bd update <id> --set-metadata pr=<n>`.
   The review reads it; nothing else links the change to the task.
 

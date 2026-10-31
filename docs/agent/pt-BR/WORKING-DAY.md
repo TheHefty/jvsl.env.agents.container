@@ -78,6 +78,11 @@ público é recusado: a entrada espera em vez de ir para onde qualquer um a lê.
 então uma retro feita tarde da noite pertence àquele dia, e uma segunda retro no mesmo dia reescreve
 o arquivo daquele dia.
 
+O fluxo de configuração de Create, Configure e Open pergunta por esse repositório quando o projeto
+usa Beads. O repositório atual aparece como valor inicial; limpe-o para usar a caixa de saída. Uma
+URL do GitHub ou `owner/repo` é normalizada para `owner/repo`. Em WSL, a configuração é escrita no
+home do usuário da distro, que o container monta.
+
 `journal-write` primeiro guarda a entrada na caixa de saída, `~/.claude/agent-container/journal-outbox/`,
 no disco do host para que sobreviva a um rebuild, e `journal-flush` a envia pela API do GitHub com o
 próprio `gh` do sandbox. Ela só sai da caixa de saída depois que o GitHub a confirma. Offline, sem

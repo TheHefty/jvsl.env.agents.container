@@ -1,10 +1,12 @@
 import * as vscode from 'vscode'
 
 import { carried } from '../build/template.ts'
-import { askAnswers } from '../configure/command.ts'
+import { askAnswers, askJournalRepository } from '../configure/command.ts'
 import { stacksAvailable } from '../configure/questions.ts'
 import { filesFor } from '../host/files.ts'
+import { homeFor } from '../host/home.ts'
 import { pickedProject } from '../host/locate.ts'
+import { JOURNAL_CONFIG_PATH, journalFilesFor, persistJournalRepository, readJournalRepository } from '../configure/journal.ts'
 import { apply } from './apply.ts'
 import { decideCreate } from './create.ts'
 import { checkLocation, checkLocationIn } from './location.ts'
@@ -27,7 +29,7 @@ export async function create(
   handOver: (folder: string) => Thenable<void>,
 ): Promise<void> {
   // **Location first**, because it is the only answer that can be refused
-  // outright — asking the stacks first means answering six questions before
+  // outright — asking the stacks first means answering the setup questions before
   // being told the directory will not do.
   const picked = await vscode.window.showOpenDialog({
     canSelectFiles: false,
@@ -61,10 +63,38 @@ export async function create(
   // it would write the manifest into the directory and then `scaffoldPlan`'s
   // empty check would refuse what it had just created.
   const stacksDir = carried(extensionPath, 'stacks')
-  const asked = await askAnswers(stacksDir, stacksAvailable(stacksDir), {})
+  let asked = await askAnswers(stacksDir, stacksAvailable(stacksDir), {})
   if (asked === undefined) {
     write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
     return
+  }
+  let journalFiles: ReturnType<typeof journalFilesFor> | undefined
+  if (asked.beads === true) {
+    const home = await homeFor(project)
+    if (!home.ok) {
+      write([`create: refused — the private journal repository could not be configured: ${home.reason}`])
+      void vscode.window.showErrorMessage(
+        `Create: the private journal repository could not be configured: ${home.reason}. Nothing was written.`,
+      )
+      return
+    }
+    journalFiles = journalFilesFor(project, home.home)
+    let currentJournal: string
+    try {
+      currentJournal = readJournalRepository(journalFiles)
+    } catch (error) {
+      write([`create: refused — the private journal setting could not be read: ${String(error)}`])
+      void vscode.window.showErrorMessage(
+        `Create: the private journal setting could not be read: ${String(error)}. Nothing was written.`,
+      )
+      return
+    }
+    const journalRepository = await askJournalRepository(currentJournal)
+    if (journalRepository === undefined) {
+      write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
+      return
+    }
+    asked = { ...asked, journalRepository }
   }
   const answers = { ...asked, location: root }
   const plan = scaffoldPlan({ root, assetsDir: carried(extensionPath, 'assets', 'project'), answers })
@@ -75,6 +105,19 @@ export async function create(
   if (!decision.open) {
     void vscode.window.showWarningMessage(decision.message)
     return
+  }
+  if (journalFiles !== undefined && answers.journalRepository !== undefined) {
+    try {
+      if (persistJournalRepository(journalFiles, answers.beads, answers.journalRepository)) {
+        write(answers.journalRepository === ''
+          ? ['create: no developer journal repository is configured; journal entries will use the outbox']
+          : [`create: saved the developer's journal repository in ${JOURNAL_CONFIG_PATH}`])
+      }
+    } catch (error) {
+      const message = `the journal repository was not saved: ${String(error)}. Journal entries will use the outbox or the previous repository.`
+      write([`create: ${message}`])
+      void vscode.window.showWarningMessage(`Create: ${message}`)
+    }
   }
   // Shown rather than only written, because "the files are there and the
   // history is empty" is otherwise found at somebody's next `git log`.
@@ -87,4 +130,3 @@ export async function create(
     forceNewWindow: vscode.workspace.workspaceFolders !== undefined,
   })
 }
-

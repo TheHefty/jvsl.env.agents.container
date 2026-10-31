@@ -123,6 +123,8 @@ jobs:
         run: bash scripts/attach-release-package.test.sh
       - name: the planning stays in the tracker, and the charter and SRS carry no state
         run: bash scripts/the-guard-holds-the-split.test.sh
+      - name: release-please waits for a manual cut request on master
+        run: bash scripts/release-please-waits-for-manual-dispatch.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule

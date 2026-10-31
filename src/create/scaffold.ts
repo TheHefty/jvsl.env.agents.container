@@ -41,7 +41,7 @@ export interface ScaffoldPlan {
  * reported in full.
  *
  * **It checks the directory again.** `checkLocation` already refused a
- * non-empty one when the question was answered, and six questions pass between
+ * non-empty one when the question was answered, and the setup questions pass between
  * then and here: a clone finishing, an editor saving, another window's
  * scaffolding. That first check exists so the questions are not wasted; this one
  * is the one that protects anything.
