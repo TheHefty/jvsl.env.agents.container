@@ -150,6 +150,8 @@ jobs:
         run: bash docs/agent/plan-whole-before-code.test.sh
       - name: a project's own rules have a home, and nothing points at the import that is gone
         run: bash docs/agent/project-rules.test.sh
+      - name: initialization records whether Cucumber runs acceptance features
+        run: bash docs/agent/initialization-cucumber.test.sh
 
   bash-syntax:
     needs: changes
