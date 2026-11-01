@@ -71,7 +71,7 @@ export function planMarkdown(hostPath: string, plan: Plan & { kind: 'plan' }): s
     ? ['None.']
     : plan.report.mentions.map((m) => `- \`${m.path}:${m.line}\`: ${m.text}`)
   return [
-    '# Migrate from code-server: the files',
+    '# Migrate from legacy template: the files',
     '',
     `Project: \`${hostPath}\``,
     '',
@@ -107,7 +107,7 @@ export function planningPreview(output: string, resuming?: string): { apply: boo
   return {
     apply: !refuses,
     markdown: [
-      '# Migrate from code-server: the planning',
+      '# Migrate from legacy template: the planning',
       '',
       ...(refuses
         ? ['**The run would refuse, so there is nothing to apply.** The reason is at the top of the plan below; fix it in the project, then run Migrate again.', '']

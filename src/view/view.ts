@@ -120,7 +120,7 @@ export function viewItems(state: ViewState): Row[] {
   if (state.oldFormat === true) {
     rows.push({
       kind: 'entry',
-      label: 'Migrate from code-server',
+      label: 'Migrate from legacy template',
       detail: 'this project still carries the template submodule',
       command: 'jvsl.agentContainer.migrate',
     })

@@ -38,7 +38,7 @@ Record the answer in the charter. It does not change the mode, language, memory 
 questions; those are asked the same way either way.
 
 **What the project is for.** When the template is added to a project (`git submodule add
-https://github.com/TheHefty/jvsl.env.agents.code-server.git .code-server`), the domain, the goals
+https://github.com/TheHefty/jvsl.env.agents.code-server.git .code-server` (legacy template)), the domain, the goals
 and any constraints already known are not visible in the repository, and guessing them wrong
 misdirects everything built on top. For a sustaining engagement this is thinner — the purpose is
 the mandate, not a fresh decision — but the scope boundary still needs saying out loud.

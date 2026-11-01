@@ -75,7 +75,7 @@ test('a planning preview that will refuse offers no Apply, and says why first (d
   const refusing = 'migrate-planning: REFUSES: 30 line(s) outside the folders read from docs/PLANNING or docs/DEBTS.\n  a.js:1: x\n'
   const v = planningPreview(refusing)
   assert.equal(v.apply, false)
-  assert.match(v.markdown, /^# Migrate from code-server: the planning\n\n\*\*The run would refuse/)
+  assert.match(v.markdown, /^# Migrate from legacy template: the planning\n\n\*\*The run would refuse/)
   const fine = 'migrate-planning: 28 item(s): 3 epic(s), 9 story(ies), 16 task(s), 0 debt(s); 2 closed.\n'
   assert.equal(planningPreview(fine).apply, true)
 })

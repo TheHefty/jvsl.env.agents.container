@@ -57,7 +57,7 @@ toolchain local" e "só reproduz num host real" são respostas; vazio não é.
 O que isto atinge além do arquivo que edita. Marque o que se aplica e diga como:
 
 - [ ] O submódulo do template — precisa de release e de bump do ponteiro antes de qualquer projeto ver
-- [ ] A imagem — precisa de `.code-server/setup`; nada muda num ambiente em execução até lá
+- [ ] A imagem — precisa de `.code-server/setup (legacy template)`; nada muda num ambiente em execução até lá
 - [ ] O manifesto de stacks (`.agent-container.stack.json`)
 - [ ] O mapa do sandbox do agente, ou onde uma capacidade é decidida
 - [ ] Uma dependência buscada em tempo de build — com seu pin e digest

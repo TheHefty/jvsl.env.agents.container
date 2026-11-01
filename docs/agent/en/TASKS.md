@@ -3,13 +3,13 @@
 A task is the detailed design of one slice of a story — what used to be an RFC. It captures *why*:
 the problem, what was rejected, what it costs, and the three worst ways it can break. It stays true
 after the code moves on; it is not a description of the current system, which is `docs/OVERVIEW.md`
-and the template's own `.code-server/docs/overview/`.
+and the template's own `.code-server/docs/overview/ (legacy template)`.
 
 Tasks live under the story they belong to, at
 `docs/PLANNING/<epic>/<story>/tasks/<slug>.md`. **This file is the inherited procedure, not a
 project's tasks.** It ships from the template and is read through a link; the task documents live
 in the project's own `docs/PLANNING/`, which starts empty. Decisions about the template itself do
-not go there — they live with the template, in `.code-server/docs/overview/`, which versions with
+not go there — they live with the template, in `.code-server/docs/overview/ (legacy template)`, which versions with
 it rather than with a consumer of it.
 
 Where tasks sit in the larger chain — charter, SRS, epic, story, task, code — is in

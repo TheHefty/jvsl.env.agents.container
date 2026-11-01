@@ -170,7 +170,7 @@ test('a project still on the code-server template offers to migrate, above its s
   const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' }, oldFormat: true })
   const entry = rows.find((r) => r.command === 'jvsl.agentContainer.migrate')
   assert.ok(entry, JSON.stringify(rows))
-  assert.equal(entry.label, 'Migrate from code-server')
+  assert.equal(entry.label, 'Migrate from legacy template')
   assert.equal(viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } }).find((r) => r.command === 'jvsl.agentContainer.migrate'), undefined)
 })
 
