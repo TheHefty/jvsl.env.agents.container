@@ -91,10 +91,10 @@ test('an item whose parent is missing is not lost', () => {
 import { backlogRows, typeLook } from './board-read.ts'
 
 test('every known bd type is shown under Azure DevOps\'s name and colour', () => {
-  assert.deepEqual(typeLook('epic'), { name: 'Epic', colour: '#FF7B00' })
-  assert.deepEqual(typeLook('feature'), { name: 'User Story', colour: '#009CCC' })
-  assert.deepEqual(typeLook('task'), { name: 'Task', colour: '#F2CB1D' })
-  assert.deepEqual(typeLook('bug'), { name: 'Bug', colour: '#CC293D' })
+  assert.deepEqual(typeLook('epic'), { name: 'Epic', colour: '#e8a33d' })
+  assert.deepEqual(typeLook('feature'), { name: 'User Story', colour: '#4daafc' })
+  assert.deepEqual(typeLook('task'), { name: 'Task', colour: '#89d185' })
+  assert.deepEqual(typeLook('bug'), { name: 'Bug', colour: '#f48771' })
 })
 
 test('a type the table does not know keeps its own name, never folded into another', () => {

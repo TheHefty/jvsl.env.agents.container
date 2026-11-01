@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { parseExport, type Item } from './board-read.ts'
-import { boardView, chainMarks, VIEWS, type BoardView } from './board-view.ts'
+import { boardView, chainMarks, VIEWS, type BoardView, laneIsQuiet, laneSummary, taskMeta } from './board-view.ts'
 
 /**
  * The board's three views (story nmf.2, task nmf.2.1). One export, in the shape
@@ -92,7 +92,7 @@ test('Stories by epic has one lane per open epic, the closed epic that still has
   assert.deepEqual(v.lanes.map((l) => l.key), ['e1', 'e2', ''])
   assert.equal(v.lanes.find((l) => l.key === '')?.title, 'No epic')
   assert.equal(v.lanes.some((l) => l.key === 'e3'), false, 'a proposed epic is not a lane')
-  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['No task', 'In development', 'Awaiting verification', 'Done'])
+  assert.deepEqual(v.lanes[0]?.columns.map((c) => c.title), ['Not started', 'In development', 'Awaiting verification', 'Done'])
 })
 
 test('each story sits in the column its tasks say', () => {
@@ -265,4 +265,44 @@ test('a task with no story, under an epic, or under another task is in No story;
     const from = items.includes(t) ? v : boardView(ITEMS, 'by-story')
     assert.equal(column(from, t.id).length, 1, `${t.id} is in ${column(from, t.id).length} places`)
   }
+})
+
+// --- the board is drawn as lanes and cards (story dox.1)
+
+test('a story with no task is titled Not started, in the bucket it always was', () => {
+  const v = boardView([], 'stories')
+  assert.equal(v.lanes[0]?.columns[0]?.title, 'Not started')
+  assert.equal(v.lanes[0]?.columns[0]?.key, 'no_task')
+})
+
+test('a lane says what it holds, and an epic with nothing open starts collapsed', () => {
+  const items: Item[] = [
+    { id: 'e', title: 'E', status: 'open', type: 'epic', labels: [], blockedBy: [] },
+    { id: 'quiet', title: 'Q', status: 'open', type: 'epic', labels: [], blockedBy: [] },
+    { id: 's1', title: 'S', status: 'open', type: 'feature', labels: [], blockedBy: [], parent: 'e' },
+    { id: 's2', title: 'S', status: 'open', type: 'feature', labels: [], blockedBy: [], parent: 'e' },
+    { id: 't1', title: 'T', status: 'in_progress', type: 'task', labels: [], blockedBy: [], parent: 's2' },
+    { id: 'd', title: 'D', status: 'open', type: 'bug', labels: ['defect'], blockedBy: [], debtKind: 'defect' },
+  ]
+  const lanes = new Map(boardView(items, 'stories').lanes.map((l) => [l.key, l]))
+  assert.equal(laneSummary(lanes.get('e')!, 'stories'), '2 open stories · 1 in development')
+  assert.equal(laneSummary(lanes.get('quiet')!, 'stories'), 'No open stories')
+  assert.equal(laneSummary(lanes.get('')!, 'stories'), '1 open item')
+  assert.equal(laneIsQuiet(lanes.get('quiet')!), true)
+  assert.equal(laneIsQuiet(lanes.get('e')!), false)
+  const byStory = boardView(items, 'by-story').lanes[0]!
+  assert.equal(laneSummary(byStory, 'by-story'), '1 open task')
+})
+
+test('a story card says what its tasks are doing, and a proposal counts as proposed', () => {
+  const items: Item[] = [
+    { id: 's', title: 'S', status: 'open', type: 'feature', labels: [], blockedBy: [] },
+    { id: 't', title: 'T', status: 'in_progress', type: 'task', labels: [], blockedBy: [], parent: 's' },
+    { id: 'c', title: 'C', status: 'open', type: 'bug', labels: ['defect'], blockedBy: [], debtKind: 'defect' },
+    { id: 'p', title: 'P', status: 'deferred', type: 'task', labels: ['proposed'], blockedBy: [], parent: 'c' },
+    { id: 'n', title: 'N', status: 'open', type: 'feature', labels: [], blockedBy: [] },
+  ]
+  assert.equal(taskMeta(items, 's'), '1 task in progress')
+  assert.equal(taskMeta(items, 'c'), '1 task proposed')
+  assert.equal(taskMeta(items, 'n'), undefined)
 })

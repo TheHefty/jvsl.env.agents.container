@@ -156,10 +156,10 @@ export function tree(items: readonly Item[]): Node[] {
  * a neutral colour, never folded into one it is not.
  */
 const LOOKS: Readonly<Record<string, { name: string; colour: string }>> = {
-  epic: { name: 'Epic', colour: '#FF7B00' },
-  feature: { name: 'User Story', colour: '#009CCC' },
-  task: { name: 'Task', colour: '#F2CB1D' },
-  bug: { name: 'Bug', colour: '#CC293D' },
+  epic: { name: 'Epic', colour: '#e8a33d' },
+  feature: { name: 'User Story', colour: '#4daafc' },
+  task: { name: 'Task', colour: '#89d185' },
+  bug: { name: 'Bug', colour: '#f48771' },
 }
 
 export function typeLook(type: string): { name: string; colour: string } {

@@ -14,7 +14,7 @@
  */
 import { hiddenClosed, orderedIds, visibleIds } from './board-filter.ts'
 import { backlogRows, typeLook, type Item } from './board-read.ts'
-import { boardView, chainMarks, VIEWS, type ChainMark, type ViewName } from './board-view.ts'
+import { boardView, chainMarks, laneIsQuiet, laneSummary, taskMeta, VIEWS, type ChainMark, type Lane, type ViewColumn, type ViewName } from './board-view.ts'
 import { prLink } from './pr-link.ts'
 
 export interface Rendered {
@@ -41,57 +41,106 @@ export function escape(s: string): string {
 }
 
 const STYLE = `
-body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 0 12px; }
-nav { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
-nav button, .card { font: inherit; color: inherit; cursor: pointer; }
-nav button { background: none; border: 1px solid var(--vscode-panel-border); padding: 4px 10px; }
-nav button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-nav .spacer { flex: 1; }
-.lane { margin-bottom: 14px; }
+body { font-family: var(--vscode-font-family); font-size: 13px; line-height: 1.4; color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 0; }
+a { color: var(--vscode-textLink-foreground); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.card .icon, .lane-head .type-icon { color: var(--type-colour); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--vscode-panel-border); }
+.bar .spacer { flex: 1; }
+nav { display: inline-flex; border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow: hidden; }
+.seg { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.seg + .seg { border-left: 1px solid var(--vscode-panel-border); }
+.seg:hover { background: var(--vscode-list-hoverBackground); }
+.seg[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.group-by, .toggle-closed { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--vscode-descriptionForeground); }
+.group-by select { height: 28px; padding: 0 8px; border-radius: 4px; font: inherit; color: var(--vscode-dropdown-foreground); background: var(--vscode-dropdown-background); border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border)); }
+.search { display: inline-flex; align-items: center; gap: 8px; height: 28px; width: 280px; max-width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 4px;
+  color: var(--vscode-descriptionForeground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); }
+.search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 12px; color: var(--vscode-input-foreground); }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
+.iconbtn:hover { background: var(--vscode-list-hoverBackground); }
+.view { padding: 0 20px 32px; }
+.notice { margin: 0; padding: 10px 20px; }
+.hidden-closed { margin: 10px 0 0; font-size: 12px; color: var(--vscode-descriptionForeground); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--vscode-panel-border); }
 .filters .field { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 12px 4px 0; }
 .filters .label { opacity: 0.75; margin-right: 2px; }
+.filters button { font: inherit; color: inherit; cursor: pointer; background: none; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 2px 8px; }
 .value[data-mode="include"] { outline: 2px solid var(--vscode-focusBorder); }
 .value[data-mode="include"]::before { content: "+ "; }
 .value[data-mode="exclude"] { text-decoration: line-through; opacity: 0.7; }
 .value[data-mode="exclude"]::before { content: "− "; }
 #tag-all[aria-pressed="true"] { font-weight: bold; }
-.mark, .prio { font-size: 0.75em; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 0 4px; margin-right: 4px; }
-.mark.warn { border-color: var(--vscode-editorWarning-foreground, #cca700); }
-.card-wrap { display: grid; }
-.pr { font-size: 0.8em; margin: 2px 0 6px 6px; }
-.lane > h3 { margin: 4px 0 6px; font-size: 1em; }
-.views button[aria-pressed="true"] { font-weight: bold; }
-.columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 10px; overflow-x: auto; }
-.column h2 { font-size: 0.9em; text-transform: uppercase; opacity: 0.8; }
-.card { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 6px 8px;
-  background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-panel-border); }
+.board-grid { min-width: 840px; }
+${[5, 6, 7, 8].map((n) => `.board-grid.cols-${n} { min-width: ${n * 200}px; }`).join('\n')}
+.col-titles, .columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; }
+.col-titles { position: sticky; top: 0; z-index: 1; padding: 14px 0 10px; background: var(--vscode-editor-background); }
+.col-title { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.col-title .count { font-weight: 400; color: var(--vscode-descriptionForeground); }
+.dot { width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; background: var(--state-colour, transparent); border: 1.5px solid var(--state-colour, var(--vscode-descriptionForeground)); }
+.lane { border-top: 1px solid var(--vscode-panel-border); padding: 10px 0 14px; }
+.lane-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.lane-head .chevron { width: 12px; height: 12px; stroke-width: 2; color: var(--vscode-descriptionForeground); }
+.lane-head[aria-expanded="false"] .chevron { transform: rotate(-90deg); }
+.lane-head[aria-expanded="false"] + .columns { display: none; }
+.lane-title { font-weight: 600; }
+.lane-summary { margin-left: auto; font-size: 12px; color: var(--vscode-descriptionForeground); }
+.lane .columns { margin-top: 8px; }
+.column { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.empty { display: none; height: 44px; border: 1px dashed var(--vscode-panel-border); border-radius: 6px; }
+.column:not(:has(.card-wrap:not([hidden]))) > .empty { display: block; }
+.card-wrap { display: grid; gap: 4px; }
+.card { display: flex; flex-direction: column; gap: 6px; width: 100%; box-sizing: border-box; text-align: left; padding: 10px 12px; font: inherit; color: inherit; cursor: pointer;
+  background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-panel-border); border-radius: 6px; }
+.card:hover { background: var(--vscode-list-hoverBackground); }
 .card.proposed { border-style: dashed; border-color: var(--vscode-focusBorder); }
-.id, .kind, .state { font-size: 0.8em; opacity: 0.75; margin-right: 6px; }
+.card-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--vscode-descriptionForeground); }
+.card-head .icon { width: 13px; height: 13px; }
+.card-head .prio { margin-left: auto; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; }
+.foot:empty { display: none; }
+.pill { padding: 1px 8px; border-radius: 10px; font-size: 11px; border: 1px solid var(--state-colour, var(--vscode-panel-border)); color: var(--state-colour, inherit); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+.mark { padding: 1px 6px; border-radius: 3px; font-size: 11px; border: 1px solid var(--vscode-panel-border); }
+.mark.warn { border-color: var(--vscode-editorWarning-foreground); }
+.task-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--vscode-descriptionForeground); }
+.task-meta .icon { width: 11px; height: 11px; }
+.id { font-family: var(--vscode-editor-font-family); font-size: 11px; color: var(--vscode-descriptionForeground); }
+.pr { font-size: 0.8em; margin-left: 6px; }
+.kind, .state { font-size: 0.8em; opacity: 0.75; margin-right: 6px; }
 .kind { color: var(--vscode-errorForeground); opacity: 1; }
+.type { font-size: 11px; }
+.title { display: block; margin: 2px 0; }
+.meta { font-size: 0.8em; opacity: 0.85; }
 ul.tree { list-style: none; padding-left: 16px; }
 ul.tree > li { margin: 2px 0; }
 [hidden] { display: none !important; }
-.card { border-left: 4px solid var(--type-colour, #8A8886); }
-.type { font-size: 0.8em; margin-right: 6px; }
-.type::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; background: var(--type-colour, #8A8886); }
-.title { display: block; margin: 2px 0; }
-.meta { font-size: 0.8em; opacity: 0.85; }
-.tag { display: inline-block; font-size: 0.75em; padding: 0 6px; margin: 2px 4px 0 0; border-radius: 8px;
-  background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
 table.backlog { border-collapse: collapse; width: 100%; }
 table.backlog th, table.backlog td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vscode-panel-border); }
-table.backlog td.title-cell { border-left: 4px solid var(--type-colour, #8A8886); }
+table.backlog td.title-cell { border-left: 4px solid var(--type-colour); }
 button.toggle { background: none; border: none; color: inherit; cursor: pointer; width: 1.5em; }
 button.link { background: none; border: none; color: var(--vscode-textLink-foreground); cursor: pointer; padding: 0; }
 .links li { margin: 2px 0; }
 .type-other { --type-colour: #8A8886; }
 ${['epic', 'feature', 'task', 'bug'].map((t) => `.type-${t} { --type-colour: ${typeLook(t).colour}; }`).join('\n')}
+body.vscode-light .type-epic { --type-colour: #b36b00; }
+body.vscode-light .type-feature { --type-colour: #0b6bb5; }
+body.vscode-light .type-task { --type-colour: #2e7d32; }
+body.vscode-light .type-bug { --type-colour: #c4432b; }
+.state-in-progress { --state-colour: #4daafc; }
+.state-awaiting { --state-colour: #e5c07b; }
+.state-proposal { --state-colour: #c5a5f5; }
+body.vscode-light .state-in-progress { --state-colour: #0b6bb5; }
+body.vscode-light .state-awaiting { --state-colour: #8a6100; }
+body.vscode-light .state-proposal { --state-colour: #6f42c1; }
 ${Array.from({ length: 7 }, (_, d) => `td.depth-${d} { padding-left: ${d * 20 + 8}px; }`).join('\n')}
 dialog#detail { width: min(900px, 92vw); max-height: 85vh; overflow: auto; padding: 16px 20px;
   color: var(--vscode-foreground); background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); }
 dialog#detail::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog#detail .card { cursor: default; display: block; }
 #close-detail { float: right; }
-.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .filters input, .filters select { font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background);
   border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); padding: 2px 6px; }
 tr.context { opacity: 0.5; }
@@ -101,6 +150,22 @@ th[aria-sort="descending"]::after { content: " ▼"; }
 #detail h3 { font-size: 0.9em; text-transform: uppercase; opacity: 0.8; }
 pre.raw { white-space: pre-wrap; font-family: var(--vscode-editor-font-family); }
 `
+
+/** The design's icons, drawn in the page: the policy loads nothing. `currentColor`, so a type's colour reaches them. */
+const svg = (paths: string, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true">${paths}</svg>`
+const ICONS = {
+  epic: svg('<path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"></path>'),
+  feature: svg('<path d="M4 2.5h8v11l-4-2.5-4 2.5z"></path>'),
+  task: svg('<rect x="2.5" y="2.5" width="11" height="11" rx="2"></rect><path d="m5.5 8 1.8 1.8 3.2-3.3"></path>'),
+  bug: svg('<rect x="4.5" y="5" width="7" height="8.5" rx="3.5"></rect><path d="M6 5V3.5M10 5V3.5M2.5 8.5h2M11.5 8.5h2M3 12.5l1.6-1M13 12.5l-1.6-1"></path>'),
+  other: svg('<circle cx="8" cy="8" r="4.5"></circle>'),
+  chevron: svg('<path d="m4 6 4 4 4-4"></path>', 'icon chevron'),
+  board: svg('<rect x="1.5" y="2.5" width="3.5" height="11" rx="1"></rect><rect x="6.25" y="2.5" width="3.5" height="7" rx="1"></rect><rect x="11" y="2.5" width="3.5" height="9" rx="1"></rect>'),
+  backlog: svg('<path d="M5 4h9M5 8h9M7.5 12H14M2 4h.5M2 8h.5M4.5 12H5"></path>'),
+  search: svg('<circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path>'),
+  refresh: svg('<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"></path>'),
+}
+const typeIcon = (type: string) => ICONS[type as 'epic' | 'feature' | 'task' | 'bug'] ?? ICONS.other
 
 /**
  * The page's script. **It never builds markup**: it toggles `hidden`, a class
@@ -116,6 +181,7 @@ const vscode = acquireVsCodeApi();
 document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('nav [data-tab]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   document.querySelectorAll('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== b.dataset.tab; });
+  document.querySelector('.group-by').hidden = b.dataset.tab !== 'board';
 }));
 const dialog = document.getElementById('detail');
 document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => {
@@ -174,6 +240,9 @@ const relayout = () => {
     const open = l.querySelector('[data-column]:not([data-column="done"]) [data-card]:not([hidden])');
     l.hidden = (l.dataset.laneClosed === 'true' && !f.showClosed && !open) || (active && !l.querySelector('[data-card]:not([hidden])'));
   });
+  document.querySelectorAll('[data-col-count]').forEach((el) => {
+    el.textContent = el.closest('[data-board]').querySelectorAll('.column[data-column="' + el.dataset.colCount + '"] [data-card]:not([hidden])').length;
+  });
   const say = (n) => n === 0 ? '' : n + ' closed ' + (n === 1 ? 'item' : 'items') + ' hidden. Turn on Show closed to see ' + (n === 1 ? 'it' : 'them') + '.';
   const shownBoard = document.querySelector('[data-board]:not([hidden])');
   const onBoard = !shownBoard ? 0 : hiddenClosed(cardRows.filter((r) => shownBoard.querySelector('[data-card="' + CSS.escape(r.id) + '"]')), f);
@@ -188,11 +257,13 @@ field('tag-all').addEventListener('click', () => {
   field('tag-all').setAttribute('aria-pressed', String(field('tag-all').getAttribute('aria-pressed') !== 'true')); relayout();
 });
 field('show-closed').addEventListener('change', relayout);
-document.querySelectorAll('[data-board-view]').forEach((b) => b.addEventListener('click', () => {
-  document.querySelectorAll('[data-board-view]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-  document.querySelectorAll('[data-board]').forEach((v) => { v.hidden = v.dataset.board !== b.dataset.boardView; });
-  vscode.postMessage({ type: 'view', view: b.dataset.boardView });
+field('group-by').addEventListener('change', (e) => {
+  document.querySelectorAll('[data-board]').forEach((v) => { v.hidden = v.dataset.board !== e.target.value; });
+  vscode.postMessage({ type: 'view', view: e.target.value });
   relayout();
+});
+document.querySelectorAll('[data-lane-toggle]').forEach((b) => b.addEventListener('click', () => {
+  b.setAttribute('aria-expanded', String(b.getAttribute('aria-expanded') !== 'true'));
 }));
 document.querySelectorAll('[data-toggle]').forEach((t) => t.addEventListener('click', () => {
   t.setAttribute('aria-expanded', String(t.getAttribute('aria-expanded') !== 'true')); relayout();
@@ -263,9 +334,9 @@ interface Context {
 }
 
 /** Where the item stands in the chain (story nmf.3), and its priority. */
-function marks(item: Item, ctx: Context): string {
+function marks(item: Item, ctx: Context, column?: ViewColumn): string {
   const m = ctx.marks.get(item.id)
-  return (m?.awaitingVerification ? '<span class="mark">Awaiting verification</span>' : '') +
+  return (m?.awaitingVerification && column?.key !== 'awaiting_verification' ? '<span class="mark">Awaiting verification</span>' : '') +
     (m?.ready ? '<span class="mark">Ready</span>' : '') +
     (m?.noCriterion ? '<span class="mark warn">no done criterion</span>' : '') +
     (item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`)
@@ -280,10 +351,26 @@ function pr(item: Item, ctx: Context): string {
     : `<a class="pr" href="${escape(link.href)}">${escape(link.text)}</a>`
 }
 
-function card(item: Item, ctx: Context): string {
+const stateClass = (item: Item) => `state-${stateOf(item).toLowerCase().replace(/ /g, '-')}`
+
+/** The columns that already say where an item stands, whatever its stored state. */
+const COLUMN_SAYS_STATE = ['in_development', 'awaiting_verification']
+
+/**
+ * A card, as the redesign draws it (story dox.1): what it is on top, its title
+ * cut at two lines, and a foot. The state is left out where its column says it.
+ */
+function card(item: Item, ctx: Context, column: ViewColumn, meta?: string): string {
   const proposed = isProposal(item) ? ' proposed' : ''
-  const button = `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">${head(item)}` +
-    `<span class="title">${escape(item.title)}</span><span class="meta">${escape(stateOf(item))}</span>${marks(item, ctx)}${tags(item)}</button>`
+  const state = COLUMN_SAYS_STATE.includes(column.key) || stateOf(item) === column.title
+    ? ''
+    : `<span class="pill ${stateClass(item)}">${escape(stateOf(item))}</span>`
+  const button = `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">` +
+    `<span class="card-head">${typeIcon(item.type)}<span class="type">${escape(typeLook(item.type).name)}</span><span class="id">${escape(item.id)}</span>` +
+    `${item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`}</span>` +
+    `<span class="title clamp">${escape(item.title)}</span>` +
+    `<span class="foot">${state}${marks({ ...item, priority: undefined }, ctx, column)}${tags(item)}` +
+    `${meta === undefined ? '' : `<span class="task-meta">${ICONS.task}${escape(meta)}</span>`}</span></button>`
   // The wrapper carries what the filter reads, as a backlog row does (story nmf.4).
   return `<div class="card-wrap" data-card="${escape(item.id)}" data-type="${escape(typeLook(item.type).name)}" ` +
     `data-state="${escape(stateOf(item))}" data-tags="${escape(shownTags(item).join('\u001f'))}" ` +
@@ -306,7 +393,6 @@ function filterBar(items: readonly Item[]): string {
     [...new Set(list)].sort().map((v) => `<button class="value" data-value="${escape(v)}" data-mode="">${escape(v)}</button>`).join('') +
     extra + '</div>'
   return '<div class="filters">' +
-    '<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title">' +
     values('type', 'Type', items.map((i) => typeLook(i.type).name)) +
     values('state', 'State', items.map(stateOf)) +
     values('tag', 'Tags', items.flatMap(shownTags), '<button id="tag-all" aria-pressed="false">All of</button>') +
@@ -367,6 +453,13 @@ function form(item: Item, rendered: Rendered | undefined, byId: ReadonlyMap<stri
     '</section>'
 }
 
+/** Group by's order, as the redesign lists them. */
+const GROUP_ORDER: readonly ViewName[] = ['stories', 'by-story', 'tasks', 'all']
+/** The colour of a column title's dot. */
+const STATE_OF_COLUMN: Readonly<Record<string, string>> = {
+  in_development: 'state-in-progress', in_progress: 'state-in-progress', awaiting_verification: 'state-awaiting',
+}
+
 export function boardPage(input: {
   nonce: string
   items: readonly Item[]
@@ -380,34 +473,48 @@ export function boardPage(input: {
   const { nonce, items, rendered, notice } = input
   const ctx: Context = { marks: chainMarks(items), remote: input.remote }
   const active = input.view ?? 'all'
-  const picker = '<p class="views">' + VIEWS
-    .map((v) => `<button data-board-view="${v.name}" aria-pressed="${v.name === active}">${escape(v.title)}</button>`)
-    .join(' ') + '</p>'
-  const board = picker + VIEWS.map(({ name }) => {
-    const lanes = boardView(items, name).lanes.map((lane) => {
-      const cols = lane.columns
-        .map((c) => `<div class="column" data-column="${c.key}"><h2>${escape(c.title)} (${c.items.length})</h2>${c.items.map((i) => card(i, ctx)).join('')}</div>`)
-        .join('')
-      return lane.title === ''
-        ? `<div class="columns">${cols}</div>`
-        : `<section class="lane" data-lane="${escape(lane.key)}" data-lane-closed="${lane.closed}"><h3>${escape(lane.title)}</h3><div class="columns">${cols}</div></section>`
-    }).join('')
-    return `<div data-board="${name}"${name === active ? '' : ' hidden'}>${lanes}</div>`
+  const groupBy = '<label class="group-by">Group by <select id="group-by">' + GROUP_ORDER
+    .map((name) => `<option value="${name}"${name === active ? ' selected' : ''}>${escape(VIEWS.find((v) => v.name === name)!.title)}</option>`)
+    .join('') + '</select></label>'
+  const board = VIEWS.map(({ name }) => {
+    const { lanes } = boardView(items, name)
+    const metaOf = (i: Item) => name === 'stories' ? taskMeta(items, i.id) : undefined
+    const cols = (lane: Lane) => '<div class="columns">' + lane.columns
+      .map((c) => `<div class="column" data-column="${c.key}">${c.items.map((i) => card(i, ctx, c, metaOf(i))).join('')}<div class="empty"></div></div>`)
+      .join('') + '</div>'
+    // One row of titles for the whole view; a title is hidden with its column, so they stay aligned.
+    const first = lanes[0]?.columns ?? []
+    const titles = '<div class="col-titles">' + first
+      .map((c) => `<div class="col-title${STATE_OF_COLUMN[c.key] === undefined ? '' : ` ${STATE_OF_COLUMN[c.key]}`}" data-column="${c.key}"><span class="dot"></span>${escape(c.title)} ` +
+        `<span class="count" data-col-count="${c.key}">${lanes.reduce((n, l) => n + (l.columns.find((x) => x.key === c.key)?.items.length ?? 0), 0)}</span></div>`)
+      .join('') + '</div>'
+    const body = lanes.map((lane) => lane.title === ''
+      ? cols(lane)
+      : `<section class="lane" data-lane="${escape(lane.key)}" data-lane-closed="${lane.closed}">` +
+        `<button class="lane-head" data-lane-toggle aria-expanded="${!laneIsQuiet(lane)}">${ICONS.chevron}` +
+        `${lane.key === '' ? '' : `<span class="type-icon ${name === 'stories' ? 'type-epic' : 'type-feature'}">${name === 'stories' ? ICONS.epic : ICONS.feature}</span>`}` +
+        `<span class="lane-title">${escape(lane.title)}</span>${lane.key === '' ? '' : `<span class="id">${escape(lane.key)}</span>`}` +
+        `<span class="lane-summary">${escape(laneSummary(lane, name))}</span></button>${cols(lane)}</section>`).join('')
+    return `<div data-board="${name}"${name === active ? '' : ' hidden'}><div class="board-grid cols-${first.length}">${titles}${body}</div></div>`
   }).join('')
   const byId = new Map(items.map((i) => [i.id, i]))
   const childrenOf = (id: string) => items.filter((i) => i.parent === id)
   const body = [
     notice === undefined ? '' : `<p class="notice">${escape(notice)}</p>`,
-    '<nav>',
-    '<button data-tab="board" aria-pressed="true">Board</button>',
-    '<button data-tab="backlog" aria-pressed="false">Backlog</button>',
+    '<header class="bar">',
+    '<nav aria-label="View">',
+    `<button class="seg" data-tab="board" aria-pressed="true">${ICONS.board}Board</button>`,
+    `<button class="seg" data-tab="backlog" aria-pressed="false">${ICONS.backlog}Backlog</button>`,
+    '</nav>',
+    groupBy,
     '<label class="toggle-closed"><input type="checkbox" id="show-closed"> Show closed</label>',
     '<span class="spacer"></span>',
-    '<button id="refresh">Read again</button>',
-    '</nav>',
+    `<label class="search">${ICONS.search}<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title"></label>`,
+    `<button id="refresh" class="iconbtn" aria-label="Read work items again" title="Read again">${ICONS.refresh}</button>`,
+    '</header>',
     filterBar(items),
-    `<div data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
-    `<div data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items, ctx)}</div>`,
+    `<div class="view" data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
+    `<div class="view" data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items, ctx)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
       `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
   ].join('\n')
