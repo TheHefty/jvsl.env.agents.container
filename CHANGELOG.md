@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.18.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.17.1...v1.18.0) (2026-11-01)
+
+
+### Features
+
+* add extension icon and rename current guidance to legacy template ([b1d1132](https://github.com/TheHefty/jvsl.env.agents.container/commit/b1d113274d908fff9599a472a6f1796fe0bb8da5))
+* add extension icon and rename current guidance to legacy template ([8d865aa](https://github.com/TheHefty/jvsl.env.agents.container/commit/8d865aa6e2495724e47656cc3cee889dbce74a44))
+* ask about Cucumber during initialization ([bafd2e2](https://github.com/TheHefty/jvsl.env.agents.container/commit/bafd2e22d4ccd0424b230115b616a55da1c08887))
+* ask about Cucumber during initialization ([e8370ab](https://github.com/TheHefty/jvsl.env.agents.container/commit/e8370abdd2cf515dac45da56c20eee7c1fbf9741))
+* **board:** draw the backlog as the redesign's hierarchy grid ([c87f272](https://github.com/TheHefty/jvsl.env.agents.container/commit/c87f2720459d8a55796e8e0cf9aef742df5ac3cb))
+* **board:** draw the backlog as the redesign's hierarchy grid ([5be7cbb](https://github.com/TheHefty/jvsl.env.agents.container/commit/5be7cbbbbf2b2134c2dd90b42e802a283f9359cc))
+* **board:** draw the board as the redesign's lanes and cards ([2a77e9b](https://github.com/TheHefty/jvsl.env.agents.container/commit/2a77e9b72d02b7ec82f30532af6dbc1a6dedff84))
+* **board:** draw the board as the redesign's lanes and cards ([7b1bf8e](https://github.com/TheHefty/jvsl.env.agents.container/commit/7b1bf8e7fe3e8258e9769faef9b9167ca58f75e1))
+* **board:** open an item in the redesign's side panel ([dfa672d](https://github.com/TheHefty/jvsl.env.agents.container/commit/dfa672d3b395d16002489d25ceffe367fc6abd8c))
+* **board:** open an item in the redesign's side panel ([9674eb8](https://github.com/TheHefty/jvsl.env.agents.container/commit/9674eb806a0f24ba07dea8baed24ea1b4e9e52a4))
+* **board:** open filters as include and exclude dropdowns ([89e3c96](https://github.com/TheHefty/jvsl.env.agents.container/commit/89e3c967a468d7e93a602a772a6cd6e8a004c665))
+* **board:** open filters as include and exclude dropdowns ([6e7ee70](https://github.com/TheHefty/jvsl.env.agents.container/commit/6e7ee70f2f2dfd4c88acdff7b67fddd6f905dcbb))
+
+
+### Bug Fixes
+
+* remove local node_modules link from PR stack ([536ba9c](https://github.com/TheHefty/jvsl.env.agents.container/commit/536ba9c623edd8593a7dc796c2f53b545f6f82d5))
+
 ## [1.17.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.17.0...v1.17.1) (2026-10-31)
 
 
