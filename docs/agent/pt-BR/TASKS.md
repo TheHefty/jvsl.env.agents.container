@@ -3,13 +3,13 @@
 Uma task é o desenho detalhado de uma fatia de uma estória — o que era um RFC. Ela captura o
 *porquê*: o problema, o que foi rejeitado, o que custa, e as três piores formas de quebrar. Ela
 continua verdadeira depois que o código anda; não é uma descrição do sistema atual, que é o
-`docs/OVERVIEW.md` e o `.code-server/docs/overview/` do próprio template.
+`docs/OVERVIEW.md` e o `.code-server/docs/overview/ (legacy template)` do próprio template.
 
 Tasks moram sob a estória a que pertencem, em
 `docs/PLANNING/<epico>/<estoria>/tasks/<slug>.md`. **Este arquivo é o procedimento herdado, não as
 tasks de um projeto.** Ele vem do template e é lido por link; os documentos de task moram no
 `docs/PLANNING/` do próprio projeto, que começa vazio. Decisões sobre o template em si não vão para
-lá — moram com o template, no `.code-server/docs/overview/`, que versiona com ele e não com um
+lá — moram com o template, no `.code-server/docs/overview/ (legacy template)`, que versiona com ele e não com um
 consumidor dele.
 
 Onde as tasks ficam na cadeia maior — termo de abertura, SRS, épico, estória, task, código — está

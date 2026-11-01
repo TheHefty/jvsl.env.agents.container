@@ -40,7 +40,7 @@ Registre a resposta no termo de abertura. Ela não muda as perguntas de modo, id
 licença; essas são feitas do mesmo jeito de qualquer forma.
 
 **Para que serve o projeto.** Quando o template é adicionado a um projeto (`git submodule add
-https://github.com/TheHefty/jvsl.env.agents.code-server.git .code-server`), o domínio, os objetivos
+https://github.com/TheHefty/jvsl.env.agents.code-server.git .code-server` (template legado)), o domínio, os objetivos
 e as restrições já conhecidas não estão visíveis no repositório, e chutar errado desvia tudo que
 for construído em cima. Para um engajamento de sustentação isso é mais raso — o propósito é o
 mandato, não uma decisão nova — mas a fronteira de escopo ainda precisa ser dita em voz alta.

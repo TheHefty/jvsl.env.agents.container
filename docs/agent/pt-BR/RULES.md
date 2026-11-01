@@ -136,7 +136,7 @@ Não testes escritos ao lado, e não testes escritos depois e commitados numa or
 Nada num repo consumidor roda um teste por você. A disciplina que existir tem que ser carregada por
 quem abre a mudança.
 
-- **Mudanças sob `.code-server/` são verificadas pela CI do próprio template**, que constrói uma
+- **Mudanças sob `.code-server/` do template legado são verificadas pela CI do próprio template**, que constrói uma
   imagem por stack. Faça as mudanças lá, no repositório do template, e consuma o resultado por um
   bump.
 - **Um repo consumidor não tem CI própria**, então um PR nele é mergeável no instante em que abre.
@@ -301,7 +301,7 @@ Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
 
 ### O submódulo do template
 
-- **Bumpe `.code-server/` para uma tag, nunca para um commit solto.** Um commit alcançável só a
+- **Bumpe o template legado `.code-server/` para uma tag, nunca para um commit solto.** Um commit alcançável só a
   partir de uma branch fica inalcançável quando aquela branch é squash-mergeada e apagada, e aí todo
   clone novo falha no `git submodule update`. Tags são permanentes; branches não.
 - **Leia o `CHANGELOG.md` do template quando um bump atravessa versões.** O template entrega
@@ -311,10 +311,10 @@ Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
   Leia o que mudou antes de mergear o bump, e trate uma regra de que você discorda como algo a
   discutir no template em vez de editar localmente — uma edição local é exatamente a divergência que
   este arranjo existe para encerrar.
-- **Rode `.code-server/setup` de novo depois de um bump.** A imagem é o que carrega a mudança, e ela
+- **Rode `.code-server/setup (legacy template)` de novo depois de um bump.** A imagem é o que carrega a mudança, e ela
   nunca é atualizada no lugar — um ponteiro bumpado com imagem velha significa que o repo e o
   ambiente descrevem sistemas diferentes.
-- **Nunca edite `.code-server/Dockerfile` à mão.** Ele é gerado a partir dos fragmentos e regerado a
+- **Nunca edite o `.code-server/Dockerfile` do template legado à mão.** Ele é gerado a partir dos fragmentos e regerado a
   cada `setup`; uma edição ali se perde sem aviso.
 
 ## Documentação

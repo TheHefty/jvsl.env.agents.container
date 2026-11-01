@@ -81,6 +81,7 @@ test('nothing ships that this test was not told to expect', () => {
   const allowed = [
     /^package\.json$/,
     /^README\.md$/,
+    /^icon\.png$/,
     /^LICENSE$/,
     /^CHANGELOG\.md$/,
     // The assets a project receives. Required by the assertion below rather

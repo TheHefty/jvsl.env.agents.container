@@ -135,7 +135,7 @@ order.
 Nothing in a consuming repo runs a test for you. What discipline exists has to be carried by
 whoever opens the change.
 
-- **Changes under `.code-server/` are verified by the template's own CI**, which builds an image
+- **Changes under the legacy `.code-server/` are verified by the template's own CI**, which builds an image
   per stack. Make them there, in the template's repository, and consume the result through a bump.
 - **A consuming repo has no CI of its own**, so a PR in it is mergeable the moment it opens.
   Nothing will stop a broken change: the discipline has to come from whoever opens it.
@@ -297,7 +297,7 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
 
 ### The template submodule
 
-- **Bump `.code-server/` to a tag, never to a bare commit.** A commit reachable only from a branch
+- **Bump the legacy `.code-server/` to a tag, never to a bare commit.** A commit reachable only from a branch
   becomes unreachable once that branch is squash-merged and deleted, and then every fresh clone
   fails its `git submodule update`. Tags are permanent; branches are not.
 - **Read the template's `CHANGELOG.md` when a bump crosses versions.** The template ships behaviour
@@ -307,10 +307,10 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
   changed before merging the bump, and treat a rule you disagree with as something to argue in the
   template rather than to edit locally — a local edit is the divergence this arrangement exists to
   end.
-- **Rerun `.code-server/setup` after a bump.** The image is what carries the change, and it is
+- **Rerun `.code-server/setup (legacy template)` after a bump.** The image is what carries the change, and it is
   never updated in place — a bumped pointer with a stale image means the repo and the environment
   describe different systems.
-- **Never hand-edit `.code-server/Dockerfile`.** It is generated from the fragments and regenerated
+- **Never hand-edit the legacy `.code-server/Dockerfile`.** It is generated from the fragments and regenerated
   on every `setup`; an edit there is lost without warning.
 
 ## Documentation

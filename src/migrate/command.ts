@@ -12,7 +12,7 @@ import { migrationStep, planMarkdown, planningPreview, stepFailure, type Migrati
 import { MANIFEST, LEGACY_MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
- * Agent Container: Migrate from code-server (FR-122). **One step per run**,
+ * Agent Container: Migrate from legacy template (FR-122). **One step per run**,
  * decided by migrationStep from what is on disk and in the container, so a
  * window reloaded by recreating the container loses nothing: run it again and
  * it continues. Every change waits for an explicit Apply, and nothing is
