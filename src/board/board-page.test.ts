@@ -179,7 +179,7 @@ const tree = [
 test('the filter bar has a keyword box and type, state and tag values built from the items present', () => {
   const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
   assert.match(html, /<input id="f-text" type="search"/)
-  const value = (field: string, v: string) => new RegExp(`data-field="${field}"[^]*?<button class="value" data-value="${v}" data-mode="">${v}</button>`)
+  const value = (field: string, v: string) => new RegExp(`data-field="${field}"[^]*?<div class="pop-row[^"]*" data-value="${v}" data-mode="">`)
   assert.match(html, value('type', 'User Story'))
   assert.match(html, value('state', 'Closed'))
   assert.match(html, value('tag', 'ux'))
@@ -211,7 +211,8 @@ test('the page runs the same filter and sort the tests prove', () => {
   }
   const rows = tree.map((i, n) => ({ id: i.id, parent: i.parent, type: 'x', state: n % 2 === 0 ? 'Open' : 'Closed', tags: [], title: i.title, priority: '' }))
   const ANY = { include: [] as string[], exclude: [] as string[], all: false }
-  const f = { text: 'task', type: ANY, state: ANY, tag: ANY, showClosed: false }
+  const ANY_FIELD = { include: [] as string[], exclude: [] as string[], all: false }
+  const f = { text: 'task', type: ANY, state: ANY, tag: ANY, priority: ANY_FIELD, showClosed: false }
   assert.deepEqual([...ctx.orderedIds(rows, 'title', 'desc')], orderedIds(rows, 'title', 'desc'))
   assert.deepEqual([...ctx.visibleIds(rows, f).shown], [...visibleIds(rows, f).shown])
   // Flat rows, so no closed one is an open one's context: the count is not 0,
@@ -235,19 +236,9 @@ test('every form is inside one dialog, opened over the view and closed with a bu
 
 test('one "Show closed" toggle, off, serves the board and the backlog', () => {
   const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
-  const nav = html.slice(html.indexOf('<header class="bar">'), html.indexOf('</header>'))
+  const nav = html.slice(html.indexOf('<div class="filters">'), html.indexOf('data-view="board"'))
   assert.match(nav, /<input type="checkbox" id="show-closed"(?![^>]*checked)[^>]*>/)
   assert.match(nav, /Show closed/)
-})
-
-test('each view has a place to say how many closed items are hidden', () => {
-  const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
-  for (const view of ['board', 'backlog']) {
-    const at = html.indexOf(`data-view="${view}"`)
-    const next = html.indexOf('data-view=', at + 1)
-    const part = html.slice(at, next === -1 ? undefined : next)
-    assert.match(part, /class="hidden-closed"/, `${view} has no hidden count`)
-  }
 })
 
 test("the board's Closed column is the one the toggle hides", () => {
@@ -377,9 +368,9 @@ test('the board and the backlog keep the same items for the same filter', () => 
   const rows = rowsOf(/<tr data-row="[^"]*"[^>]*>/g, 'data-row', true)
   const ANY = { include: [] as string[], exclude: [] as string[], all: false }
   for (const f of [
-    { text: '', type: { ...ANY, exclude: ['Bug'] }, state: ANY, tag: ANY, showClosed: true },
-    { text: '', type: ANY, state: ANY, tag: { include: ['defect', 'hotfix'], exclude: [], all: true }, showClosed: true },
-    { text: '', type: { ...ANY, include: ['Task'] }, state: ANY, tag: { ...ANY, exclude: ['hotfix'] }, showClosed: true },
+    { text: '', type: { ...ANY, exclude: ['Bug'] }, state: ANY, tag: ANY, priority: ANY, showClosed: true },
+    { text: '', type: ANY, state: ANY, tag: { include: ['defect', 'hotfix'], exclude: [], all: true }, priority: ANY, showClosed: true },
+    { text: '', type: { ...ANY, include: ['Task'] }, state: ANY, tag: { ...ANY, exclude: ['hotfix'] }, priority: ANY, showClosed: true },
   ]) {
     const board = [...ctx.visibleIds(cards, f).shown].sort()
     const v = ctx.visibleIds(rows, f)
@@ -566,4 +557,66 @@ test('a long title cannot push the state off its row', () => {
   const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
   assert.match(html, /table\.backlog \{[^}]*table-layout: fixed/)
   assert.match(html, /\.ttl \{[^}]*text-overflow: ellipsis/)
+})
+
+// --- filters open as dropdowns (story dox.3, task dox.3.1)
+
+const pageScript = (html: string) => html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+const filterItems: Item[] = [
+  item({ id: 'a', type: 'bug', priority: 3, labels: ['defect'], debtKind: 'defect' }),
+  item({ id: 'b', type: 'epic', priority: 1, status: 'in_progress' }),
+]
+
+test('each field is a button opening its own hidden dropdown, Priority among them', () => {
+  const html = boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() })
+  for (const [field, name] of [['type', 'Type'], ['state', 'State'], ['tag', 'Tags'], ['priority', 'Priority']]) {
+    assert.match(html, new RegExp(`data-field="${field}"><button class="filt" data-filter-open aria-expanded="false">${name} `), field)
+  }
+  assert.equal(html.split('<div class="popover" role="dialog"').length - 1, 4)
+  assert.equal((html.match(/<div class="popover" role="dialog"[^>]* hidden>/g) ?? []).length, 4)
+  assert.match(html, /data-value="P3" data-mode=""/)
+})
+
+test('every value offers Include and Exclude, and Alt+click is said and handled', () => {
+  const html = boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() })
+  assert.match(html, /<button class="tri" data-set="include" aria-pressed="false">\+ Include<\/button><button class="tri" data-set="exclude" aria-pressed="false">− Exclude<\/button>/)
+  assert.match(html, /Alt\+click a value to exclude it/)
+  assert.match(pageScript(html), /e\.altKey \? 'exclude'/)
+})
+
+test('a button summarises its field, and takes the colour of what it does', () => {
+  const html = boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() })
+  assert.match(html, /\.filt\.on-exclude \{/)
+  assert.match(html, /\.filt\.on-include \{/)
+  const script = pageScript(html)
+  assert.match(script, /querySelector\('\.filt-excluded'\)\.textContent/)
+  assert.ok(!/innerHTML|insertAdjacentHTML/.test(script), 'the summary is text')
+})
+
+test('the page says how much the filter keeps, and offers to clear it', () => {
+  const html = boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() })
+  assert.match(html, /<span id="filter-count" hidden><\/span>/)
+  assert.match(html, /<button id="clear-filters" class="link" hidden>Clear filters<\/button>/)
+  assert.match(pageScript(html), /' of ' \+ total \+ ' open items'/)
+})
+
+test('Show closed says how many it hides beside the toggle, for the tab in sight', () => {
+  const html = boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() })
+  assert.match(html, /Show closed <span id="closed-count"><\/span>/)
+  assert.ok(!html.includes('class="hidden-closed"'))
+  assert.match(pageScript(html), /\+ ' hidden'/)
+})
+
+test('a slash goes to the search box, unless the developer is typing or reading an item', () => {
+  const script = pageScript(boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() }))
+  assert.match(script, /e\.key === '\/' && !dialog\.open && !\['INPUT', 'SELECT'\]\.includes\(e\.target\.tagName\)/)
+  assert.match(script, /preventDefault\(\); field\('f-text'\)\.focus\(\)/)
+})
+
+test('Esc and a click outside close a dropdown, and only that', () => {
+  const script = pageScript(boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() }))
+  assert.match(script, /e\.key === 'Escape' && open\(\)/)
+  assert.match(script, /!e\.target\.closest\('\.filter'\)/)
+  const close = script.slice(script.indexOf('const closePopovers'), script.indexOf('\n', script.indexOf('const closePopovers')))
+  assert.ok(!close.includes('relayout'), 'closing changes no filter')
 })

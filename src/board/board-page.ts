@@ -62,16 +62,39 @@ nav { display: inline-flex; border: 1px solid var(--vscode-panel-border); border
 .iconbtn:hover { background: var(--vscode-list-hoverBackground); }
 .view { padding: 0 20px 32px; }
 .notice { margin: 0; padding: 10px 20px; }
-.hidden-closed { margin: 10px 0 0; font-size: 12px; color: var(--vscode-descriptionForeground); }
-.filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--vscode-panel-border); }
-.filters .field { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 12px 4px 0; }
-.filters .label { opacity: 0.75; margin-right: 2px; }
-.filters button { font: inherit; color: inherit; cursor: pointer; background: none; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 2px 8px; }
-.value[data-mode="include"] { outline: 2px solid var(--vscode-focusBorder); }
-.value[data-mode="include"]::before { content: "+ "; }
-.value[data-mode="exclude"] { text-decoration: line-through; opacity: 0.7; }
-.value[data-mode="exclude"]::before { content: "− "; }
-#tag-all[aria-pressed="true"] { font-weight: bold; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--vscode-panel-border); }
+.filters .spacer { flex: 1; }
+.filter { position: relative; }
+.filt { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); background: none; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.filt:hover { background: var(--vscode-list-hoverBackground); }
+.filt .icon { width: 10px; height: 10px; stroke-width: 2; }
+.filt[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.filt-included { color: var(--vscode-descriptionForeground); }
+.filt-excluded { text-decoration: line-through; }
+.filt.on-include { border-color: var(--vscode-button-background); background: color-mix(in srgb, var(--vscode-button-background) 25%, transparent); }
+.filt.on-include .filt-included { color: inherit; }
+.filt.on-exclude { border-color: var(--vscode-errorForeground); background: color-mix(in srgb, var(--vscode-errorForeground) 12%, transparent); }
+.filt.on-exclude .filt-not, .filt.on-exclude .filt-excluded { color: var(--vscode-errorForeground); }
+.popover { position: absolute; left: 0; top: 34px; z-index: 2; width: 320px; box-sizing: border-box; padding: 6px 0; border-radius: 6px; color: var(--vscode-foreground); background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border)); box-shadow: 0 8px 24px var(--vscode-widget-shadow); max-height: 320px; overflow-y: auto; }
+.pop-note { margin: 0; padding: 6px 12px 8px; font-size: 11px; color: var(--vscode-descriptionForeground); border-bottom: 1px solid var(--vscode-panel-border); }
+.pop-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 12px; }
+.pop-row .icon { color: var(--type-colour); }
+.pop-name { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+.pop-row[data-mode="exclude"] { background: color-mix(in srgb, var(--vscode-errorForeground) 6%, transparent); }
+.pop-row[data-mode="exclude"] .pop-name { text-decoration: line-through; color: var(--vscode-descriptionForeground); }
+.tri-group { display: inline-flex; flex: none; border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow: hidden; }
+.tri { height: 24px; padding: 0 8px; border: 0; background: none; color: var(--vscode-descriptionForeground); font: inherit; font-size: 11px; cursor: pointer; }
+.tri + .tri { border-left: 1px solid var(--vscode-panel-border); }
+.tri:hover { background: var(--vscode-list-hoverBackground); }
+.tri[data-set="include"][aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.tri[data-set="exclude"][aria-pressed="true"] { background: color-mix(in srgb, var(--vscode-errorForeground) 22%, transparent); color: var(--vscode-foreground); }
+.pop-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; padding: 8px 12px 4px; font-size: 11px; color: var(--vscode-descriptionForeground); border-top: 1px solid var(--vscode-panel-border); }
+#tag-all { height: 22px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--vscode-panel-border); background: none; color: inherit; font: inherit; cursor: pointer; }
+#tag-all[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+#filter-count { font-size: 12px; color: var(--vscode-descriptionForeground); margin-left: 4px; }
+#closed-count { color: var(--vscode-descriptionForeground); }
+.toggle-closed { cursor: pointer; color: inherit; }
+kbd { font: inherit; font-size: 11px; color: var(--vscode-descriptionForeground); border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 0 5px; }
 .board-grid { min-width: 840px; }
 ${[5, 6, 7, 8].map((n) => `.board-grid.cols-${n} { min-width: ${n * 200}px; }`).join('\n')}
 .col-titles, .columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; }
@@ -158,8 +181,6 @@ dialog#detail { width: min(900px, 92vw); max-height: 85vh; overflow: auto; paddi
 dialog#detail::backdrop { background: rgba(0, 0, 0, 0.45); }
 dialog#detail .card { cursor: default; display: block; }
 #close-detail { float: right; }
-.filters input, .filters select { font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); padding: 2px 6px; }
 tr.context { opacity: 0.5; }
 th[data-sort] { cursor: pointer; user-select: none; }
 th[aria-sort="ascending"]::after { content: " ▲"; }
@@ -202,6 +223,7 @@ document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('c
   document.querySelectorAll('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== b.dataset.tab; });
   document.querySelector('.group-by').hidden = b.dataset.tab !== 'board';
   document.querySelector('.backlog-tools').hidden = b.dataset.tab !== 'backlog';
+  relayout();
 }));
 const dialog = document.getElementById('detail');
 document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => {
@@ -227,7 +249,7 @@ const fieldOf = (name) => {
   return f;
 };
 const filter = () => ({ text: field('f-text').value, type: fieldOf('type'), state: fieldOf('state'),
-  tag: { ...fieldOf('tag'), all: field('tag-all').getAttribute('aria-pressed') === 'true' },
+  tag: { ...fieldOf('tag'), all: field('tag-all').getAttribute('aria-pressed') === 'true' }, priority: fieldOf('priority'),
   showClosed: field('show-closed').checked });
 const cardEls = [...document.querySelectorAll('[data-card]')];
 const cardRows = cardEls.map((c) => ({ id: c.dataset.card, parent: undefined, type: c.dataset.type, state: c.dataset.state,
@@ -238,7 +260,7 @@ const underCollapsed = (id) => { for (let p = parentOf.get(id); p; p = parentOf.
 const relayout = () => {
   const f = filter();
   const chosen = (x) => x.include.length > 0 || x.exclude.length > 0;
-  const active = f.text.trim() !== '' || chosen(f.type) || chosen(f.state) || chosen(f.tag);
+  const active = f.text.trim() !== '' || chosen(f.type) || chosen(f.state) || chosen(f.tag) || chosen(f.priority);
   const v = visibleIds(data, f);
   if (active) v.context.forEach((id) => { const t = document.querySelector('[data-toggle="' + CSS.escape(id) + '"]'); if (t) t.setAttribute('aria-expanded', 'true'); });
   let any = false;
@@ -271,16 +293,60 @@ const relayout = () => {
   document.querySelectorAll('[data-col-count]').forEach((el) => {
     el.textContent = el.closest('[data-board]').querySelectorAll('.column[data-column="' + el.dataset.colCount + '"] [data-card]:not([hidden])').length;
   });
-  const say = (n) => n === 0 ? '' : n + ' closed ' + (n === 1 ? 'item' : 'items') + ' hidden. Turn on Show closed to see ' + (n === 1 ? 'it' : 'them') + '.';
   const shownBoard = document.querySelector('[data-board]:not([hidden])');
-  const onBoard = !shownBoard ? 0 : hiddenClosed(cardRows.filter((r) => shownBoard.querySelector('[data-card="' + CSS.escape(r.id) + '"]')), f);
-  document.querySelectorAll('[data-view="board"] .hidden-closed').forEach((p) => { p.textContent = say(onBoard); p.hidden = onBoard === 0; });
-  const inBacklog = hiddenClosed(data, f);
-  document.querySelectorAll('[data-view="backlog"] .hidden-closed').forEach((p) => { p.textContent = say(inBacklog); p.hidden = inBacklog === 0; });
+  const onShownBoard = !shownBoard ? [] : cardRows.filter((r) => shownBoard.querySelector('[data-card="' + CSS.escape(r.id) + '"]'));
+  const onBacklog = !document.querySelector('[data-view="backlog"]').hidden;
+  // Each field's button says what it keeps, as text (story dox.3).
+  document.querySelectorAll('.filter').forEach((el) => {
+    const x = fieldOf(el.dataset.field);
+    el.querySelector('.filt-included').textContent = x.include.join(', ') || (x.exclude.length > 0 ? '' : el.dataset.none);
+    el.querySelector('.filt-not').hidden = x.exclude.length === 0;
+    el.querySelector('.filt-excluded').textContent = x.exclude.join(', ');
+    el.querySelector('.filt').classList.toggle('on-include', x.include.length > 0);
+    el.querySelector('.filt').classList.toggle('on-exclude', x.exclude.length > 0);
+  });
+  const seen = (onBacklog ? data : onShownBoard).filter((r) => r.state !== 'Closed');
+  const total = seen.length;
+  const kept = seen.filter((r) => onBacklog ? v.shown.has(r.id) && !v.context.has(r.id) : onCards.shown.has(r.id)).length;
+  field('filter-count').textContent = kept + ' of ' + total + ' open items';
+  field('filter-count').hidden = !active;
+  field('clear-filters').hidden = !active;
+  const closedHidden = onBacklog ? hiddenClosed(data, f) : hiddenClosed(onShownBoard, f);
+  field('closed-count').textContent = closedHidden === 0 ? '' : closedHidden + ' hidden';
 };
 field('f-text').addEventListener('input', relayout);
-const next = { '': 'include', include: 'exclude', exclude: '' };
-document.querySelectorAll('[data-value]').forEach((b) => b.addEventListener('click', () => { b.dataset.mode = next[b.dataset.mode || '']; relayout(); }));
+const setRow = (row, mode) => {
+  row.dataset.mode = mode;
+  row.querySelectorAll('[data-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === mode)));
+};
+const choose = (row, mode) => { setRow(row, row.dataset.mode === mode ? '' : mode); relayout(); };
+document.querySelectorAll('.pop-row').forEach((row) => {
+  row.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => choose(row, b.dataset.set)));
+  row.querySelector('.pop-name').addEventListener('click', (e) => choose(row, e.altKey ? 'exclude' : 'include'));
+});
+const open = () => document.querySelector('.popover:not([hidden])');
+const closePopovers = () => document.querySelectorAll('.popover').forEach((p) => { p.hidden = true; p.previousElementSibling.setAttribute('aria-expanded', 'false'); });
+document.querySelectorAll('[data-filter-open]').forEach((b) => b.addEventListener('click', () => {
+  const pop = b.nextElementSibling;
+  const wasOpen = !pop.hidden;
+  closePopovers();
+  if (!wasOpen) { pop.hidden = false; b.setAttribute('aria-expanded', 'true'); }
+}));
+document.addEventListener('click', (e) => { if (!e.target.closest('.filter')) closePopovers(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && open()) { closePopovers(); return; }
+  if (e.key === '/' && !dialog.open && !['INPUT', 'SELECT'].includes(e.target.tagName)) { e.preventDefault(); field('f-text').focus(); }
+});
+document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', () => {
+  b.closest('.filter').querySelectorAll('.pop-row').forEach((row) => setRow(row, ''));
+  relayout();
+}));
+field('clear-filters').addEventListener('click', () => {
+  document.querySelectorAll('.pop-row').forEach((row) => setRow(row, ''));
+  field('tag-all').setAttribute('aria-pressed', 'false');
+  field('f-text').value = '';
+  relayout();
+});
 field('tag-all').addEventListener('click', () => {
   field('tag-all').setAttribute('aria-pressed', String(field('tag-all').getAttribute('aria-pressed') !== 'true')); relayout();
 });
@@ -411,19 +477,30 @@ function shownTags(item: Item): string[] {
 }
 
 /**
- * One filter for both tabs (story nmf.4): the keyword box, and each field's
- * values as buttons that cycle off, include, exclude. Tags can require all of
- * the included ones. Buttons, not inputs: they filter the page and send nothing.
+ * One filter for both tabs (story nmf.4), each field a button opening its own
+ * dropdown (story dox.3): every value on the page from the start, hidden, since
+ * the script never builds markup. Tags can require all of the included ones.
+ * Buttons, not inputs: they filter the page and send nothing.
  */
 function filterBar(items: readonly Item[]): string {
-  const values = (name: string, label: string, list: Iterable<string>, extra = '') =>
-    `<div class="field" data-field="${name}"><span class="label">${label}</span>` +
-    [...new Set(list)].sort().map((v) => `<button class="value" data-value="${escape(v)}" data-mode="">${escape(v)}</button>`).join('') +
-    extra + '</div>'
+  const row = (v: string, icon: string, cls: string) =>
+    `<div class="pop-row${cls}" data-value="${escape(v)}" data-mode="">${icon}<button class="pop-name">${escape(v)}</button>` +
+    '<span class="tri-group"><button class="tri" data-set="include" aria-pressed="false">+ Include</button><button class="tri" data-set="exclude" aria-pressed="false">− Exclude</button></span></div>'
+  const field = (name: string, label: string, none: string, noun: string, rows: string, extra = '') =>
+    `<div class="filter" data-none="${none}" data-field="${name}"><button class="filt" data-filter-open aria-expanded="false">${label} ` +
+    `<span class="filt-included"></span><span class="filt-not" hidden>not</span><span class="filt-excluded"></span>${ICONS.chevron}</button>` +
+    `<div class="popover" role="dialog" aria-label="${label} filter" hidden><p class="pop-note">Include shows only those ${noun}. Exclude hides them.</p>${rows}` +
+    `<div class="pop-foot"><span>Alt+click a value to exclude it</span>${extra}<button class="link" data-reset>Reset ${label.toLowerCase()}</button></div></div></div>`
+  const plain = (list: Iterable<string>) => [...new Set(list)].sort().map((v) => row(v, '', '')).join('')
+  const types = [...new Map(items.map((i) => [typeLook(i.type).name, i])).entries()].sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, i]) => row(name, typeIcon(i.type), ` ${typeClass(i)}`)).join('')
   return '<div class="filters">' +
-    values('type', 'Type', items.map((i) => typeLook(i.type).name)) +
-    values('state', 'State', items.map(stateOf)) +
-    values('tag', 'Tags', items.flatMap(shownTags), '<button id="tag-all" aria-pressed="false">All of</button>') +
+    field('type', 'Type', 'All', 'types', types) +
+    field('state', 'State', 'All', 'states', plain(items.map(stateOf))) +
+    field('tag', 'Tags', 'Any', 'tags', plain(items.flatMap(shownTags)), '<button id="tag-all" aria-pressed="false">All of</button>') +
+    field('priority', 'Priority', 'Any', 'priorities', plain(items.flatMap((i) => i.priority === undefined ? [] : [`P${i.priority}`]))) +
+    '<span id="filter-count" hidden></span><button id="clear-filters" class="link" hidden>Clear filters</button><span class="spacer"></span>' +
+    '<label class="toggle-closed"><input type="checkbox" id="show-closed"> Show closed <span id="closed-count"></span></label>' +
     '</div>'
 }
 
@@ -543,14 +620,13 @@ export function boardPage(input: {
     groupBy,
     `<span class="backlog-tools" hidden><button id="expand-all" class="iconbtn" aria-label="Expand all" title="Expand all">${ICONS.expand}</button>` +
       `<button id="collapse-all" class="iconbtn" aria-label="Collapse all" title="Collapse all">${ICONS.collapse}</button></span>`,
-    '<label class="toggle-closed"><input type="checkbox" id="show-closed"> Show closed</label>',
     '<span class="spacer"></span>',
-    `<label class="search">${ICONS.search}<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title"></label>`,
+    `<label class="search">${ICONS.search}<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title"><kbd>/</kbd></label>`,
     `<button id="refresh" class="iconbtn" aria-label="Read work items again" title="Read again">${ICONS.refresh}</button>`,
     '</header>',
     filterBar(items),
-    `<div class="view" data-view="board"><p class="hidden-closed" hidden></p>${board}</div>`,
-    `<div class="view" data-view="backlog" hidden><p class="hidden-closed" hidden></p>${backlog(items, ctx)}</div>`,
+    `<div class="view" data-view="board">${board}</div>`,
+    `<div class="view" data-view="backlog" hidden>${backlog(items, ctx)}</div>`,
     `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
       `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
   ].join('\n')
