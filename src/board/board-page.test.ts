@@ -129,10 +129,10 @@ test('a debt\'s kind and a proposal are tags', () => {
   assert.ok(html.includes('>Proposal<'))
 })
 
-test('the backlog is a grid with ID, Title, State and Tags, open and collapsible', () => {
+test('the backlog is a grid, open and collapsible', () => {
   const items = [item({ id: 'e-1', type: 'epic', title: 'Epic <one>' }), item({ id: 's-1', type: 'feature', title: 'Story', parent: 'e-1' })]
   const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
-  for (const h of ['ID', 'Title', 'State', 'Tags']) assert.match(html, new RegExp(`<th[^>]*>${h}</th>`), h)
+  for (const h of ['Item', 'State', 'Tags']) assert.match(html, new RegExp(`<th[^>]*>${h}</th>`), h)
   assert.ok(html.includes('id="expand-all"') && html.includes('id="collapse-all"'))
   assert.ok(html.includes('data-toggle="e-1"'))
   assert.ok(!/<tr[^>]*data-row="s-1"[^>]*hidden/.test(html), 'the grid opens expanded')
@@ -194,7 +194,7 @@ test('each backlog row carries what the filter reads, escaped', () => {
 
 test('the column headers sort, and say how', () => {
   const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
-  for (const c of ['id', 'title', 'state', 'tags']) assert.ok(html.includes(`data-sort="${c}"`), c)
+  for (const c of ['title', 'state', 'tags']) assert.ok(html.includes(`data-sort="${c}"`), c)
   assert.ok(html.includes('id="no-match"'))
 })
 
@@ -502,4 +502,68 @@ test('the board follows the editor\'s theme: only type and state accents are fix
   assert.match(style, /body\.vscode-light \.type-task \{ --type-colour:/)
   assert.match(style, /body\.vscode-light \.state-in-progress \{/)
   assert.match(style, /background: var\(--vscode-editorWidget-background\)/)
+})
+
+// --- the backlog is drawn as a hierarchy grid (story dox.2, task dox.2.1)
+
+const grid: Item[] = [
+  item({ id: 'e-1', title: 'Epic', type: 'epic', status: 'closed' }),
+  item({ id: 's-1', title: 'Story', type: 'feature', parent: 'e-1', priority: 1 }),
+  item({ id: 't-1', title: 'Task', type: 'task', parent: 's-1', status: 'in_progress' }),
+  item({ id: 'd-1', title: 'Debt', type: 'bug', labels: ['defect'], debtKind: 'defect' }),
+  item({ id: 'dt', title: 'Done', type: 'task', parent: 'd-1', status: 'closed' }),
+]
+const rowOf = (html: string, id: string) => {
+  const at = html.indexOf(`<tr data-row="${id}"`)
+  return html.slice(at, html.indexOf('</tr>', at))
+}
+
+test('the grid has Item, State, Priority and Tags, and Item sorts by title', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  const head = html.slice(html.indexOf('<table class="backlog">'), html.indexOf('</thead>'))
+  assert.deepEqual([...head.matchAll(/<th[^>]*>([A-Za-z]+)<\/th>/g)].map((m) => m[1]), ['Item', 'State', 'Priority', 'Tags'])
+  assert.match(head, /<th data-sort="title"[^>]*>Item<\/th>/)
+  assert.match(head, /<th data-sort="priority"[^>]*>Priority<\/th>/)
+})
+
+test('a row shows its depth, chevron, icon, ID and title in the Item cell', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  const row = rowOf(html, 't-1')
+  assert.match(row, /<td class="item-cell type-task depth-2">/)
+  assert.match(row, /<svg class="icon"[^]*?<span class="id">t-1<\/span><button class="link ttl" data-open="t-1">Task<\/button>/)
+  assert.match(rowOf(html, 's-1'), /<button class="toggle chev" data-toggle="s-1" aria-expanded="true" aria-label="Expand or collapse"><svg/)
+})
+
+test('a row\'s state is a pill saying where it stands in the chain', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  assert.match(rowOf(html, 't-1'), /<span class="pill state-in-progress">In progress<\/span>/)
+  const debt = rowOf(html, 'd-1')
+  assert.match(debt, /<span class="pill state-awaiting">Awaiting verification<\/span>/)
+  assert.doesNotMatch(debt, /class="mark">Awaiting/, 'said once')
+  assert.match(debt, /data-state="Open"/, 'the filter still reads the stored state')
+})
+
+test('a collapsed parent says how many it hides, counting only what the filter keeps', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  assert.match(rowOf(html, 's-1'), /<span class="hidden-count" data-hidden-count="s-1" hidden><\/span>/)
+  assert.doesNotMatch(rowOf(html, 't-1'), /data-hidden-count/)
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /querySelectorAll\('\[data-hidden-count\]'\)/)
+  assert.match(script, /v\.shown\.has\(d\.id\)/, 'what the filter hides is not counted')
+})
+
+test('Expand all and Collapse all are icon buttons in the header, shown with the backlog', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  const header = html.slice(html.indexOf('<header class="bar">'), html.indexOf('</header>'))
+  assert.match(header, /<span class="backlog-tools" hidden>/)
+  assert.match(header, /<button id="expand-all" class="iconbtn" aria-label="Expand all" title="Expand all"><svg/)
+  assert.match(header, /<button id="collapse-all" class="iconbtn" aria-label="Collapse all" title="Collapse all"><svg/)
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /querySelector\('\.backlog-tools'\)\.hidden = b\.dataset\.tab !== 'backlog'/)
+})
+
+test('a long title cannot push the state off its row', () => {
+  const html = boardPage({ nonce: NONCE, items: grid, rendered: new Map() })
+  assert.match(html, /table\.backlog \{[^}]*table-layout: fixed/)
+  assert.match(html, /\.ttl \{[^}]*text-overflow: ellipsis/)
 })
