@@ -395,9 +395,10 @@ these into a third decade would hide that they belong here.
     redesign.
   - **An item form**: title, state and tags at the top; sections for the description, acceptance
     criteria, design and close reason; its parent and its children linked, so the form navigates. It
-    opens as a dialog over the board or the backlog, from either view, closed with Esc or its close
-    button, and the view behind it stays as it was. Added on 2026-10-07: at the bottom of the page the
-    form was out of sight.
+    opens as a dialog on the right, over the board or the backlog, from either view, closed with Esc
+    or its close button, and the view behind it stays as it was. Added on 2026-10-07: at the bottom of
+    the page the form was out of sight. Placed on the right on 2026-11-01, by the redesign, with
+    previous and next over what the view shows, and a button that copies the item's whole ID.
   - **Azure DevOps's names** for the three levels: Epic, User Story, Task, and Bug for a debt. Only
     the names shown change. The data, bd's types and the chain of gates do not.
   - **The backlog filters and sorts**, as Azure DevOps's does: a keyword box over ID and title, and

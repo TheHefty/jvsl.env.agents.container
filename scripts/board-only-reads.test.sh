@@ -41,7 +41,10 @@ it reads the tracker. The search is broken." >&2
 fi
 echo "ok      the search finds the bd command that is really there"
 
-others="$(printf '%s\n' "$found" | grep -vx 'export' || true)"
+# `state` is allowed by name: `bd state` only reads, and the words appear in the
+# board as the item panel's label, "bd state: in_progress" (story dox.4). The
+# command that changes it is `bd set-state`, which this search still refuses.
+others="$(printf '%s\n' "$found" | grep -vxE 'export|state' || true)"
 if [ -n "$others" ]; then
     echo "board-only-reads: FAIL: the board names bd subcommands other than \`export\`:" >&2
     printf '        bd %s\n' $others >&2

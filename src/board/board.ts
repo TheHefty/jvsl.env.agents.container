@@ -24,6 +24,8 @@ import type { Item } from './board-read.ts'
 
 
 let panel: vscode.WebviewPanel | undefined
+/** The items the page on screen shows: the only IDs it may ask to copy. */
+let onPage: ReadonlySet<string> = new Set()
 
 export { BOARD_READ_MS, READ_COMMAND } from './tracker.ts'
 
@@ -47,6 +49,8 @@ export async function showWork(
       onBoardMessage(message, {
         refresh: () => { if (panel !== undefined) void render(panel, dockerOf, write, memory) },
         remember: (view) => { void memory.update(VIEW_KEY, view) },
+        copy: (id) => { void vscode.env.clipboard.writeText(id) },
+        known: (id) => onPage.has(id),
       })
     })
   } else {
@@ -95,6 +99,7 @@ async function render(
   } catch (error) {
     write([`board: the project's origin could not be read, so pull requests show as numbers: ${String(error)}`])
   }
+  onPage = new Set(items.map((i) => i.id))
   target.webview.html = boardPage({
     nonce, items, rendered, view, ...(remote === undefined ? {} : { remote }), ...(notice === undefined ? {} : { notice }),
   })

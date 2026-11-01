@@ -9,11 +9,12 @@
  * unrendered field are escaped text.
  *
  * **Opening an item needs no round trip.** Every item's content is in the page,
- * hidden until opened, so the only message the page sends is to read again.
- * Nothing on it changes the tracker (FR-118).
+ * hidden until opened. The page asks only to read again, to remember a view and
+ * to copy an ID. Nothing on it changes the tracker (FR-118).
  */
 import { hiddenClosed, orderedIds, visibleIds } from './board-filter.ts'
 import { backlogRows, typeLook, type Item } from './board-read.ts'
+import { parseGherkin } from './board-gherkin.ts'
 import { boardView, chainMarks, laneIsQuiet, laneSummary, taskMeta, VIEWS, type ChainMark, type Lane, type ViewColumn, type ViewName } from './board-view.ts'
 import { prLink } from './pr-link.ts'
 
@@ -176,16 +177,40 @@ body.vscode-light .state-in-progress { --state-colour: #0b6bb5; }
 body.vscode-light .state-awaiting { --state-colour: #8a6100; }
 body.vscode-light .state-proposal { --state-colour: #6f42c1; }
 ${Array.from({ length: 7 }, (_, d) => `td.depth-${d} { padding-left: ${d * 22 + 12}px; }`).join('\n')}
-dialog#detail { width: min(900px, 92vw); max-height: 85vh; overflow: auto; padding: 16px 20px;
-  color: var(--vscode-foreground); background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); }
+dialog#detail { box-sizing: border-box; width: min(720px, 92vw); max-width: none; margin: 0 0 0 auto; height: 100vh; max-height: none; padding: 0; overflow: auto; line-height: 1.5;
+  color: var(--vscode-foreground); background: var(--vscode-editorWidget-background); border: 0; border-left: 1px solid var(--vscode-panel-border); }
 dialog#detail::backdrop { background: rgba(0, 0, 0, 0.45); }
-dialog#detail .card { cursor: default; display: block; }
-#close-detail { float: right; }
+.panel-nav { position: fixed; top: 10px; right: 12px; z-index: 2; display: inline-flex; gap: 2px; }
+.panel-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 10px 100px 10px 20px; background: var(--vscode-editorWidget-background); border-bottom: 1px solid var(--vscode-panel-border); }
+.panel-head .icon { color: var(--type-colour); }
+.panel-head .type { font-size: 12px; color: var(--vscode-descriptionForeground); }
+.panel-head .id { font-size: 12px; color: inherit; }
+.panel-body { display: flex; flex-direction: column; gap: 24px; padding: 20px 24px 32px; }
+.panel-title { margin: 0; font-size: 20px; line-height: 1.3; font-weight: 600; }
+.fields { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 12px; margin: -10px 0 0; font-size: 12px; }
+.fields dt { color: var(--vscode-descriptionForeground); }
+.fields dd { margin: 0; }
+.stored { margin-left: 8px; color: var(--vscode-descriptionForeground); }
+.panel-section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel-section h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.panel-section .count { font-weight: 400; color: var(--vscode-descriptionForeground); }
+.panel-section code { font-family: var(--vscode-editor-font-family); font-size: 12px; padding: 1px 5px; border-radius: 3px; background: var(--vscode-textCodeBlock-background); }
+.gherkin-feature { margin: 0; }
+.gherkin-key { color: var(--vscode-symbolIcon-keywordForeground, var(--vscode-textLink-foreground)); font-weight: 600; }
+.scenario { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editor-background); }
+.scenario-name { margin: 0; font-weight: 600; }
+.step { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 8px; }
+.step .gherkin-key { text-align: right; font-family: var(--vscode-editor-font-family); font-size: 12px; font-weight: 400; }
+.child { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.child:hover { background: var(--vscode-list-hoverBackground); }
+.child .icon { color: var(--type-colour); }
+.child .id { flex: none; min-width: 40px; }
+.child-title { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.child .pill { flex: none; }
 tr.context { opacity: 0.5; }
 th[data-sort] { cursor: pointer; user-select: none; }
 th[aria-sort="ascending"]::after { content: " ▲"; }
 th[aria-sort="descending"]::after { content: " ▼"; }
-#detail h3 { font-size: 0.9em; text-transform: uppercase; opacity: 0.8; }
 pre.raw { white-space: pre-wrap; font-family: var(--vscode-editor-font-family); }
 `
 
@@ -203,6 +228,10 @@ const ICONS = {
   search: svg('<circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path>'),
   expand: svg('<path d="m4.5 3 3.5 3.5L11.5 3M4.5 9.5 8 13l3.5-3.5"></path>'),
   collapse: svg('<path d="M4.5 6.5 8 3l3.5 3.5M4.5 13 8 9.5l3.5 3.5"></path>'),
+  copy: svg('<rect x="5.5" y="5.5" width="8" height="8" rx="1.5"></rect><path d="M10.5 3.5v-1h-8v8h1"></path>'),
+  up: svg('<path d="m4 10 4-4 4 4"></path>'),
+  down: svg('<path d="m4 6 4 4 4-4"></path>'),
+  close: svg('<path d="m4 4 8 8M12 4l-8 8"></path>'),
   refresh: svg('<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"></path>'),
 }
 const typeIcon = (type: string) => ICONS[type as 'epic' | 'feature' | 'task' | 'bug'] ?? ICONS.other
@@ -226,10 +255,28 @@ document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('c
   relayout();
 }));
 const dialog = document.getElementById('detail');
-document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => {
-  document.querySelectorAll('[data-detail]').forEach((d) => { d.hidden = d.dataset.detail !== c.dataset.open; });
+let current;
+const showItem = (id) => {
+  current = id;
+  document.querySelectorAll('[data-detail]').forEach((d) => { d.hidden = d.dataset.detail !== id; });
   if (!dialog.open) dialog.showModal();
   dialog.scrollTop = 0;
+};
+document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => showItem(c.dataset.open)));
+// Previous and next walk what the view has in sight (story dox.4): a card or row
+// the filter hid, or a lane collapsed, takes no space, so it is never opened.
+const inSight = () => [...document.querySelector('[data-view]:not([hidden])').querySelectorAll('[data-card], [data-row]')]
+  .filter((el) => el.getClientRects().length > 0).map((el) => el.dataset.card || el.dataset.row);
+const step = (by) => { const list = inSight(); const at = list.indexOf(current); if (at !== -1 && list[at + by]) showItem(list[at + by]); };
+document.getElementById('prev-item').addEventListener('click', () => step(-1));
+document.getElementById('next-item').addEventListener('click', () => step(1));
+dialog.addEventListener('keydown', (e) => {
+  if (e.key === 'j') step(1);
+  if (e.key === 'k') step(-1);
+});
+document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+  vscode.postMessage({ type: 'copy', id: b.dataset.copy });
+  b.title = 'Copied';
 }));
 document.getElementById('close-detail').addEventListener('click', () => dialog.close());
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
@@ -294,7 +341,7 @@ const relayout = () => {
     el.textContent = el.closest('[data-board]').querySelectorAll('.column[data-column="' + el.dataset.colCount + '"] [data-card]:not([hidden])').length;
   });
   const shownBoard = document.querySelector('[data-board]:not([hidden])');
-  const onShownBoard = !shownBoard ? [] : cardRows.filter((r) => shownBoard.querySelector('[data-card="' + CSS.escape(r.id) + '"]'));
+  const onShownBoard = !shownBoard ? [] : cardRows.filter((r, i) => shownBoard.contains(cardEls[i]));
   const onBacklog = !document.querySelector('[data-view="backlog"]').hidden;
   // Each field's button says what it keeps, as text (story dox.3).
   document.querySelectorAll('.filter').forEach((el) => {
@@ -406,12 +453,6 @@ function tags(item: Item): string {
   return shown.map((t) => `<span class="tag">${escape(t)}</span>`).join('')
 }
 
-/** The colour, the type's name and the ID, as the head of a card, a row and a form. */
-function head(item: Item): string {
-  const look = typeLook(item.type)
-  return `<span class="type">${escape(look.name)}</span><span class="id">${escape(item.id)}</span>`
-}
-
 /**
  * The type's colour, as a class rather than a style attribute: the policy's
  * style-src allows only the page's own stylesheet, and an inline style="" is
@@ -425,6 +466,18 @@ const MAX_DEPTH = 6
 interface Context {
   marks: ReadonlyMap<string, ChainMark>
   remote: string | undefined
+  /** The item's ID as the design shows it: what every ID on the page shares taken off. */
+  short: (id: string) => string
+}
+
+/** What every ID shares, up to its last hyphen. An ID alone shares nothing: it would lose it all. */
+function shortener(items: readonly Item[]): (id: string) => string {
+  const [first, ...rest] = items.map((i) => i.id)
+  if (first === undefined || rest.length === 0) return (id) => id
+  let common = first
+  for (const id of rest) while (!id.startsWith(common)) common = common.slice(0, -1)
+  const cut = common.lastIndexOf('-') + 1
+  return (id) => id.slice(cut)
 }
 
 /** Where the item stands in the chain (story nmf.3), and its priority. */
@@ -460,7 +513,7 @@ function card(item: Item, ctx: Context, column: ViewColumn, meta?: string): stri
     ? ''
     : `<span class="pill ${stateClass(item)}">${escape(stateOf(item))}</span>`
   const button = `<button class="card ${typeClass(item)}${proposed}" data-open="${escape(item.id)}">` +
-    `<span class="card-head">${typeIcon(item.type)}<span class="type">${escape(typeLook(item.type).name)}</span><span class="id">${escape(item.id)}</span>` +
+    `<span class="card-head">${typeIcon(item.type)}<span class="type">${escape(typeLook(item.type).name)}</span><span class="id">${escape(ctx.short(item.id))}</span>` +
     `${item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`}</span>` +
     `<span class="title clamp">${escape(item.title)}</span>` +
     `<span class="foot">${state}${marks({ ...item, priority: undefined }, ctx, column.key === 'awaiting_verification')}${tags(item)}` +
@@ -522,7 +575,7 @@ function backlog(items: readonly Item[], ctx: Context): string {
         `data-type="${escape(typeLook(item.type).name)}" data-state="${escape(stateOf(item))}" ` +
         `data-tags="${escape(shownTags(item).join('\u001f'))}" data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">` +
         `<td class="item-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}"><div class="item-line">${toggle}${typeIcon(item.type)}` +
-        `<span class="id">${escape(item.id)}</span><button class="link ttl" data-open="${escape(item.id)}">${escape(item.title)}</button>${hidden}` +
+        `<span class="id">${escape(ctx.short(item.id))}</span><button class="link ttl" data-open="${escape(item.id)}">${escape(item.title)}</button>${hidden}` +
         `${marks({ ...item, priority: undefined }, ctx, true)}${pr(item, ctx)}</div></td>` +
         `<td>${statePill(item, ctx)}</td><td class="priority-cell">${item.priority === undefined ? '' : `P${item.priority}`}</td><td>${tags(item)}</td></tr>`
     })
@@ -539,29 +592,38 @@ const FIELDS: ReadonlyArray<{ key: keyof Rendered; title: string }> = [
   { key: 'closeReason', title: 'Why it was closed' },
 ]
 
-function links(title: string, items: readonly Item[]): string {
-  if (items.length === 0) return ''
-  return `<h3>${title}</h3><ul class="links">${items
-    .map((i) => `<li><button class="link" data-open="${escape(i.id)}">${head(i)} ${escape(i.title)}</button></li>`)
-    .join('')}</ul>`
+function acceptance(raw: string, fallback: string): string {
+  const g = parseGherkin(raw)
+  if (g === undefined) return fallback
+  return (g.feature === undefined ? '' : `<p class="gherkin-feature"><span class="gherkin-key">Feature:</span> ${escape(g.feature)}</p>`) +
+    g.scenarios.map((s) => `<div class="scenario"><p class="scenario-name">${escape(s.name)}</p>` +
+      s.steps.map((st) => `<div class="step"><span class="gherkin-key">${escape(st.keyword)}</span><span>${escape(st.text)}</span></div>`).join('') +
+      '</div>').join('')
 }
 
-function form(item: Item, rendered: Rendered | undefined, byId: ReadonlyMap<string, Item>, children: readonly Item[]): string {
+/** An item, as the redesign's side panel draws it (story dox.4). */
+function form(item: Item, rendered: Rendered | undefined, byId: ReadonlyMap<string, Item>, children: readonly Item[], ctx: Context): string {
   const parts = FIELDS.flatMap(({ key, title }) => {
     const raw = item[key]
     if (raw === undefined) return []
     const html = rendered?.[key]
     const body = html === undefined ? `<pre class="raw">${escape(raw)}</pre>` : html
-    return [`<h3>${title}</h3><div>${body}</div>`]
+    return [`<div class="panel-section"><h2>${title}</h2>${key === 'acceptance' ? acceptance(raw, body) : `<div>${body}</div>`}</div>`]
   })
   const parent = item.parent === undefined ? undefined : byId.get(item.parent)
-  return `<section data-detail="${escape(item.id)}" class="card ${typeClass(item)}" hidden>` +
-    `<p>${head(item)}</p><h2>${escape(item.title)}</h2>` +
-    `<p class="meta">State: ${escape(stateOf(item))} ${tags(item)}</p>` +
-    (parts.join('') || '<p>No text.</p>') +
-    links('Parent', parent === undefined ? [] : [parent]) +
-    links('Children', children) +
-    '</section>'
+  const none = '<span class="stored">None</span>'
+  const kids = children.length === 0 ? '' : `<div class="panel-section"><h2>Children <span class="count">${children.length}</span></h2>` + children
+    .map((c) => `<button class="child ${typeClass(c)}" data-open="${escape(c.id)}">${typeIcon(c.type)}<span class="id">${escape(ctx.short(c.id))}</span>` +
+      `<span class="child-title">${escape(c.title)}</span>${statePill(c, ctx)}</button>`).join('') + '</div>'
+  return `<section data-detail="${escape(item.id)}" class="${typeClass(item)}" hidden>` +
+    `<header class="panel-head">${typeIcon(item.type)}<span class="type">${escape(typeLook(item.type).name)}</span><span class="id">${escape(ctx.short(item.id))}</span>` +
+    `<button class="iconbtn" data-copy="${escape(item.id)}" aria-label="Copy full ID ${escape(item.id)}" title="Copy ID">${ICONS.copy}</button></header>` +
+    `<div class="panel-body"><h1 class="panel-title">${escape(item.title)}</h1><dl class="fields">` +
+    `<dt>State</dt><dd>${statePill(item, ctx)} <span class="stored">bd state: ${escape(item.status)}</span></dd>` +
+    `<dt>Priority</dt><dd>${item.priority === undefined ? none : `P${item.priority}`}</dd>` +
+    `<dt>Tags</dt><dd>${tags(item) || none}</dd>` +
+    `<dt>Parent</dt><dd>${parent === undefined ? 'None' : `<button class="link" data-open="${escape(parent.id)}">${escape(ctx.short(parent.id))} ${escape(parent.title)}</button>`}</dd></dl>` +
+    (parts.join('') || '<p>No text.</p>') + kids + '</div></section>'
 }
 
 /** Group by's order, as the redesign lists them. */
@@ -582,7 +644,7 @@ export function boardPage(input: {
   remote?: string
 }): string {
   const { nonce, items, rendered, notice } = input
-  const ctx: Context = { marks: chainMarks(items), remote: input.remote }
+  const ctx: Context = { marks: chainMarks(items), remote: input.remote, short: shortener(items) }
   const active = input.view ?? 'all'
   const groupBy = '<label class="group-by">Group by <select id="group-by">' + GROUP_ORDER
     .map((name) => `<option value="${name}"${name === active ? ' selected' : ''}>${escape(VIEWS.find((v) => v.name === name)!.title)}</option>`)
@@ -604,7 +666,7 @@ export function boardPage(input: {
       : `<section class="lane" data-lane="${escape(lane.key)}" data-lane-closed="${lane.closed}">` +
         `<button class="lane-head" data-lane-toggle aria-expanded="${!laneIsQuiet(lane)}">${ICONS.chevron}` +
         `${lane.key === '' ? '' : `<span class="type-icon ${name === 'stories' ? 'type-epic' : 'type-feature'}">${name === 'stories' ? ICONS.epic : ICONS.feature}</span>`}` +
-        `<span class="lane-title">${escape(lane.title)}</span>${lane.key === '' ? '' : `<span class="id">${escape(lane.key)}</span>`}` +
+        `<span class="lane-title">${escape(lane.title)}</span>${lane.key === '' ? '' : `<span class="id">${escape(ctx.short(lane.key))}</span>`}` +
         `<span class="lane-summary">${escape(laneSummary(lane, name))}</span></button>${cols(lane)}</section>`).join('')
     return `<div data-board="${name}"${name === active ? '' : ' hidden'}><div class="board-grid cols-${first.length}">${titles}${body}</div></div>`
   }).join('')
@@ -627,8 +689,11 @@ export function boardPage(input: {
     filterBar(items),
     `<div class="view" data-view="board">${board}</div>`,
     `<div class="view" data-view="backlog" hidden>${backlog(items, ctx)}</div>`,
-    `<dialog id="detail" aria-label="Work item"><button id="close-detail" aria-label="Close">✕</button>` +
-      `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id))).join('')}</dialog>`,
+    `<dialog id="detail" aria-label="Work item"><div class="panel-nav">` +
+      `<button id="prev-item" class="iconbtn" aria-label="Previous item" title="Previous (k)">${ICONS.up}</button>` +
+      `<button id="next-item" class="iconbtn" aria-label="Next item" title="Next (j)">${ICONS.down}</button>` +
+      `<button id="close-detail" class="iconbtn" aria-label="Close" title="Close (Esc)">${ICONS.close}</button></div>` +
+      `${items.map((i) => form(i, rendered.get(i.id), byId, childrenOf(i.id), ctx)).join('')}</dialog>`,
   ].join('\n')
   return shell(nonce, body, SCRIPT)
 }

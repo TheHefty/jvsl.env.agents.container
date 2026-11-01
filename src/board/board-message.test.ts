@@ -15,6 +15,8 @@ function deps() {
     deps: {
       refresh: () => { calls.push('refresh') },
       remember: (view: string) => { calls.push(`remember ${view}`) },
+      copy: (id: string) => { calls.push(`copy ${id}`) },
+      known: (id: string) => id === 'p-c20',
     },
   }
 }
@@ -50,4 +52,14 @@ test('Tasks by story is accepted and remembered like the other views (story nmf.
   onBoardMessage({ type: 'view', view: 'by-story' }, d)
   assert.deepEqual(calls, ['remember by-story'])
   assert.equal(rememberedView('by-story'), 'by-story')
+})
+
+test('Copy ID copies an id on the page, and nothing else can reach the clipboard (story dox.4)', () => {
+  const { calls, deps: d } = deps()
+  onBoardMessage({ type: 'copy', id: 'p-c20' }, d)
+  assert.deepEqual(calls, ['copy p-c20'])
+  onBoardMessage({ type: 'copy', id: 'not on the page' }, d)
+  onBoardMessage({ type: 'copy', id: 42 }, d)
+  onBoardMessage({ type: 'copy' }, d)
+  assert.deepEqual(calls, ['copy p-c20'])
 })
