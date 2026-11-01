@@ -1,6 +1,6 @@
 # Inicialização do projeto
 
-Sete perguntas são resolvidas antes de qualquer coisa ser construída, e nenhuma delas pode ser
+Oito perguntas são resolvidas antes de qualquer coisa ser construída, e nenhuma delas pode ser
 respondida a partir de um repositório vazio. Elas são o precursor da cadeia em
 [Fluxo de trabalho](WORKFLOW.md): o modo e o idioma da documentação são escritos no `CLAUDE.md`
 como fatos aqui e agora, e o resto das respostas é levado para os grillings de termo de abertura e
@@ -48,7 +48,7 @@ mandato, não uma decisão nova — mas a fronteira de escopo ainda precisa ser 
 Não improvise essa entrevista, e não invente um procedimento para ela: o termo de abertura, a SRS e
 toda estória e task neste projeto saem do mesmo tipo de grilling, e
 [Fluxo de trabalho](WORKFLOW.md) descreve a cadeia. É aqui que ela começa. Não toque em nenhum
-arquivo do projeto além do `CLAUDE.md` até as sete perguntas serem respondidas.
+arquivo do projeto além do `CLAUDE.md` até as oito perguntas serem respondidas.
 
 **As respostas sobre propósito viram o `docs/CHARTER.md`**, escrito a partir do
 [modelo de termo de abertura](CHARTER-TEMPLATE.md) e mergeado como `Aceito` — o primeiro elo da
@@ -142,11 +142,24 @@ Verifique o que as dependências permitem antes de prometer uma licença — uma
 restringe sob o que o projeto pode ser distribuído, e descobrir isso depois do lançamento é
 descobrir por outra pessoa.
 
+**O Cucumber executará os cenários de aceite Gherkin do projeto em arquivos `.feature`?** Pergunte
+e registre a resposta na SRS como uma restrição da estratégia de testes:
+
+- **Sim** — registre na SRS que Cucumber é o runner pretendido para os cenários de aceite Gherkin do
+  projeto. Isso registra apenas a estratégia; não instala nem configura um runner. Uma task
+  posterior precisa nomear o runner, os bindings de linguagem, as dependências e o job de CI, e ver o
+  `.feature` exato falhar pelo comportamento ausente antes de dizer que ele está coberto.
+- **Não** — registre na SRS que `.feature` continua documentação; os testes executáveis usam a suíte
+  nativa do projeto.
+
+Essa escolha trata da execução de cenários de aceite Gherkin, não de substituir testes unitários ou
+de integração.
+
 **Isto é andaime, não aconselhamento jurídico.** O trabalho é tornar as decisões explícitas e
 registradas para que alguém qualificado tenha o que revisar. Nunca apresente texto de política
 gerado como estando em conformidade, e diga com todas as letras que não foi revisado.
 
-Além das seis perguntas, uma recomendação a fazer em voz alta: **construa para acessibilidade e
+Além das oito perguntas, uma recomendação a fazer em voz alta: **construa para acessibilidade e
 internacionalização desde a primeira tela, não como uma passada posterior.** Coloque em termos de
 custo e não de virtude, porque é isso que é de fato verdade — as duas são quase de graça enquanto a
 estrutura está sendo assentada e caras depois. i18n retroajustado significa caçar toda string
@@ -177,7 +190,7 @@ pessoas a pular as partes que importavam.
 resto aqui — uma omissão com motivo anexado pode ser revisitada; uma sem motivo parece descuido
 para sempre.
 
-Uma vez que as sete perguntas estão resolvidas, prossiga no modo escolhido para dentro da cadeia em
+Uma vez que as oito perguntas estão resolvidas, prossiga no modo escolhido para dentro da cadeia em
 [Fluxo de trabalho](WORKFLOW.md): o grilling do termo de abertura primeiro — completo para um
 projeto novo, os termos do engajamento para um de sustentação — depois a SRS, depois as estórias.
 

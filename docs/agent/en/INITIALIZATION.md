@@ -1,6 +1,6 @@
 # Project initialization
 
-Seven questions are settled before anything is built, and none of them can be answered from an empty
+Eight questions are settled before anything is built, and none of them can be answered from an empty
 repository. They are the precursor to the chain in [Workflow](WORKFLOW.md): the mode and the
 documentation language are written into `CLAUDE.md` as facts here and now, and the rest of the
 answers are carried into the charter and SRS grillings that follow — the charter takes the ones
@@ -46,7 +46,7 @@ the mandate, not a fresh decision — but the scope boundary still needs saying 
 Do not improvise that interview, and do not invent a procedure for it: the charter, the SRS and
 every story and task in this project are produced by the same kind of grilling, and
 [Workflow](WORKFLOW.md) describes the chain. This is where it starts. Touch no project file beyond
-`CLAUDE.md` until the seven questions are answered.
+`CLAUDE.md` until the eight questions are answered.
 
 **The answers about purpose become `docs/CHARTER.md`**, written from [the charter
 template](CHARTER-TEMPLATE.md) and merged `Accepted` — the first link in the chain, and the only
@@ -139,11 +139,23 @@ Check what the dependencies permit before promising a licence — a copyleft dep
 what the project can be distributed under, and finding that out after release is finding it out
 from someone else.
 
+**Will Cucumber execute the project's Gherkin acceptance scenarios in `.feature` files?** Ask, and
+record the answer in the SRS as a test-strategy constraint:
+
+- **Yes** — record in the SRS that Cucumber is the intended runner for the project's Gherkin
+  acceptance scenarios. This records the strategy only; it does not install or wire a runner. A later
+  task must name the runner, language bindings, dependencies and CI job, and observe the exact
+  `.feature` fail for missing behaviour before saying it is covered.
+- **No** — record in the SRS that `.feature` files remain documentation; native tests remain the
+  project's executable suite.
+
+This choice is about executing Gherkin acceptance scenarios, not replacing unit or integration tests.
+
 **This is scaffolding, not legal advice.** The job is to make the decisions explicit and recorded
 so that someone qualified has something to review. Never present generated policy text as
 compliant, and say plainly that it has not been reviewed.
 
-Beyond the six questions, one recommendation to make out loud: **build for accessibility and
+Beyond the eight questions, one recommendation to make out loud: **build for accessibility and
 internationalisation from the first screen, not as a later pass.** Put it in terms of cost rather
 than virtue, because that is what is actually true — both are nearly free while the structure is
 being laid and expensive afterwards. i18n retrofitted means hunting every literal string in the
@@ -172,7 +184,7 @@ It is a recommendation, not a gate. If the user declines, record it in the SRS w
 like everything else here — an omission with a reason attached can be revisited; one without looks
 like an oversight forever.
 
-Once the seven questions are settled, proceed under the chosen mode into the chain in
+Once the eight questions are settled, proceed under the chosen mode into the chain in
 [Workflow](WORKFLOW.md): the charter grilling first — full for a new project, the engagement's
 terms for a sustaining one — then the SRS, then the stories.
 

@@ -503,3 +503,8 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   the outbox. Local projects write to this machine's home; WSL projects write through the distro to
   the home the container binds. The link never enters the project's manifest or files. The journal
   writer still refuses to send entries to a public repository.
+- **FR-132** — **Initialization asks whether Cucumber will execute the project's Gherkin acceptance
+  scenarios, and records the answer in the SRS.** A yes records Cucumber as the intended acceptance
+  runner but does not install or wire it; a later task designs the runner, bindings, dependencies and
+  CI. A no keeps `.feature` files as documentation and the project's native test suite as its
+  executable checks.
