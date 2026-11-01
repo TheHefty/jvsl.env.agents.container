@@ -55,10 +55,16 @@ pass=$((pass + 1))
 # package name, in every command the extension contributes, and in the marker
 # the instruction assets carry: it cannot leave while this is the repository it
 # is.
-if grep -rlF --include='*' 'jvsl' -- "${tracked[@]}" >/dev/null 2>&1; then
+if search_errors="$(grep -rlF --include='*' 'jvsl' -- "${tracked[@]}" 2>&1 >/dev/null)"; then
     echo "ok      the search mechanism finds a string that is really there"
     pass=$((pass + 1))
 else
+    search_status=$?
+    if [ "$search_status" -ne 1 ]; then
+        printf 'NOT OK  grep could not search the tracked files (exit %s):\n%s\n' \
+            "$search_status" "$search_errors" >&2
+        exit 1
+    fi
     echo "NOT OK  the search found no mention of 'jvsl' anywhere, which cannot be true; \
 the mechanism is broken and the assertions below prove nothing" >&2
     exit 1
