@@ -58,7 +58,7 @@ const TASK_COLUMNS = [
 ] as const
 
 const STORY_COLUMNS = [
-  { key: 'no_task', title: 'No task' },
+  { key: 'no_task', title: 'Not started' },
   { key: 'in_development', title: 'In development' },
   { key: 'awaiting_verification', title: 'Awaiting verification' },
   { key: 'done', title: 'Done' },
@@ -135,6 +135,36 @@ function storyBucket(items: readonly Item[]): (s: Item) => string {
     if (doneUnder.has(s.id)) return 'awaiting_verification'
     return 'no_task'
   }
+}
+
+const openIn = (lane: Lane) => lane.columns.filter((c) => c.key !== 'done' && c.key !== 'closed').reduce((n, c) => n + c.items.length, 0)
+
+/** Nothing open in the lane: it starts collapsed (story dox.1). */
+export const laneIsQuiet = (lane: Lane): boolean => openIn(lane) === 0
+
+/** What a lane's head says it holds (story dox.1): how many are open, and where. */
+export function laneSummary(lane: Lane, view: ViewName): string {
+  const noun = view !== 'stories' ? 'task' : lane.key === '' ? 'item' : 'story'
+  const plural = noun === 'story' ? 'stories' : `${noun}s`
+  const open = openIn(lane)
+  if (open === 0) return `No open ${plural}`
+  const count = (key: string) => lane.columns.find((c) => c.key === key)?.items.length ?? 0
+  const parts = [`${open} open ${open === 1 ? noun : plural}`]
+  if (view === 'stories' && lane.key !== '') {
+    if (count('in_development') > 0) parts.push(`${count('in_development')} in development`)
+    if (count('awaiting_verification') > 0) parts.push(`${count('awaiting_verification')} awaiting verification`)
+  }
+  return parts.join(' · ')
+}
+
+/** What a story's or debt's tasks are doing, as its card says it (story dox.1). */
+export function taskMeta(items: readonly Item[], id: string): string | undefined {
+  const tasks = items.filter((i) => i.type === 'task' && i.parent === id)
+  const say = (n: number, what: string) => `${n} ${n === 1 ? 'task' : 'tasks'} ${what}`
+  const started = tasks.filter((t) => t.status === 'in_progress').length
+  if (started > 0) return say(started, 'in progress')
+  const proposed = tasks.filter(isProposal).length
+  return proposed > 0 ? say(proposed, 'proposed') : undefined
 }
 
 export interface ChainMark {

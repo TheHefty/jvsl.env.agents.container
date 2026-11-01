@@ -112,7 +112,7 @@ test('a card shows its type by Azure DevOps\'s name and colour, with ID, state a
     rendered: new Map(),
   })
   assert.ok(html.includes('User Story'))
-  assert.ok(html.includes('#009CCC'))
+  assert.ok(html.includes('#4daafc'))
   assert.ok(html.includes('s-1') && html.includes('In progress') && html.includes('>ux<'))
 })
 
@@ -235,7 +235,7 @@ test('every form is inside one dialog, opened over the view and closed with a bu
 
 test('one "Show closed" toggle, off, serves the board and the backlog', () => {
   const html = boardPage({ nonce: NONCE, items: tree, rendered: new Map() })
-  const nav = html.slice(html.indexOf('<nav>'), html.indexOf('</nav>'))
+  const nav = html.slice(html.indexOf('<header class="bar">'), html.indexOf('</header>'))
   assert.match(nav, /<input type="checkbox" id="show-closed"(?![^>]*checked)[^>]*>/)
   assert.match(nav, /Show closed/)
 })
@@ -272,13 +272,6 @@ const viewItems: Item[] = [
   item({ id: 'd1', title: 'A debt', type: 'bug', labels: ['defect'], debtKind: 'defect' }),
 ]
 
-test('the board offers its three views, the chosen one pressed', () => {
-  const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'stories' })
-  for (const [name, title] of [['tasks', 'Tasks'], ['stories', 'Stories by epic'], ['all', 'All items']]) {
-    assert.match(html, new RegExp(`<button data-board-view="${name}" aria-pressed="${name === 'stories'}">${title}</button>`))
-  }
-})
-
 test('each view is rendered, and only the chosen one is shown', () => {
   const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'tasks' })
   assert.match(html, /<div data-board="tasks">/)
@@ -294,8 +287,8 @@ test('with no view given, the board opens on All items, as it was', () => {
 test('Stories by epic draws a lane per epic and one for what has no epic', () => {
   const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'stories' })
   const stories = html.slice(html.indexOf('<div data-board="stories"'), html.indexOf('<div data-board="all"'))
-  assert.match(stories, /<section class="lane" data-lane="e1" data-lane-closed="false"><h3>An epic<\/h3>/)
-  assert.match(stories, /<section class="lane" data-lane="" data-lane-closed="false"><h3>No epic<\/h3>/)
+  assert.match(stories, /<section class="lane" data-lane="e1" data-lane-closed="false">[^]*?<span class="lane-title">An epic<\/span>/)
+  assert.match(stories, /<section class="lane" data-lane="" data-lane-closed="false">[^]*?<span class="lane-title">No epic<\/span>/)
   assert.match(stories, /data-column="in_development"[^]*A story/)
   assert.match(stories, /data-column="no_task"[^]*A debt/)
 })
@@ -317,7 +310,9 @@ const chain: Item[] = [
 ]
 
 test('cards and rows carry their place in the chain', () => {
-  const html = boardPage({ nonce: NONCE, items: chain, rendered: new Map(), view: 'all' })
+  // On All items: in Stories by epic the Awaiting verification column already says it.
+  const page = boardPage({ nonce: NONCE, items: chain, rendered: new Map(), view: 'all' })
+  const html = page.slice(page.indexOf('<div data-board="all"'))
   const card = (id: string) => html.slice(html.indexOf(`data-open="${id}"`), html.indexOf('</button>', html.indexOf(`data-open="${id}"`)))
   assert.match(card('s-v'), /<span class="mark">Awaiting verification<\/span>/)
   assert.match(card('t-r'), /<span class="mark">Ready<\/span>/)
@@ -403,8 +398,108 @@ test('the page reads the value buttons, and filters the board\'s cards with the 
 
 test('the picker offers Tasks by story, and draws its lanes as Epic › Story (story nmf.5)', () => {
   const html = boardPage({ nonce: NONCE, items: viewItems, rendered: new Map(), view: 'by-story' })
-  assert.match(html, /<button data-board-view="by-story" aria-pressed="true">Tasks by story<\/button>/)
+  assert.match(html, /<option value="by-story" selected>Tasks by story<\/option>/)
   const lanes = html.slice(html.indexOf('<div data-board="by-story"'), html.indexOf('<div data-board="stories"'))
-  assert.match(lanes, /<section class="lane" data-lane="s1" data-lane-closed="false"><h3>An epic › A story<\/h3>/)
+  assert.match(lanes, /<section class="lane" data-lane="s1" data-lane-closed="false">[^]*?<span class="lane-title">An epic › A story<\/span>/)
   assert.match(lanes, /data-column="in_progress"[^]*A task/)
+})
+
+// --- the board is drawn as lanes and cards (story dox.1, task dox.1.1)
+
+const lanes: Item[] = [
+  item({ id: 'e1', title: 'An epic', type: 'epic' }),
+  item({ id: 'quiet', title: 'A quiet epic', type: 'epic' }),
+  item({ id: 's1', title: 'A story', type: 'feature', parent: 'e1' }),
+  item({ id: 't1', title: 'A task', type: 'task', parent: 's1', status: 'in_progress', priority: 1 }),
+  item({ id: 'd1', title: 'A debt', type: 'bug', labels: ['defect'], debtKind: 'defect', priority: 3 }),
+]
+const boardOf = (html: string, name: string) => {
+  const at = html.indexOf(`<div data-board="${name}"`)
+  const next = html.indexOf('<div data-board="', at + 1)
+  return html.slice(at, next === -1 ? html.indexOf('data-view="backlog"') : next)
+}
+
+test('Group by is one dropdown in the design\'s order, the chosen view selected', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map(), view: 'by-story' })
+  const select = html.slice(html.indexOf('<select id="group-by"'), html.indexOf('</select>'))
+  assert.deepEqual([...select.matchAll(/<option value="([a-z-]+)"/g)].map((m) => m[1]), ['stories', 'by-story', 'tasks', 'all'])
+  assert.match(select, /<option value="by-story" selected>Tasks by story<\/option>/)
+  assert.ok(!html.includes('data-board-view='), 'no view buttons left')
+})
+
+test('column titles appear once per view, and lanes repeat none', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map(), view: 'stories' })
+  const stories = boardOf(html, 'stories')
+  assert.equal((stories.match(/class="col-title[ "]/g) ?? []).length, 4)
+  assert.ok(!/<h2>/.test(stories), 'no per-lane column heading')
+  assert.match(stories, /Not started <span class="count" data-col-count="no_task">\d+<\/span>/)
+})
+
+test('the column titles stay in sight, because nothing between them and the page scrolls', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map() })
+  assert.match(html, /\.col-titles \{[^}]*position: sticky/)
+  assert.doesNotMatch(html, /\.board-grid \{[^}]*overflow/, 'a scroll container would make sticky useless')
+})
+
+test('a title follows Show closed with its column, so the grid stays aligned', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map(), view: 'stories' })
+  assert.match(boardOf(html, 'stories'), /class="col-title[^"]*" data-column="done"/)
+})
+
+test('a lane is a button saying its title, ID and summary, and a quiet one starts collapsed', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map(), view: 'stories' })
+  const stories = boardOf(html, 'stories')
+  const head = (key: string) => stories.slice(stories.indexOf(`data-lane="${key}"`), stories.indexOf('</button>', stories.indexOf(`data-lane="${key}"`)))
+  assert.match(head('e1'), /<button class="lane-head" data-lane-toggle aria-expanded="true">/)
+  assert.match(head('e1'), /An epic<\/span><span class="id">e1<\/span><span class="lane-summary">1 open story · 1 in development<\/span>/)
+  assert.match(head('quiet'), /aria-expanded="false"/)
+  assert.match(head('quiet'), /No open stories/)
+})
+
+test('a filter cannot reopen a collapsed lane, because collapsing is only the button\'s state', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map() })
+  assert.match(html, /\.lane-head\[aria-expanded="false"\] \+ \.columns \{ display: none; \}/)
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  const relayout = script.slice(script.indexOf('const relayout'), script.indexOf("field('f-text').addEventListener"))
+  assert.ok(!relayout.includes('aria-expanded="') && !relayout.includes('data-lane-toggle'), 'relayout never touches the lane button')
+})
+
+test('a card shows icon, type, ID and priority on top, its title clamped, its marks and PR kept', () => {
+  const items = [item({ id: 't', title: 'T', type: 'task', priority: 2, acceptance: 'x', metadata: { pr: 7 } })]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map(), view: 'tasks', remote: 'git@github.com:a/b.git' })
+  const board = boardOf(html, 'tasks')
+  const card = board.slice(board.indexOf('data-open="t"'), board.indexOf('</button>', board.indexOf('data-open="t"')))
+  assert.match(card, /<span class="card-head"><svg class="icon"[^]*?<\/svg><span class="type">Task<\/span><span class="id">t<\/span><span class="prio">P2<\/span><\/span>/)
+  assert.match(card, /<span class="title clamp">T<\/span>/)
+  assert.match(card, /<span class="mark">Ready<\/span>/)
+  assert.match(board, /<\/button><a class="pr" href="https:\/\/github\.com\/a\/b\/pull\/7">#7<\/a>/)
+})
+
+test('a card does not repeat the state its column already says', () => {
+  const items = [
+    item({ id: 'd', type: 'bug', labels: ['defect'], debtKind: 'defect', status: 'in_progress' }),
+    item({ id: 's', type: 'feature' }),
+    item({ id: 't', type: 'task', parent: 's', status: 'in_progress' }),
+  ]
+  const board = boardOf(boardPage({ nonce: NONCE, items, rendered: new Map(), view: 'stories' }), 'stories')
+  const card = (id: string) => board.slice(board.indexOf(`data-open="${id}"`), board.indexOf('</button>', board.indexOf(`data-open="${id}"`)))
+  assert.match(card('d'), /<span class="pill state-in-progress">In progress<\/span>/, 'Not started, yet its stored state is in progress')
+  assert.doesNotMatch(card('s'), /class="pill/, 'In development says it')
+  assert.match(card('s'), /1 task in progress/)
+})
+
+test('the column counts follow the filter', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(script, /querySelectorAll\('\[data-col-count\]'\)/)
+})
+
+test('the board follows the editor\'s theme: only type and state accents are fixed, and light has its own', () => {
+  const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map() })
+  const style = html.slice(html.indexOf(`<style nonce="${NONCE}">`), html.indexOf('</style>'))
+  const fixed = style.split('\n').filter((l) => /#[0-9a-fA-F]{3,8}\b/.test(l) && !/^\s*(body\.vscode-light )?\.?[a-z-]*\s*\{?\s*--(type-colour|state-)/.test(l) && !/^\.(type|state)-/.test(l))
+  assert.deepEqual(fixed, [], 'a colour outside the accents')
+  assert.match(style, /body\.vscode-light \.type-task \{ --type-colour:/)
+  assert.match(style, /body\.vscode-light \.state-in-progress \{/)
+  assert.match(style, /background: var\(--vscode-editorWidget-background\)/)
 })
