@@ -117,10 +117,27 @@ ${[5, 6, 7, 8].map((n) => `.board-grid.cols-${n} { min-width: ${n * 200}px; }`).
 ul.tree { list-style: none; padding-left: 16px; }
 ul.tree > li { margin: 2px 0; }
 [hidden] { display: none !important; }
-table.backlog { border-collapse: collapse; width: 100%; }
-table.backlog th, table.backlog td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vscode-panel-border); }
-table.backlog td.title-cell { border-left: 4px solid var(--type-colour); }
-button.toggle { background: none; border: none; color: inherit; cursor: pointer; width: 1.5em; }
+table.backlog { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 860px; table-layout: fixed; border: 1px solid var(--vscode-panel-border); border-radius: 6px; margin-top: 14px; }
+table.backlog th, table.backlog td { text-align: left; height: 36px; box-sizing: border-box; padding: 0 12px; border-bottom: 1px solid var(--vscode-panel-border); }
+table.backlog th { height: 32px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; background: var(--vscode-editorWidget-background); }
+table.backlog th:nth-child(2) { width: 190px; }
+table.backlog th:nth-child(3) { width: 64px; }
+table.backlog th:nth-child(4) { width: 150px; }
+table.backlog tbody tr:hover { background: var(--vscode-list-hoverBackground); }
+.item-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.item-cell .icon { color: var(--type-colour); }
+.item-cell .id { flex: none; min-width: 44px; }
+button.link.ttl { min-width: 0; color: inherit; text-align: left; font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button.link.ttl:hover { text-decoration: underline; }
+.type-epic > .item-line > .ttl { font-weight: 600; }
+tr[data-state="Closed"] .ttl { color: var(--vscode-descriptionForeground); }
+.hidden-count, .priority-cell { font-size: 11px; color: var(--vscode-descriptionForeground); }
+.hidden-count { flex: none; }
+.backlog-tools { display: inline-flex; gap: 2px; }
+.chev { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 3px; background: none; color: var(--vscode-descriptionForeground); cursor: pointer; }
+button.chev:hover { background: var(--vscode-list-hoverBackground); }
+.chev .icon { width: 12px; height: 12px; stroke-width: 2; color: inherit; }
+.chev[aria-expanded="false"] .icon { transform: rotate(-90deg); }
 button.link { background: none; border: none; color: var(--vscode-textLink-foreground); cursor: pointer; padding: 0; }
 .links li { margin: 2px 0; }
 .type-other { --type-colour: #8A8886; }
@@ -135,7 +152,7 @@ body.vscode-light .type-bug { --type-colour: #c4432b; }
 body.vscode-light .state-in-progress { --state-colour: #0b6bb5; }
 body.vscode-light .state-awaiting { --state-colour: #8a6100; }
 body.vscode-light .state-proposal { --state-colour: #6f42c1; }
-${Array.from({ length: 7 }, (_, d) => `td.depth-${d} { padding-left: ${d * 20 + 8}px; }`).join('\n')}
+${Array.from({ length: 7 }, (_, d) => `td.depth-${d} { padding-left: ${d * 22 + 12}px; }`).join('\n')}
 dialog#detail { width: min(900px, 92vw); max-height: 85vh; overflow: auto; padding: 16px 20px;
   color: var(--vscode-foreground); background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); }
 dialog#detail::backdrop { background: rgba(0, 0, 0, 0.45); }
@@ -163,6 +180,8 @@ const ICONS = {
   board: svg('<rect x="1.5" y="2.5" width="3.5" height="11" rx="1"></rect><rect x="6.25" y="2.5" width="3.5" height="7" rx="1"></rect><rect x="11" y="2.5" width="3.5" height="9" rx="1"></rect>'),
   backlog: svg('<path d="M5 4h9M5 8h9M7.5 12H14M2 4h.5M2 8h.5M4.5 12H5"></path>'),
   search: svg('<circle cx="7" cy="7" r="4.5"></circle><path d="m10.5 10.5 3.5 3.5"></path>'),
+  expand: svg('<path d="m4.5 3 3.5 3.5L11.5 3M4.5 9.5 8 13l3.5-3.5"></path>'),
+  collapse: svg('<path d="M4.5 6.5 8 3l3.5 3.5M4.5 13 8 9.5l3.5 3.5"></path>'),
   refresh: svg('<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"></path>'),
 }
 const typeIcon = (type: string) => ICONS[type as 'epic' | 'feature' | 'task' | 'bug'] ?? ICONS.other
@@ -182,6 +201,7 @@ document.querySelectorAll('nav [data-tab]').forEach((b) => b.addEventListener('c
   document.querySelectorAll('nav [data-tab]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   document.querySelectorAll('[data-view]').forEach((v) => { v.hidden = v.dataset.view !== b.dataset.tab; });
   document.querySelector('.group-by').hidden = b.dataset.tab !== 'board';
+  document.querySelector('.backlog-tools').hidden = b.dataset.tab !== 'backlog';
 }));
 const dialog = document.getElementById('detail');
 document.querySelectorAll('[data-open]').forEach((c) => c.addEventListener('click', () => {
@@ -228,6 +248,14 @@ const relayout = () => {
     if (!hide) any = true;
   });
   field('no-match').hidden = any;
+  // What a collapsed parent hides: its descendants the filter keeps (story dox.2).
+  document.querySelectorAll('[data-hidden-count]').forEach((el) => {
+    const id = el.dataset.hiddenCount;
+    const under = (d) => { for (let p = parentOf.get(d.id); p; p = parentOf.get(p)) { if (p === id) return true; } return false; };
+    const n = expanded(id) ? 0 : data.filter((d) => v.shown.has(d.id) && under(d)).length;
+    el.textContent = n === 0 ? '' : n + ' hidden';
+    el.hidden = n === 0;
+  });
   // The board's cards, by the same function (story nmf.4).
   const onCards = visibleIds(cardRows, f);
   cardEls.forEach((c) => { c.hidden = !onCards.shown.has(c.dataset.card); });
@@ -334,9 +362,9 @@ interface Context {
 }
 
 /** Where the item stands in the chain (story nmf.3), and its priority. */
-function marks(item: Item, ctx: Context, column?: ViewColumn): string {
+function marks(item: Item, ctx: Context, saidElsewhere = false): string {
   const m = ctx.marks.get(item.id)
-  return (m?.awaitingVerification && column?.key !== 'awaiting_verification' ? '<span class="mark">Awaiting verification</span>' : '') +
+  return (m?.awaitingVerification && !saidElsewhere ? '<span class="mark">Awaiting verification</span>' : '') +
     (m?.ready ? '<span class="mark">Ready</span>' : '') +
     (m?.noCriterion ? '<span class="mark warn">no done criterion</span>' : '') +
     (item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`)
@@ -369,7 +397,7 @@ function card(item: Item, ctx: Context, column: ViewColumn, meta?: string): stri
     `<span class="card-head">${typeIcon(item.type)}<span class="type">${escape(typeLook(item.type).name)}</span><span class="id">${escape(item.id)}</span>` +
     `${item.priority === undefined ? '' : `<span class="prio">P${item.priority}</span>`}</span>` +
     `<span class="title clamp">${escape(item.title)}</span>` +
-    `<span class="foot">${state}${marks({ ...item, priority: undefined }, ctx, column)}${tags(item)}` +
+    `<span class="foot">${state}${marks({ ...item, priority: undefined }, ctx, column.key === 'awaiting_verification')}${tags(item)}` +
     `${meta === undefined ? '' : `<span class="task-meta">${ICONS.task}${escape(meta)}</span>`}</span></button>`
   // The wrapper carries what the filter reads, as a backlog row does (story nmf.4).
   return `<div class="card-wrap" data-card="${escape(item.id)}" data-type="${escape(typeLook(item.type).name)}" ` +
@@ -399,26 +427,32 @@ function filterBar(items: readonly Item[]): string {
     '</div>'
 }
 
+/** The state as the grid says it: where the chain has it, which the stored state alone cannot say (story dox.2). */
+function statePill(item: Item, ctx: Context): string {
+  return ctx.marks.get(item.id)?.awaitingVerification
+    ? '<span class="pill state-awaiting">Awaiting verification</span>'
+    : `<span class="pill ${stateClass(item)}">${escape(stateOf(item))}</span>`
+}
+
 function backlog(items: readonly Item[], ctx: Context): string {
   const body = backlogRows(items)
     .map(({ item, depth, hasChildren }) => {
       const toggle = hasChildren
-        ? `<button class="toggle" data-toggle="${escape(item.id)}" aria-expanded="true" aria-label="Expand or collapse">▾</button>`
-        : '<span class="toggle"></span>'
+        ? `<button class="toggle chev" data-toggle="${escape(item.id)}" aria-expanded="true" aria-label="Expand or collapse">${ICONS.chevron}</button>`
+        : '<span class="chev"></span>'
+      const hidden = hasChildren ? `<span class="hidden-count" data-hidden-count="${escape(item.id)}" hidden></span>` : ''
       return `<tr data-row="${escape(item.id)}" data-parent="${escape(item.parent ?? '')}" ` +
         `data-type="${escape(typeLook(item.type).name)}" data-state="${escape(stateOf(item))}" ` +
         `data-tags="${escape(shownTags(item).join('\u001f'))}" data-title="${escape(item.title)}" data-priority="${item.priority ?? ''}">` +
-        `<td>${escape(item.id)}</td>` +
-        `<td class="title-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}">${toggle}` +
-        `<button class="link" data-open="${escape(item.id)}"><span class="type">${escape(typeLook(item.type).name)}</span>${escape(item.title)}</button>` +
-        `${marks({ ...item, priority: undefined }, ctx)}${pr(item, ctx)}</td>` +
-        `<td>${item.priority === undefined ? '' : `P${item.priority}`}</td><td>${escape(stateOf(item))}</td><td>${tags(item)}</td></tr>`
+        `<td class="item-cell ${typeClass(item)} depth-${Math.min(depth, MAX_DEPTH)}"><div class="item-line">${toggle}${typeIcon(item.type)}` +
+        `<span class="id">${escape(item.id)}</span><button class="link ttl" data-open="${escape(item.id)}">${escape(item.title)}</button>${hidden}` +
+        `${marks({ ...item, priority: undefined }, ctx, true)}${pr(item, ctx)}</div></td>` +
+        `<td>${statePill(item, ctx)}</td><td class="priority-cell">${item.priority === undefined ? '' : `P${item.priority}`}</td><td>${tags(item)}</td></tr>`
     })
     .join('')
   const th = (key: string, label: string) => `<th data-sort="${key}" aria-sort="none">${label}</th>`
-  return '<p><button id="expand-all">Expand all</button> <button id="collapse-all">Collapse all</button></p>' +
-    `<table class="backlog"><thead><tr>${th('id', 'ID')}${th('title', 'Title')}${th('priority', 'Priority')}${th('state', 'State')}${th('tags', 'Tags')}</tr></thead>` +
-    `<tbody>${body}<tr id="no-match" hidden><td colspan="5">No items match this filter.</td></tr></tbody></table>`
+  return `<table class="backlog"><thead><tr>${th('title', 'Item')}${th('state', 'State')}${th('priority', 'Priority')}${th('tags', 'Tags')}</tr></thead>` +
+    `<tbody>${body}<tr id="no-match" hidden><td colspan="4">No items match this filter.</td></tr></tbody></table>`
 }
 
 const FIELDS: ReadonlyArray<{ key: keyof Rendered; title: string }> = [
@@ -507,6 +541,8 @@ export function boardPage(input: {
     `<button class="seg" data-tab="backlog" aria-pressed="false">${ICONS.backlog}Backlog</button>`,
     '</nav>',
     groupBy,
+    `<span class="backlog-tools" hidden><button id="expand-all" class="iconbtn" aria-label="Expand all" title="Expand all">${ICONS.expand}</button>` +
+      `<button id="collapse-all" class="iconbtn" aria-label="Collapse all" title="Collapse all">${ICONS.collapse}</button></span>`,
     '<label class="toggle-closed"><input type="checkbox" id="show-closed"> Show closed</label>',
     '<span class="spacer"></span>',
     `<label class="search">${ICONS.search}<input id="f-text" type="search" placeholder="Filter by ID or title" aria-label="Filter by ID or title"></label>`,

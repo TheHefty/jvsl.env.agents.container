@@ -390,8 +390,9 @@ these into a third decade would hide that they belong here.
   before approving and for following progress equally:
 
   - **Cards** coloured and marked by type, each showing its ID, state and tags.
-  - **A backlog grid** of the hierarchy, with ID, Title, State and Tags columns, that expands and
-    collapses.
+  - **A backlog grid** of the hierarchy, with Item, State, Priority and Tags columns, that expands
+    and collapses. The Item column holds the ID and the title. Amended on 2026-11-01, by the
+    redesign.
   - **An item form**: title, state and tags at the top; sections for the description, acceptance
     criteria, design and close reason; its parent and its children linked, so the form navigates. It
     opens as a dialog over the board or the backlog, from either view, closed with Esc or its close
