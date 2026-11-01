@@ -39,6 +39,8 @@ export interface Filter {
   type: FieldFilter
   state: FieldFilter
   tag: FieldFilter
+  /** By the name shown, P0 to P4. An item with no priority has no value to match (story dox.3). */
+  priority: FieldFilter
   /**
    * Whether closed rows can match (story nmf.1). Off, a closed row is shown
    * only as context above an open one, or when the state filter names Closed.
@@ -63,6 +65,7 @@ export function visibleIds(rows: readonly FilterRow[], filter: Filter): { shown:
     passes([r.type], filter.type, false) &&
     passes([r.state], filter.state, false) &&
     passes(r.tags, filter.tag, true) &&
+    passes(r.priority === '' ? [] : ['P' + r.priority], filter.priority, false) &&
     (filter.showClosed || askedClosed || r.state !== 'Closed')
   const shown = new Set<string>()
   const context = new Set<string>()
@@ -96,7 +99,8 @@ export function hiddenClosed(rows: readonly FilterRow[], filter: Filter): number
     (text === '' || r.id.toLowerCase().includes(text) || r.title.toLowerCase().includes(text)) &&
     passes([r.type], filter.type, false) &&
     passes([r.state], filter.state, false) &&
-    passes(r.tags, filter.tag, true)
+    passes(r.tags, filter.tag, true) &&
+    passes(r.priority === '' ? [] : ['P' + r.priority], filter.priority, false)
   // A closed row above an open match is on screen anyway, as context: not hidden.
   const byId = new Map(rows.map((r) => [r.id, r]))
   const above = new Set<string>()

@@ -22,7 +22,7 @@ const ROWS: FilterRow[] = [
 const ANY = { include: [] as string[], exclude: [] as string[], all: false }
 const inc = (...v: string[]) => ({ ...ANY, include: v })
 const exc = (...v: string[]) => ({ ...ANY, exclude: v })
-const NONE = { text: '', type: ANY, state: ANY, tag: ANY, showClosed: true }
+const NONE = { text: '', type: ANY, state: ANY, tag: ANY, priority: ANY, showClosed: true }
 
 test('with no filter everything is shown and nothing is context', () => {
   const v = visibleIds(ROWS, NONE)
@@ -205,4 +205,23 @@ test('the hidden-closed count follows the same rules as what is shown', () => {
   assert.equal(hiddenClosed(rows, f), 1)
   assert.equal(hiddenClosed(rows, { ...f, tag: exc('hotfix') }), 1)
   assert.equal(hiddenClosed(rows, { ...f, state: inc('Closed') }), 0, 'an explicit Closed shows them')
+})
+
+// --- a Priority filter (story dox.3, task dox.3.1)
+
+const PRIORITIES: FilterRow[] = [
+  r('p1', undefined, { priority: '1' }),
+  r('p3', undefined, { priority: '3' }),
+  r('none', undefined),
+  r('c3', undefined, { priority: '3', state: 'Closed' }),
+]
+
+test('priority is filtered by its shown name, and an item with none matches no included value', () => {
+  assert.deepEqual([...visibleIds(PRIORITIES, { ...HIDE, priority: inc('P3') }).shown], ['p3'])
+  assert.deepEqual([...visibleIds(PRIORITIES, { ...HIDE, priority: exc('P3') }).shown], ['p1', 'none'])
+})
+
+test('the hidden count and what is shown agree on priority', () => {
+  assert.equal(hiddenClosed(PRIORITIES, { ...HIDE, priority: inc('P3') }), 1)
+  assert.equal(hiddenClosed(PRIORITIES, { ...HIDE, priority: inc('P1') }), 0)
 })
