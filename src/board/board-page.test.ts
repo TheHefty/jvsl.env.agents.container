@@ -70,7 +70,7 @@ test('nothing on the page offers to change the tracker', () => {
   const sent = [...html.matchAll(/postMessage\(\{\s*type:\s*'([a-z]+)'/g)].map((m) => m[1])
   // Since story nmf.2 the page also asks to remember the board view, which
   // writes the workspace's own memory (board-message.ts), never the tracker.
-  assert.deepEqual([...new Set(sent)].sort(), ['refresh', 'view'])
+  assert.deepEqual([...new Set(sent)].sort(), ['copy', 'refresh', 'view'])
   // No form and no textarea. The inputs are the backlog's keyword search and,
   // since story nmf.1, the "Show closed" checkbox: both filter the page and
   // write nothing, and they are named here one by one, so any other input fails.
@@ -619,4 +619,97 @@ test('Esc and a click outside close a dropdown, and only that', () => {
   assert.match(script, /!e\.target\.closest\('\.filter'\)/)
   const close = script.slice(script.indexOf('const closePopovers'), script.indexOf('\n', script.indexOf('const closePopovers')))
   assert.ok(!close.includes('relayout'), 'closing changes no filter')
+})
+
+// --- an item opens in a side panel (story dox.4, task dox.4.1)
+
+const panelItems: Item[] = [
+  item({ id: 'proj-e1', type: 'epic', title: 'Epic' }),
+  item({ id: 'proj-s1', type: 'feature', title: 'Story', parent: 'proj-e1', status: 'in_progress', priority: 2, labels: ['ux'], acceptance: 'x' }),
+  item({ id: 'proj-t1', type: 'task', title: 'Done', parent: 'proj-s1', status: 'closed' }),
+]
+const panel = (html: string, id: string) => html.slice(html.indexOf(`data-detail="${id}"`), html.indexOf('</section><section', html.indexOf(`data-detail="${id}"`)))
+
+test('the panel stands on the right, and the view behind stays as it was', () => {
+  const html = boardPage({ nonce: NONCE, items: panelItems, rendered: new Map() })
+  assert.match(html, /dialog#detail \{[^}]*margin: 0 0 0 auto;[^}]*height: 100vh/)
+  assert.ok(html.includes('showModal()'), 'still modal, so j and k cannot reach the view')
+})
+
+test('IDs are short where the design shows them, whole where they are copied and filtered', () => {
+  const html = boardPage({ nonce: NONCE, items: panelItems, rendered: new Map(), view: 'all' })
+  assert.match(html, /<span class="id">s1<\/span>/)
+  assert.ok(!html.includes('<span class="id">proj-s1</span>'))
+  assert.match(html, /data-card="proj-s1"/)
+  assert.match(panel(html, 'proj-s1'), /<button class="iconbtn" data-copy="proj-s1" aria-label="Copy full ID proj-s1" title="Copy ID">/)
+})
+
+test('IDs with no common prefix stay whole', () => {
+  const html = boardPage({ nonce: NONCE, items: [item({ id: 'a-1' }), item({ id: 'b-2' })], rendered: new Map() })
+  assert.match(html, /<span class="id">a-1<\/span>/)
+})
+
+test('a lone item keeps its whole ID, rather than losing all of it to the prefix', () => {
+  const html = boardPage({ nonce: NONCE, items: [item({ id: 'proj-1' })], rendered: new Map() })
+  assert.match(html, /<span class="id">proj-1<\/span>/)
+})
+
+test('the fields say the state in both words, the priority, the tags and the parent', () => {
+  const items = [
+    item({ id: 'proj-s', type: 'feature', title: 'Built', status: 'in_progress', priority: 2, labels: ['ux'] }),
+    item({ id: 'proj-t', type: 'task', title: 'T', parent: 'proj-s', status: 'closed', closeReason: 'merged' }),
+  ]
+  const form = panel(boardPage({ nonce: NONCE, items, rendered: new Map() }), 'proj-s')
+  assert.match(form, /<dt>State<\/dt><dd><span class="pill state-awaiting">Awaiting verification<\/span> <span class="stored">bd state: in_progress<\/span><\/dd>/)
+  assert.match(form, /<dt>Priority<\/dt><dd>P2<\/dd>/)
+  assert.match(form, /<dt>Tags<\/dt><dd><span class="tag">ux<\/span><\/dd>/)
+  assert.match(form, /<dt>Parent<\/dt><dd>None<\/dd>/)
+})
+
+test('Gherkin acceptance is drawn as scenario cards', () => {
+  const items = [item({ id: 'g', acceptance: 'Feature: F\n\nScenario: First\n  Given x\n  Then y\n\nScenario: Second\n  When z' })]
+  const form = panel(boardPage({ nonce: NONCE, items, rendered: new Map([['g', { acceptance: '<p>RENDERED</p>' }]]) }), 'g')
+  assert.match(form, /<span class="gherkin-key">Feature:<\/span> F/)
+  assert.equal(form.split('<div class="scenario">').length - 1, 2)
+  assert.match(form, /<p class="scenario-name">First<\/p><div class="step"><span class="gherkin-key">Given<\/span><span>x<\/span><\/div>/)
+  assert.ok(!form.includes('RENDERED'), 'drawn once')
+})
+
+test('acceptance that is not Gherkin stays as rendered Markdown', () => {
+  const items = [item({ id: 'g', acceptance: 'done when it passes' })]
+  const form = panel(boardPage({ nonce: NONCE, items, rendered: new Map([['g', { acceptance: '<p>RENDERED</p>' }]]) }), 'g')
+  assert.ok(form.includes('RENDERED'))
+  assert.ok(!form.includes('class="scenario"'))
+})
+
+test('what a scenario says is escaped, and gains no way to run', () => {
+  const hostile = '<img src=x onerror=alert(1)>'
+  const items = [item({ id: 'g', acceptance: `Feature: ${hostile}\nScenario: ${hostile}\n  Given ${hostile}` })]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map() })
+  assert.ok(!html.includes('<img'), 'escaped')
+  assert.equal(html.split(`nonce="${NONCE}"`).length - 1, 2)
+})
+
+test('children are rows with their icon, ID, title and state, and a count', () => {
+  const form = panel(boardPage({ nonce: NONCE, items: panelItems, rendered: new Map() }), 'proj-s1')
+  assert.match(form, /Children <span class="count">1<\/span>/)
+  assert.match(form, /<button class="child type-task" data-open="proj-t1"><svg[^]*?<span class="id">t1<\/span><span class="child-title">Done<\/span><span class="pill state-closed">Closed<\/span><\/button>/)
+})
+
+test('previous and next walk what is in sight, never what the filter hid', () => {
+  const html = boardPage({ nonce: NONCE, items: panelItems, rendered: new Map() })
+  const script = html.slice(html.indexOf(`<script nonce="${NONCE}">`), html.lastIndexOf('</script>'))
+  assert.match(html, /id="prev-item" class="iconbtn" aria-label="Previous item" title="Previous \(k\)"/)
+  assert.match(html, /id="next-item" class="iconbtn" aria-label="Next item" title="Next \(j\)"/)
+  assert.match(script, /getClientRects\(\)\.length > 0/, 'hidden, collapsed and filtered rows take no space')
+  assert.match(script, /e\.key === 'j'/)
+  assert.match(script, /e\.key === 'k'/)
+  assert.match(script, /vscode\.postMessage\(\{ type: 'copy', id: /)
+})
+
+test('a card is counted once, though every view it is in draws it', () => {
+  // The same item has one card per board view, so a row picked by its ID alone
+  // comes back once per view: found running the page, as "2 of 4 open items".
+  const script = pageScript(boardPage({ nonce: NONCE, items: filterItems, rendered: new Map() }))
+  assert.match(script, /cardRows\.filter\(\(r, i\) => shownBoard\.contains\(cardEls\[i\]\)\)/)
 })
