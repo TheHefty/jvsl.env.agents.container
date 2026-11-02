@@ -51,6 +51,16 @@ check "a topic with no files is named" "$(run) $(line_of 'Files')" "1 1"
 broken 's/`src\/app.js:1`/`src\/app.js:1`/'
 check "a path with a line number counts as the file" "$(run)" "0"
 
+# --- list items, not lines; paths versus backticked code (task report-check-
+# --- reads-list-items-and-takes-no-dotted-or-slashed-code-for-a-path) ---------
+broken 's/^\(- A web service on port 8080, in `src\/app.js`\.\)$/\1\n  It starts the day the container does./'
+check "a claim wrapped over two lines is one item and passes" "$(run)" "0"
+check "in silence" "$(wc -c < "$work/out" | tr -d ' ')" "0"
+broken 's/^\(- SQLite for storage\) — Source: `docs\/adr\/001.md` — Reason:\( one file is enough here\.\)$/\1\n \2/'
+check "a wrapped item cites no file and is named at the item's first line" "$(run) $(grep -c '^REPORT.md:12: a documented decision' "$work/out")" "1 1"
+broken 's/^- Most likely deployed as a container (inference)$/- The image carries no CJK font, named in `~\/.claude` and `.vsix`, and `refs\/dolt\/data` sits under `\/config`, as `.code-server\/` does (inference)/'
+check "backticked code with dots, roots and slashes is not a citation" "$(run)" "0"
+
 check "a report that is not there is an error" "$( (cd "$work/r" && bash "$HERE/report-check" docs/NOPE.md) > /dev/null 2>&1; echo $?)" "2"
 
 if [ "$failures" -gt 0 ]; then
