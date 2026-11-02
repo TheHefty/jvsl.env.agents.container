@@ -626,8 +626,9 @@ function form(item: Item, rendered: Rendered | undefined, byId: ReadonlyMap<stri
     (parts.join('') || '<p>No text.</p>') + kids + '</div></section>'
 }
 
-/** Group by's order, as the redesign lists them. */
-const GROUP_ORDER: readonly ViewName[] = ['stories', 'by-story', 'tasks', 'all']
+/** Group by's order, as the redesign lists them (task the-board-groups-by-**
+** epics): Epics where Tasks was, which the URL still opens by name. */
+const GROUP_ORDER: readonly ViewName[] = ['stories', 'by-story', 'epics', 'all']
 /** The colour of a column title's dot. */
 const STATE_OF_COLUMN: Readonly<Record<string, string>> = {
   in_development: 'state-in-progress', in_progress: 'state-in-progress', awaiting_verification: 'state-awaiting',
