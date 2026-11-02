@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.1.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.0.0...v2.1.0) (2026-11-02)
+
+
+### Features
+
+* **board:** Group by lists Epics where Tasks was, the epics themselves as cards ([8a8067e](https://github.com/TheHefty/jvsl.env.agents.container/commit/8a8067e910c9104f9f8b8ee6201090884553bc7a))
+* **board:** Group by lists Epics where Tasks was, the epics themselves as cards ([6fb4b6a](https://github.com/TheHefty/jvsl.env.agents.container/commit/6fb4b6a0e3394cba95aa6fcbbe6ddd734fda01da))
+* options are triggered by the categories, not by the agent's confidence ([8c56090](https://github.com/TheHefty/jvsl.env.agents.container/commit/8c560907d6bdb3475d92f92a124347722dc94642))
+* options are triggered by the categories, not by the agent's confidence ([dfcba90](https://github.com/TheHefty/jvsl.env.agents.container/commit/dfcba90a6d5970a7abb790e4a0cd037a8d4618d0))
+* the retro asks what the developer wants to learn, not what they learned ([5f197fc](https://github.com/TheHefty/jvsl.env.agents.container/commit/5f197fcfe8364a0d17fe221d84cac6ca6941d77b))
+* the retro asks what the developer wants to learn, not what they learned ([42c1636](https://github.com/TheHefty/jvsl.env.agents.container/commit/42c1636dbb6f9b1024adcac197db50d87df3394b))
+* the review accepts on the developer's word, with no explanation demanded ([1a65e0e](https://github.com/TheHefty/jvsl.env.agents.container/commit/1a65e0eed5a36785de9351d87c8bf26452cfff8e))
+* the review accepts on the developer's word, with no explanation demanded ([6227b5a](https://github.com/TheHefty/jvsl.env.agents.container/commit/6227b5a6d0cf3083efb22c4377fa7158e2250ad7))
+
+
+### Bug Fixes
+
+* a duplicate name= field an image check prints is refused, on the host and at the read ([1997cf7](https://github.com/TheHefty/jvsl.env.agents.container/commit/1997cf7734fcda07cd34ea4f615af6187b023a40))
+* a duplicate name= field an image check prints is refused, on the host and at the read ([faf9051](https://github.com/TheHefty/jvsl.env.agents.container/commit/faf9051c11c793a7dbf9a491fed030e59912c81c))
+* ci-green counts the image-fields guard in its needs ([f18da85](https://github.com/TheHefty/jvsl.env.agents.container/commit/f18da857083beeb7fe574569267ce4dd54cce567))
+* report-check reads list items and names paths, not any slashed code ([7e698b4](https://github.com/TheHefty/jvsl.env.agents.container/commit/7e698b413ae7b1ed98cc8a55104cc19dbab0baf1))
+* report-check reads list items and names paths, not any slashed code ([4f20160](https://github.com/TheHefty/jvsl.env.agents.container/commit/4f20160fa499a5eae307d45bd13e2702a0ed62ef))
+* retro-gather also lists the day's commits that are only on the remote ([c58e706](https://github.com/TheHefty/jvsl.env.agents.container/commit/c58e706d48d0273a06db6eb3882765a0d9ef5bc9))
+* retro-gather also lists the day's commits that are only on the remote ([3089d8c](https://github.com/TheHefty/jvsl.env.agents.container/commit/3089d8c34759bc4918add24ecad99b690ced8fe9))
+* the docker daemon's test owns its chown, like ai-memory's does ([3d2d85b](https://github.com/TheHefty/jvsl.env.agents.container/commit/3d2d85b4e6b0899e6a83e51fdca172ca482268ff))
+* the nested daemon runs overlay2 where the kernel allows it, and says which driver it runs ([b5e5022](https://github.com/TheHefty/jvsl.env.agents.container/commit/b5e5022b9a3081250d8637a492121a1b8af6cccc))
+* the nested daemon runs overlay2 where the kernel allows it, and says which driver it runs ([c2524a0](https://github.com/TheHefty/jvsl.env.agents.container/commit/c2524a0c4ab5435ca2cd379c7a85b5438340e13a))
+* the working-day checker reads the want-to-learn heading the way journal-write does ([9767afb](https://github.com/TheHefty/jvsl.env.agents.container/commit/9767afb6ab84a4306684d46e075e88063ae88d31))
+
 ## [1.17.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v1.17.0...v1.17.1) (2026-10-31)
 
 
