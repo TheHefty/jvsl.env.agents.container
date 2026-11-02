@@ -18,5 +18,23 @@ printf '%s\n' "${items:-Nothing.}"
 echo
 echo "## Commits on $day"
 next="$(date -d "$day + 1 day" +%F)"
-commits="$(git log --since="$day 00:00" --until="$next 00:00" --format='- %h %s' 2>/dev/null)"
+# The day's work is not always committed on the checked-out branch: it arrives
+# on the remote's default branch through pull requests, and the local branch
+# may be behind it. Gather both, by the local day; git log's traversal over
+# two revs already lists a commit reachable from both once. When the remote
+# cannot be smelled at all, gather only the local branch and say so.
+remote=origin
+git fetch --quiet "$remote" 2>/dev/null || true
+remote_head="$(git symbolic-ref -q "refs/remotes/$remote/HEAD" 2>/dev/null || true)"
+case "$remote_head" in
+    "") if git show-ref --verify --quiet "refs/remotes/$remote/master" 2>/dev/null
+        then remote_head="refs/remotes/$remote/master"
+        else remote_head=""
+        fi ;;
+esac
+sources=(HEAD)
+note=""
+if [ -n "$remote_head" ]; then sources+=("$remote_head"); else note="Neither $remote/HEAD nor $remote/master answered; only the checked-out branch was gathered."; fi
+commits="$(git log --since="$day 00:00" --until="$next 00:00" '--format=- %h %s' "${sources[@]}" 2>/dev/null)"
+[ -n "$note" ] && printf '%s\n' "$note"
 printf '%s\n' "${commits:-Nothing.}"
