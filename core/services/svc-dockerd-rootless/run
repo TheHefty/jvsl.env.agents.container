@@ -28,14 +28,15 @@ set -euo pipefail
 # It also has to be somewhere the agent's ai-jail sandbox can be *granted*
 # access to — connecting to a unix socket needs write permission, so a
 # read-only bind wouldn't do; see docs/OVERVIEW.md for the `--rw-map` grant.
-CONFIG_DIR=/config/.docker
+CONFIG_DIR="${DOCKERD_CONFIG_DIR:-/config/.docker}"
 SOCKET_DIR="$CONFIG_DIR/run"
-DATA_ROOT=/config/.local/share/docker
+DATA_ROOT="${DOCKERD_DATA_ROOT:-/config/.local/share/docker}"
+XDG_RUNTIME_DIR="${DOCKERD_RUNTIME_DIR:-/run/dockerd-rootless}"
 
 # rootlesskit's own state is deliberately *not* on the volume: it's per-boot
 # (netns handles, pid files), and stale state from a previous container start
 # makes the daemon fail to come up rather than degrade.
-export XDG_RUNTIME_DIR=/run/dockerd-rootless
+export XDG_RUNTIME_DIR
 
 mkdir -p "$SOCKET_DIR" "$DATA_ROOT" "$XDG_RUNTIME_DIR"
 
@@ -58,11 +59,59 @@ chmod 700 "$XDG_RUNTIME_DIR"
 # daemon can't stack a copy-on-write filesystem inside an already-overlayfs
 # container, so say so plainly instead of crash-looping: s6 would restart this
 # service forever and bury the reason in the logs.
-if [[ ! -e /dev/fuse ]]; then
+if [[ ! -e ${DOCKERD_FUSE_DEV:-/dev/fuse} ]]; then
     echo "**** /dev/fuse absent — nested rootless Docker disabled ****"
     echo "**** (host has no /dev/fuse, or start didn't pass --device /dev/fuse) ****"
     sleep infinity
 fi
+
+# **The storage driver is chosen once, on what the kernel allows, and the boot
+# says which one the daemon runs** — debt the-nested-docker-daemon-loses-the-
+# ownership-an-image-set-on-its-files (gh-313). fuse-overlayfs loses the owner
+# an image dropped on its files, and an image that cannot write its own
+# directory restarts in a loop while compose up exits 0. Overlay2 keeps the
+# owner, and kernels from 5.11 (Ubuntu's flavour from 5.4) let a user namespace
+# mount it; the probe answer decides, riding whatever this container itself
+# runs on: a mount probe, lower over upper in the daemon's own directories.
+probe_overlay() {
+    local d="$XDG_RUNTIME_DIR/overlay-probe"
+    mkdir -p "$d/l" "$d/u" "$d/w" "$d/m"
+    if mount -t overlay -o "lowerdir=$d/l,upperdir=$d/u,workdir=$d/w" "overlay-probe-$d/m" "$d/m" 2>/dev/null; then
+        umount "$d/m" 2>/dev/null
+        rm -rf "$d"
+        return 0
+    fi
+    rm -rf "$d"
+    return 1
+}
+
+DRIVER_FILE="$CONFIG_DIR/storage-driver"
+if probe_overlay; then
+    chosen="overlay2"
+    echo "dockerd storage driver: overlay2 (the kernel lets a user namespace mount it)"
+else
+    chosen="fuse-overlayfs"
+    echo "dockerd storage driver: fuse-overlayfs (the probe could not mount overlayfs in a user namespace; it loses an image's own file owners — measured, gh-313)"
+fi
+written="$(cat "$DRIVER_FILE" 2>/dev/null || true)"
+case "$written" in
+    "$chosen") ;;
+    "")
+        mkdir -p "$CONFIG_DIR"
+        echo "$chosen" > "$DRIVER_FILE"
+        chown abc:abc "$DRIVER_FILE"
+        ;;
+    *)
+        # The daemon refuses to start over a data-root written by another
+        # driver, so the old one is moved aside whole: nothing of it is lost,
+        # its images re-pull, and keeping the directory is keeping the images.
+        echo "dockerd storage driver changed from $written to $chosen: no image survives a driver switch, so old graphs re-pull or re-build under the new driver; the old data-root stays at ${DATA_ROOT}.$written, and deleting that directory throws those images away."
+        mv "$DATA_ROOT" "${DATA_ROOT}.$written"
+        mkdir -p "$DATA_ROOT"
+        echo "$chosen" > "$DRIVER_FILE"
+        chown abc:abc "$DRIVER_FILE"
+        ;;
+esac
 
 export HOME=/config
 
@@ -94,4 +143,4 @@ exec s6-setuidgid abc \
             --host="unix://$SOCKET_DIR/docker.sock" \
             --data-root="$DATA_ROOT" \
             --exec-root="$XDG_RUNTIME_DIR/docker" \
-            --storage-driver=fuse-overlayfs
+            --storage-driver="$chosen"
