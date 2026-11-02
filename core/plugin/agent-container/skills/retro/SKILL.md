@@ -1,13 +1,13 @@
 ---
 name: retro
-description: The day's retrospective with the developer — report what was discovered, what surprised, what went wrong and what was decided without asking, take the developer's own "what I learned" line, and write the day's journal entry. Use after the review at the end of the day, or when the developer asks for the retro. Never skipped.
+description: The day's retrospective with the developer — report what was discovered, what surprised, what went wrong and what was decided without asking, take the developer's own "what I want to learn" line, and write the day's journal entry. Use after the review at the end of the day, or when the developer asks for the retro. Never skipped.
 ---
 
 # The retro
 
 The second part of the end-of-day block (review, retro, refinement), and **the one ceremony that is never skipped**. On a short day it is short, but it runs.
 
-Its point is that what you found while working comes back to the developer, instead of staying in commits and documents. **You report. The developer writes what they learned.** You never write their line for them.
+Its point is that what you found while working comes back to the developer, instead of staying in commits and documents. **You report. The developer writes what they want to learn.** You never write their line for them.
 
 ## 1. The tracker has to be on
 
@@ -38,7 +38,7 @@ It lists the items touched today and the commits made today, both by the local d
 
 ## 4. What only the developer gives
 
-- **What I learned**: ask the developer for their line. You may offer a draft for them to change or approve, but what goes in the entry is what they wrote or approved.
+- **What I want to learn**: ask the developer for their line. You may offer a draft for them to change or approve, but what goes in the entry is what they wrote or approved. It looks forward: tomorrow's planning brings it back to them.
 - **Blog candidates**: ask whether any discovery is worth writing about. Mark only the ones they choose.
 - **Left open**: ask what is left for tomorrow. Tomorrow's planning reads this section.
 
@@ -55,7 +55,7 @@ Blog candidate: yes | no
 ## Surprised
 ## Went wrong
 ## Decided alone
-## What I learned
+## What I want to learn
 ## Left open
 ## Links
 ```
@@ -66,7 +66,7 @@ Then run:
 ${CLAUDE_PLUGIN_ROOT}/bin/journal-write <file>
 ```
 
-It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "What I learned", or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
+It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
 
 ## 6. Hand over
 

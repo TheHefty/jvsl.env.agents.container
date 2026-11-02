@@ -11,12 +11,14 @@
 #                         entry from before today, read by journal-read from
 #                         the developer's private repository and the outbox,
 #                         and said not to be sent yet when it still waits;
-#                         and, first, a line when the last day with work
-#                         before today has no entry: its retro was skipped.
-#                         When the repository cannot be read, that is said
-#                         instead, and no day is called skipped. Days are
-#                         local ($PLANNING_TODAY, or today), so a late retro
-#                         is the day it was held.
+#                         then the developer's "What I want to learn" line
+#                         from that entry (older entries say "What I learned"),
+#                         which now looks forward; and, first, a line when the
+#                         last day with work before today has no entry: its
+#                         retro was skipped. When the repository cannot be
+#                         read, that is said instead, and no day is called
+#                         skipped. Days are local ($PLANNING_TODAY, or today),
+#                         so a late retro is the day it was held.
 #
 # The same reading as planning-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
@@ -72,10 +74,16 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr --arg today "$TODAY" --sl
            then "No journal for \($lastwork), which had work: its retro was skipped." else empty end),
           ( $entries | map(select(.day < $today)) | last
             | if . == null then "No journal entry yet."
-              else (if .sent then empty else "The entry for \(.day) is not sent yet: it waits in the outbox on this machine." end),
-                   ( .body | split("\n")
-                   | (index("## Left open")) as $at
-                   | if $at == null then "The latest entry has no Left open section."
-                     else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
-                          | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end )
+               else (if .sent then empty else "The entry for \(.day) is not sent yet: it waits in the outbox on this machine." end),
+                    ( .body | split("\n")
+                    | (index("## Left open")) as $at
+                    | if $at == null then "The latest entry has no Left open section."
+                      else .[$at + 1:] | (map(startswith("## ")) | index(true)) as $end
+                           | (if $end == null then . else .[:$end] end) | map(select(. != "")) | .[] end ),
+                    ( .body | split("\n")
+                    | (map(select(test("^## (What I want to learn|What I learned)$")))) as $headings
+                    | (index($headings[-1])) as $at
+                    | if $at == null then empty
+                      else .[$at + 1:] | (map(select(. != ""))[0]
+                          | if . == null then empty else "Wants to learn: \(.)" end) end )
               end ) )'

@@ -55,10 +55,15 @@ for lang in en pt-BR; do
     day="$DOCS/$lang/WORKING-DAY.md"
     check "$lang: WORKING-DAY.md exists" "$([ -f "$day" ] && echo yes || echo no)" "yes"
     [ -f "$day" ] || continue
-    # journal-write refuses any other names, in any language.
-    for s in Discovered Surprised "Went wrong" "Decided alone" "What I learned" "Left open" Links; do
+    # journal-write accepts an entry under either the learned or the want-to-
+    # learn heading (task what-the-developer-wants-to-learn), and reads the
+    # template's sections through the new day: WORKING-DAY.md carries the
+    # heading the retro writes now, and says the older one is still accepted.
+    for s in Discovered Surprised "Went wrong" "Decided alone" "What I want to learn" "Left open" Links; do
         check "$lang: the journal's section \"## $s\" is named as journal-write reads it" "$(grep -cx "## $s" "$day" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
     done
+    check "$lang: it says the older heading is still accepted as written" \
+        "$(tr '\n' ' ' < "$day" | grep -c 'What I *learned' | sed 's/^[1-9][0-9]*$/yes/')" "yes"
 
     # The journal is the developer's, in a private repository of theirs (story
     # the-working-agreement-says-the-journal-is-private): where it goes, how it

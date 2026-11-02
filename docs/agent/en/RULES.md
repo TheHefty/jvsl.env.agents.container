@@ -285,8 +285,8 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
   refinement is where stories and tasks are proposed and agreed.
 - **A task is done when the developer can explain it.** Passing tests are not enough. Accepting
   needs their own words, and the task closes when its pull request merges, not when it is accepted.
-- **The retro is never skipped.** On a short day it is short. The line on what was learned is the
-  developer's, never yours alone, and "Decided alone" lists everything you chose without asking.
+- **The retro is never skipped.** On a short day it is short. The line on what the developer wants
+  to learn is theirs, never yours alone, and "Decided alone" lists everything you chose without asking.
 - **The journal is the developer's, not the project's.** Create, Configure and Open's configuration
   flow ask for a private repository when Beads is on, and save it in
   `~/.claude/agent-container/journal.json`, shared across projects; a WSL project writes to the
