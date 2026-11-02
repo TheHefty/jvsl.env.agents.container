@@ -439,6 +439,19 @@ jobs:
       - name: core's pins reach the Dockerfile
         run: bash core/compose-dockerfile.test.sh
 
+  image-fields:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The name= fields an image test prints are how its assertions read their
+    # state back, first match, so a second check reusing a name asserts the
+    # other's value silently (#6d4 failed exactly that way). The guard runs on
+    # the host, before any docker build, and needs no image.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: every name= field an image test prints is unique, and every field read is printed
+        run: bash core/image-fields.test.sh
+
   php-keyring:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
