@@ -439,6 +439,19 @@ jobs:
       - name: core's pins reach the Dockerfile
         run: bash core/compose-dockerfile.test.sh
 
+  image-fields:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The name= fields an image test prints are how its assertions read their
+    # state back, first match, so a second check reusing a name asserts the
+    # other's value silently (#6d4 failed exactly that way). The guard runs on
+    # the host, before any docker build, and needs no image.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: every name= field an image test prints is unique, and every field read is printed
+        run: bash core/image-fields.test.sh
+
   php-keyring:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -853,7 +866,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, image-fields, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

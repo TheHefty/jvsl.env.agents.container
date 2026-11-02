@@ -225,7 +225,18 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     "$B/study-move" some-topic published https://blog.example/post >/dev/null 2>&1
     printf "moved=%s\n" "$early $(bd show "$t1" --json 2>/dev/null | jq -r ".[0] | [.status, (.close_reason // \"-\")] | join(\" \")")"
 ' 2>/dev/null || true)"
-dfield() { printf '%s' "$planning" | sed -n "s/^$1=//p"; }
+# The shell half prints name= lines and this reads them back first-match. A
+# second check printing a name again would silently make the first-matching
+# assertion read the other value (debt the-two-image-checks-printing-the-same-
+# field-collide-silently), so a name counted twice is refused, naming it.
+field_of() { # field_of <name> <print-block>
+    dup="$(printf '%s' "$2" | grep -cE "^$1=" || true)"
+    [ "$dup" -le 1 ] || fail "field \"$1\" is printed $dup times in one image-check block: the second\
+ asserts the first's value; name the field differently"
+    printf '%s' "$2" | sed -n "s/^$1=//p"
+}
+dfield() { field_of "$1" "$planning"; }
+pfield() { field_of "$1" "$plugin"; }
 [ "$(dfield moved)" = "1 closed Published: https://blog.example/post" ] || fail "against the real bd, a study topic \
 was not moved as study-move promises (moved=$(dfield moved)): publishing should be refused before ready, \
 then the topic made ready and published with its link as the close reason"
@@ -257,7 +268,8 @@ or planning-check misread the tracker (ready=$(dfield ready) blocked=$(dfield bl
 $(dfield init)): the export's shape no longer matches what the planning's scripts and their fixture expect, \
 so a planning would offer the wrong tasks, or none"
 
-pfield() { printf '%s' "$plugin" | sed -n "s/^$1=//p"; }
+# The plugin's shell half reads its fields through the same first-match rule
+# as the planning's, and is refused the same way on a duplicate.
 [ "$(pfield dir)" = "ok" ] || fail "the agent-container plugin is not at /opt/jvsl/plugins/agent-container, or its \
 needs-tracker is not executable. The claude wrapper would start every session without the ceremonies, \
 saying so once"
