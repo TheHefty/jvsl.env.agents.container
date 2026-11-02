@@ -61,6 +61,13 @@ cat > "$work/bin/mount" <<'SH'
 printf 'mount %s\n' "$*" >> "$MOUNT_LOG"
 [ "$(cat "$MOUNT_ANSWER")" = "ok" ]
 SH
+# The run script chowns to abc, who exists in the image but not here; the
+# ai-memory service's test stubs chown for the same reason.
+cat > "$work/bin/chown" <<'SH'
+#!/usr/bin/env bash
+printf 'chown %s\n' "$*" >> "$MOUNT_LOG"
+exit 0
+SH
 cat > "$work/bin/umount" <<'SH'
 #!/usr/bin/env bash
 printf 'umount %s\n' "$*" >> "$MOUNT_LOG"
