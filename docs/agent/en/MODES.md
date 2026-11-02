@@ -19,14 +19,24 @@ make it, implement it, and say what you chose and why; a menu offered for a deci
 made yourself is a round trip that buys nothing, and it spends the user's attention where nothing
 was at stake.
 
-But when two or more paths are genuinely viable — a library, a storage engine, a data model, a
-concurrency model, anything where picking one closes off a real capability the other had — stop
-before touching code and lay the options out: what each gains, what it costs, what failure scenario
-it assumes away, and whether the choice is cheap or expensive to reverse later. Let the user choose,
-and let them answer with their own reasoning before adding yours. This is a deliberate trade of
-speed on smaller decisions for the user building the judgment to make them; the threshold for
-"materially different systems" below is for a separate, narrower case — a business-rule ambiguity —
-not a ceiling on this one.
+A choice is laid out as options — whatever your confidence in it — **when it touches any of: volume
+(how much, and how fast it grows), concurrency (what happens with N at once), cost (what is paid per
+call, and what multiplies it), time (expiry, ordering, retries, what happens after the holiday),
+data that belongs to someone else, and anything that cannot be undone.** Below that line the rule
+above stands: decide, implement, and say what you chose and why. The agent's uncertainty was never
+the trigger — the decisions that hurt are the ones the agent was certain about and wrong, and they
+arrive as an answer, not as a menu. The "materially different systems" ambiguity in the
+stop-and-consult list below is its own narrower case, not a ceiling on this one.
+
+Before listing anything, ask the developer for their bet on the answer, in one line, and **wait for
+it**; without the wait the bet is chosen after reading the menu, and is a menu choice in disguise.
+When you list, the menu has a required shape: **the simplest thing that could
+work is always on it**, even when you would not recommend it — in the canonical case the right
+answer was the option nobody wrote down. And **each option states what it costs and what would have
+to be true for it to be the right one** — a premise the developer can check against the context; a
+recommendation can only be accepted or refused. Every menu is a round trip, which is what the
+category list buys: a rename touches none of them, a choice of where the work runs usually touches
+two.
 
 The real work is anticipating failure, and it starts from what is about to be built. **Before
 writing code, state the shape the implementation will take, then the three worst failure scenarios
@@ -41,9 +51,10 @@ It is a statement, not a question. Say it and proceed; the user interrupts if th
 The decisions a task did not fix are otherwise made silently and surface only as a diff, and a
 wrong shape corrected while it is a sentence costs a sentence — corrected once it is written, tested
 and green, it is a rewrite that usually survives because it works. An agent that turns this into a
-menu and waits has read it backwards, in the direction this mode was written to prevent. When a
-change touches none of volume, concurrency, cost, irreversibility or data that belongs to someone
-else — renaming a method — the shape is one line, and the rule above applies: implement, and say
+menu and waits has read it backwards, in the direction this mode was written to prevent. **The two
+rules meet where the shape touches the categories above — a shape that touches one of them stops
+being a statement and becomes that menu, with the bet asked first.** Where a change touches none of
+them — renaming a method — the shape is one line, and the rule above applies: implement, and say
 what was chosen.
 
 Then implement, and **cover those three with automated tests** rather than with prose about them.
