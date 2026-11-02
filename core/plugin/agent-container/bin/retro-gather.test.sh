@@ -54,6 +54,35 @@ check "the commits made that day, by local date, late evening included" \
 empty="$(cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-20 bash "$HERE/retro-gather")"
 check "a day with nothing says so in both" "$(printf '%s\n' "$empty" | grep -c '^Nothing\.$')" "2"
 
+# The day's work is not always committed on the checked-out branch: it arrives
+# on the remote's default branch through pull requests, and the local clone is
+# behind it (story the-retro-does-not-see-the-days-commits-when-they-are-only-
+# on-the-remote, debt b9g).
+remote="$work/origin.git"; git init -q --bare --initial-branch=master "$remote"
+git -C "$repo" remote add origin "$remote"
+git -C "$repo" push -q "$remote" master
+seed="$work/seed"; git clone -q "$remote" "$seed"
+git -C "$seed" config core.hooksPath /dev/null
+GIT_COMMITTER_DATE="2026-10-27T10:00:00-0300" GIT_AUTHOR_DATE="2026-10-27T10:00:00-0300" \
+    git -C "$seed" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "feat: merged today through a pull request"
+git -C "$seed" push -q "$remote" master
+git --git-dir="$remote" symbolic-ref HEAD refs/heads/master
+
+gath() { (cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-27 bash "$HERE/retro-gather"); }
+under2() { printf '%s\n' "$(gath)" | awk -v h="## $1 on " 'index($0, h) == 1 {on = 1; next} /^## / {on = 0} on && /^- /'; }
+check "commits only on the remote's default branch are listed too" "$(under2 Commits | grep -c 'merged today through a pull request')" "1"
+check "a commit on both branches is listed once" "$(under2 Commits | grep -c 'feat: the morning')" "1"
+
+rm "$remote/HEAD" 2>/dev/null || true
+# A repository whose remote cannot be smelled: the local day's commits stand,
+# and the gather says it saw only the checked-out branch.
+solo="$work/solo"; git init -q --initial-branch=master "$solo"
+git -C "$solo" fetch -q "$repo" master
+git -C "$solo" checkout -q -B master FETCH_HEAD
+sout() { (cd "$solo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-27 bash "$HERE/retro-gather"); }
+check "with no remote, the local day's commits are still gathered" "$(printf '%s\n' "$(sout)" | awk 'index($0, "## Commits on ") == 1 {on = 1; next} /^## / {on = 0} on' | grep -c 'feat: the morning')" "1"
+check "and the gather says it saw only the checked-out branch" "$(printf '%s\n' "$(sout)" | grep -c 'only the checked-out branch')" "1"
+
 if [ "$failures" -gt 0 ]; then
     echo "retro-gather.test: $failures failure(s)"
     exit 1
