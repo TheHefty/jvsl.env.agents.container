@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Exercises review-accept and review-reopen, the real scripts, with bd stubbed.
 #
-# The failure they exist against is a task accepted, or sent back, without the
-# developer saying anything: the epic's point is that a change is done when the
-# developer can explain it, and the one part of that a script can hold is that
-# the explanation exists (story the-review).
+# What a review still holds before accepting (task the-review-accepts-on-the-
+# developers-word, from the developer's request at gh-314): what changed is
+# shown against the done criterion, and acceptance is the developer's word —
+# no explanation is demanded. A comment they give is kept verbatim.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,12 +36,12 @@ run() {
 }
 calls() { wc -l < "$BD_CALLS" | tr -d ' '; }
 
-for words in '' '   ' $'\t\n'; do
-    check "an acceptance with no words ($(printf %q "$words")) is refused" "$(run review-accept t1 "$words")" "1"
-    check "and nothing is written to the tracker" "$(calls)" "0"
-done
-check "the refusal says what acceptance needs" "$(grep -c "own words" "$work/out")" "1"
 check "an acceptance with no task id is a usage error" "$(run review-accept)" "2"
+
+for words in '' '   ' $'\t\n'; do
+    check "an acceptance with no words ($(printf %q "$words")) passes" "$(run review-accept t1 "$words")" "0"
+    check "on the developer's word, said so" "$(grep -c $'^update\tt1\t--append-notes\tAccepted in review on 2026-10-28, on the developer\'s word.$' "$BD_CALLS")" "1"
+done
 
 check "an acceptance in the developer's words is recorded" \
     "$(run review-accept t1 'It reads the PR state, and only MERGED closes; "open" waits.')" "0"
@@ -64,4 +64,4 @@ if [ "$failures" -gt 0 ]; then
     echo "review-accept.test: $failures failure(s)"
     exit 1
 fi
-echo "review-accept.test: nothing is accepted or reopened without words, and the words are kept as written."
+echo "review-accept.test: acceptance happens on the developer's word, with any comment they gave kept as written; a reopen still needs its reason."

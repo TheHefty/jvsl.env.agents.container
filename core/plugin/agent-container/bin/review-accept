@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
-# review-accept <id> <explanation>: records that the developer accepted a task,
-# in their own words (story the-review). Refused when the words are empty or
-# only whitespace — the one part of "done when the developer can explain it"
-# a script can hold is that the explanation exists. Accepting does not close
-# the task: review-settle does, once its pull request has merged.
+# review-accept <id> [<comment>]: records that the developer accepted a task
+# on their word, after the change was shown against its done criterion (story
+# the-review, task the-review-accepts-on-the-developers-word). No explanation
+# is demanded. A comment the developer gave is kept as written; with none, the
+# note says the acceptance happened. Accepting does not close the task:
+# review-settle does, once its pull request has merged.
 set -uo pipefail
 
 BD="${REVIEW_BD:-bd}"
 TODAY="${REVIEW_TODAY:-$(date +%F)}"
 
 if [ "$#" -lt 1 ] || [ -z "$1" ]; then
-    echo "usage: review-accept <id> <the developer's explanation, in their own words>" >&2
+    echo "usage: review-accept <id> [<the developer's comment, if any>]" >&2
     exit 2
 fi
 id="$1"; words="${2:-}"
-if [ -z "${words//[[:space:]]/}" ]; then
-    echo "review-accept: $id was not accepted. Acceptance needs the developer's explanation of the change in their own words, and none was given."
-    exit 1
-fi
 "$BD" label add "$id" accepted >/dev/null || exit 1
-"$BD" update "$id" --append-notes "Accepted in review on $TODAY, in the developer's words: $words" >/dev/null || exit 1
+if [ -n "${words//[[:space:]]/}" ]; then
+    note="Accepted in review on $TODAY, in the developer's words: $words"
+else
+    note="Accepted in review on $TODAY, on the developer's word."
+fi
+"$BD" update "$id" --append-notes "$note" >/dev/null || exit 1
 echo "$id: accepted. It closes when its pull request merges — run review-settle $id."

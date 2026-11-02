@@ -1,13 +1,13 @@
 ---
 name: review
-description: End-of-day review with the developer — show each task worked today against its done criterion, have the developer explain the change in their own words, then record acceptance or reopen it with what is missing. Use when the developer asks to review the day or close out today's work, or as the first part of the end-of-day block.
+description: End-of-day review with the developer — show each task worked today against its done criterion, and record the developer's acceptance or reopen it with what is missing. Use when the developer asks to review the day or close out today's work, or as the first part of the end-of-day block.
 ---
 
 # The review
 
-The first part of the end-of-day block: review, then retro, then refinement. **Passing tests are necessary and not enough: a task is done when the developer understands it.**
+The first part of the end-of-day block: review, then retro, then refinement. **A task is done when what changed is shown against its done criterion, and the developer says it is done. Passing tests are necessary and not enough.**
 
-You never accept a task on the developer's behalf, and you never write their explanation for them. **Accepting is not merging**: an accepted task closes when its pull request merges.
+You never accept a task on the developer's behalf. **Accepting is not merging**: an accepted task closes when its pull request merges.
 
 ## 1. The tracker has to be on
 
@@ -45,13 +45,11 @@ It lists the tasks in progress and the accepted ones still waiting for a merge. 
    - With a pull request: `gh pr view <n>` and `gh pr diff <n> --name-only`.
    - Without one: `git log` and `git diff` on the branch the work is on. Note that the PR should be recorded with `bd update <id> --set-metadata pr=<n>` once it is opened.
 
-   Say plainly where it falls short of the criterion.
-2. **Ask the developer to explain the change in their own words**: what it does, and why it was done that way. Even a trivial change gets a sentence.
-3. **If they cannot explain it yet**, walk through it with them: the mechanism, the part that was not obvious, what you found along the way. Then ask again. Do not accept before they can explain it.
-4. **The developer decides:**
-   - **Accept**, with their explanation exactly as they gave it:
+   Say plainly where it falls short of the criterion, and walk through it with them when they ask.
+2. **The developer decides:**
+   - **Accept**, on their word, with a comment only if they give one:
      ```bash
-     ${CLAUDE_PLUGIN_ROOT}/bin/review-accept <id> "<their words>"
+     ${CLAUDE_PLUGIN_ROOT}/bin/review-accept <id> ["<their words, if any>"]
      ${CLAUDE_PLUGIN_ROOT}/bin/review-settle <id>
      ```
      The second command closes the task now if its pull request has already merged. Otherwise the task waits for the merge.

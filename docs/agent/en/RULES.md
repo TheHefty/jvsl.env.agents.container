@@ -283,8 +283,9 @@ in that order. How each runs is in [The working day](WORKING-DAY.md).
 
 - **They are the chain's calendar, not a way around it.** A planning picks only agreed tasks;
   refinement is where stories and tasks are proposed and agreed.
-- **A task is done when the developer can explain it.** Passing tests are not enough. Accepting
-  needs their own words, and the task closes when its pull request merges, not when it is accepted.
+- **A task is done when the developer says it is, on what was shown.** Passing tests are not
+  enough: the review shows what changed against the done criterion and accepts it on the
+  developer's word. The task closes when its pull request merges, not when it is accepted.
 - **The retro is never skipped.** On a short day it is short. The line on what the developer wants
   to learn is theirs, never yours alone, and "Decided alone" lists everything you chose without asking.
 - **The journal is the developer's, not the project's.** Create, Configure and Open's configuration

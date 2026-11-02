@@ -38,7 +38,7 @@ done
 section() { awk -v h="$2" '$0 == h {on = 1; print; next} on && /^#{1,3} / {on = 0} on' "$DOCS/$1/RULES.md"; }
 declare -A heading=([en]="### The working day" [pt-BR]="### O dia de trabalho")
 declare -A never=([en]="never skipped" [pt-BR]="nunca é pulada")
-declare -A explain=([en]="explain" [pt-BR]="explic")
+declare -A statedone=([en]="developer.*s word" [pt-BR]="palavra do desenvolvedor")
 declare -A private=([en]="private repository" [pt-BR]="repositório privado")
 declare -A oldclaim=([en]="labelled \`journal\`" [pt-BR]="com a label \`journal\`")
 
@@ -48,7 +48,8 @@ for lang in en pt-BR; do
     check "$lang: the skills it names are exactly the ceremonies" \
         "$(printf '%s\n' "$rules" | grep -oE 'agent-container:[a-z-]+' | sed 's/^agent-container://' | sort -u | paste -sd' ' -)" "$plugin"
     check "$lang: it says the retro is never skipped" "$(printf '%s\n' "$rules" | grep -c "${never[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
-    check "$lang: it says a task is done when the developer can explain it" "$(printf '%s\n' "$rules" | grep -ci "${explain[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
+    check "$lang: it says a task is done when the developer says it is, on what was shown" \
+        "$(printf '%s\n' "$rules" | grep -ci "${statedone[$lang]}" | sed 's/^[1-9][0-9]*$/yes/')" "yes"
     check "$lang: it says how a task records its pull request" "$(printf '%s\n' "$rules" | grep -c -- '--set-metadata pr=' | sed 's/^[1-9][0-9]*$/yes/')" "yes"
     check "$lang: it links to WORKING-DAY.md for the rest" "$(printf '%s\n' "$rules" | grep -c '](WORKING-DAY.md' | sed 's/^[1-9][0-9]*$/yes/')" "yes"
 
