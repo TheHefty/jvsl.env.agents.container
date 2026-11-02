@@ -50,13 +50,13 @@ Review, retro and refinement run together at the end of the day, in that order, 
 forty-five minutes. The review settles what was done, the retro turns it into what the developer
 wants to learn, and refinement prepares what comes next.
 
-## Done is explained
+## Done is shown
 
-**Passing tests are necessary and not enough: a task is done when the developer can explain it.**
-The review shows each task against its criterion and asks the developer to explain the change in
-their own words. When they cannot yet, the agent walks through it with them until they can.
-`review-accept` refuses an acceptance without those words, and keeps them verbatim in the task's
-notes.
+**Passing tests are necessary and not enough: a task is done when the developer says it is, on
+what was shown.** The review shows each task against its criterion — the files, the tests, the
+behaviour — and says plainly where it falls short. The developer decides: acceptance is on their
+word, with a comment only if they give one, and `review-accept` keeps that comment verbatim in the
+task's notes. When they ask, the agent walks through the change with them.
 
 **Accepting is not merging.** An accepted task closes when its pull request merges, which
 `review-settle` checks with `gh`. A pull request that is open, closed without merging, or missing

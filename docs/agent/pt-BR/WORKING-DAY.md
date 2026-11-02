@@ -51,13 +51,13 @@ minutos. O review fecha o que foi feito, a retro transforma isso no que o desenv
 aprender, e o
 refinement prepara o que vem depois.
 
-## Pronto é explicado
+## Pronto é mostrado
 
-**Testes passando são necessários e não bastam: uma task está pronta quando o desenvolvedor sabe
-explicá-la.** O review mostra cada task contra o seu critério e pede ao desenvolvedor que explique a
-mudança com as próprias palavras. Quando ele ainda não sabe, o agente percorre a mudança com ele até
-saber. `review-accept` recusa uma aceitação sem essas palavras, e as guarda literalmente nas notas da
-task.
+**Testes passando são necessários e não bastam: uma task está pronta quando o desenvolvedor diz
+que está, sobre o que foi mostrado.** O review mostra cada task contra o seu critério — os
+arquivos, os testes, o comportamento — e diz claramente onde ela fica aquém. O desenvolvedor
+decide: a aceitação vai na palavra dele, com um comentário só se ele der, e o `review-accept` guarda
+esse comentário literalmente nas notas da task. Quando pedir, o agente percorre a mudança com ele.
 
 **Aceitar não é fazer merge.** Uma task aceita fecha quando o seu pull request entra, o que o
 `review-settle` confere com o `gh`. Um pull request aberto, fechado sem merge, ou ausente deixa a task
