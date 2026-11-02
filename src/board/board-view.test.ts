@@ -63,9 +63,23 @@ const places = (v: BoardView) =>
 const column = (v: BoardView, id: string) => places(v).filter((p) => p.id === id).map((p) => p.column)
 const ids = (v: BoardView, key: string) => places(v).filter((p) => p.column === key).map((p) => p.id).sort()
 
-test('the three views exist, in the order the picker shows them', () => {
-  assert.deepEqual(VIEWS.map((v) => v.name), ['tasks', 'by-story', 'stories', 'all'])
-  assert.deepEqual(VIEWS.map((v) => v.title), ['Tasks', 'Tasks by story', 'Stories by epic', 'All items'])
+test('the five views exist, in the order the picker shows them', () => {
+  // The selector carries Epics where Tasks was (task the-board-groups-by-**-**
+  // epics); Tasks stays a view the URL can still open.
+  assert.deepEqual(VIEWS.map((v) => v.name), ['tasks', 'by-story', 'stories', 'epics', 'all'])
+  assert.deepEqual(VIEWS.map((v) => v.title), ['Tasks', 'Tasks by story', 'Stories by epic', 'Epics', 'All items'])
+})
+
+// --- Epics ---
+
+test('Epics shows the epics themselves in the stored columns, proposals and work of other kinds held out', () => {
+  const v = boardView(ITEMS, 'epics')
+  assert.deepEqual(v.lanes.length, 1)
+  const shown = places(v).map((p) => p.id)
+  assert.ok(!shown.some((i) => !ITEMS.find((item) => item.id === i && item.type === 'epic')), 'only epics')
+  const proposed = ITEMS.filter((i) => i.type === 'epic').map((i) => i.id)
+  assert.deepEqual(shown.filter((id) => !proposed.includes(id)), [], 'nothing invented')
+  assert.deepEqual(shown.filter((id) => ITEMS.find((i) => i.id === id && i.labels.includes('proposed'))), [], 'a proposal is not work')
 })
 
 // --- Tasks ---

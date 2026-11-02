@@ -413,9 +413,25 @@ const boardOf = (html: string, name: string) => {
 test('Group by is one dropdown in the design\'s order, the chosen view selected', () => {
   const html = boardPage({ nonce: NONCE, items: lanes, rendered: new Map(), view: 'by-story' })
   const select = html.slice(html.indexOf('<select id="group-by"'), html.indexOf('</select>'))
-  assert.deepEqual([...select.matchAll(/<option value="([a-z-]+)"/g)].map((m) => m[1]), ['stories', 'by-story', 'tasks', 'all'])
+  assert.deepEqual([...select.matchAll(/<option value="([a-z-]+)"/g)].map((m) => m[1]), ['stories', 'by-story', 'epics', 'all'])
   assert.match(select, /<option value="by-story" selected>Tasks by story<\/option>/)
+  assert.ok(!select.includes('<option value="tasks"'), 'Tasks is not in the selector; the URL still opens it')
   assert.ok(!html.includes('data-board-view='), 'no view buttons left')
+})
+
+test('the Epics view shows the epics themselves in the stored columns, proposals held out', () => {
+  const items = [
+    item({ id: 'e1', title: 'An epic', type: 'epic', status: 'open' }),
+    item({ id: 'e2', title: 'A closed epic', type: 'epic', status: 'closed' }),
+    item({ id: 'e3', title: 'A proposed epic', type: 'epic', status: 'open', labels: ['proposed'] }),
+    item({ id: 't1', title: 'A task', type: 'task' }),
+  ]
+  const html = boardPage({ nonce: NONCE, items, rendered: new Map(), view: 'epics' })
+  const epics = boardOf(html, 'epics')
+  assert.ok(epics.includes('data-open="e1"'), 'the open epic is a card')
+  assert.ok(epics.includes('data-open="e2"'), 'the closed epic is a card in its stored column')
+  assert.ok(!epics.includes('data-open="e3"'), 'a proposed epic is not work; only All items shows it')
+  assert.ok(!epics.includes('data-open="t1"'), 'no task of another kind')
 })
 
 test('column titles appear once per view, and lanes repeat none', () => {

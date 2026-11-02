@@ -14,14 +14,15 @@ import { byPriority, columns, type Item } from './board-read.ts'
  * A proposal, or anything deferred, is not work (FR-106), so only All items
  * shows it — as refine-candidates reads it: deferred or labelled `proposed`.
  */
-export type ViewName = 'tasks' | 'by-story' | 'stories' | 'all'
+ export type ViewName = 'tasks' | 'by-story' | 'stories' | 'epics' | 'all'
 
-export const VIEWS: ReadonlyArray<{ name: ViewName; title: string }> = [
-  { name: 'tasks', title: 'Tasks' },
-  { name: 'by-story', title: 'Tasks by story' },
-  { name: 'stories', title: 'Stories by epic' },
-  { name: 'all', title: 'All items' },
-]
+ export const VIEWS: ReadonlyArray<{ name: ViewName; title: string }> = [
+   { name: 'tasks', title: 'Tasks' },
+   { name: 'by-story', title: 'Tasks by story' },
+   { name: 'stories', title: 'Stories by epic' },
+   { name: 'epics', title: 'Epics' },
+   { name: 'all', title: 'All items' },
+ ]
 
 export const isView = (v: unknown): v is ViewName => VIEWS.some((x) => x.name === v)
 
@@ -74,6 +75,12 @@ export function boardView(items: readonly Item[], view: ViewName): BoardView {
 function unordered(items: readonly Item[], view: ViewName): BoardView {
   if (view === 'all') {
     return { name: view, lanes: [{ key: '', title: '', closed: false, columns: columns(items) }] }
+  }
+  if (view === 'epics') {
+    // The epics themselves, in the stored columns All items uses, with what is
+    // not work (FR-106) held out the way the other views are.
+    const epics = items.filter((i) => i.type === 'epic' && !isProposal(i))
+    return { name: view, lanes: [{ key: '', title: '', closed: false, columns: columns(epics) }] }
   }
   const closed = new Set(items.filter((i) => i.status === 'closed').map((i) => i.id))
 
@@ -144,7 +151,7 @@ export const laneIsQuiet = (lane: Lane): boolean => openIn(lane) === 0
 
 /** What a lane's head says it holds (story dox.1): how many are open, and where. */
 export function laneSummary(lane: Lane, view: ViewName): string {
-  const noun = view !== 'stories' ? 'task' : lane.key === '' ? 'item' : 'story'
+  const noun = view === 'epics' ? 'epic' : view !== 'stories' ? 'task' : lane.key === '' ? 'item' : 'story'
   const plural = noun === 'story' ? 'stories' : `${noun}s`
   const open = openIn(lane)
   if (open === 0) return `No open ${plural}`
