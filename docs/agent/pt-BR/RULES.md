@@ -289,8 +289,8 @@ Como cada uma roda está em [O dia de trabalho](WORKING-DAY.md).
   acordadas; o refinement é onde stories e tasks são propostas e acordadas.
 - **Uma task está pronta quando o desenvolvedor sabe explicá-la.** Testes passando não bastam.
   Aceitar exige as palavras dele, e a task fecha quando o seu pull request entra, não quando é aceita.
-- **A retro nunca é pulada.** Num dia curto ela é curta. A linha sobre o que foi aprendido é do
-  desenvolvedor, nunca só sua, e "Decided alone" lista tudo o que você escolheu sem perguntar.
+- **A retro nunca é pulada.** Num dia curto ela é curta. A linha sobre o que o desenvolvedor quer
+  aprender é dele, nunca só sua, e "Decided alone" lista tudo o que você escolheu sem perguntar.
 - **O diário é do desenvolvedor, não do projeto.** Create, Configure e Open perguntam pelo
   repositório privado quando Beads está ligado e o salvam em
   `~/.claude/agent-container/journal.json`, compartilhado entre projetos; num projeto WSL, escrevem

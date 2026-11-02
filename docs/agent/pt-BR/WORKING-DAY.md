@@ -47,7 +47,8 @@ O planning não escreve código.
 ## O bloco do fim do dia
 
 Review, retro e refinement rodam juntos no fim do dia, nessa ordem, em trinta a quarenta e cinco
-minutos. O review fecha o que foi feito, a retro transforma isso no que foi aprendido, e o
+minutos. O review fecha o que foi feito, a retro transforma isso no que o desenvolvedor quer
+aprender, e o
 refinement prepara o que vem depois.
 
 ## Pronto é explicado
@@ -67,7 +68,8 @@ aberta, e o motivo é dito. Um `gh` que não consegue responder nunca é lido co
 
 A retro **nunca é pulada**. Num dia curto ela é curta, mas roda. O agente relata quatro coisas: o
 que descobriu, com como achou cada uma e por que importa; o que o surpreendeu; o que deu errado; e
-tudo o que decidiu sozinho. O desenvolvedor escreve ou aprova a linha sobre o que aprendeu. O agente
+tudo o que decidiu sozinho. O desenvolvedor escreve ou aprova a linha sobre o que quer aprender — ela
+olha para o futuro, e o planning seguinte a traz de volta. O agente
 nunca escreve essa linha por conta própria.
 
 **O diário é do desenvolvedor, não do projeto.** O rastreador viaja com o remoto do projeto, que pode
@@ -105,13 +107,14 @@ Blog candidate: yes | no
 ## Surprised
 ## Went wrong
 ## Decided alone
-## What I learned
+## What I want to learn
 ## Left open
 ## Links
 ```
 
-`journal-write` recusa uma entrada sem "What I learned", ou com "Decided alone" vazio; essa seção diz
-"Nothing." quando não houve nada. `Blog candidate: yes` marca uma descoberta sobre a qual o
+`journal-write` recusa uma entrada sem "What I want to learn", ou com "Decided alone" vazio; essa seção diz
+"Nothing." quando não houve nada. Uma entrada escrita ainda com o título antigo, "What I
+learned", é aceita como foi escrita. `Blog candidate: yes` marca uma descoberta sobre a qual o
 desenvolvedor escolheu escrever, e a skill de estudo a lista como tópico.
 Quando o último dia com trabalho não tem entrada, o planning seguinte diz que a retro foi pulada.
 

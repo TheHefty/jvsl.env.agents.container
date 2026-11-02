@@ -105,8 +105,14 @@ body x Nothing. no '- the oldest point' > "$GH_STORE/demo/2026-10-26.md"
 body x Nothing. no '- the second half of the migration
 - ask about the cache' > "$GH_STORE/demo/2026-10-27.md"
 body x Nothing. no '- written this morning' > "$GH_STORE/demo/2026-10-28.md"
-check "yesterday's open points come from the entry for the latest day before today, that section only" \
-    "$(left_open | grep -v '^No journal' | paste -sd'|' -)" "- the second half of the migration|- ask about the cache"
+check "yesterday's open points come from the entry for the latest day before today, that section only, with what to learn brought forward" \
+    "$(left_open | grep -v '^No journal' | paste -sd'|' -)" "- the second half of the migration|- ask about the cache|Wants to learn: x"
+
+body "the container reaps orphans" | sed 's/^## What I want to learn$/## What I learned/' > "$GH_STORE/demo/2026-10-26.md"
+check "an older entry's line, under the heading it was written with, is read too" \
+    "$(left_open | grep -c '^Wants to learn: the container reaps orphans$' || true)" "0"
+check "the learning line comes from the latest day only" \
+    "$(left_open | grep -c '^Wants to learn: ')" "1"
 # Entries the tracker still holds from before the journal moved are not work.
 item j-old chore closed 2 '["journal"]' "" 2026-10-20T18:00:00Z "$(body x Nothing. no '- from the tracker')"
 check "and journal entries left in the tracker are neither tasks to offer nor read" \

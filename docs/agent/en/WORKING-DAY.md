@@ -47,8 +47,8 @@ The planning writes no code.
 ## The end-of-day block
 
 Review, retro and refinement run together at the end of the day, in that order, in thirty to
-forty-five minutes. The review settles what was done, the retro turns it into what was learned, and
-refinement prepares what comes next.
+forty-five minutes. The review settles what was done, the retro turns it into what the developer
+wants to learn, and refinement prepares what comes next.
 
 ## Done is explained
 
@@ -68,7 +68,8 @@ leaves the task open, and the reason is said. A `gh` that cannot answer is never
 The retro is **never skipped**. On a short day it is short, but it runs. The agent reports four
 things: what it discovered, with how it found each one and why it matters; what surprised it; what
 went wrong; and everything it decided alone. The developer writes or approves the line on what they
-learned. The agent never writes that line on its own.
+want to learn — it looks forward, and the next planning brings it back to them. The agent never
+writes that line on its own.
 
 **The journal is the developer's, not the project's.** The tracker travels with the project's
 remote, which may be public, so the day's entry never goes there. It goes to a private repository of
@@ -106,13 +107,14 @@ Blog candidate: yes | no
 ## Surprised
 ## Went wrong
 ## Decided alone
-## What I learned
+## What I want to learn
 ## Left open
 ## Links
 ```
 
-`journal-write` refuses an entry without "What I learned", or with "Decided alone" empty; that
-section says "Nothing." when there was nothing. `Blog candidate: yes` marks a discovery the developer
+`journal-write` refuses an entry without "What I want to learn", or with "Decided alone" empty; that
+section says "Nothing." when there was nothing. An entry still written under the older "What I
+learned" heading is accepted as it was written. `Blog candidate: yes` marks a discovery the developer
 chose to write about, and the study skill lists it as a topic. When the last day
 with work has no entry, the next planning says the retro was skipped.
 

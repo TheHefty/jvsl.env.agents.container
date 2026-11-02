@@ -111,9 +111,16 @@ check "and empties the outbox" "$(ls "$outbox" 2>/dev/null | wc -l | tr -d ' ')"
 # --- what only the developer gives is still required --------------------------------
 reset; configure '{"repository": "TheHefty/journal"}'
 body "" > "$work/body.md"
-check "an empty What I learned is refused" "$(write)" "1"
+check "an empty What I want to learn is refused" "$(write)" "1"
 check "and nothing is kept or sent" "$(ls "$outbox" 2>/dev/null | wc -l | tr -d ' ') $(wc -l < "$GH_CALLS" | tr -d ' ')" "0 0"
 check "saying the line is the developer's" "$(grep -c "developer's own" "$work/out")" "1"
+
+# Entries written before the heading changed keep the heading they were written
+# with, and are still accepted as entries.
+reset; configure '{"repository": "TheHefty/journal"}'
+body "the old heading is kept as written" | sed 's/^## What I want to learn$/## What I learned/' > "$work/body.md"
+check "an entry under the older heading is still sent" "$(write)" "0"
+check "kept with the heading it was written with" "$(grep -c '^## What I learned$' "$GH_STORE/demo/2026-10-29.md")" "1"
 body "x" "" > "$work/body.md"
 check "an empty Decided alone is refused, and says Nothing. is the answer" "$(write) $(grep -c 'Nothing\.' "$work/out")" "1 1"
 body | sed '/^## Went wrong$/,/^## Decided alone$/{/^## Decided alone$/!d}' > "$work/body.md"
