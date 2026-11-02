@@ -310,6 +310,21 @@ jobs:
       - name: a server that will not start says so once instead of looping
         run: bash core/services/svc-ai-memory/run.test.sh
 
+  nested-docker:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The nested rootless daemon is what keeps the agent off the host's Docker
+    # socket, and gh-313 is how it can eat a project's compose in silence: the
+    # daemon driver hand out 0:0 where the image dropped its owner, compose up
+    # exits 0, and the workload restart-posts forever on its own permission
+    # error. What the service can hold is that the driver is chosen by the
+    # kernel probe, kept, and that a change re-homes the data-root in one line.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the storage driver is chosen by the kernel probe, and a change says itself
+        run: bash core/services/svc-dockerd-rootless/run.test.sh
+
   reaper:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -866,7 +881,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, image-fields, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, nested-docker, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, image-fields, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
