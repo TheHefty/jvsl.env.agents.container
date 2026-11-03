@@ -148,6 +148,9 @@ export function buildConfiguration(input: BuildInput): Configuration {
       // charter said volume; this is the measurement that changed it.
       `target=/config/.claude/rules,type=tmpfs`,
     ],
+    // Deliberate, not hardening to tighten back: the nested rootless daemon
+    // needs these, and the reason is in SECURITY.md ("What the container is
+    // permitted, deliberately").
     capAdd: ['SYS_ADMIN'],
     securityOpt: ['seccomp=unconfined', 'systempaths=unconfined'],
     // **PUID and PGID only.** `PASSWORD: ''` lived here so that code-server
