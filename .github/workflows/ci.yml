@@ -314,11 +314,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     # The nested rootless daemon is what keeps the agent off the host's Docker
-    # socket, and gh-313 is how it can eat a project's compose in silence: the
-    # daemon driver hand out 0:0 where the image dropped its owner, compose up
-    # exits 0, and the workload restart-posts forever on its own permission
-    # error. What the service can hold is that the driver is chosen by the
-    # kernel probe, kept, and that a change re-homes the data-root in one line.
+    # socket; gh-313 records the ownership question around its storage driver:
+    # the 0:0 that opened it was kotodori's older build, and on this image the
+    # fallback held every image-set owner when measured on 2026-11-03. What
+    # the service can hold is that the driver is chosen by the kernel probe,
+    # kept, and that a change re-homes the data-root in one line.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -67,12 +67,16 @@ fi
 
 # **The storage driver is chosen once, on what the kernel allows, and the boot
 # says which one the daemon runs** — debt the-nested-docker-daemon-loses-the-
-# ownership-an-image-set-on-its-files (gh-313). fuse-overlayfs loses the owner
-# an image dropped on its files, and an image that cannot write its own
-# directory restarts in a loop while compose up exits 0. Overlay2 keeps the
-# owner, and kernels from 5.11 (Ubuntu's flavour from 5.4) let a user namespace
-# mount it; the probe answer decides, riding whatever this container itself
-# runs on: a mount probe, lower over upper in the daemon's own directories.
+# ownership-an-image-set-on-its-files (gh-313). Overlay2 keeps the owner an
+# image set by construction, and kernels from 5.11 (Ubuntu's flavour from 5.4)
+# let a user namespace mount it. fuse-overlayfs, the fallback, held every
+# image-set owner when measured on this image on 2026-11-03 — image
+# directories and fresh named volumes, uids 999 to 2000, the issue's own
+# temurin reproducer; the 0:0 that opened gh-313 was measured on kotodori's
+# older build and did not reproduce, so what differs there is not in this
+# repository, and the debt's record holds both measurements. The probe answer
+# decides, riding whatever this container itself runs on: a mount probe,
+# lower over upper in the daemon's own directories.
 probe_overlay() {
     local d="$XDG_RUNTIME_DIR/overlay-probe"
     mkdir -p "$d/l" "$d/u" "$d/w" "$d/m"
@@ -88,10 +92,10 @@ probe_overlay() {
 DRIVER_FILE="$CONFIG_DIR/storage-driver"
 if probe_overlay; then
     chosen="overlay2"
-    echo "dockerd storage driver: overlay2 (the kernel lets a user namespace mount it)"
+    echo "dockerd storage driver: overlay2 (the kernel lets a user namespace mount it; it keeps an image's own file owners by construction)"
 else
     chosen="fuse-overlayfs"
-    echo "dockerd storage driver: fuse-overlayfs (the probe could not mount overlayfs in a user namespace; it loses an image's own file owners — measured, gh-313)"
+    echo "dockerd storage driver: fuse-overlayfs (the probe could not mount overlayfs in a user namespace; image-set owners held when last measured on this image, 2026-11-03 — gh-313's 0:0 was kotodori's older build and did not reproduce; overlay2 stays preferred because it needs no such measurement)"
 fi
 written="$(cat "$DRIVER_FILE" 2>/dev/null || true)"
 case "$written" in
