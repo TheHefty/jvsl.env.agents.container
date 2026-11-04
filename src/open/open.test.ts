@@ -396,6 +396,35 @@ test('on Windows, a daemon that does not answer is refused as Docker Desktop not
   assert.match(cause, /Nothing was written/)
 })
 
+// --- a WSL project's docker is its distro's (debt a-wsl-project-with-no-docker-in-its-distro-is-told-to-install-docker-desktop)
+//
+// The editor runs on Windows, so process.platform is win32, but docker for a
+// WSL project runs inside the distro. Docker Desktop is optional there, and
+// naming it sends the developer to install the wrong thing.
+
+const inUbuntu = { platform: 'win32' as const, dockerHost: { kind: 'wsl' as const, distro: 'Ubuntu-24.04' } }
+
+test('a WSL project whose distro has no docker is told to install it in the distro, not Docker Desktop', () => {
+  const cause = refusal({ ...inUbuntu, image: 'no-docker' })
+  assert.doesNotMatch(cause, /Docker Desktop is not installed|docker\.exe/)
+  assert.match(cause, /docker is not installed in the WSL distro Ubuntu-24\.04/)
+  assert.match(cause, /WSL integration/)
+  assert.match(cause, /Nothing was written/)
+})
+
+test('a WSL project whose distro daemon does not answer is told to start it there', () => {
+  const cause = refusal({ ...inUbuntu, image: 'unknown' })
+  assert.doesNotMatch(cause, /Docker Desktop is installed but its engine/)
+  assert.match(cause, /docker in the WSL distro Ubuntu-24\.04 did not answer/)
+  assert.match(cause, /Nothing was written/)
+})
+
+test('a project on the Windows filesystem keeps the Docker Desktop refusals', () => {
+  const local = { platform: 'win32' as const, dockerHost: { kind: 'local' as const } }
+  assert.match(refusal({ ...local, image: 'no-docker' }), /Docker Desktop is not installed/)
+  assert.match(refusal({ ...local, image: 'unknown' }), /Docker Desktop is installed but its engine is not answering/)
+})
+
 test('on Linux the refusals keep their words, and a missing client is its own', () => {
   assert.match(refusal({ image: 'unknown' }), /the docker daemon did not answer/)
   assert.match(refusal({ image: 'no-docker' }), /docker is not installed/)

@@ -44,12 +44,20 @@ installs this extension.
   code-server out of the image altogether. Both were out of scope when this charter was accepted
   and are not any more — see the amendment at the bottom for what changed and what it costs.
   Neither is started until the current epic closes.
+- **A Windows editor, since the fourth amendment**: opening a project that lives in a WSL distro,
+  with Docker in the distro or from Docker Desktop, and a project that lives on the Windows
+  filesystem, through Docker Desktop.
 
 **Out of scope, deliberately.** Each of these is a thing a reader might reasonably assume is
 included:
 
-- **Hosts other than Linux.** WSL, macOS and Windows are not supported and are not designed
-  around. WSL is the first candidate to revisit; the others are not.
+- ~~**Hosts other than Linux.** WSL, macOS and Windows are not supported and are not designed
+  around. WSL is the first candidate to revisit; the others are not.~~ **Struck by the fourth
+  amendment**, which brings WSL and Windows in. What stays out: **macOS**, which is not supported
+  and not designed around, and **a project on the Windows filesystem without Docker Desktop**,
+  which is refused by cause rather than worked around. **This said "Windows without Docker
+  Desktop" when it was accepted**, corrected by the fifth amendment: a WSL project with Docker in
+  its distro needs no Docker Desktop.
 - **Editors other than Microsoft's VS Code.** VSCodium, Cursor and Windsurf cannot use the Dev
   Containers extension this one depends on, and supporting them means reimplementing the remote
   attach against a proprietary protocol.
@@ -63,7 +71,10 @@ included:
 - **The other two flows.** Starting a new project with an initialization interview, adopting the
   template into an existing project, and the agents screen are later epics. The first release does
   one thing: open a project that is already set up.
-- **Agents other than Claude Code**, and any change to where agent credentials live.
+- ~~**Agents other than Claude Code**, and any change to where agent credentials live.~~ **Struck
+  by the fifth amendment**, which records Codex and OpenCode as in scope and states where each
+  agent's credentials live. What stays out: an agent that runs outside the jail, or that takes its
+  credentials from a variable rather than its own file.
 - ~~**Changes to the container image.** Those are the template's, in its own repository, under its
   own epic. This project depends on them and does not contain them.~~ **Struck by the third
   amendment.** This project contains them.
@@ -181,6 +192,109 @@ claim that was actually doing the work — and the extensions are recorded as a 
 own. The alternative considered and rejected was declining the proprietary extensions to keep the
 original sentence true, which would have traded a working C# debugger for a property of a
 document.
+
+### Amendment, 2026-11-03 (fifth)
+
+**Codex and OpenCode are in scope, and the first of them was never recorded at all.** This charter
+put "Agents other than Claude Code" out of scope. That was a statement about the extension, written
+while the image was still the template's. **Codex was already in that image**: the template shipped
+`@openai/codex` beside Claude Code on 2026-08-30, a month before this charter was accepted. It came
+into this project with the image at the third amendment, and no amendment said so. **OpenCode came
+in deliberately**, through the epic `opencode-runs-in-the-container-sandboxed-like-claude-and-codex`,
+agreed and verified on 2026-10-30. So the image runs three agent CLIs, `@anthropic-ai/claude-code`,
+`@openai/codex` and `opencode-ai` (`core/Dockerfile.frag`), while this document named one.
+
+**What it cost.**
+
+- **One jail for three agents.** Each runs under `ai-jail` through the same wrapper machinery and
+  the same shared argument list, with only its own marker added. Each uses a preset `ai-jail`
+  already carried and state directories `--agent-state` already maps (`~/.codex`;
+  `~/.config/opencode` and `~/.local/share/opencode`). The sandbox was not widened for either, and
+  a change to the shared list now reaches three agents at once.
+- **Credentials from files, never from variables.** Codex authenticates from `~/.codex/auth.json`,
+  written by `codex login`, and OpenCode from the file `opencode auth login` writes. `OPENAI_API_KEY`
+  is not forwarded into the sandbox, and a caller who set it is told how to store it instead
+  (debt `forwarded-secrets-land-in-the-sandbox-argv`, `core/bin/jail-wrappers.test.sh`). A variable
+  crossing into the jail is readable with `ps`. That is the reason, and it holds for all three.
+- **Installed unpinned.** All three CLIs are installed with no version, under this repository's
+  recorded exception to the inherited "pin a version" rule (`docs/RULES.md`). Two rebuilds of the
+  same commit can install different agent versions. That cost is accepted because a regression in
+  an agent CLI shows itself at once, where one in the sandbox is silent.
+- **More data leaving the machine, to more providers.** Each agent sends prompts, code and tool
+  results to its own provider. `docs/SRS/data-and-legal.md` maps it (#338).
+
+**Where agent credentials live, as the code ships.** The struck clause promised no change to it,
+and the honest statement is that there are two places, one per kind of agent:
+
+- **Claude Code's** `~/.claude` is bound from the host's own home: the Windows or Linux user's, or
+  the distro user's for a WSL project (`src/build/devcontainer.ts`, `src/host/home.ts`). It is set
+  up once and **shared by every project** on that machine.
+- **Codex's** `~/.codex` and **OpenCode's** `~/.config/opencode` and `~/.local/share/opencode` live
+  under `/config`, which is the project's own named volume. They are not bound from the host. They
+  are **per project**: each project's container keeps its own login, which survives rebuilds and
+  goes when the volume does.
+
+**Where the line now stands.** Out of scope: an agent that runs outside the jail, which is the
+charter's own "deciding to run an agent on the host", and an agent that takes its credentials from a
+variable. Adding a fourth agent under the same terms is an epic, not an amendment.
+
+**And a correction to the fourth amendment.** It said *"Windows without Docker Desktop"* stays out.
+What stays out is a project **on the Windows filesystem** without Docker Desktop. A WSL project with
+Docker in its distro needs no Docker Desktop, and the code never refused one for lacking it. Both
+places the phrase appeared are corrected in place, with a note.
+
+### Amendment, 2026-11-03 (fourth)
+
+**Windows and WSL came into scope on 2026-10-22, and this amendment records it twelve days late.**
+This charter put every host but Linux out of scope and named WSL as the first candidate to revisit.
+It was revisited on 2026-10-22, at the operator's request, as two epics:
+`a-windows-editor-opens-a-project-that-lives-in-wsl`, verified on the operator's Windows machine the
+same day and released in 1.6.3, and `a-windows-editor-opens-a-project-that-lives-on-windows`,
+verified on 2026-10-30. The code has shipped both since then (`WSL_READY` in `src/host/locate.ts`)
+while this document still said neither was supported. That gap was the defect gh-330 reported. A
+charter that describes a smaller system than the one shipped is a wrong instruction to every
+decision grilled against it, and this one ships to agents as their source of truth.
+
+**What came in.** A Windows editor opens, builds and attaches to a project that lives in a WSL
+distro, with Docker either inside the distro or provided by Docker Desktop. It does the same for a
+project on the Windows filesystem, through Docker Desktop. A container window opened from either is
+recognised as its project's. Create and Open, started from a WSL window, keep the project inside
+its distro.
+
+**What it cost, so that nobody discovers it later.**
+
+- **Everything about a WSL project is asked of the distro, not of the machine the editor runs
+  on.** The extension runs on Windows (`extensionKind` `ui`), so docker, the machine's facts, the
+  project's files and the build terminal all go through `wsl.exe` into the distro. The files go
+  through the distro rather than `\\wsl.localhost` (#213). Each of these is a path that has to be
+  right twice, once for each side of the boundary.
+- **The agent's credentials are the distro user's.** For a WSL project the container's `.claude`
+  is bound from the distro user's home (`src/host/home.ts`), because the agent logs in inside WSL
+  and a Windows path is nothing the distro's docker can bind. A home the distro does not give is
+  refused rather than replaced by the Windows one, which would bind nothing or the wrong
+  credentials.
+- **Docker Desktop is a second docker, with its own ways of failing.** Without it, opening and
+  building are refused by cause (`src/open/open.ts`, `src/build/build.ts`). One refusal says
+  Docker Desktop is not installed or `docker.exe` is not on the editor's PATH. The other says it
+  is installed but its engine is not answering. Mount sources become Windows paths with forward
+  slashes, which Docker Desktop accepts (`dockerPath` in `src/build/devcontainer.ts`). Dev
+  Containers' Wayland mount is turned off on Windows so the project opens at all, and the build
+  terminal is detached only off Windows so docker's output stays visible (#263).
+- **None of it is tested end to end in CI.** GitHub has no Windows runner with WSL2 and Docker,
+  and every job here runs on `ubuntu-latest`. The decisions live in pure functions with unit
+  tests. The flows themselves are checked by hand on the operator's machine. A regression on
+  either host is found by the operator, not by the gate, and that is the largest of these costs.
+
+**Where the out-of-scope line now stands.** macOS stays out, not supported and not designed around.
+A project on the Windows filesystem without Docker Desktop stays out too, and is refused naming what
+to install or start rather than worked around. Linux is unchanged. **This said "Windows without
+Docker Desktop" when it was accepted**, corrected by the fifth amendment: a WSL project with Docker
+in its distro needs no Docker Desktop, and was never refused for lacking it.
+
+**What does not change.** Every isolation constraint holds on the new hosts exactly as on Linux. No
+ssh-agent, gpg-agent, X11, host git credential helper or host gitconfig crosses into the container.
+Workspace Trust stays on. The agents stay inside the container, in their jail. This amendment
+widens where the editor may run, not what the container is allowed to reach.
 
 ### Amendment, 2026-10-02 (third)
 

@@ -14,17 +14,19 @@ extension, so a project carries no template, no submodule and no setup script.
 - **The editor stays on the host.** Only the toolchains, the agents and a nested Docker daemon run
   inside the container, under its CPU and memory limits. The editor is never starved by a build it
   is displaying.
-- **Agents run sandboxed by default.** Claude Code and the OpenAI Codex CLI start inside
+- **Agents run sandboxed by default.** Claude Code, the OpenAI Codex CLI and OpenCode start inside
   [`ai-jail`](https://github.com/akitaonrails/ai-jail), which confines them to the workspace.
 - **One project, one container.** Each project declares its stacks, versions and resource limits in
   a small manifest at its root, and gets its own image and its own Docker daemon. Claude Code's
-  sign-in and settings come from the host's `~/.claude`, so they are set up once, not per project.
+  sign-in and settings come from the host's `~/.claude` (the distro user's, for a project in WSL),
+  so they are set up once, not per project. Codex's and OpenCode's logins live on the project's own
+  `/config` volume instead, so each project signs in to them once and keeps it across rebuilds.
 
 ## Requirements
 
 | | |
 |---|---|
-| **Host** | Linux, with Docker |
+| **Host** | Linux, with Docker; or Windows, with the project in a WSL distro (Docker in the distro or from Docker Desktop) or on the Windows filesystem (through Docker Desktop, without which opening it is refused, naming what to install or start). macOS is not supported |
 | **Editor** | Microsoft's build of Visual Studio Code, 1.90 or newer |
 | **Extension** | [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), installed automatically as a dependency |
 
@@ -102,7 +104,7 @@ every project.
 
 | | |
 |---|---|
-| **Agents** | Claude Code and the OpenAI Codex CLI, each started through `ai-jail` |
+| **Agents** | Claude Code, the OpenAI Codex CLI and OpenCode, each started through `ai-jail` |
 | **Toolchain base** | Debian trixie, Git with LFS, the GitHub CLI, Node.js and Rust |
 | **Containers** | A nested, rootless Docker daemon, so builds never reach the host's Docker socket |
 | **Long-term memory** | [`ai-memory`](https://github.com/akitaonrails/ai-memory), enabled per project by an `.ai-memory.toml` file |

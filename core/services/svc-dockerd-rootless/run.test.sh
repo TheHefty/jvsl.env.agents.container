@@ -4,12 +4,13 @@
 # a copy of its logic.
 #
 # Debt the-nested-docker-daemon-loses-the-ownership-an-image-set-on-its-files
-# (gh-313): fuse-overlayfs inside the nested daemon hands out 0:0 where the
-# image dropped its own owner, and the container restarts in a loop while
-# compose up exits 0. Nothing here starts a daemon: what a script can hold is
-# that the storage driver is chosen by the kernel probe, that the choice is
-# kept, that a driver that changes re-homes the old data-root with one line,
-# and that the fallback names itself.
+# (gh-313): the 0:0 that opened it was measured on kotodori's older build and
+# did not reproduce on this image — image-set owners held when measured on
+# 2026-11-03, image directories and fresh named volumes, uids 999 to 2000.
+# Nothing here starts a daemon: what a script can hold is that the storage
+# driver is chosen by the kernel probe, that the choice is kept, that a driver
+# that changes re-homes the old data-root with one line, and that the
+# fallback says what was measured, with the date of the measurement.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -103,7 +104,7 @@ r="$(run ok)"
 check "the daemon comes up" "$r" "0"
 check "dockerd is told overlay2" "$(driver_arg)" "overlay2"
 check "the boot says the driver, and why overlay2 stands for the ownership" \
-    "$(line 'storage driver: overlay2' >/dev/null && echo yes)" "yes"
+    "$(line 'storage driver: overlay2' >/dev/null && line 'by construction' >/dev/null && echo yes)" "yes"
 check "the choice is written for the next boot" "$(probecheck overlay2 && echo yes)" "yes"
 
 # A second boot with the choice intact does not rewrite it and says the driver.
@@ -114,8 +115,8 @@ check "and it names the driver once, not the change" "( $(line 'storage driver c
 # --- the kernel does not allow it ---------------------------------------------
 r="$(run fail)"
 check "with the probe refused, dockerd falls back to fuse-overlayfs" "$(driver_arg)" "fuse-overlayfs"
-check "the fallback line names the driver and the ownership it loses" \
-    "$(line 'fuse-overlayfs (the probe could not mount' >/dev/null && line 'loses an image' >/dev/null && echo yes)" "yes"
+check "the fallback line names the driver and what the measurement said, with its date" \
+    "$(line 'fuse-overlayfs (the probe could not mount' >/dev/null && line 'held when last measured' >/dev/null && line 'did not reproduce' >/dev/null && echo yes)" "yes"
 check "the fallback is what is recorded" "$(probecheck fuse-overlayfs && echo yes)" "yes"
 
 # --- the driver changes under a data-root already written ---------------------

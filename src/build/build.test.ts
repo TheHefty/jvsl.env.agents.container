@@ -84,6 +84,30 @@ test('a docker that is installed and refuses this user is told apart from an abs
   assert.match(absent?.message ?? '', /install/i)
 })
 
+// A WSL project's docker runs inside its distro; Docker Desktop is optional
+// there (debt a-wsl-project-with-no-docker-in-its-distro-is-told-to-install-docker-desktop).
+const ubuntu = { kind: 'wsl' as const, distro: 'Ubuntu-24.04' }
+
+test('for a WSL project, a distro with no docker is named, not Docker Desktop', () => {
+  const [problem] = hostProblems({ ...ready, docker: 'absent' }, 'win32', ubuntu)
+  assert.equal(problem?.blocking, true)
+  assert.doesNotMatch(problem?.message ?? '', /Docker Desktop is not installed|docker\.exe/)
+  assert.match(problem?.message ?? '', /docker is not installed in the WSL distro Ubuntu-24\.04/)
+  assert.match(problem?.message ?? '', /WSL integration/)
+})
+
+test('for a WSL project, a distro daemon that refuses is named, not Docker Desktop', () => {
+  const [problem] = hostProblems({ ...ready, docker: 'unusable' }, 'win32', ubuntu)
+  assert.equal(problem?.blocking, true)
+  assert.doesNotMatch(problem?.message ?? '', /Docker Desktop is installed but its engine/)
+  assert.match(problem?.message ?? '', /docker in the WSL distro Ubuntu-24\.04/)
+})
+
+test('a project on the Windows filesystem keeps the Docker Desktop problems', () => {
+  assert.match(hostProblems({ ...ready, docker: 'absent' }, 'win32', { kind: 'local' })[0]?.message ?? '', /Docker Desktop is not installed/)
+  assert.match(hostProblems({ ...ready, docker: 'unusable' }, 'win32')[0]?.message ?? '', /Docker Desktop is installed but its engine/)
+})
+
 test('a check that could not answer in time does not block', () => {
   // `docker info` hangs when the daemon is unreachable rather than failing, so an
   // activation that waits for it is a window opening slowly with nothing saying
