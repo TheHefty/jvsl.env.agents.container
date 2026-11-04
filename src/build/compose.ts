@@ -62,6 +62,14 @@ class Refusal extends Error {}
 
 const PACKAGE = /^[a-z0-9][a-z0-9+.-]+$/
 
+/** A version's shape: a letter or a digit first, then only letters, digits,
+ * dots, dashes, underscores and plus — `22`, `22.11.1`, `3.12.0b1`, and
+ * rust's channels `stable`, `beta`, `nightly`. A version is substituted into
+ * the stack's Dockerfile.frag — inside RUN lines, which the host's daemon
+ * executes — so it is held to a shape for the same reason `PACKAGE` is:
+ * nothing that reaches a Dockerfile may become another instruction (gh-326). */
+const STACK_VERSION = /^[0-9A-Za-z][0-9A-Za-z._+-]*$/
+
 export function compose(input: ComposeInput): Composed {
   try {
     return { ok: true, dockerfile: composeOrThrow(input) }
@@ -132,12 +140,25 @@ function composeOrThrow(input: ComposeInput): string {
   const stackVersion = new Map<string, string>()
   for (const name of ordered) {
     let version = ''
+    let source = ''
     if (manifest !== undefined && typeof manifest.value === 'object' && manifest.value !== null && !Array.isArray(manifest.value)) {
       const asked = (manifest.value as Record<string, unknown>)[name]
       // jq's `.[$s] // empty`: null and false are absent.
-      if (asked !== undefined && asked !== null && asked !== false) version = jqRaw(asked)
+      if (asked !== undefined && asked !== null && asked !== false) {
+        version = jqRaw(asked)
+        source = manifest.path
+      }
     }
-    if (version === '') version = jqRaw(jsonArray(join(stacksDir, name, 'versions.json'))[0])
+    if (version === '') {
+      source = join(stacksDir, name, 'versions.json')
+      version = jqRaw(jsonArray(source)[0])
+    }
+    // The Quick Pick offers only versions.json's entries, but the manifest is
+    // hand-editable and arrives with a clone, and the value lands in RUN
+    // lines: held to a shape, refused with nothing composed (gh-326).
+    if (!STACK_VERSION.test(version)) {
+      refuse(`compose-dockerfile: ${shellQuote(version)} as the '${name}' version in ${source} is not a version's shape: a letter or a digit first, then only letters, digits, dots, dashes, underscores and plus — like 22, 22.11.1 or stable. Nothing was composed.`)
+    }
     stackVersion.set(name, version)
     out += `\n${readFileSync(join(stacksDir, name, 'Dockerfile.frag'), 'utf8').split('{{VERSION}}').join(version)}`
   }
