@@ -1,8 +1,10 @@
 import { basename } from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 import { IMPORT_SETTING } from './gradle.ts'
 import { cpusetRange, type Limits } from './limits.ts'
 import type { HostFacts } from '../host/host.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
  * The property that marks a configuration as this extension's.
@@ -57,6 +59,8 @@ export interface BuildInput {
   facts: HostFacts
   /** From gradle.ts: the version wrapperless Gradle builds are imported with. */
   gradleVersion?: string | null
+  /** The manifest's id, from projectId: absent keeps the folder-named image and volume. */
+  id?: string
 }
 
 export interface ProjectNames {
@@ -71,19 +75,75 @@ export interface ProjectNames {
  * plus a suffix — so neither has to be configured separately with the same
  * value. `launcherContainer` is what a running `start` would be called, which
  * is how the refusal in open.ts finds it.
+ *
+ * **With an id, the basename and the id** (debt
+ * two-projects-with-the-same-folder-name-share-an-image-and-the-config-volume,
+ * gh-325): the basename alone gave ~/work/app and ~/personal/app one image and
+ * one /config volume. The id comes from the manifest, so a moved folder and a
+ * project's Windows and WSL forms keep one set of names; the basename stays in
+ * front so `docker volume ls` still says whose volume it is.
+ *
+ * **Without an id, exactly today's names.** Every project created before the
+ * id has none, and its state is in the volume named from its folder: docker has
+ * no volume rename, and a new name is a container that comes up empty. The
+ * launcher's name keeps the basename either way — it names the old launcher's
+ * container, which a project with an id never had.
  */
-export function projectNames(projectRoot: string): ProjectNames {
+export function projectNames(projectRoot: string, id?: string): ProjectNames {
   // Either separator, so a Windows folder is named the same on any platform.
   const repo = projectRoot.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? basename(projectRoot)
   const name = dockerName(repo)
+  const named = id === undefined ? name : `${name}-${id}`
   return {
     repo,
     // Lower case: docker refuses capitals in a repository name, so a folder
     // called MyProject built nothing (debt an-image-name-with-capitals-is-
     // refused-by-docker).
-    image: `${name.toLowerCase()}-dev`,
-    volume: `${name}-code-server-data`,
+    image: `${named.toLowerCase()}-dev`,
+    volume: `${named}-code-server-data`,
     launcherContainer: `${name}-app`,
+  }
+}
+
+/** An id's shape: eight lower-case hex digits, which is what Create writes. */
+const PROJECT_ID = /^[0-9a-f]{8}$/
+
+/** A new project's id: eight hex digits of a random UUID. One machine's
+ * projects colliding at 32 bits is not a case worth more characters in every
+ * docker name. */
+export function newProjectId(): string {
+  return randomUUID().replace(/-/g, '').slice(0, 8)
+}
+
+/**
+ * The project's id, from its manifest's text.
+ *
+ * Absent is not a refusal: it is every project created before ids, and it
+ * keeps today's names. **Unparseable is not one here either** — the readers
+ * that refuse an unreadable manifest already do, and this must not turn a typo
+ * into a rename. A present id that is not an id's shape is refused: it goes
+ * into docker's names, and a hand-edit is held to what Create writes.
+ */
+export function projectId(manifestText: string | null): { ok: true; id: string | undefined } | { ok: false; message: string } {
+  if (manifestText === null) return { ok: true, id: undefined }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(manifestText)
+  } catch {
+    return { ok: true, id: undefined }
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) || !('id' in parsed)) {
+    return { ok: true, id: undefined }
+  }
+  const id = (parsed as Record<string, unknown>)['id']
+  if (typeof id === 'string' && PROJECT_ID.test(id)) return { ok: true, id }
+  return {
+    ok: false,
+    message:
+      `"id" in ${MANIFEST} is ${JSON.stringify(id)}, which is not a project id: eight lower-case hex ` +
+      `digits, as Create writes it. It names this project's image and /config volume, so it is not ` +
+      `guessed at — restore the value the project was created with, or remove the field to go back ` +
+      `to the names from the folder.`,
   }
 }
 
@@ -111,7 +171,7 @@ export function buildConfiguration(input: BuildInput): Configuration {
   const { extensionVersion, limits, facts } = input
   const projectRoot = dockerPath(input.projectRoot)
   const homeDir = dockerPath(input.homeDir)
-  const names = projectNames(projectRoot)
+  const names = projectNames(projectRoot, input.id)
 
   const runArgs = [
     '--memory', limits.memory,

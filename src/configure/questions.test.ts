@@ -265,3 +265,21 @@ test('the choices start where the project is, marked so', () => {
   }
   assert.equal(switchAnswer(undefined), undefined, 'Escape is no answer')
 })
+
+// --- the id is written once, when there was no manifest (gh-325)
+
+import { withProjectId } from './questions.ts'
+
+test('a manifest written where there was none gets an id; an existing one never gains one', () => {
+  const next = { java: '21', limits: { memory: '6g' } }
+  const fresh = withProjectId(next, false)
+  assert.match(String(fresh['id']), /^[0-9a-f]{8}$/)
+  // Every existing project has no id and its state under the folder's name:
+  // adding one on a reconfigure would rename its volume, and it would come up empty.
+  assert.deepEqual(withProjectId(next, true), next)
+})
+
+test('an id already in the manifest survives a reconfigure', () => {
+  const kept = next({ id: '3f9c2a1b', java: '21' }, { stacks: { java: '21' }, limits: { memory: '6g' } }, ['java'])
+  assert.equal(kept['id'], '3f9c2a1b')
+})

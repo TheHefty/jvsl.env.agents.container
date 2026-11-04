@@ -295,3 +295,27 @@ test('the build tags the image the configuration names, for any folder', () => {
     assert.equal(composeCommand('/ext', folder, []).image, projectNames(folder).image, folder)
   }
 })
+
+// --- the build names the image the open looks for (gh-325)
+//
+// Every reader of the names has to agree: a build that tags app-<id>-dev while
+// the open looks for app-dev never finds its image and rebuilds for ever.
+
+import { composeForProject } from './build.ts'
+import { configurationFor } from '../open/open.ts'
+
+test('the build tags the image the open configures, from the manifest\'s id', () => {
+  const root = '/home/a/work/app'
+  const manifest = '{"id":"3f9c2a1b","limits":{"memory":"6g"}}'
+  const plan = composeForProject(process.cwd(), root, manifest)
+  const open = configurationFor({
+    projectRoot: root, homeDir: '/home/a', extensionVersion: '0.1.0', manifest,
+    facts: { cpuCount: 8, devicesPresent: [], devicesAbsent: [] }, gradleBuilds: [],
+  })
+  assert.equal(plan.image, 'app-3f9c2a1b-dev')
+  assert.equal(open.configuration.image, plan.image)
+})
+
+test('without an id the build keeps the image name it has today', () => {
+  assert.equal(composeForProject(process.cwd(), '/home/a/work/app', '{"limits":{"memory":"6g"}}').image, 'app-dev')
+})

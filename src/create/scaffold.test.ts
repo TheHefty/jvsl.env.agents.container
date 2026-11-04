@@ -43,8 +43,11 @@ test('the manifest it writes is the shape nextManifest produces', () => {
   // manifest looks like, rather than the creation flow inventing a second shape.
   const plan = scaffoldPlan(base)
   const manifest = plan.writes.find((w) => w.path === MANIFEST)
-  const parsed: unknown = JSON.parse(manifest?.contents ?? '{}')
-  assert.deepEqual(parsed, { java: '21', limits: { memory: '6g' } })
+  // Plus the id a new project gets (gh-325), which is the one key nextManifest
+  // does not write.
+  const { id, ...rest } = JSON.parse(manifest?.contents ?? '{}') as Record<string, unknown>
+  assert.match(String(id), /^[0-9a-f]{8}$/)
+  assert.deepEqual(rest, { java: '21', limits: { memory: '6g' } })
 })
 
 test('the ai-memory marker is absent unless asked for', () => {
@@ -99,4 +102,12 @@ test('an unconfigured git identity yields no commit and a reason, not an invente
 
   const withIdentity = scaffoldPlan({ ...base, identity: { name: 'A', email: 'a@b' } })
   assert.equal(withIdentity.commit, true)
+})
+
+test('a created project carries an id, so it gets its own image and volume (gh-325)', () => {
+  const plan = scaffoldPlan(base)
+  const manifest = plan.writes.find((w) => w.path === MANIFEST)
+  const parsed = JSON.parse(manifest?.contents ?? '{}') as Record<string, unknown>
+  assert.match(String(parsed['id']), /^[0-9a-f]{8}$/)
+  assert.notEqual(parsed['id'], (JSON.parse(scaffoldPlan(base).writes.find((w) => w.path === MANIFEST)?.contents ?? '{}') as Record<string, unknown>)['id'])
 })

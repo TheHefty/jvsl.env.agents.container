@@ -3,7 +3,7 @@ import * as vscode from 'vscode'
 
 import { handsOver } from '../build/build.ts'
 import { buildInTerminal } from '../build/command.ts'
-import { projectNames } from '../build/devcontainer.ts'
+import { projectId, projectNames } from '../build/devcontainer.ts'
 import { findGradleBuildsFor } from '../build/gradle.ts'
 import { filesFor } from '../host/files.ts'
 import { carried } from '../build/template.ts'
@@ -146,6 +146,7 @@ export async function gather(
 ): Promise<OpenContext> {
   const docker = dockerFor(project)
   const files = filesFor(project)
+  const manifest = files.read(MANIFEST)
   const gradle = findGradleBuildsFor(project, files)
   write(gradle.log)
   // Facts from where the container will run. A daemon that does not answer is
@@ -164,12 +165,14 @@ export async function gather(
     extensionVersion: extensionVersion(context),
     facts: measured.facts,
     factNotes: measured.notes,
-    manifest: files.read(MANIFEST),
+    manifest,
     existingConfig: files.read(CONFIG_PATH),
     runningContainers: await runningContainers(write, docker),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: files.read('.gitignore'),
-    image: await imageState(projectNames(mountPath(project)).image, write, docker),
+    // From the manifest's id when it has one (gh-325): the image decideOpen
+    // configures and the build tags. A malformed id is decideOpen's refusal.
+    image: await imageState(projectNames(mountPath(project), idOrNone(manifest)).image, write, docker),
     gradleBuilds: gradle.builds,
     platform: process.platform,
     dockerHost: whereFor(project),
@@ -232,4 +235,10 @@ export async function runningContainers(
     write([`could not list running containers: ${String(error)}`])
     return []
   }
+}
+
+/** The manifest's id, or none: a malformed one is refused by decideOpen, which reads the same text. */
+function idOrNone(manifest: string | null): string | undefined {
+  const read = projectId(manifest)
+  return read.ok ? read.id : undefined
 }

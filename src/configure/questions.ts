@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { newProjectId } from '../build/devcontainer.ts'
 
 /**
  * The questions the editor asks, as functions over a stacks directory and a
@@ -186,6 +187,23 @@ export function nextManifest(
   const beads = answers.beads ?? current['beads'] === true
   if (beads) next.beads = true
   return next
+}
+
+/**
+ * The manifest to write, with an id **only when there was no manifest before**
+ * (debt two-projects-with-the-same-folder-name-share-an-image-and-the-config-
+ * volume, gh-325). The id names the project's image and /config volume. An
+ * existing manifest without one belongs to a project whose state is in the
+ * volume named from its folder, and adding an id would rename it to an empty
+ * one; an existing id is already kept by nextManifest, which keeps every key it
+ * does not own.
+ */
+export function withProjectId(
+  next: Record<string, unknown>,
+  existed: boolean,
+  id: string = newProjectId(),
+): Record<string, unknown> {
+  return existed ? next : { id, ...next }
 }
 
 /**

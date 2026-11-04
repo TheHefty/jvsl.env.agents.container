@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { buildInvocation, composeForProject, buildOutcome, hostProblems, afterBuild, type ContainerForImage } from './build.ts'
 import { compose } from './compose.ts'
-import { projectNames } from './devcontainer.ts'
+import { projectId, projectNames } from './devcontainer.ts'
 import { hostChecks } from '../host/checks.ts'
 import { dockerFor, localDocker, whereFor, type Docker, type DockerHost } from '../host/docker.ts'
 import { folderNames, mountPath, type ProjectOnHost } from '../host/locate.ts'
@@ -104,7 +104,15 @@ export async function offerRecreate(
   write: (lines: string[]) => void,
   docker: Docker = localDocker,
 ): Promise<void> {
-  const image = projectNames(mountPath(project)).image
+  // The image the build just tagged: from the manifest's id when it has one (gh-325).
+  let manifestText: string | null = null
+  try {
+    manifestText = filesFor(project).read(MANIFEST)
+  } catch {
+    // The build read it moments ago; a read failing now leaves the folder's name.
+  }
+  const read = projectId(manifestText)
+  const image = projectNames(mountPath(project), read.ok ? read.id : undefined).image
   let built: string | undefined
   try {
     built = (await docker(['image', 'inspect', '-f', '{{.Id}}', image])).stdout.trim() || undefined
@@ -165,6 +173,13 @@ export async function buildInTerminal(
   } catch (error) {
     write([`build: refused — ${String(error)}`])
     void vscode.window.showErrorMessage(String(error))
+    return 'failed'
+  }
+  // An id that is not an id's shape would tag an image nothing opens (gh-325).
+  const id = projectId(manifestText)
+  if (!id.ok) {
+    write([`build: refused — ${id.message}`])
+    void vscode.window.showErrorMessage(id.message)
     return 'failed'
   }
   const plan = composeForProject(extensionPath, mountPath(project), manifestText)
