@@ -2,7 +2,7 @@ import { buildConfiguration, isOurs, projectId, projectNames, type Configuration
 import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits, type LimitsRead } from '../build/limits.ts'
 import { wslDockerProblem, type DockerHost } from '../host/docker.ts'
-import { WSL_READY } from '../host/locate.ts'
+import { isFolderOf, WSL_READY } from '../host/locate.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
 
@@ -29,6 +29,14 @@ export interface OpenContext {
   manifest: string | null
   existingConfig: string | null
   runningContainers: string[]
+  /**
+   * The running containers, each with its Dev Containers folder label and
+   * every mount, from the same `docker ps` as runningContainers (containersFrom).
+   * Absent when docker was not asked, which checks nothing.
+   */
+  containers?: ContainerRow[]
+  /** Every form of this project's folder its own container's label may carry (folderNames); projectRoot when absent. */
+  ownFolders?: string[]
   reopenCommandAvailable: boolean
   /**
    * Whether this project's image is there — and **`unknown` is not `absent`.**
@@ -149,6 +157,30 @@ export function decideOpen(context: OpenContext): Decision {
         `two nested Docker daemons, and two ai-memory servers writing one store. That corruption ` +
         `outlives every rebuild. Stop it first — \`docker stop ${names.launcherContainer}\` — and ` +
         `note that anything running inside it dies with it.`,
+    }
+  }
+
+  // **Any other live container on this project's /config** (gh-325, gam.2):
+  // the launcher above is one name, and a clone opened from another folder or
+  // a hand-run `docker run -v` is the same corruption under any other. The
+  // project's own container — its folder in the label, in any form — is not.
+  const own = context.ownFolders ?? [context.projectRoot]
+  const others = (context.containers ?? []).filter(
+    (c) => c.mounts.includes(names.volume) && !isFolderOf(own, c.localFolder),
+  )
+  if (others.length > 0) {
+    const which = others
+      .map((c) => `\`${c.name}\`${c.localFolder === '' ? '' : ` (opened from ${c.localFolder})`}`)
+      .join(', ')
+    return {
+      action: 'refuse',
+      notes,
+      cause:
+        `${which} is running with this project's \`/config\` volume, \`${names.volume}\`, mounted, and ` +
+        `is not this project's container. Opening now would put a second container over the same ` +
+        `volume: two nested Docker daemons, and two ai-memory servers writing one store. That ` +
+        `corruption outlives every rebuild. Stop it first — \`docker stop ${others[0]!.name}\` — and ` +
+        `note that anything running inside it dies with it. Nothing was written.`,
     }
   }
 
@@ -429,4 +461,33 @@ export function imageStateFrom(inspect: 'ok' | Error, version: 'ok' | Error | un
     e instanceof Error && ((e as NodeJS.ErrnoException).code === 'ENOENT' || /not found|No such file/i.test(e.message))
   if (missing(inspect) && missing(version)) return 'no-docker'
   return 'unknown'
+}
+
+/** A running container as the open reads it: its name, its Dev Containers folder label, and every mount. */
+export interface ContainerRow {
+  name: string
+  /** `devcontainer.local_folder`, or empty for a container Dev Containers did not start. */
+  localFolder: string
+  /** Volume names and bind sources, as docker lists them. */
+  mounts: string[]
+}
+
+/** The format runningContainers asks `docker ps` for, read by containersFrom. */
+export const CONTAINERS_FORMAT = '{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.Mounts}}'
+
+/**
+ * `docker ps --no-trunc --format CONTAINERS_FORMAT`, as rows. **`--no-trunc`
+ * is load-bearing**: without it docker cuts the mounts (`gam2-probe-a-v…`,
+ * measured on 26.1.5) and no volume name would ever match. Mounts are split on
+ * commas; a volume name holds none, and a bind source that does only splits
+ * into pieces that are not this project's volume.
+ */
+export function containersFrom(stdout: string): ContainerRow[] {
+  return stdout
+    .split('\n')
+    .filter((l) => l.trim() !== '')
+    .map((l) => {
+      const [name = '', localFolder = '', mounts = ''] = l.split('\t')
+      return { name: name.trim(), localFolder, mounts: mounts.split(',').map((m) => m.trim()).filter((m) => m !== '') }
+    })
 }
