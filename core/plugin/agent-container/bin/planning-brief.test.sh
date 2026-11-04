@@ -160,7 +160,10 @@ mv "$work/journal.json" "$home/journal.json"
 # --- the writer and the readers name the project the same way -------------------------
 rm -rf "$GH_STORE/demo"; mkdir -p "$GH_STORE"
 body x Nothing. no '- written by the retro' > "$work/entry.md"
-(cd "$work/r" && PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_TODAY=2026-10-27 \
+# JOURNAL_HOME_FSTYPE: the home is under the suite's temporary directory, which
+# is a tmpfs where the suite runs in a sandbox, and journal-write refuses to keep
+# an entry on one (fxn.1). What this case is about is the name, not the disk.
+(cd "$work/r" && PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_TODAY=2026-10-27 JOURNAL_HOME_FSTYPE=ext2/ext3 \
     bash "$HERE/journal-write" "$work/entry.md" > /dev/null 2>&1)
 check "an entry journal-write sent is the one the planning reads" "$(left_open | grep -c '^- written by the retro$')" "1"
 
