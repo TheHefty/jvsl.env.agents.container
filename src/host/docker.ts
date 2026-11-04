@@ -62,6 +62,24 @@ export function whereFor(project: ProjectOnHost): DockerHost {
 }
 
 /**
+ * What is wrong with a WSL distro's docker, in words that name the distro.
+ *
+ * **Not Docker Desktop's words** (debt
+ * a-wsl-project-with-no-docker-in-its-distro-is-told-to-install-docker-desktop):
+ * the editor's platform is win32, but this docker is `wsl.exe -d <distro>
+ * --exec docker`, and the distro may run its own daemon with no Docker Desktop
+ * at all. Shared by Open and Build so the two cannot drift apart.
+ */
+export function wslDockerProblem(distro: string, problem: 'absent' | 'unanswered'): string {
+  return problem === 'absent'
+    ? `docker is not installed in the WSL distro ${distro}, which is where this project's containers ` +
+        `run. Install docker inside ${distro}, or turn on Docker Desktop's WSL integration for it ` +
+        `(Settings, Resources, WSL integration), and try again.`
+    : `docker in the WSL distro ${distro} did not answer. Start its daemon inside ${distro} — or ` +
+        `Docker Desktop, if ${distro} uses its WSL integration — and try again.`
+}
+
+/**
  * The process to spawn. **An argument array all the way down**: `wsl.exe
  * --exec` runs docker without a shell, so a project path holding spaces,
  * quotes or `$( )` stays one argument and is never read as a command.

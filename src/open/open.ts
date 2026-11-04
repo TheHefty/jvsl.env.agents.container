@@ -1,6 +1,7 @@
 import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
 import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits } from '../build/limits.ts'
+import { wslDockerProblem, type DockerHost } from '../host/docker.ts'
 import { WSL_READY } from '../host/locate.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
@@ -44,6 +45,13 @@ export interface OpenContext {
   gradleBuilds: GradleBuild[]
   /** Where this extension runs, for refusals that name what to install or start. */
   platform?: NodeJS.Platform
+  /**
+   * Where docker runs for this project. **A WSL project's docker is its
+   * distro's**, even though the editor's platform is win32: its refusals name
+   * the distro, not Docker Desktop, which is optional there. Absent means this
+   * machine.
+   */
+  dockerHost?: DockerHost
   /** What measuring the machine had to say, such as a device probe that could not run. */
   factNotes?: string[]
   /**
@@ -184,6 +192,10 @@ export function decideOpen(context: OpenContext): Decision {
   // the daemon is unreachable as well as when the image is absent, and reading
   // one as the other turns a host problem into a build that fails for a third
   // reason.
+  const host = context.dockerHost
+  if (host?.kind === 'wsl' && (context.image === 'no-docker' || context.image === 'unknown')) {
+    return { action: 'refuse', notes, cause: `${wslDockerProblem(host.distro, context.image === 'no-docker' ? 'absent' : 'unanswered')} Nothing was written.` }
+  }
   const windows = context.platform === 'win32'
   if (context.image === 'no-docker') {
     return {
