@@ -37,6 +37,19 @@ check "the entry's template carries the elaboration after the developer's line" 
     "$(awk '/^## What I want to learn$/{a=NR} /^## On what I want to learn$/{b=NR} /^## Left open$/{c=NR} END{print (a && a<b && b<c) ? "in order" : "missing or out of order"}' "$SKILL")" "in order"
 check "and its section opens by saying it is the agent's" "$(has 'opening with "Written by the agent."')" "yes"
 
+# Story 3kk.3: the offer of study material — the ways it fails:
+#   1. it reads as a step to do rather than a question;
+#   2. an existing topic is not looked for, and a second one is made;
+#   3. it is made where the study skill would refuse (no tracker) — the retro's
+#      own first step already stops there, which is what makes the offer safe.
+check "1: the retro asks whether to build study material for the line" "$(has 'Ask whether they want study material for it')" "yes"
+check "1: and builds nothing without the developer's word" "$(has 'Build nothing unless they say yes')" "yes"
+check "2: an existing topic is looked for first, by its slug" "$(has 'study-slug')" "yes"
+check "2: and pointed at rather than duplicated" "$(has 'point at it instead of building another')" "yes"
+check "the study skill is what builds it, and the retro goes on either way" "$(has 'with the study skill')" "yes"
+check "3: the retro stops without the tracker before it can offer" \
+    "$(awk '/needs-tracker/{a=NR} /Ask whether they want study material/{b=NR} END{print (a && a<b) ? "before" : "not before"}' "$SKILL")" "before"
+
 if [ "$failures" -gt 0 ]; then
     echo "retro-skill.test: $failures failure(s)"
     exit 1
