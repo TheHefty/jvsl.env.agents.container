@@ -18,13 +18,14 @@ extension, so a project carries no template, no submodule and no setup script.
   [`ai-jail`](https://github.com/akitaonrails/ai-jail), which confines them to the workspace.
 - **One project, one container.** Each project declares its stacks, versions and resource limits in
   a small manifest at its root, and gets its own image and its own Docker daemon. Claude Code's
-  sign-in and settings come from the host's `~/.claude`, so they are set up once, not per project.
+  sign-in and settings come from the host's `~/.claude` (the distro user's, for a project in WSL),
+  so they are set up once, not per project.
 
 ## Requirements
 
 | | |
 |---|---|
-| **Host** | Linux, with Docker |
+| **Host** | Linux, with Docker; or Windows, with the project in a WSL distro (Docker in the distro or from Docker Desktop) or on the Windows filesystem (through Docker Desktop, without which opening it is refused, naming what to install or start). macOS is not supported |
 | **Editor** | Microsoft's build of Visual Studio Code, 1.90 or newer |
 | **Extension** | [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), installed automatically as a dependency |
 
