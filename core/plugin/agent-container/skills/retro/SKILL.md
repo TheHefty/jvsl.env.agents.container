@@ -51,6 +51,18 @@ Once their line is written or approved, elaborate on it, here in the conversatio
 - Say **what to read or try next**: the file to read first, the experiment that would answer the question, the documentation worth the time.
 - **When nothing in today's work touches the topic, say so.** A connection invented to make the elaboration look grounded is worse than none: it reads as fact.
 
+### Study material, if they want it
+
+**Ask whether they want study material for it**, built with the study skill: a guide in `docs/study/<slug>/`, tracked as a study task, for them to study in the Study view. It is a question, not a step. **Build nothing unless they say yes**, and go on with the retro either way.
+
+Before offering, look for a topic that already exists. Make the slug from their line:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/bin/study-slug "<their line>"
+```
+
+If `docs/study/<slug>/` is already there, or a topic in `docs/study/` plainly covers the same subject, **point at it instead of building another**. If they say yes, use the study skill with their line as the topic, after the retro: the retro is not interrupted by it.
+
 **Never change their line.** You elaborate on it; the line in the entry is still exactly what they wrote or approved. Your elaboration goes in the entry too, in its own section, **On what I want to learn**, opening with "Written by the agent." — so whose words are whose survives the trip to their journal.
 
 ## 6. Write the entry
