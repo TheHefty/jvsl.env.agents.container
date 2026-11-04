@@ -125,6 +125,8 @@ jobs:
         run: bash scripts/the-guard-holds-the-split.test.sh
       - name: release-please waits for a manual cut request on master
         run: bash scripts/release-please-waits-for-manual-dispatch.test.sh
+      - name: every job that builds an image logs in to ghcr.io first, token on stdin, failure only warns
+        run: bash scripts/ci-image-pulls-are-authenticated.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
@@ -535,6 +537,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       # The composer is TypeScript (src/build/compose.ts) run by node directly,
@@ -542,6 +547,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       - name: docker build core only
         # Composed rather than built straight from the fragment, which is how
         # this ran until core gained {{NAME_VERSION}} placeholders of its own.
@@ -584,6 +600,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       # The composer is TypeScript (src/build/compose.ts) run by node directly,
@@ -598,6 +617,17 @@ jobs:
       # the filename; it failed on a boot where the hook had printed nothing.
       - name: the log matchers say what they mean
         run: bash core/booted.matchers.test.sh
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       # The harness itself, against a stand-in image that emulates only the boot
       # contract it depends on. It exists because the real image cannot be built
       # everywhere, so without it every mistake in the harness costs a full round
@@ -640,6 +670,9 @@ jobs:
     needs: [changes, discover-stacks]
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -651,6 +684,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       # Composed through the same composer the extension uses, so CI builds a stack
       # the way the product actually builds it — including pulling in any
       # requires.json dependency. This step used to concatenate core + the
