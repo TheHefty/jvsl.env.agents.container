@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { stacksAvailable } from '../configure/questions.ts'
-import { dockerArgv, type DockerHost } from '../host/docker.ts'
+import { dockerArgv, wslDockerProblem, type DockerHost } from '../host/docker.ts'
 import { projectNames } from './devcontainer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { carried } from './template.ts'
@@ -131,9 +131,19 @@ export function packageFor(manager: Manager, tool: Tool): string | null {
  * is the only acceptable one: the build then fails with docker's own message,
  * which names the cause better than a guess here would.
  */
-export function hostProblems(checks: HostChecks, platform: NodeJS.Platform = 'linux'): HostProblem[] {
+export function hostProblems(
+  checks: HostChecks,
+  platform: NodeJS.Platform = 'linux',
+  where: DockerHost = { kind: 'local' },
+): HostProblem[] {
   const windows = platform === 'win32'
   const problems: HostProblem[] = []
+  // A WSL project's docker is its distro's, whatever the editor's platform.
+  if (where.kind === 'wsl' && (checks.docker === 'absent' || checks.docker === 'unusable')) {
+    problems.push({ message: wslDockerProblem(where.distro, checks.docker === 'absent' ? 'absent' : 'unanswered'), blocking: true })
+    if (checks.sandbox !== undefined) problems.push(...sandboxWarnings(checks.sandbox))
+    return problems
+  }
   const install = (tool: Tool): string => {
     const name = checks.manager ? packageFor(checks.manager, tool) : null
     return name ? ` Install it: the package is '${name}'.` : ' Install it.'

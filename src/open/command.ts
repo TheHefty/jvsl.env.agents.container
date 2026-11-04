@@ -9,7 +9,7 @@ import { filesFor } from '../host/files.ts'
 import { carried } from '../build/template.ts'
 import { instructionWrites } from '../configure/instructions.ts'
 import { extensionVersion } from '../host/detected.ts'
-import { dockerFor, localDocker, type Docker } from '../host/docker.ts'
+import { dockerFor, localDocker, whereFor, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { homeFor, type Home } from '../host/home.ts'
 import { mountPath, type ProjectOnHost } from '../host/locate.ts'
@@ -172,6 +172,7 @@ export async function gather(
     image: await imageState(projectNames(mountPath(project)).image, write, docker),
     gradleBuilds: gradle.builds,
     platform: process.platform,
+    dockerHost: whereFor(project),
   }
 }
 
