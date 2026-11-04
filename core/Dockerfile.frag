@@ -299,11 +299,25 @@ RUN printf 'Types: deb\nURIs: https://deb.nodesource.com/node_22.x\nSuites: nodi
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Installs the GitHub CLI (gh)
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
-    && mkdir -p -m 755 /etc/apt/keyrings \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-    && chmod 644 /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+#
+# **The key is carried, not fetched** (gh-331, debt
+# the-github-cli-keyring-is-fetched-unverified). A key in /etc/apt/keyrings
+# decides what apt installs as root, so a curl of it with nothing checked was
+# the one unverified download that verifies everything after it. Like
+# core/nodesource.asc, it is the keyring cli.github.com publishes, exported
+# armored on 2026-11-04 — its sha256 that day was 6084d5d7bd8e2884… — holding
+# the two keys cli/cli's docs/install_linux.md lists, fingerprints checked
+# against it:
+#   2C6106201985B60E6C7AC87323F3D4EA75716059  2022-09-06, expired 2026-09-05
+#   7F38BBB59D064DBCB3D84D725612B36462313325  2026-04-07, no expiry
+# **When GitHub rotates again** the build fails at apt-get update naming the
+# key, which is the point. Refresh it deliberately: download the keyring,
+# check its fingerprints against that document, `gpg --armor --export` it over
+# this file, and update the list above.
+COPY core/githubcli-archive-keyring.asc /etc/apt/keyrings/githubcli-archive-keyring.asc
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && chmod 644 /etc/apt/keyrings/githubcli-archive-keyring.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.asc] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
     && apt-get update \
     && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*

@@ -80,9 +80,15 @@ Everything above is in the repository rather than only in this file:
 - `src/build/devcontainer.ts` — what the generated configuration contains, and its tests
 - `src/open/open.ts` — every refusal, as a pure function over what the host looks like
 - `src/configure/instructions.ts` — the rule that a file this extension did not write is somebody's work
-- `core/Dockerfile.frag` — what is installed. **Two of its five third-party fetches verify a
-  digest and three do not**, which is a recorded debt rather than an oversight: a tag can be
-  repointed and its assets replaced, so an unverified fetch means the image can change under a
+- `core/Dockerfile.frag` — what is installed. **Every third-party download is verified**: its
+  five fetched artifacts (ai-jail, ai-memory, beads, shellcheck and rustup-init) against a pinned
+  sha256, and the apt keys for Nodesource and the GitHub CLI are carried in the repository
+  (`core/nodesource.asc`, `core/githubcli-archive-keyring.asc`) rather than downloaded.
+  `scripts/no-fetch-runs-unverified.test.sh` refuses a download piped into a shell or tar, a
+  `git clone`, and a download into an apt keyring. The exception is the three agent CLIs, installed
+  from npm deliberately unpinned; the reason and its cost are in the comment above their install in
+  `core/Dockerfile.frag`. The reason for all of it: a tag can
+  be repointed and its assets replaced, so an unverified fetch means the image can change under a
   project on a rebuild that changed nothing in it. That has happened once — an `ai-jail` release
   turned network access into an opt-in and the environment lost its network on the next rebuild,
   presenting as a host networking fault that did not exist.

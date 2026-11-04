@@ -493,6 +493,17 @@ node_signed="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c
     'grep -c "^Signed-By: /usr/share/keyrings/nodesource.asc$" /etc/apt/sources.list.d/nodesource.sources' || true)"
 [ "$node_signed" = "1" ] || fail "$IMAGE's nodesource source is not signed by /usr/share/keyrings/nodesource.asc"
 
+# **gh, from cli.github.com's source signed by the carried key** (gh-331). The
+# keyring was curled into /etc/apt/keyrings with nothing checked; it is now
+# core/githubcli-archive-keyring.asc, copied in. A source that drifted back to
+# a fetched key, or to no key, fails here rather than in a review.
+gh_signed="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c \
+    'grep -c "signed-by=/etc/apt/keyrings/githubcli-archive-keyring.asc\]" /etc/apt/sources.list.d/github-cli.list; test ! -e /etc/apt/keyrings/githubcli-archive-keyring.gpg && echo no-fetched-key' || true)"
+[ "$gh_signed" = "$(printf '1\nno-fetched-key')" ] || fail "$IMAGE's GitHub CLI source is not signed by the carried \
+/etc/apt/keyrings/githubcli-archive-keyring.asc alone (got '$gh_signed'): core/Dockerfile.frag copies it from core/"
+docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c 'gh --version >/dev/null' \
+    || fail "gh does not run in $IMAGE: it is installed from cli.github.com's source in core/Dockerfile.frag"
+
 # **bd's usage metrics are off.** bd ships them on: the name of every command
 # run, the version and the platform, keyed by a machine-derived id. Measured on
 # 2026-10-07, after dozens of commands had already reported. The operator
