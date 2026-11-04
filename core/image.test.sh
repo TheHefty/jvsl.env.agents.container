@@ -174,7 +174,7 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     # one, and the tracker gets nothing (story the-retro-writes-the-entry-to-
     # the-developers-private-repository).
     printf "%s\n" "## Discovered" "## Surprised" "## Went wrong" "## Decided alone" "Nothing." \
-        "## What I learned" "first" "## Left open" "- carried over" "## Links" > /tmp/j1.md
+        "## What I learned" "first" "## On what I want to learn" "Written by the agent." "## Left open" "- carried over" "## Links" > /tmp/j1.md
     H="$(mktemp -d)"
     j1="$(JOURNAL_HOME="$H" JOURNAL_TODAY=2026-10-28 "$B/journal-write" /tmp/j1.md 2>/dev/null; echo "rc=$?")"
     printf "journal=%s\n" "$(printf "%s" "$j1" | grep -c "^waiting in the outbox: .*journal.json") $(printf "%s" "$j1" | tail -n 1) $(find "$H/journal-outbox" -name 2026-10-28.md | wc -l) $(bd list --label journal --all --json 2>/dev/null | jq -r "length")"

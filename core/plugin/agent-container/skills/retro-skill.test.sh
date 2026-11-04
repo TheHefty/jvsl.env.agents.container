@@ -31,6 +31,12 @@ check "3: when nothing in the day touches the topic, it says so" "$(has "When no
 check "the elaboration comes after the line, before the entry is written" \
     "$(awk '/^## 4\. /{a=NR} /^## 5\. Elaborate/{b=NR} /^## [0-9]+\. Write the entry/{c=NR} END{print (a<b && b<c) ? "in order" : "out of order"}' "$SKILL")" "in order"
 
+# Story 3kk.2: the elaboration goes in the entry, in its own section, and says
+# whose it is — the template is what the agent copies.
+check "the entry's template carries the elaboration after the developer's line" \
+    "$(awk '/^## What I want to learn$/{a=NR} /^## On what I want to learn$/{b=NR} /^## Left open$/{c=NR} END{print (a && a<b && b<c) ? "in order" : "missing or out of order"}' "$SKILL")" "in order"
+check "and its section opens by saying it is the agent's" "$(has 'opening with "Written by the agent."')" "yes"
+
 if [ "$failures" -gt 0 ]; then
     echo "retro-skill.test: $failures failure(s)"
     exit 1
