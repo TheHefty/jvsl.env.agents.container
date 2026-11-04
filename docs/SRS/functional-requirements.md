@@ -63,7 +63,14 @@ leaves the user with a window that merely does not work.
 - **FR-33** — Workspace Trust remains enabled. The extension never disables it, for any project.
 - **FR-34** — `.vscode/` is not writable by an agent running inside the sandbox, so that a task
   configured to run on folder open cannot be planted from inside the jail and executed outside it.
-  Widening this is an explicit, per-case grant.
+  **The nested Docker daemon's socket is this guarantee's recorded limit, in FR-37's shape.** The
+  socket is mapped into the sandbox on purpose — the daemon is what compose and Testcontainers run
+  against — and it runs as the user who owns the workspace, so a container it starts can mount the
+  container's own root filesystem and write `.vscode/` through the jail's read-only map. The
+  guarantee holds for an agent that does not use Docker; an agent that can reach the socket is
+  bounded by the container, not the jail — see SECURITY.md, "What the container is permitted,
+  deliberately", for what the container is and is not. Widening the jail is an explicit, per-case
+  grant.
 - **FR-35** — Enforcement does not depend on a host-wide editor setting alone: what can be refused
   from inside the container is refused there too, so that a setting changed for another project
   does not reopen a hole here. What cannot be refused anywhere is FR-37.

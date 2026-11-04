@@ -118,6 +118,12 @@ release on each build.
 
 ## Security model
 
+- **The jail confines the filesystem against an agent that does not use Docker; the boundary that
+  contains is the container's.** The nested rootless Docker daemon's socket is mapped into the
+  sandbox, and through it an agent can start a container that reaches the container's own root
+  filesystem — writing `.vscode/` through the jail's read-only map among it. What this protects is
+  the host from the container's workload, not the container from code somebody chose to run in it;
+  see [SECURITY.md](SECURITY.md).
 - **The host's identity stays out of the agents' reach.** The SSH agent, the host's git credential
   helper and the host's `~/.gitconfig` never reach the container. The editor itself forwards a GPG
   agent and an X11 socket when it attaches, and no setting disables that; the agents' sandbox keeps
