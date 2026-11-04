@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.2.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.1.0...v2.2.0) (2026-11-04)
+
+
+### Features
+
+* a split-markdown skill splits a file that grew past the limit by its subjects ([#354](https://github.com/TheHefty/jvsl.env.agents.container/issues/354)) ([947983d](https://github.com/TheHefty/jvsl.env.agents.container/commit/947983d7b97b613ecff629e587f7cd73b669e1e1))
+* the journal entry keeps the agent's elaboration beside the developer's line ([#357](https://github.com/TheHefty/jvsl.env.agents.container/issues/357)) ([5b83add](https://github.com/TheHefty/jvsl.env.agents.container/commit/5b83add85689c2fc6ab54a9e8a743a8f166690dd))
+* the Markdown size check runs on every commit in a project built with the extension ([#355](https://github.com/TheHefty/jvsl.env.agents.container/issues/355)) ([880cda5](https://github.com/TheHefty/jvsl.env.agents.container/commit/880cda5139ab2951dad56ea7999bd8cac83665b4))
+* the retro elaborates on what the developer wants to learn ([#356](https://github.com/TheHefty/jvsl.env.agents.container/issues/356)) ([7630011](https://github.com/TheHefty/jvsl.env.agents.container/commit/7630011bdfb1ddfb543be3e85fa9565e24ad5230))
+* the retro offers to turn what the developer wants to learn into a study topic ([#358](https://github.com/TheHefty/jvsl.env.agents.container/issues/358)) ([b2e601c](https://github.com/TheHefty/jvsl.env.agents.container/commit/b2e601c9be2af8ec72a0569e77b65c625815a475))
+
+
+### Bug Fixes
+
+* a docker call that times out ends its process ([#352](https://github.com/TheHefty/jvsl.env.agents.container/issues/352)) ([1c139df](https://github.com/TheHefty/jvsl.env.agents.container/commit/1c139dfc732c29401e5bd8797f959808702f7e94))
+* a fifth amendment brings Codex and OpenCode into the charter's scope ([#341](https://github.com/TheHefty/jvsl.env.agents.container/issues/341)) ([ec5559b](https://github.com/TheHefty/jvsl.env.agents.container/commit/ec5559bddb281385d5fc6008cbdbe5244b78cef6))
+* a fourth amendment brings Windows and WSL into the charter's scope, with what they cost ([#339](https://github.com/TheHefty/jvsl.env.agents.container/issues/339)) ([92c08c9](https://github.com/TheHefty/jvsl.env.agents.container/commit/92c08c937347b3fd8af30e0ef2834d93e470c752))
+* a stack version is checked against a version's shape before it reaches the dockerfile ([#337](https://github.com/TheHefty/jvsl.env.agents.container/issues/337)) ([c9ae062](https://github.com/TheHefty/jvsl.env.agents.container/commit/c9ae0624949325f1bd7dfd3b66a581adfea861eb))
+* a WSL project's docker refusals name its distro, not Docker Desktop ([#343](https://github.com/TheHefty/jvsl.env.agents.container/issues/343)) ([1ac49f2](https://github.com/TheHefty/jvsl.env.agents.container/commit/1ac49f2478d2e655145872c8077436d9b7b2b29f))
+* an id written at creation gives each project its own image and config volume ([#344](https://github.com/TheHefty/jvsl.env.agents.container/issues/344)) ([a0d49bd](https://github.com/TheHefty/jvsl.env.agents.container/commit/a0d49bd0c7816245b5bbb228542eb51991d14b95))
+* CI image builds log in to ghcr.io before they pull the base image ([#359](https://github.com/TheHefty/jvsl.env.agents.container/issues/359)) ([9873ad0](https://github.com/TheHefty/jvsl.env.agents.container/commit/9873ad00a343bc58c4a315bf212d247da2308d90))
+* data-and-legal names every flow of the system the repository ships, not only the extension's own ([#338](https://github.com/TheHefty/jvsl.env.agents.container/issues/338)) ([d6c49bf](https://github.com/TheHefty/jvsl.env.agents.container/commit/d6c49bff564ecf3e5675955f0990c117443105de))
+* dead code goes, and comments point at what exists rather than at the template ([#347](https://github.com/TheHefty/jvsl.env.agents.container/issues/347)) ([3b43f73](https://github.com/TheHefty/jvsl.env.agents.container/commit/3b43f73a3bf59297c336b413d486613c8774dc4c))
+* limits are refused where they are typed and where they are read ([#336](https://github.com/TheHefty/jvsl.env.agents.container/issues/336)) ([ca5e0ec](https://github.com/TheHefty/jvsl.env.agents.container/commit/ca5e0ec3ecc7e53a4b143a18c8526350907a7162))
+* opening refuses a live container from elsewhere that mounts the project's config volume ([#345](https://github.com/TheHefty/jvsl.env.agents.container/issues/345)) ([22c64ee](https://github.com/TheHefty/jvsl.env.agents.container/commit/22c64eeabf66cc3892fe54b125fabfaa8bc4423c))
+* raw HTML in an item's text is escaped before the Work board renders it ([#351](https://github.com/TheHefty/jvsl.env.agents.container/issues/351)) ([a4ddc3d](https://github.com/TheHefty/jvsl.env.agents.container/commit/a4ddc3deb8f728653019a28c061f84ab8b2683da))
+* the fallback line says what was measured, not what was feared ([#333](https://github.com/TheHefty/jvsl.env.agents.container/issues/333)) ([ff6fc02](https://github.com/TheHefty/jvsl.env.agents.container/commit/ff6fc029c1942cbea878d4412eb0d0730bd71646))
+* the GitHub CLI keyring is carried in the repository, not fetched unverified ([#346](https://github.com/TheHefty/jvsl.env.agents.container/issues/346)) ([1055b0b](https://github.com/TheHefty/jvsl.env.agents.container/commit/1055b0be7110c1aba503f72b142154c543c4af05))
+* the initialization writes docs/ARCHITECTURE.md, and a change of shape keeps it true ([#353](https://github.com/TheHefty/jvsl.env.agents.container/issues/353)) ([a24c983](https://github.com/TheHefty/jvsl.env.agents.container/commit/a24c983c779af835da999274114e9d912e561c19))
+* the legacy manifest and the Migrate command are removed ([#349](https://github.com/TheHefty/jvsl.env.agents.container/issues/349)) ([72b78c6](https://github.com/TheHefty/jvsl.env.agents.container/commit/72b78c61e5d12472b6f3f9effd41bf24a3f5ac40))
+* the README names the hosts the charter now supports ([#340](https://github.com/TheHefty/jvsl.env.agents.container/issues/340)) ([ecc77a4](https://github.com/TheHefty/jvsl.env.agents.container/commit/ecc77a43d08d73287fed6bcb76d02002a3b2d6b6))
+* the README names the three agents and where each one's login lives ([#342](https://github.com/TheHefty/jvsl.env.agents.container/issues/342)) ([7da9be9](https://github.com/TheHefty/jvsl.env.agents.container/commit/7da9be99a89a95f2bc720bb3e19ba81e6cac200d))
+* the rules shipped to projects, and this repository's own, describe this repository ([#348](https://github.com/TheHefty/jvsl.env.agents.container/issues/348)) ([fac944c](https://github.com/TheHefty/jvsl.env.agents.container/commit/fac944c7fe6eddebd1823dbe66bdcb3248d6c817))
+* the vscode protection is stated with the socket as its recorded limit ([#334](https://github.com/TheHefty/jvsl.env.agents.container/issues/334)) ([19a9b7c](https://github.com/TheHefty/jvsl.env.agents.container/commit/19a9b7c67f67cf3bc3006fef627bc025a25a0a06))
+
 ## [2.1.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.0.0...v2.1.0) (2026-11-02)
 
 
