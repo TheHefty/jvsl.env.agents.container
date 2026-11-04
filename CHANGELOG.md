@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.2.0...v2.2.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* the journal outbox survives every agent's sandbox, and an outbox that would not is refused ([#350](https://github.com/TheHefty/jvsl.env.agents.container/issues/350)) ([e3335e0](https://github.com/TheHefty/jvsl.env.agents.container/commit/e3335e0a2dc2d10f91359bdd9d0fe5c189ee34c5))
+
 ## [2.2.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.1.0...v2.2.0) (2026-11-04)
 
 
