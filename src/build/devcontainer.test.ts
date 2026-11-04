@@ -347,3 +347,83 @@ test('the generator cannot change its output without raising the generation', ()
       `{ generation: <it>, sha256: '<the new hash>' } here, so existing projects are told to regenerate`,
   )
 })
+
+// --- each project its own names (debt two-projects-with-the-same-folder-name-share-an-image-and-the-config-volume, gh-325)
+//
+// The image and the /config volume came from the folder's basename alone, so
+// ~/work/app and ~/personal/app shared one image and one /config: ai-memory,
+// the nested daemon's data, the agents' logins. An id written into the
+// manifest at creation tells them apart; a manifest without one keeps today's
+// names, because docker has no volume rename and a renamed volume is a
+// container that comes up empty with its state under the old name.
+
+import { newProjectId, projectId } from './devcontainer.ts'
+
+test('two projects with the same folder name and different ids get different images and volumes', () => {
+  const work = projectNames('/home/a/work/app', '3f9c2a1b')
+  const personal = projectNames('/home/a/personal/app', '7d01e4c9')
+  assert.notEqual(work.image, personal.image)
+  assert.notEqual(work.volume, personal.volume)
+  assert.equal(work.image, 'app-3f9c2a1b-dev')
+  assert.equal(work.volume, 'app-3f9c2a1b-code-server-data')
+})
+
+test('one project keeps its names across a move and between its Windows and WSL forms', () => {
+  const id = '3f9c2a1b'
+  const linux = projectNames('/home/a/work/app', id)
+  for (const root of ['/home/a/elsewhere/app', 'C:\\Users\\a\\code\\app', '/mnt/c/Users/a/code/app']) {
+    const n = projectNames(root, id)
+    assert.equal(n.image, linux.image, root)
+    assert.equal(n.volume, linux.volume, root)
+  }
+})
+
+test('a project with no id keeps exactly the names it has today', () => {
+  // The sticky legacy rule: every existing project has no id, and its state
+  // lives in the volume named from its folder.
+  assert.deepEqual(projectNames('/home/a/MyProject'), projectNames('/home/a/MyProject', undefined))
+  assert.equal(projectNames('/home/a/MyProject').image, 'myproject-dev')
+  assert.equal(projectNames('/home/a/MyProject').volume, 'MyProject-code-server-data')
+})
+
+test('the id is read from the manifest, and a manifest without one has none', () => {
+  assert.deepEqual(projectId('{"id":"3f9c2a1b","java":"21"}'), { ok: true, id: '3f9c2a1b' })
+  assert.deepEqual(projectId('{"java":"21"}'), { ok: true, id: undefined })
+  assert.deepEqual(projectId(null), { ok: true, id: undefined })
+  // Unparseable is not this function's refusal: the readers that refuse an
+  // unreadable manifest already do, and this must not turn it into a rename.
+  assert.deepEqual(projectId('{not json'), { ok: true, id: undefined })
+})
+
+test('an id that is not an id\'s shape is refused, naming the field and the form', () => {
+  // It goes into docker's names, so a hand-edit is held to the shape Create writes.
+  for (const bad of ['3F9C2A1B', 'abc', '3f9c2a1b0', 'x; rm -rf /', 42, null]) {
+    const r = projectId(JSON.stringify({ id: bad }))
+    assert.equal(r.ok, false, String(bad))
+    if (!r.ok) {
+      assert.match(r.message, /"id"/)
+      assert.match(r.message, /eight lower-case hex/)
+    }
+  }
+})
+
+test('a new id has the shape the reader accepts, and two are not the same', () => {
+  const a = newProjectId()
+  const b = newProjectId()
+  assert.match(a, /^[0-9a-f]{8}$/)
+  assert.notEqual(a, b)
+  assert.deepEqual(projectId(JSON.stringify({ id: a })), { ok: true, id: a })
+})
+
+test('the configuration mounts the volume and names the image from the id', () => {
+  const c = buildConfiguration({
+    projectRoot: '/home/a/work/app',
+    homeDir: '/home/a',
+    extensionVersion: '0.1.0',
+    limits: { memory: '6g', memorySwap: '6g', cpus: 4, usedDefaults: false },
+    facts: { cpuCount: 8, devicesPresent: [], devicesAbsent: [] },
+    id: '3f9c2a1b',
+  })
+  assert.equal(c.image, 'app-3f9c2a1b-dev')
+  assert.ok(c.mounts.includes('source=app-3f9c2a1b-code-server-data,target=/config,type=volume'), c.mounts.join('\n'))
+})

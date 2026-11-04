@@ -1,4 +1,4 @@
-import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
+import { buildConfiguration, isOurs, projectId, projectNames, type Configuration } from '../build/devcontainer.ts'
 import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits, type LimitsRead } from '../build/limits.ts'
 import { wslDockerProblem, type DockerHost } from '../host/docker.ts'
@@ -121,8 +121,12 @@ export type Decision =
  * configuration somebody else wrote, which costs them work but not data.
  */
 export function decideOpen(context: OpenContext): Decision {
-  const names = projectNames(context.projectRoot)
   const notes: string[] = []
+  // **The id first** (gh-325): it names the image and the /config volume
+  // every check below reads, so one that is not an id is refused before any.
+  const read = projectId(context.manifest)
+  if (!read.ok) return { action: 'refuse', notes, cause: `${read.message} Nothing was written.` }
+  const names = projectNames(context.projectRoot, read.id)
 
   if (!context.reopenCommandAvailable) {
     return {
@@ -340,6 +344,9 @@ export function configurationFor(inputs: ConfigurationInputs): {
       limits: limits.limits,
       facts: inputs.facts,
       gradleVersion: gradle.version,
+      // An id that is not an id's shape is decideOpen's refusal; here it
+      // keeps the folder's names rather than inventing others.
+      id: (() => { const r = projectId(inputs.manifest); return r.ok ? r.id : undefined })(),
     }),
   }
 }

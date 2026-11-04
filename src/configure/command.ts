@@ -8,7 +8,7 @@ import { validateCpus, validateMemory } from '../build/limits.ts'
 import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
-import { limitDefaults, missingDependencies, nextManifest, orderedVersions, stacksAvailable, switchAnswer, switchChoices, versionsOf, type Answers } from './questions.ts'
+import { limitDefaults, missingDependencies, nextManifest, orderedVersions, withProjectId, stacksAvailable, switchAnswer, switchChoices, versionsOf, type Answers } from './questions.ts'
 import {
   JOURNAL_CONFIG_PATH,
   journalFilesFor,
@@ -95,10 +95,12 @@ export async function configure(
   const projectLocation = location ?? { kind: 'host', path: root }
   const files = filesFor(projectLocation)
   let current: Record<string, unknown> = {}
+  let existed = false
   try {
     // Only a manifest that exists and cannot be read is a refusal; an absent one
     // is a project that has not been configured yet, which is the whole point.
     const raw = files.read(MANIFEST)
+    existed = raw !== null
     if (raw !== null) {
       const parsed: unknown = JSON.parse(raw)
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
@@ -144,7 +146,7 @@ export async function configure(
   }
   const picked = Object.keys(answers.stacks)
 
-  const next = nextManifest(current, answers, available)
+  const next = withProjectId(nextManifest(current, answers, available), existed)
   try {
     files.write(MANIFEST, `${JSON.stringify(next, null, 2)}\n`)
   } catch (error) {

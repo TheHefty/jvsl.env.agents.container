@@ -436,3 +436,30 @@ test('a WSL window is prepared, once WSL projects are switched on', () => {
   assert.equal(prepareHere('wsl').act, WSL_READY)
   assert.equal(prepareHere('ssh-remote').act, false)
 })
+
+// --- each project its own names (gh-325)
+
+test('the open configures the image and volume from the manifest\'s id', () => {
+  const d = decideOpen({ ...base, manifest: '{"id":"3f9c2a1b","limits":{"memory":"6g"}}' })
+  assert.equal(d.action, 'open')
+  if (d.action === 'open') {
+    assert.equal(d.configuration.image, 'myrepo-3f9c2a1b-dev')
+    assert.ok(d.configuration.mounts.includes('source=myrepo-3f9c2a1b-code-server-data,target=/config,type=volume'))
+  }
+})
+
+test('an existing project with no id opens on the names it already has', () => {
+  const d = decideOpen(base)
+  assert.equal(d.action, 'open')
+  if (d.action === 'open') {
+    assert.equal(d.configuration.image, 'myrepo-dev')
+    assert.ok(d.configuration.mounts.includes('source=myrepo-code-server-data,target=/config,type=volume'))
+  }
+})
+
+test('a manifest whose id is not an id is refused before anything is written', () => {
+  const cause = refusal({ manifest: '{"id":"My Project","limits":{"memory":"6g"}}' })
+  assert.match(cause, /"id"/)
+  assert.match(cause, /\.agent-container\.stack\.json/)
+  assert.match(cause, /Nothing was written/)
+})

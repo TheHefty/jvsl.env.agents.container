@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { aiMemoryMarker } from './location.ts'
 import { CONFIG_PATH } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
-import { nextManifest, type Answers } from '../configure/questions.ts'
+import { nextManifest, withProjectId, type Answers } from '../configure/questions.ts'
 
 export interface ScaffoldInput {
   root: string
@@ -65,7 +65,8 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
       // later agree about what a manifest looks like rather than this flow
       // inventing a second shape.
       contents: `${JSON.stringify(
-        nextManifest({}, input.answers, Object.keys(input.answers.stacks)),
+        // A new project: its own image and /config volume from the start (gh-325).
+        withProjectId(nextManifest({}, input.answers, Object.keys(input.answers.stacks)), false),
         null,
         2,
       )}\n`,

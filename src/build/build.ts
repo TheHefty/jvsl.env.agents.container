@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { stacksAvailable } from '../configure/questions.ts'
 import { dockerArgv, wslDockerProblem, type DockerHost } from '../host/docker.ts'
-import { projectNames } from './devcontainer.ts'
+import { projectId, projectNames } from './devcontainer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { carried } from './template.ts'
 /**
@@ -225,13 +225,15 @@ export function composeCommand(
   extensionPath: string,
   workspace: string,
   stacks: string[],
+  /** The manifest's id (gh-325): the image is tagged with the name the open looks for. */
+  id?: string,
 ): Compose {
   return {
     root: extensionPath,
     stacks,
     manifest: `${workspace}/${MANIFEST}`,
     context: extensionPath,
-    image: projectNames(workspace).image,
+    image: projectNames(workspace, id).image,
   }
 }
 
@@ -271,7 +273,8 @@ export function composeForProject(
   // `beads` and anything else are not stacks and never reach the composer.
   const carriedStacks = new Set(stacksAvailable(carried(extensionPath, 'stacks')))
   const stacks = Object.keys(readManifest(manifestText)).filter((key) => carriedStacks.has(key))
-  return composeCommand(extensionPath, root, stacks)
+  const read = projectId(manifestText)
+  return composeCommand(extensionPath, root, stacks, read.ok ? read.id : undefined)
 }
 
 
