@@ -27,7 +27,6 @@
   ],
   "activationEvents": [
     "workspaceContains:.agent-container.stack.json",
-    "workspaceContains:.code-server.stack.json",
     "onStartupFinished"
   ],
   "main": "./dist/extension.cjs",
@@ -56,10 +55,6 @@
       {
         "command": "jvsl.agentContainer.showWork",
         "title": "Agent Container: Show the Work"
-      },
-      {
-        "command": "jvsl.agentContainer.migrate",
-        "title": "Agent Container: Migrate from code-server"
       },
       {
         "command": "jvsl.agentContainer.openTopic",

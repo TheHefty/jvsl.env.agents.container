@@ -45,7 +45,7 @@ import { SelectionView } from '../view/selection-view.ts'
  * It read `vscode.workspace.workspaceFolders` and refused with "Open a project
  * folder first" — which is exactly what somebody choosing a folder is trying to
  * do. Asking about the workspace instead of the folder that was chosen would
- * rewrite `.code-server.stack.json` in a repository nobody asked about, and
+ * rewrite `.agent-container.stack.json` in a repository nobody asked about, and
  * that file is tracked and is the only record of what a project selected.
  *
  * `undefined` keeps the old behaviour for the command invoked with a project

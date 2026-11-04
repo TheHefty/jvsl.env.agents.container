@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { carried } from '../build/template.ts'
 import { stacksAvailable } from '../configure/questions.ts'
 import { readOrNull } from '../host/project.ts'
-import { carriesTemplateSubmodule } from '../migrate/migrate-files.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { type ViewState } from './view.ts'
 
@@ -28,6 +27,5 @@ export function readViewState(
   return {
     stacksAvailable: stacksAvailable(carried(extensionPath, 'stacks')),
     manifest,
-    oldFormat: carriesTemplateSubmodule((() => { try { return read('.gitmodules') } catch { return null } })()),
   }
 }

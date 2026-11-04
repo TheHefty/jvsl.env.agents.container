@@ -165,13 +165,11 @@ test('no warning, no row', () => {
   assert.equal(rows.find((r) => r.label.includes('sandbox')), undefined)
 })
 
-test('a project still on the code-server template offers to migrate, above its stacks', () => {
-  // FR-122: the command is offered where the project already is.
-  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' }, oldFormat: true })
-  const entry = rows.find((r) => r.command === 'jvsl.agentContainer.migrate')
-  assert.ok(entry, JSON.stringify(rows))
-  assert.equal(entry.label, 'Migrate from legacy template')
-  assert.equal(viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } }).find((r) => r.command === 'jvsl.agentContainer.migrate'), undefined)
+test('no project is offered a migration any more (task 4wl.3)', () => {
+  // Migrate and the legacy format went on 2026-11-04: no project in the old
+  // format remains, so the view offers nothing for it.
+  const rows = viewItems({ stacksAvailable: ['java'], manifest: { java: '21' } })
+  assert.equal(rows.find((r) => /migrat/i.test(`${r.command ?? ''} ${r.label}`)), undefined, JSON.stringify(rows))
 })
 
 test('a limit written as an object shows what it holds, never [object Object]', () => {

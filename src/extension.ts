@@ -2,14 +2,13 @@ import * as vscode from 'vscode'
 
 import { showWork } from './board/board.ts'
 import { build } from './build/command.ts'
-import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, MIGRATE, PICK, CREATE, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
+import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, PICK, CREATE, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
 import { StudyView } from './study/study-view.ts'
 import { openTopic } from './study/study-panel.ts'
 import { configure, pick } from './configure/command.ts'
 import { create } from './create/command.ts'
 import { extensionVersion, showDetected } from './host/detected.ts'
 import { dockerFor } from './host/docker.ts'
-import { migrate } from './migrate/command.ts'
 import { prepare } from './open/command.ts'
 import { HANDOVER_KEY } from './open/handover.ts'
 import { startup, watchManifest } from './open/startup.ts'
@@ -27,7 +26,7 @@ const CHANNEL_NAME = 'Dev Container Projects'
  * notification is the only one. This extension speaks only when there is
  * something the native one cannot say: a refusal, or a degraded open.
  *
- * **Activation is declared on `.code-server.stack.json`**, the manifest at the
+ * **Activation is declared on `.agent-container.stack.json`**, the manifest at the
  * project root, never on a path inside `.code-server/`. A clone without
  * `--recursive` leaves that directory existing and empty, so an event naming
  * anything inside it never fires — in exactly the case a project most needs to
@@ -61,7 +60,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath, extensionVersion(context))),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
     vscode.commands.registerCommand(SHOW_WORK, () => showWork(dockerFor, write, context.workspaceState)),
-    vscode.commands.registerCommand(MIGRATE, () => migrate(write, () => channel.show(true))),
     // The Study view (story the-study-view): read-only, and the topic page's
     // one write is an attempt, through the project's own files.
     vscode.commands.registerCommand(OPEN_TOPIC, (slug: unknown) => {

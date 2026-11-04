@@ -19,8 +19,8 @@
  * what the editor reports, being wrong costs nothing: the lookup misses and
  * nothing is said.
  *
- * Removed when the older copy can be assumed gone — the same decision, and the
- * same kind of date, as `LEGACY_MANIFEST`.
+ * Removed when the older copy can be assumed gone — the same decision that
+ * removed the legacy manifest on 2026-11-04 (task 4wl.3).
  */
 export const SUPERSEDED_EXTENSION = 'thehefty.jvsl-env-agents-vscode'
 

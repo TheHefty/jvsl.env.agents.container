@@ -246,14 +246,14 @@ test('a configuration of the current generation says nothing', async () => {
   assert.deepEqual(messages.filter((m) => m.includes('devcontainer.json')), [])
 })
 
-function legacyProject(): string {
+function aProject(): string {
   const dir = mkdtempSync(join(tmpdir(), 'opened-folder-'))
-  writeFileSync(join(dir, '.code-server.stack.json'), '{"node":"22"}\n')
+  writeFileSync(join(dir, '.agent-container.stack.json'), '{"node":"22"}\n')
   return dir
 }
 
 test('opening a project folder writes nothing to it', async () => {
-  const dir = legacyProject()
+  const dir = aProject()
   const before = readdirSync(dir).sort()
   await stubEditor(dir, undefined, [])
   await settle()
@@ -261,11 +261,13 @@ test('opening a project folder writes nothing to it', async () => {
 })
 
 test('a folder Open or Create handed over is prepared, and the handover is consumed', async () => {
-  const dir = legacyProject()
+  const dir = aProject()
   const updates: unknown[] = []
   await stubEditor(dir, { folder: dir, at: Date.now() }, updates)
   await settle()
-  assert.ok(existsSync(join(dir, '.agent-container.stack.json')), 'prepared: the old manifest was adopted')
+  // Nothing is adopted any more (task 4wl.3): the manifest the project has is
+  // the one it keeps.
+  assert.equal(readFileSync(join(dir, '.agent-container.stack.json'), 'utf8'), '{"node":"22"}\n', 'the manifest is left as it was')
   assert.ok(updates.includes(undefined), 'the handover was consumed')
 })
 

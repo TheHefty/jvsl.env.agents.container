@@ -41,12 +41,18 @@ function problems(m: Manifest): string[] {
   }
 
   const events = Array.isArray(m.activationEvents) ? m.activationEvents : []
-  if (!events.includes('workspaceContains:.code-server.stack.json')) {
+  if (!events.includes('workspaceContains:.agent-container.stack.json')) {
     found.push(
-      'activation must name .code-server.stack.json at the project root. An uninitialized ' +
-        'submodule leaves .code-server/ existing and empty, so an event naming a path inside it ' +
-        'never fires — in exactly the case a project has to be refused',
+      'activation must name .agent-container.stack.json at the project root, the manifest a ' +
+        'project carries; an event naming a path inside a directory never fires when that ' +
+        'directory is an empty, uninitialised submodule',
     )
+  }
+  // **The legacy manifest went in 2.x, with Migrate** (debt 4wl, task 4wl.3,
+  // decided 2026-11-04): no project in the old format remains, and an event
+  // left for it would wake the extension on a file nothing reads any more.
+  if (events.includes('workspaceContains:.code-server.stack.json')) {
+    found.push('activation must not name .code-server.stack.json: nothing reads the legacy manifest any more')
   }
   // **The rule inverted, and the version this comment used to argue for is
   // gone.** It read "not only submodule paths, not none" and explained why an
@@ -120,7 +126,7 @@ const real = JSON.parse(
 const good: Manifest = {
   extensionKind: ['ui'],
   extensionDependencies: [DEV_CONTAINERS],
-  activationEvents: ['workspaceContains:.code-server.stack.json'],
+  activationEvents: ['workspaceContains:.agent-container.stack.json'],
   engines: { vscode: '^1.90.0' },
   main: './dist/extension.js',
   scripts: { 'vscode:prepublish': 'npm run build' },
@@ -147,7 +153,7 @@ test('an event naming a path inside the submodule is rejected', () => {
   // required to have a submodule at all now, and one that still does carries
   // whatever version it last bumped to, so nothing may wake up on it.
   const found = problems({ ...good, activationEvents: ['workspaceContains:.code-server/version.txt'] })
-  assert.ok(found.some((p) => p.includes('.code-server.stack.json')), found.join('\n'))
+  assert.ok(found.some((p) => p.includes('.agent-container.stack.json')), found.join('\n'))
   assert.ok(found.some((p) => p.includes('inside .code-server/')), found.join('\n'))
 })
 
@@ -161,7 +167,7 @@ test('a submodule path alongside one outside it is rejected too', () => {
   const found = problems({
     ...good,
     activationEvents: [
-      'workspaceContains:.code-server.stack.json',
+      'workspaceContains:.agent-container.stack.json',
       'workspaceContains:.code-server/setup',
     ],
   })
@@ -223,7 +229,8 @@ test('the folder picker is contributed, and declares no onCommand event for itse
   )
   assert.ok(ids.includes('jvsl.agentContainer.open'), JSON.stringify(ids))
   assert.ok(ids.includes('jvsl.agentContainer.showWork'), JSON.stringify(ids))
-  assert.ok(ids.includes('jvsl.agentContainer.migrate'), JSON.stringify(ids))
+  // Migrate went with the legacy format (task 4wl.3).
+  assert.ok(!ids.includes('jvsl.agentContainer.migrate'), JSON.stringify(ids))
   const events = Array.isArray(real.activationEvents) ? real.activationEvents : []
   assert.deepEqual(events.filter((e: unknown) => String(e).startsWith('onCommand:')), [])
 })
@@ -254,5 +261,11 @@ test('activation reaches a window with no folder, and the manifest event stays',
   // **Not redundant, and the next person to read them will think they are.**
   // onStartupFinished fires when the editor has settled; a project opened
   // directly wants the extension awake without waiting for that.
-  assert.ok(events.includes('workspaceContains:.code-server.stack.json'), JSON.stringify(events))
+  assert.ok(events.includes('workspaceContains:.agent-container.stack.json'), JSON.stringify(events))
+  assert.ok(!events.includes('workspaceContains:.code-server.stack.json'), JSON.stringify(events))
+})
+
+test('an activation event on the legacy manifest is rejected (task 4wl.3)', () => {
+  const found = problems({ ...good, activationEvents: ['workspaceContains:.agent-container.stack.json', 'workspaceContains:.code-server.stack.json'] })
+  assert.ok(found.some((p) => p.includes('must not name .code-server.stack.json')), found.join('\n'))
 })

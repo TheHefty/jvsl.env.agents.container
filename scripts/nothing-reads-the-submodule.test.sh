@@ -10,11 +10,11 @@
 # has one composes from a different place than a project that does not, and the
 # difference is invisible.
 #
-# **The slash is the whole pattern.** `.code-server.stack.json` is the
-# manifest's own name, at the workspace root, and it keeps that name after the
-# submodule is gone — a check forbidding the bare substring would forbid the one
-# file the extension is supposed to read. That mistake was made once already, in
-# an assertion written for the compose command.
+# **The slash is the whole pattern.** `.code-server.stack.json` was the
+# manifest's own name, at the workspace root, until task 4wl.3 removed it with
+# Migrate — a check forbidding the bare substring would have forbidden the one
+# file the extension was supposed to read. That mistake was made once already,
+# in an assertion written for the compose command.
 #
 # Comments are excluded for the reason the launcher guard gives: a grep cannot
 # tell a recollection from an instruction, and these files are expected to record
@@ -36,10 +36,10 @@ fi
 echo "ok      ${#sources[@]} source file(s) to check"
 
 # The mechanism must find something that is really there, or its silence means
-# nothing. The manifest's name is in every one of these files' vicinity.
-if ! grep -qF '.code-server.stack.json' -- "${sources[@]}"; then
+# nothing. The manifest's name is defined in one of these files.
+if ! grep -qF '.agent-container.stack.json' -- "${sources[@]}"; then
     echo "nothing-reads-the-submodule: FAIL: the search found no mention of \
-'.code-server.stack.json' anywhere, which cannot be true — the manifest is what activation is \
+'.agent-container.stack.json' anywhere, which cannot be true — the manifest is what activation is \
 declared on. The mechanism is broken and the assertion below proves nothing." >&2
     exit 1
 fi
@@ -52,15 +52,10 @@ echo "ok      the search mechanism finds a string that is really there"
 # would have gone green the moment the string literals were deleted, leaving the
 # segment form free to come back.
 #
-# `'.code-server'` as a whole quoted segment does not match
-# `'.code-server.stack.json'`, which is the manifest and must stay readable.
-# **One file is exempt, by name: src/migrate/migrate-files.ts.** It does not read the
-# submodule; it removes it, which is the opposite of depending on it, and it
-# cannot do that without naming it (FR-123). The exemption is a path, not a
-# pattern, so a second file naming the submodule still fails here.
+# No file is exempt any more: src/migrate/migrate-files.ts was, because it
+# removed the submodule, and it went with Migrate in task 4wl.3.
 hits="$(grep -nE "\.code-server/|['\"]\.code-server['\"]" -- "${sources[@]}" \
-    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' \
-    | grep -v '^src/migrate/migrate-files\.ts:' || true)"
+    | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' || true)"
 if [ -n "$hits" ]; then
     echo "nothing-reads-the-submodule: FAIL: these name a path inside a project's \
 \`.code-server/\`. The extension carries the image's content; a project is not required to have a \
