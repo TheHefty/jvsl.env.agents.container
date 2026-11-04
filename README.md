@@ -60,6 +60,14 @@ Open the Command Palette and run one of:
 
 The same entries are available from the **Agent Container** view in the Explorer.
 
+Beside it, the **Study** view lists the project's study topics: the guides the study skill builds
+under `docs/study/`, each with its state in the tracker. Two commands go with it:
+
+| Command | What it does |
+|---|---|
+| **Agent Container: Open a Study Topic** | Opens a topic's guide in a page, with its state and the moves the developer can make on it |
+| **Agent Container: Read the Study Topics Again** | Re-reads `docs/study/` and refreshes the view |
+
 ## The project manifest
 
 A project is described by `.agent-container.stack.json` at its root. The extension writes it and

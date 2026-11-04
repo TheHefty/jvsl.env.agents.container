@@ -135,12 +135,13 @@ order.
 Nothing in a consuming repo runs a test for you. What discipline exists has to be carried by
 whoever opens the change.
 
-- **Changes under the legacy `.code-server/` are verified by the template's own CI**, which builds an image
-  per stack. Make them there, in the template's repository, and consume the result through a bump.
+- **Changes to the image — `core/` and `stacks/` — are verified by the extension's own CI**, in
+  `jvsl.env.agents.container`, which builds an image per stack. Make them there; a project receives
+  them through an extension update and a rebuild.
 - **A consuming repo has no CI of its own**, so a PR in it is mergeable the moment it opens.
   Nothing will stop a broken change: the discipline has to come from whoever opens it.
 - **A test here is a `*.test.sh` beside the thing it exercises**, driving the real script rather
-  than a copy of its logic, and exiting non-zero on failure. The template's
+  than a copy of its logic, and exiting non-zero on failure. The extension repository's
   `core/bin/check-md-size.test.sh`, `scripts/every-test-has-a-runner.test.sh` and
   `core/cont-init/15-git-credential-helper.test.sh` are the shape to copy, and the ones with a CI job
   behind them.

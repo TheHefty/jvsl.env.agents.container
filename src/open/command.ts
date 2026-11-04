@@ -186,12 +186,6 @@ export async function gather(
 }
 
 /**
- * Names of running containers. A runtime that cannot be reached yields none:
- * refusing on that is FR-24, which belongs to the story that owns every
- * refusal, and guessing it here would duplicate that message badly. It is
- * written to the channel so the next failure is not a surprise.
- */
-/**
  * Whether the project's image is there, and **`unknown` when that cannot be
  * told apart from the daemon not answering.**
  *
@@ -230,6 +224,13 @@ export async function imageState(
   return state
 }
 
+/**
+ * The running containers, each with its folder label and mounts (containersFrom).
+ * A runtime that cannot be reached yields none: refusing on that is FR-24,
+ * which belongs to the story that owns every refusal, and guessing it here
+ * would duplicate that message badly. It is written to the channel so the next
+ * failure is not a surprise.
+ */
 export async function runningContainers(
   write: (lines: string[]) => void,
   docker: Docker = localDocker,

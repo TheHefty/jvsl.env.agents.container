@@ -72,6 +72,10 @@ test('a ready host has no problems', () => {
 test('a missing tool is named with the package this host installs it from', () => {
   const [problem] = hostProblems({ ...ready, docker: 'absent' })
   assert.match(problem?.message ?? '', /docker\.io/)
+  // `setup` was the template's script and is gone (gh-332): the message names
+  // what needs docker now, the build.
+  assert.doesNotMatch(problem?.message ?? '', /\bsetup\b/)
+  assert.match(problem?.message ?? '', /the build needs it/)
   assert.match(problem?.message ?? '', /install/i)
   assert.equal(problem?.blocking, true)
 })

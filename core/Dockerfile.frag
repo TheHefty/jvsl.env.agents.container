@@ -474,8 +474,8 @@ RUN chmod +x /custom-cont-init.d/20-kvm-gid.sh
 # number somebody last typed, missing fixes, for as long as nobody remembered to
 # bump it.
 #
-# **The two kinds of dependency are not the same risk, and only these two are
-# unpinned.** `ai-jail` and `ai-memory` keep their tag *and* their digest in
+# **The two kinds of dependency are not the same risk, and only the agent CLIs
+# are unpinned** — this one, Codex's and OpenCode's below. `ai-jail` and `ai-memory` keep their tag *and* their digest in
 # section 7, because a regression in the sandbox is silent: the environment lost
 # its network once to an ai-jail release that made it opt-in, and presented as a
 # host fault that did not exist. A regression in an agent CLI is in front of
@@ -486,9 +486,11 @@ RUN chmod +x /custom-cont-init.d/20-kvm-gid.sh
 # has one more candidate cause. `npm list -g` names what is actually installed,
 # which is where to look first.
 #
-# Recorded in docs/RULES.md as this repository's exception to the inherited
-# "pin a version" rule, rather than left as a Dockerfile that quietly disagrees
-# with the rules it ships.
+# Recorded in docs/RULES.md ("The agent CLIs are installed unpinned, as an
+# exception") as this repository's exception to the inherited "pin a version"
+# rule, rather than left as a Dockerfile that quietly disagrees with the rules
+# it ships. Until 2026-11-04 this line said so and the record did not exist
+# (debt the-unpinned-agent-clis-cite-a-rules-exception-that-was-never-written).
 RUN npm install -g @anthropic-ai/claude-code
 
 # 6.0 The OpenAI Codex CLI, sandboxed the same way and by the same wrapper
@@ -547,8 +549,8 @@ ENV CLAUDE_CONFIG_DIR=/config/.claude
 # than in a file this image copies: `workbench.iconTheme`, because the
 # `file-icons` extension the label declares is installed and invisible without
 # it. The rule is that a setting reaches the label only if something the label
-# installs needs it, which the other six did not satisfy — see
-# docs/PLANNING/the-image-stops-being-code-servers/.
+# installs needs it, which the other six did not satisfy — see the epic
+# the-image-stops-being-code-servers in the tracker.
 
 # 7. Installs ai-jail (akitaonrails/ai-jail), which reads the project's .ai-jail
 #
