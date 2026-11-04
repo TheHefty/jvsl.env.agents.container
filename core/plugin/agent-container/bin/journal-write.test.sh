@@ -131,6 +131,18 @@ check "an empty Decided alone is refused, and says Nothing. is the answer" "$(wr
 body | sed '/^## Went wrong$/,/^## Decided alone$/{/^## Decided alone$/!d}' > "$work/body.md"
 check "a missing section is refused, naming it" "$(write) $(grep -c 'Went wrong' "$work/out")" "1 1"
 
+# --- the agent's elaboration has its own section (story 3kk.2) ------------------
+reset; configure '{"repository": "TheHefty/journal"}'
+body > "$work/body.md"
+check "an entry with the elaboration in its place is sent" "$(write)" "0"
+body | sed '/^## On what I want to learn$/,/^## Left open$/{/^## Left open$/!d}' > "$work/body.md"
+check "an entry without the elaboration is refused, naming the section" "$(write) $(grep -c 'On what I want to learn' "$work/out")" "1 1"
+body x Nothing. no '- left' '' > "$work/body.md"
+check "an empty elaboration is refused" "$(write) $(grep -c 'On what I want to learn' "$work/out")" "1 1"
+body x Nothing. no '- left' 'I wrote this as if it were the developer.' > "$work/body.md"
+check "an elaboration that does not say it is the agent's is refused" "$(write) $(grep -c 'Written by the agent' "$work/out")" "1 1"
+body > "$work/body.md"
+
 # --- an outbox on a tmpfs is refused, not kept (fxn.1) ---------------------------
 #
 # Found on 2026-11-04: an entry written on 2026-11-02 never reached the disk. In

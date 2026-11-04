@@ -24,7 +24,7 @@ test('the plan is a list, so it can be written in full or reported in full', () 
   assert.ok(Array.isArray(plan.writes))
   assert.deepEqual(
     plan.writes.map((w) => w.path).sort(),
-    [MANIFEST, '.gitignore', 'AGENTS.md', 'CLAUDE.md'].sort(),
+    [MANIFEST, '.gitignore', 'AGENTS.md', 'CLAUDE.md', '.githooks/pre-commit'].sort(),
   )
 })
 
@@ -110,4 +110,11 @@ test('a created project carries an id, so it gets its own image and volume (gh-3
   const parsed = JSON.parse(manifest?.contents ?? '{}') as Record<string, unknown>
   assert.match(String(parsed['id']), /^[0-9a-f]{8}$/)
   assert.notEqual(parsed['id'], (JSON.parse(scaffoldPlan(base).writes.find((w) => w.path === MANIFEST)?.contents ?? '{}') as Record<string, unknown>)['id'])
+})
+
+test('a created project carries the Markdown size hook (story qws.1)', () => {
+  const plan = scaffoldPlan(base)
+  const hook = plan.writes.find((w) => w.path === '.githooks/pre-commit')
+  assert.ok(hook, JSON.stringify(plan.writes.map((w) => w.path)))
+  assert.match(hook.contents, /check-md-size/)
 })

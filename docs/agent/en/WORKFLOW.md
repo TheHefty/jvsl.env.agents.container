@@ -106,6 +106,10 @@ is, as "The work tracker" in [Rules](RULES.md) says.
 - **A task's "After the code" checks are recorded on it once its code exists**, with
   `bd update <id> --append-notes "…"`, before it is closed. `--append-notes` and not `--notes`:
   the latter replaces whatever the item already carries.
+- **A task that changes the system's shape updates `docs/ARCHITECTURE.md` in the same pull
+  request** — its parts, what each owns, how they reach each other, where it breaks. The task says
+  why the shape changed; the architecture file says what it is now. See
+  [Architecture](ARCHITECTURE.md).
 - **A `.feature` a runner executes lives beside the suite that runs it**, not in a planning folder:
   the runner's configuration is where its files are found, and a folder of documents is not a
   place a build should reach into. The story points to it with `bd update <id> --spec-id <path>`,

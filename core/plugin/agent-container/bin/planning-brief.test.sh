@@ -167,6 +167,13 @@ body x Nothing. no '- written by the retro' > "$work/entry.md"
     bash "$HERE/journal-write" "$work/entry.md" > /dev/null 2>&1)
 check "an entry journal-write sent is the one the planning reads" "$(left_open | grep -c '^- written by the retro$')" "1"
 
+# --- the agent's elaboration is not the developer's line (story 3kk.2) --------------
+rm -rf "$GH_STORE/demo"; mkdir -p "$GH_STORE/demo"
+body "how jq reads null" Nothing. no '- carried' "Written by the agent.
+the alternative operator turns a null into a default." > "$GH_STORE/demo/2026-10-27.md"
+check "the planning shows the developer's line, and none of the agent's elaboration" \
+    "$(left_open | grep -c '^Wants to learn: how jq reads null$') $(left_open | grep -c 'Written by the agent\|operator turns')" "1 0"
+
 if [ "$failures" -gt 0 ]; then
     echo "planning-brief.test: $failures failure(s)"
     exit 1

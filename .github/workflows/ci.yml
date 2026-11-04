@@ -125,6 +125,8 @@ jobs:
         run: bash scripts/the-guard-holds-the-split.test.sh
       - name: release-please waits for a manual cut request on master
         run: bash scripts/release-please-waits-for-manual-dispatch.test.sh
+      - name: every job that builds an image logs in to ghcr.io first, token on stdin, failure only warns
+        run: bash scripts/ci-image-pulls-are-authenticated.test.sh
 
   agent-docs:
     # The two language folders are checked against each other because a rule
@@ -152,6 +154,8 @@ jobs:
         run: bash docs/agent/project-rules.test.sh
       - name: initialization records whether Cucumber runs acceptance features
         run: bash docs/agent/initialization-cucumber.test.sh
+      - name: the initialization writes docs/ARCHITECTURE.md and a change of shape keeps it true
+        run: bash docs/agent/architecture-document.test.sh
 
   bash-syntax:
     needs: changes
@@ -368,6 +372,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: boot reconciles image skills into the shared agent root without overwriting user skills
         run: bash core/cont-init/46-agent-skills.test.sh
+      - name: boot points the project's git at .githooks only when nothing else was chosen
+        run: bash core/cont-init/47-git-hooks-path.test.sh
+      - name: the project's pre-commit refuses an oversized Markdown file and a missing check-md-size
+        run: bash assets/project/githooks-pre-commit.test.sh
 
   jail-wrappers:
     needs: changes
@@ -427,6 +435,10 @@ jobs:
         run: bash core/plugin/agent-container/bin/report-guard.test.sh
       - name: every claim in the report cites a file that exists, and no implicit decision is given a motive
         run: bash core/plugin/agent-container/bin/report-check.test.sh
+      - name: md-split-plan splits a file by its sections, keeping every byte and every link
+        run: bash core/plugin/agent-container/bin/md-split-plan.test.sh
+      - name: the retro skill elaborates on the developer's line, grounded in the day, without changing it
+        run: bash core/plugin/agent-container/skills/retro-skill.test.sh
       - name: the report is kept out of git without changing a file of the project
         run: bash core/plugin/agent-container/bin/report-exclude.test.sh
       - name: a study topic is tracked once, and a rebuild never changes its status
@@ -525,6 +537,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       # The composer is TypeScript (src/build/compose.ts) run by node directly,
@@ -532,6 +547,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       - name: docker build core only
         # Composed rather than built straight from the fragment, which is how
         # this ran until core gained {{NAME_VERSION}} placeholders of its own.
@@ -574,6 +600,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       # The composer is TypeScript (src/build/compose.ts) run by node directly,
@@ -588,6 +617,17 @@ jobs:
       # the filename; it failed on a boot where the hook had printed nothing.
       - name: the log matchers say what they mean
         run: bash core/booted.matchers.test.sh
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       # The harness itself, against a stand-in image that emulates only the boot
       # contract it depends on. It exists because the real image cannot be built
       # everywhere, so without it every mistake in the harness costs a full round
@@ -630,6 +670,9 @@ jobs:
     needs: [changes, discover-stacks]
     if: needs.changes.outputs.scope != 'docs-only'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -641,6 +684,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Authenticated, so the base image's pull is not counted against ghcr.io's
+      # anonymous limit (debt ci-image-builds-pull-the-base-image-anonymously-
+      # and-hit-ghcr-rate-limits): eleven parallel stack builds got 429s. The
+      # token goes on stdin, never on a command line; a failed login (a fork's
+      # token) warns and the build goes on anonymously, as it always did.
+      - name: log in to ghcr.io, so the base image is pulled authenticated
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            || echo "::warning::ghcr.io login failed, so this job pulls the base image anonymously and may hit its rate limit (429)."
       # Composed through the same composer the extension uses, so CI builds a stack
       # the way the product actually builds it — including pulling in any
       # requires.json dependency. This step used to concatenate core + the

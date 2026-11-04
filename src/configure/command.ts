@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 
+import { readFileSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 
 import { build } from '../build/command.ts'
@@ -7,6 +8,7 @@ import { carried } from '../build/template.ts'
 import { validateCpus, validateMemory } from '../build/limits.ts'
 import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
+import { HOOK_ASSET, HOOK_PATH, hookWrite } from './githook.ts'
 import { decidePick } from './pick.ts'
 import { limitDefaults, missingDependencies, nextManifest, orderedVersions, withProjectId, stacksAvailable, switchAnswer, switchChoices, versionsOf, type Answers } from './questions.ts'
 import {
@@ -159,6 +161,7 @@ export async function configure(
     `  stacks before: ${selectedNow.join(' ') || '(none)'}`,
     `  stacks after:  ${picked.join(' ') || '(none)'}`,
   ])
+  writeHook(files, extensionPath, write)
   try {
     applySwitches(files, answers, write)
   } catch (error) {
@@ -473,4 +476,33 @@ async function regenerate(
     `${CONFIG_PATH} now carries the new limits. They apply when the container is rebuilt ` +
       `(Dev Containers: Rebuild Container), as the rebuilt image does.`,
   )
+}
+
+/**
+ * The Markdown size hook, written into a project that has none (story qws.1),
+ * left for the developer to commit. Never over a hook somebody wrote: hookWrite
+ * says why, and that is said here. Not fatal: a project that cannot take the
+ * hook is still configured.
+ */
+function writeHook(files: ReturnType<typeof filesFor>, extensionPath: string, write: (lines: string[]) => void): void {
+  let asset: string
+  try {
+    asset = readFileSync(carried(extensionPath, 'assets', 'project', HOOK_ASSET), 'utf8')
+  } catch (error) {
+    write([`configure: ${HOOK_PATH} not written: this installation does not carry its hook (${String(error)})`])
+    return
+  }
+  try {
+    const existing = files.read(HOOK_PATH)
+    const decision = hookWrite(existing, asset)
+    if (decision.action === 'keep') {
+      write([`configure: ${HOOK_PATH} kept — ${decision.because}`])
+      return
+    }
+    if (existing === decision.contents) return
+    files.write(HOOK_PATH, decision.contents)
+    write([`configure: wrote ${HOOK_PATH}, for you to commit; the container turns it on when it boots`])
+  } catch (error) {
+    write([`configure: ${HOOK_PATH} could not be written: ${String(error)}`])
+  }
 }

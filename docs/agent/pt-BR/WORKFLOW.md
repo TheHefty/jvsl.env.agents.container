@@ -109,6 +109,10 @@ como diz "O rastreador de trabalho", em [Regras](RULES.md).
 - **As checagens de "Depois do código" de uma task são registradas nela quando o código existe**,
   com `bd update <id> --append-notes "…"`, antes de ela ser fechada. `--append-notes` e não
   `--notes`: o segundo substitui o que o item já carrega.
+- **Uma task que muda a forma do sistema atualiza o `docs/ARCHITECTURE.md` no mesmo pull
+  request** — suas partes, o que cada uma governa, como se alcançam, onde quebram. A task diz por
+  que a forma mudou; o arquivo de arquitetura diz o que ela é agora. Veja
+  [Arquitetura](ARCHITECTURE.md).
 - **Um `.feature` que um runner executa mora ao lado da suíte que o executa**, não numa pasta de
   planejamento: a configuração do runner é onde os arquivos dele são achados, e uma pasta de
   documentos não é lugar onde um build deva ir buscar coisas. A estória aponta para ele com

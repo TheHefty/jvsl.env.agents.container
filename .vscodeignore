@@ -32,6 +32,7 @@ SECURITY.md
 
 core/**/*.test.sh
 stacks/**/*.test.sh
+assets/**/*.test.sh
 scripts/**
 
 # Agent skills for working *on* this repository, not for anyone using the

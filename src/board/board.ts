@@ -14,6 +14,7 @@ import type { Docker } from '../host/docker.ts'
 import type { ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
 import { boardPage, messagePage, type Rendered } from './board-page.ts'
+import { escapeRawHtml } from './board-markdown.ts'
 import { filesFor } from '../host/files.ts'
 import { onBoardMessage, rememberedView, VIEW_KEY } from './board-message.ts'
 import { originUrl } from './pr-link.ts'
@@ -109,8 +110,9 @@ async function render(
  * Renders each item's long fields with VS Code's own Markdown renderer, so the
  * extension carries no runtime dependency for it. If the renderer is not there
  * (the built-in Markdown extension disabled), every field is shown as plain
- * text and the page says why. The page's policy, not this, is what keeps the
- * rendered HTML inert.
+ * text and the page says why. The page's policy is what keeps the rendered HTML
+ * from running anything; escapeRawHtml is what keeps an item's text from being
+ * markup at all.
  */
 async function renderAll(items: readonly Item[]): Promise<{ rendered: Map<string, Rendered>; notice?: string }> {
   const rendered = new Map<string, Rendered>()
@@ -120,7 +122,9 @@ async function renderAll(items: readonly Item[]): Promise<{ rendered: Map<string
       const text = item[key]
       if (text === undefined) continue
       try {
-        out[key] = await vscode.commands.executeCommand<string>('markdown.api.render', text)
+        // Raw HTML escaped first (gh-335): the renderer passes it through, and
+        // a `<title>` in a scenario froze the whole board.
+        out[key] = await vscode.commands.executeCommand<string>('markdown.api.render', escapeRawHtml(text))
       } catch (error) {
         return {
           rendered: new Map(),

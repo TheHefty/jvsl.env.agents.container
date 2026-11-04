@@ -27,7 +27,8 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_DIR="${JOURNAL_HOME:-/config/.claude/agent-container}"
 LEARN_HEADING="What I want to learn"
-SECTIONS=("Discovered" "Surprised" "Went wrong" "Decided alone" "$LEARN_HEADING" "Left open" "Links")
+ABOUT_HEADING="On what I want to learn"
+SECTIONS=("Discovered" "Surprised" "Went wrong" "Decided alone" "$LEARN_HEADING" "$ABOUT_HEADING" "Left open" "Links")
 
 file="${1:-}"
 if [ -z "$file" ] || [ ! -f "$file" ]; then
@@ -46,13 +47,18 @@ normal="$(mktemp)"; trap 'rm -f "$normal"' EXIT
 sed 's/^## What I learned$/## '"$LEARN_HEADING"'/' "$file" > "$normal"
 mapfile -t found < <(sed -n 's/^## //p' "$normal")
 for want in "${SECTIONS[@]}"; do
-    printf '%s\n' "${found[@]}" | grep -qxF -- "$want" || refuse "It has no \"## $want\" section; every entry has all seven, in order: ${SECTIONS[*]}."
+    printf '%s\n' "${found[@]}" | grep -qxF -- "$want" || refuse "It has no \"## $want\" section; every entry has all eight, in order: ${SECTIONS[*]}."
 done
 [ "${found[*]}" = "${SECTIONS[*]}" ] || refuse "Its sections are not in the order the planning and the study skill read: ${SECTIONS[*]}."
 
 section() { awk -v h="## $1" '$0 == h {on = 1; next} /^## / {on = 0} on' "$normal"; }
 blank() { [ -z "$(section "$1" | tr -d '[:space:]')" ]; }
 blank "What I want to learn" && refuse "\"What I want to learn\" is empty: that line is the developer's own, written or approved by them, and never the agent's alone."
+# **The agent's elaboration on the developer's line** (story
+# the-journal-entry-keeps-the-elaboration, epic 3kk): its own section, so the
+# developer's line stays theirs alone, and it says whose it is.
+blank "$ABOUT_HEADING" && refuse "\"$ABOUT_HEADING\" is empty: it holds the agent's elaboration on the developer's line — what the topic is, where it showed up today, what to read next — or says that nothing in the day touches it."
+section "$ABOUT_HEADING" | grep -qF "Written by the agent." || refuse "\"$ABOUT_HEADING\" does not say \"Written by the agent.\": it is the agent's text, beside the developer's line, and the entry has to say whose words are whose."
 blank "Decided alone" && refuse "\"Decided alone\" is empty: list what was chosen without asking, or write \"Nothing.\" when there was nothing."
 
 project="$(bash "$HERE/journal-project")"
