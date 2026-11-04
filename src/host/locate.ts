@@ -105,6 +105,13 @@ const trim = (p: string) => {
   return p.length > 1 ? p.replace(/\/+$/, '') : p
 }
 
+/** Whether a container's `devcontainer.local_folder` is one of these folders, compared as containerFor compares. */
+export function isFolderOf(folders: readonly string[], localFolder: string): boolean {
+  if (localFolder === '') return false
+  const want = new Set(folders.map(trim))
+  return want.has(trim(localFolder))
+}
+
 /**
  * The running container for a project. **Exact match only**: a prefix of
  * another project's path is that other project. Two matches are refused by

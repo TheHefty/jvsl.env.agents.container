@@ -12,9 +12,9 @@ import { extensionVersion } from '../host/detected.ts'
 import { dockerFor, localDocker, whereFor, type Docker } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
 import { homeFor, type Home } from '../host/home.ts'
-import { mountPath, type ProjectOnHost } from '../host/locate.ts'
+import { folderNames, mountPath, type ProjectOnHost } from '../host/locate.ts'
 import { hostProject } from '../host/project.ts'
-import { CONFIG_PATH, decideOpen, imageStateFrom, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState } from './open.ts'
+import { CONFIG_PATH, decideOpen, imageStateFrom, prepareHere, REOPEN_COMMAND, serialise, type OpenContext, type ImageState, containersFrom, CONTAINERS_FORMAT, type ContainerRow } from './open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -167,7 +167,13 @@ export async function gather(
     factNotes: measured.notes,
     manifest,
     existingConfig: files.read(CONFIG_PATH),
-    runningContainers: await runningContainers(write, docker),
+    // One `docker ps`, bounded like every docker call: the names the launcher
+    // refusal reads and the mounts the volume check reads (gam.2, gh-325).
+    ...(await runningContainers(write, docker).then((containers) => ({
+      runningContainers: containers.map((c) => c.name),
+      containers,
+      ownFolders: folderNames(project),
+    }))),
     reopenCommandAvailable: (await vscode.commands.getCommands(true)).includes(REOPEN_COMMAND),
     gitignore: files.read('.gitignore'),
     // From the manifest's id when it has one (gh-325): the image decideOpen
@@ -227,10 +233,10 @@ export async function imageState(
 export async function runningContainers(
   write: (lines: string[]) => void,
   docker: Docker = localDocker,
-): Promise<string[]> {
+): Promise<ContainerRow[]> {
   try {
-    const { stdout } = await docker(['ps', '--format', '{{.Names}}'])
-    return stdout.split('\n').map((n) => n.trim()).filter((n) => n !== '')
+    const { stdout } = await docker(['ps', '--no-trunc', '--format', CONTAINERS_FORMAT])
+    return containersFrom(stdout)
   } catch (error) {
     write([`could not list running containers: ${String(error)}`])
     return []

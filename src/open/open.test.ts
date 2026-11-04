@@ -463,3 +463,73 @@ test('a manifest whose id is not an id is refused before anything is written', (
   assert.match(cause, /\.agent-container\.stack\.json/)
   assert.match(cause, /Nothing was written/)
 })
+
+// --- a live container from elsewhere on this project's /config volume (gam.2, gh-325)
+//
+// The launcher refusal looks for one name. Any other container mounting the
+// volume — a clone opened from another folder, a hand-run `docker run -v` —
+// is the same corruption: two nested daemons, two ai-memory servers, one store.
+
+import { containersFrom } from './open.ts'
+
+// The shape measured on docker 26.1.5: `docker ps --no-trunc --format
+// '{{.Names}}\t{{.Label "devcontainer.local_folder"}}\t{{.Mounts}}'`. Without
+// --no-trunc the mounts come back cut (`gam2-probe-a-v…`) and nothing matches.
+const PS = [
+  'clone_devcontainer\t/home/me/other/myrepo\tmyrepo-code-server-data,/var/run/docker.sock',
+  'mine_devcontainer\t/home/me/code/myrepo\tmyrepo-code-server-data',
+  'unrelated\t\tpostgres-data,/home/me/code,with,commas',
+  'similar\t\tmyrepo-code-server-data-old',
+].join('\n')
+
+test('the docker listing is read as name, folder and every mount', () => {
+  const rows = containersFrom(PS)
+  assert.equal(rows.length, 4)
+  assert.deepEqual(rows[0], { name: 'clone_devcontainer', localFolder: '/home/me/other/myrepo', mounts: ['myrepo-code-server-data', '/var/run/docker.sock'] })
+  assert.deepEqual(rows[2]?.localFolder, '')
+  assert.deepEqual(containersFrom(''), [])
+})
+
+test('a live container from another folder on this project\'s volume refuses the open, naming it', () => {
+  const cause = refusal({ containers: containersFrom(PS), ownFolders: ['/home/me/code/myrepo'] })
+  assert.match(cause, /clone_devcontainer/)
+  assert.match(cause, /myrepo-code-server-data/)
+  assert.match(cause, /\/home\/me\/other\/myrepo/)
+  assert.match(cause, /two nested Docker daemons/)
+  assert.match(cause, /Nothing was written/)
+  assert.doesNotMatch(cause, /mine_devcontainer|unrelated|similar/)
+})
+
+test('a container with no folder at all on the volume is refused too', () => {
+  const cause = refusal({ containers: containersFrom('hand_run\t\tmyrepo-code-server-data'), ownFolders: ['/home/me/code/myrepo'] })
+  assert.match(cause, /hand_run/)
+})
+
+test('the project\'s own container is not a collision, in any form of its folder', () => {
+  for (const [label, folders] of [
+    ['/home/me/code/myrepo', ['/home/me/code/myrepo']],
+    ['/home/me/code/myrepo/', ['/home/me/code/myrepo']],
+    ['\\\\wsl.localhost\\Ubuntu\\home\\me\\code\\myrepo', ['/home/me/code/myrepo', '\\\\wsl.localhost\\Ubuntu\\home\\me\\code\\myrepo']],
+  ] as const) {
+    const d = decideOpen({ ...base, containers: containersFrom(`mine\t${label}\tmyrepo-code-server-data`), ownFolders: [...folders] })
+    assert.equal(d.action, 'open', label)
+  }
+})
+
+test('another volume, a bind, or a name that only starts the same is not this project\'s volume', () => {
+  const rows = containersFrom(['unrelated\t\tpostgres-data,/home/me/code,with,commas', 'similar\t\tmyrepo-code-server-data-old'].join('\n'))
+  assert.equal(decideOpen({ ...base, containers: rows, ownFolders: ['/home/me/code/myrepo'] }).action, 'open')
+})
+
+test('the volume checked is the id\'s, once the project has one', () => {
+  const rows = containersFrom('clone\t/home/me/other/myrepo\tmyrepo-3f9c2a1b-code-server-data')
+  const withId = { manifest: '{"id":"3f9c2a1b","limits":{"memory":"6g"}}', ownFolders: ['/home/me/code/myrepo'] }
+  assert.match(refusal({ ...withId, containers: rows }), /myrepo-3f9c2a1b-code-server-data/)
+  // And the folder-named volume is then somebody else's business, not this project's.
+  assert.equal(decideOpen({ ...base, ...withId, containers: containersFrom('old\t\tmyrepo-code-server-data') }).action, 'open')
+})
+
+test('the old launcher keeps its own refusal, which says what it is', () => {
+  const cause = refusal({ runningContainers: ['myrepo-app'], containers: containersFrom('myrepo-app\t\tmyrepo-code-server-data'), ownFolders: ['/home/me/code/myrepo'] })
+  assert.match(cause, /old launcher/)
+})
