@@ -188,6 +188,13 @@ Once the eight questions are settled, proceed under the chosen mode into the cha
 [Workflow](WORKFLOW.md): the charter grilling first — full for a new project, the engagement's
 terms for a sustaining one — then the SRS, then the stories.
 
+**`docs/ARCHITECTURE.md` is written once the charter and the SRS are agreed**, before the first
+epic, from [the architecture instruction](ARCHITECTURE.md). **It is not a gate**: nothing waits for
+it to be agreed. It starts nearly empty — what the charter and the SRS already say about the
+system's boundaries, parts and data — and is kept true by the rule that a task changing the shape
+updates it in the same pull request. A section describing an intention rather than the system is
+the one way it goes wrong; empty is a fine answer while something does not exist yet.
+
 **`docs/RULES.md` is written beside `docs/CHARTER.md` and the SRS**, agreed at the same gates. It
 holds this project's own standing rules — the ones the answers above produce, such as the legal
 baseline and how its data is kept — and nothing inherited. It opens by saying so: the inherited

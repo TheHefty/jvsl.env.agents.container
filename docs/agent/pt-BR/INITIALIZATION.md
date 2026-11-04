@@ -194,6 +194,14 @@ Uma vez que as oito perguntas estão resolvidas, prossiga no modo escolhido para
 [Fluxo de trabalho](WORKFLOW.md): o grilling do termo de abertura primeiro — completo para um
 projeto novo, os termos do engajamento para um de sustentação — depois a SRS, depois as estórias.
 
+**O `docs/ARCHITECTURE.md` é escrito quando o termo de abertura e a SRS estão acordados**, antes do
+primeiro épico, a partir da [instrução de arquitetura](ARCHITECTURE.md). **Ele não é um gate**:
+nada espera que ele seja acordado. Começa quase vazio — o que o termo de abertura e a SRS já dizem
+sobre as fronteiras, as partes e os dados do sistema — e se mantém verdadeiro pela regra de que uma
+task que muda a forma o atualiza no mesmo pull request. Uma seção que descreve uma intenção em vez
+do sistema é o único jeito de ele dar errado; vazio é uma boa resposta enquanto algo ainda não
+existe.
+
 **O `docs/RULES.md` é escrito ao lado do `docs/CHARTER.md` e da SRS**, acordado nos mesmos gates.
 Ele guarda as regras permanentes deste projeto — as que as respostas acima produzem, como a base
 legal e como os dados dele são guardados — e nada herdado. Ele começa dizendo isso: as regras

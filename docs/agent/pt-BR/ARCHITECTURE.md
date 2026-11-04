@@ -1,7 +1,7 @@
 # Escrevendo o panorama de arquitetura
 
-Como escrever e manter o `docs/ARCHITECTURE/OVERVIEW.md` num projeto construído sobre este
-template. Aquele arquivo descreve o que o sistema é, agora: suas partes, o que cada uma governa,
+Como escrever e manter o `docs/ARCHITECTURE.md` num projeto construído com esta extensão. Aquele
+arquivo descreve o que o sistema é, agora: suas partes, o que cada uma governa,
 como elas se alcançam e onde quebram — escrito de forma que quem chega no primeiro dia encontre a
 costura de que precisa sem ler o código antes.
 
@@ -10,22 +10,28 @@ propósito: um preâmbulo explicando como escrever um documento serve exatamente
 disso é ruído em cima do que o leitor veio buscar. Caminhos fora desta pasta são escritos como
 código e não como link, pelo motivo dado em [Regras](RULES.md).
 
+## Quando é escrito
+
+**Na inicialização, depois que o charter e o SRS são acordados**, e antes do primeiro epic — mas
+**não é um portão**: nada espera que ele seja acordado. Começa quase vazio, a partir do que o
+charter e o SRS já dizem, e cresce com o sistema. Veja [Inicialização](INITIALIZATION.md).
+
 ## O que não é
 
-- **Não é a arquitetura do ambiente de desenvolvimento.** O container, o sandbox, o daemon Docker
-  aninhado pertencem ao template, e estão documentados em
-  `.code-server/docs/overview/ (legacy template)`, que versiona junto com o template e não com o projeto. Não
-  repita aquilo lá; aponte.
+- **Não é a arquitetura do ambiente de desenvolvimento.** O container, o sandbox e o daemon Docker
+  aninhado pertencem à imagem que esta extensão constrói, e estão documentados com ela, no
+  repositório da própria extensão. Não repita aquilo aqui; aponte.
 - **Não é um log de decisões.** Por que uma forma foi escolhida, o que foi rejeitado e o que custou
-  moram nas tasks do projeto sob `docs/PLANNING/`, e continuam verdadeiros depois que o código anda.
-  O arquivo de arquitetura descreve o presente e é reescrito sempre que o presente muda.
-- **Não é o `docs/OVERVIEW.md`**, que é como usar o template como consumidor. Vários arquivos num
-  projeto se chamam `OVERVIEW.md`; confira qual você está editando.
+  moram nas tasks do projeto — no tracker, quando o projeto tem um — e continuam verdadeiros depois
+  que o código anda. O arquivo de arquitetura descreve o presente e é reescrito sempre que o
+  presente muda.
+- **Não é o charter nem o SRS.** O charter diz por que o projeto existe e o SRS o que ele precisa
+  fazer; este diz o que ele *é*. Quando um deles muda a forma, este muda junto.
 
 ## Mantendo verdadeiro
 
 Um documento de arquitetura que fica atrás do sistema é pior que nenhum, porque nele se acredita. A
-regra que o mantém honesto: **uma task que muda a forma atualiza o arquivo de arquitetura no mesmo
+regra que o mantém honesto: **uma task que muda a forma atualiza o `docs/ARCHITECTURE.md` no mesmo
 pull request.** A task diz por que mudou; o arquivo de arquitetura diz o que é agora. Se os dois
 discordarem, o errado é o arquivo de arquitetura.
 

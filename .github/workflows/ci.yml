@@ -152,6 +152,8 @@ jobs:
         run: bash docs/agent/project-rules.test.sh
       - name: initialization records whether Cucumber runs acceptance features
         run: bash docs/agent/initialization-cucumber.test.sh
+      - name: the initialization writes docs/ARCHITECTURE.md and a change of shape keeps it true
+        run: bash docs/agent/architecture-document.test.sh
 
   bash-syntax:
     needs: changes
