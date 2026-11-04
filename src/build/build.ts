@@ -9,8 +9,8 @@ import { carried } from './template.ts'
 /**
  * What building is, as functions over what the host looks like.
  *
- * **The editor's API is a shell over these.** `createTerminal` is handed what
- * `composeAndBuildCommand` returns and the terminal's `exited` is handed to `buildOutcome`;
+ * **The editor's API is a shell over these.** The build terminal runs what
+ * `buildInvocation` returns, and the terminal's exit is handed to `buildOutcome`;
  * nothing in here knows about the editor, which is why all of it is tested
  * without one.
  */
@@ -159,7 +159,7 @@ export function hostProblems(
         message: windows
           ? 'Docker Desktop is not installed, or docker.exe is not on the PATH the editor starts with. ' +
             'Install it from https://docs.docker.com/desktop/.'
-          : `'docker' is not on PATH and setup needs it.${install('docker')}`,
+          : `'docker' is not on PATH and the build needs it.${install('docker')}`,
         blocking: true,
       })
       break
@@ -192,7 +192,6 @@ export function hostProblems(
 
 /** What composing and building a project's image takes. */
 export interface Compose {
-  /** The carried composer — never a project's own copy. */
   /** The folder holding core/ and stacks/, which the composer reads. */
   root: string
   /** Stacks, in the order the manifest lists them. */

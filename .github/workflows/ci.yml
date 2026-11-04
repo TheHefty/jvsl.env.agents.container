@@ -8,10 +8,10 @@ name: CI
 # required check in the repository's settings, and a required check nobody
 # remembered to add is a check that does not gate.
 #
-# Three of the template's jobs did not come, because the tests they run did not:
-# `host-packages` (packages.test.sh), `setup-manifest` (setup.test.sh) and
-# `agent-docs` (docs/agent/check-parity.test.sh). They arrive with their
-# subjects.
+# Two of the template's jobs did not come, because the tests they run did not:
+# `host-packages` (packages.test.sh) and `setup-manifest` (setup.test.sh). The
+# third, `agent-docs` (docs/agent/check-parity.test.sh), arrived with its
+# subject and is below.
 #
 # `pull_request` carries no branch filter, deliberately. The template's does,
 # and that is why a pull request stacked on another one there receives no CI at

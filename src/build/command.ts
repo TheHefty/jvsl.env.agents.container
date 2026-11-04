@@ -14,13 +14,13 @@ import { hostProject } from '../host/project.ts'
 import { SelectionView } from '../view/selection-view.ts'
 
 /**
- * Builds the image, in a terminal whose process is `setup` itself.
+ * Builds the image, in a terminal whose process is `docker build` itself.
  *
  * **Not a shell with a command typed into it.** `sendText` leaves the command as
  * editable text, gives no exit code, and makes a path with a space in it a
- * quoting problem. What is here instead is the script as the terminal's process,
- * with `/bin/sh` present for the single purpose of redirecting standard input —
- * see `composeAndBuildCommand`, which is where that reasoning lives.
+ * quoting problem. What is here instead is docker as the terminal's process,
+ * with the composed Dockerfile on its input — see `buildInvocation` and
+ * `buildInTerminal`, which is where that reasoning lives.
  */
 export async function build(
   write: (lines: string[]) => void,

@@ -18,8 +18,8 @@ import { SelectionView } from './view/selection-view.ts'
 const CHANNEL_NAME = 'Dev Container Projects'
 
 /**
- * Wakes up on a project built on this template, writes the configuration the
- * container tooling needs, and gets out of the way.
+ * Wakes up on a project that carries this extension's manifest, writes the
+ * configuration the container tooling needs, and gets out of the way.
  *
  * **It does not do the asking.** The tooling shows its own "Reopen in
  * Container" notification once a configuration exists, and none of its settings
@@ -27,11 +27,11 @@ const CHANNEL_NAME = 'Dev Container Projects'
  * notification is the only one. This extension speaks only when there is
  * something the native one cannot say: a refusal, or a degraded open.
  *
- * **Activation is declared on `.code-server.stack.json`**, the manifest at the
- * project root, never on a path inside `.code-server/`. A clone without
- * `--recursive` leaves that directory existing and empty, so an event naming
- * anything inside it never fires — in exactly the case a project most needs to
- * be told something.
+ * **Activation is declared on the manifest at the project root**
+ * (`.agent-container.stack.json`, `MANIFEST`), never on a path inside a
+ * directory. A clone without `--recursive` used to leave the template's
+ * submodule existing and empty, so an event naming anything inside it never
+ * fired — in exactly the case a project most needs to be told something.
  */
 // activate() awaits nothing by design (activate-returns-promptly.test.sh holds
 // it to that), and stays async because that guard and commands-register-first

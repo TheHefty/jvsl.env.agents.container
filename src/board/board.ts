@@ -1,7 +1,7 @@
 /**
  * The board's shell: finds the project's container, reads its tracker, and
- * shows the page. Every decision is in board-locate.ts, board-read.ts and
- * board-page.ts, where it is tested; what is here is the editor and the
+ * shows the page. Every decision is in ../host/locate.ts (containerFor, which
+ * tracker.ts calls), board-read.ts and board-page.ts, where it is tested; what is here is the editor and the
  * process calls those decisions need.
  *
  * **It runs exactly one bd command, `bd export`, which only reads** (FR-118).
