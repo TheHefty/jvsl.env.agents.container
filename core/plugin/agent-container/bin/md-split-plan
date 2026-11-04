@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# md-split-plan [--apply] [--keep <heading>]... <file.md>: plans the split the
+# rules prescribe for a Markdown file over the size limit, or performs it with
+# --apply (skill split-markdown; story
+# a-markdown-file-that-grew-past-the-limit-is-split-by-its-subjects). See
+# md-split-plan.mjs beside it. Run from the repository's root.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+command -v node >/dev/null 2>&1 || { echo "md-split-plan: node is not on PATH, and the planner is a Node script; it ships in the image with Node." >&2; exit 1; }
+exec node "$HERE/md-split-plan.mjs" "$@"
