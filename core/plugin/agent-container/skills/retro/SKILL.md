@@ -51,7 +51,7 @@ Once their line is written or approved, elaborate on it, here in the conversatio
 - Say **what to read or try next**: the file to read first, the experiment that would answer the question, the documentation worth the time.
 - **When nothing in today's work touches the topic, say so.** A connection invented to make the elaboration look grounded is worse than none: it reads as fact.
 
-**Never change their line.** You elaborate on it; the line in the entry is still exactly what they wrote or approved.
+**Never change their line.** You elaborate on it; the line in the entry is still exactly what they wrote or approved. Your elaboration goes in the entry too, in its own section, **On what I want to learn**, opening with "Written by the agent." — so whose words are whose survives the trip to their journal.
 
 ## 6. Write the entry
 
@@ -67,6 +67,9 @@ Blog candidate: yes | no
 ## Went wrong
 ## Decided alone
 ## What I want to learn
+## On what I want to learn
+Written by the agent.
+<your elaboration from step 5>
 ## Left open
 ## Links
 ```
@@ -77,7 +80,7 @@ Then run:
 ${CLAUDE_PLUGIN_ROOT}/bin/journal-write <file>
 ```
 
-It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
+It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "On what I want to learn" or one that does not open with "Written by the agent.", an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
 
 ## 7. Hand over
 
