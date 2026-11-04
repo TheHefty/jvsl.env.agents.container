@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { hiddenClosed } from './board-filter.ts'
 import { CSP, boardPage, messagePage } from './board-page.ts'
+import { escapeRawHtml } from './board-markdown.ts'
 import type { Item } from './board-read.ts'
 
 const NONCE = 'n0nceN0nceN0nce0'
@@ -43,6 +44,25 @@ test('what an item says cannot gain the nonce or a place outside its container',
   const scripts = [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0])
   assert.equal(scripts.filter((s) => s.includes(NONCE)).length, 1)
   assert.ok(scripts.filter((s) => !s.includes(NONCE)).every((s) => s === '<script>'))
+})
+
+test('gh-335: tags in an item\'s fields show as text, and the board\'s controls still exist', () => {
+  // The issue's regression case. The real renderer is VS Code's and runs only
+  // in the editor; what it is handed is the escaped source, and a renderer
+  // keeps an entity an entity, so a paragraph around it stands in for it here.
+  const text = 'Given a page with <title> "B"\nAnd <textarea> and <img src=x onerror=alert(1)>'
+  const render = (md: string) => `<p>${escapeRawHtml(md)}</p>`
+  const fields = { description: text, acceptance: text, design: text }
+  const html = boardPage({
+    nonce: NONCE,
+    items: [item({ title: '<title>', ...fields })],
+    rendered: new Map([['p-1', { description: render(text), acceptance: render(text), design: render(text) }]]),
+  })
+  const body = html.slice(html.indexOf('<body'))
+  assert.ok(!/<title>|<textarea|<img\b/.test(body), 'no field opens a real element')
+  assert.ok(body.includes('&lt;title> "B"'), 'the text is there, as text')
+  // The controls the issue saw disappear are still in the markup.
+  for (const control of ['data-view=', '<dialog', '<select']) assert.ok(body.includes(control), control)
 })
 
 test('an item without a rendering shows its text as text', () => {
