@@ -5,6 +5,7 @@ import { aiMemoryMarker } from './location.ts'
 import { CONFIG_PATH } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { nextManifest, withProjectId, type Answers } from '../configure/questions.ts'
+import { HOOK_ASSET, HOOK_PATH } from '../configure/githook.ts'
 
 export interface ScaffoldInput {
   root: string
@@ -99,6 +100,11 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
     const contents = readOrNull(join(input.assetsDir, name))
     if (contents !== null) writes.push({ path: name, contents })
   }
+
+  // The Markdown size hook (story qws.1): the directory is empty, so there is
+  // no hook of anybody's to keep, and the container turns it on at boot.
+  const hook = readOrNull(join(input.assetsDir, HOOK_ASSET))
+  if (hook !== null) writes.push({ path: HOOK_PATH, contents: hook })
 
   if (input.answers.aiMemory === true) {
     writes.push({ path: '.ai-memory.toml', contents: aiMemoryMarker() })

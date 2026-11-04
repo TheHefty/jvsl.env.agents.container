@@ -370,6 +370,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: boot reconciles image skills into the shared agent root without overwriting user skills
         run: bash core/cont-init/46-agent-skills.test.sh
+      - name: boot points the project's git at .githooks only when nothing else was chosen
+        run: bash core/cont-init/47-git-hooks-path.test.sh
+      - name: the project's pre-commit refuses an oversized Markdown file and a missing check-md-size
+        run: bash assets/project/githooks-pre-commit.test.sh
 
   jail-wrappers:
     needs: changes

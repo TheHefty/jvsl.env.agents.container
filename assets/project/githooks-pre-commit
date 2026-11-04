@@ -1,0 +1,17 @@
+#!/bin/sh
+# jvsl.env.agents.container: generated. Do not edit: Configure brings it up to
+# date, and a file without this line is yours and is never touched.
+#
+# Holds every tracked Markdown file under the size limit the rules set (50 KiB;
+# CHANGELOG.md exempt). check-md-size ships in the agent container's image; the
+# container points this repository's git at .githooks when it boots. A hook,
+# not CI: skippable with --no-verify, so it is a reminder for the author.
+if ! command -v check-md-size >/dev/null 2>&1; then
+    echo "pre-commit: refused: check-md-size is not on PATH, so the Markdown size rule cannot be checked." >&2
+    echo "pre-commit: it ships in the agent container's image: commit from the container's window, or rebuild the image if it is missing there." >&2
+    exit 1
+fi
+if ! check-md-size; then
+    echo "pre-commit: refused: a Markdown file is over the size limit. The split-markdown skill splits it by its sections, as the rules say: ask the agent to split it." >&2
+    exit 1
+fi

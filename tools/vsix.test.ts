@@ -237,7 +237,7 @@ test('the package holds the composer where carried() looks for it', () => {
  */
 test('the project assets ship, and this repository\'s own instructions do not', () => {
   const files = packagedFiles()
-  for (const asset of ['assets/project/CLAUDE.md', 'assets/project/AGENTS.md']) {
+  for (const asset of ['assets/project/CLAUDE.md', 'assets/project/AGENTS.md', 'assets/project/githooks-pre-commit']) {
     assert.ok(files.includes(asset), `${asset} must ship: it is what a project gets`)
   }
   // The root CLAUDE.md is *this project's* own, importing MODES.md and

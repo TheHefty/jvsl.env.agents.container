@@ -368,7 +368,11 @@ RUN mkdir -p /config/.claude /config/.codex \
 # on its own. See docs/DEBTS/agent-state-directory-is-lost-under-the-mount/.
 COPY core/cont-init/45-agent-state-dirs.sh /custom-cont-init.d/45-agent-state-dirs.sh
 COPY core/cont-init/46-agent-skills.sh /custom-cont-init.d/46-agent-skills.sh
-RUN chmod +x /custom-cont-init.d/45-agent-state-dirs.sh /custom-cont-init.d/46-agent-skills.sh
+# Points the project's git at its .githooks, whose pre-commit holds Markdown
+# under the size limit, when nothing else was chosen (story
+# the-markdown-size-check-runs-on-every-commit-in-a-project).
+COPY core/cont-init/47-git-hooks-path.sh /custom-cont-init.d/47-git-hooks-path.sh
+RUN chmod +x /custom-cont-init.d/45-agent-state-dirs.sh /custom-cont-init.d/46-agent-skills.sh /custom-cont-init.d/47-git-hooks-path.sh
 
 # 5.0 A login shell for 'abc'. The base image gives it /bin/false, which was
 # sound while the only way in was an editor running inside the container as
