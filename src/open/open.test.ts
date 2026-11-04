@@ -268,6 +268,24 @@ test('diverging wrappers open without a version and warn, rather than refusing t
   }
 })
 
+test('a manifest limit that Docker would refuse refuses the open, naming the file, the field and the form', () => {
+  // gh-326: "6 GB" reached Docker as typed and failed at container creation,
+  // inside Dev Containers, naming a flag and not the manifest it came from.
+  const cause = refusal({ manifest: '{"limits":{"memory":"6 GB"}}' })
+  assert.match(cause, /\.agent-container\.stack\.json/)
+  assert.match(cause, /limits\.memory "6 GB"/)
+  assert.match(cause, /like 6g or 6144m/)
+  assert.match(cause, /Nothing was opened/)
+})
+
+test('a core count above the host refuses the open with the bound that applies', () => {
+  // 64 cores asked of this 8-core host (base.facts) became --cpuset-cpus
+  // 0-63, which Docker accepts and the container simply never honours.
+  const cause = refusal({ manifest: '{"limits":{"cpus":64}}' })
+  assert.match(cause, /limits\.cpus 64/)
+  assert.match(cause, /from 1 to 8/)
+})
+
 // --- Configure regenerates the configuration (debt
 // configure-changes-the-limits-but-the-container-keeps-the-old-ones) -----------
 
@@ -310,6 +328,16 @@ test('an unreadable manifest regenerates nothing, rather than writing default li
     const r = regen({ manifest })
     assert.equal(r.action, 'keep', String(manifest))
     if (r.action === 'keep') assert.match(r.why, /manifest/)
+  }
+})
+
+test('a manifest limit that Docker would refuse regenerates nothing, and says the field and the form', () => {
+  const r = regen({ manifest: '{"limits":{"cpus":99}}' })
+  assert.equal(r.action, 'keep')
+  if (r.action === 'keep') {
+    assert.match(r.why, /limits\.cpus 99/)
+    assert.match(r.why, /from 1 to 8/)
+    assert.match(r.why, /left as it is/)
   }
 })
 

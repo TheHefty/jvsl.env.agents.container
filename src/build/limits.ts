@@ -51,8 +51,44 @@ export function cpusetRange(cpus: number | undefined, hostCpus: number): string 
   return `0-${chosen - 1}`
 }
 
+/** A size in Docker's own form: digits with an optional b, k, m or g unit,
+ * each optionally with a trailing b — `6g`, `6144m`, `2147483648`. `6 GB` and
+ * `6.5g` are not, and Docker refuses both at container creation, naming a
+ * flag and not the file the value came from (gh-326). */
+export const DOCKER_SIZE = /^\d+(?:[kmg]b?)?$/i
+
+/** What Configure's input boxes check as the developer types, so a bad value
+ * is refused where it is typed, naming the form — the same shape `readLimits`
+ * refuses again when the manifest is read. Empty is unset: the box starts
+ * from a default, and clearing it means "keep the default", not a refusal. */
+export function validateMemory(value: string): string | undefined {
+  if (value === '' || DOCKER_SIZE.test(value)) return undefined
+  return "Docker's size form only: digits with an optional b, k, m or g unit, and no space — like 6g, 6144m or 2147483648."
+}
+
+/** The cores question's check, bound by the host's own count. The read side
+ * names its own bound in its refusal, so a WSL distro limited below the
+ * machine is still refused there, with the number that applies. */
+export function validateCpus(hostCpus: number): (value: string) => string | undefined {
+  return (value) => {
+    if (value === '' || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= hostCpus)) {
+      return undefined
+    }
+    return `A whole number from 1 to ${hostCpus} (this host's cores), or empty for half the host's.`
+  }
+}
+
+/** `readLimits`' answer: the limits to build with, and a refusal when the
+ * manifest carries a shape Docker would reject far from its cause. */
+export interface LimitsRead {
+  limits: Limits
+  /** Names the field, the value and the accepted form. The caller refuses on
+   * it rather than forwarding or silently defaulting (gh-326). */
+  refusal?: string
+}
+
 /**
- * Reads `.code-server.stack.json`. Every field is optional and every default is
+ * Reads the project's manifest. Every field is optional and every default is
  * what the launcher used, so a project that has never heard of `limits` gets
  * exactly what it got yesterday.
  *
@@ -61,17 +97,26 @@ export function cpusetRange(cpus: number | undefined, hostCpus: number): string 
  * for something with nowhere to say it. This has somewhere to say it, and
  * opening with 6 GiB when the file asked for 8 without a word is what turns
  * this into an unexplained OOM hours later.
+ *
+ * **A present-but-malformed limit is refused, not forwarded and not
+ * defaulted.** `"memory": 6` would reach Docker as six bytes; `"memory":
+ * "6 GB"` as a flag error at container creation, inside Dev Containers,
+ * naming neither this file nor the field; and the old behaviour — ignoring it
+ * into the default — is that unexplained OOM wearing a different hat. `null`
+ * is absent, the jq `// empty` semantics the rest of the manifest uses, and
+ * `""` for a size is unset, because that is what Configure writes when a box
+ * is cleared (gh-326).
  */
-export function readLimits(raw: string): Limits {
+export function readLimits(raw: string, hostCpus: number): LimitsRead {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return defaults(true)
+    return { limits: defaults(true) }
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return defaults(true)
+    return { limits: defaults(true) }
   }
 
   const limits = (parsed as { limits?: unknown }).limits
@@ -80,23 +125,39 @@ export function readLimits(raw: string): Limits {
       ? (limits as Record<string, unknown>)[name]
       : undefined
 
-  // Wrong types are ignored rather than forwarded: `"memory": 6` would reach
-  // Docker as `--memory 6`, which is six bytes, and the container would die
-  // immediately for a reason nobody would connect to this file.
+  const sizeOk = (value: unknown): boolean =>
+    value === undefined || value === null || value === '' ||
+    (typeof value === 'string' && DOCKER_SIZE.test(value))
+  const cpusOk = (value: unknown): boolean =>
+    value === undefined || value === null ||
+    (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= hostCpus)
+  const refuseRead = (name: string, value: unknown, form: string): LimitsRead =>
+    ({ limits: defaults(false), refusal: `limits.${name} ${JSON.stringify(value)} is not ${form}` })
+
   const memoryField = field('memory')
+  if (!sizeOk(memoryField)) {
+    return refuseRead('memory', memoryField, "a size in Docker's form — digits with an optional b, k, m or g unit, no space, like 6g or 6144m")
+  }
+  const swapField = field('memorySwap')
+  if (!sizeOk(swapField)) {
+    return refuseRead('memorySwap', swapField, "a size in Docker's form — digits with an optional b, k, m or g unit, no space, like 6g or 6144m")
+  }
+  const cpusField = field('cpus')
+  if (!cpusOk(cpusField)) {
+    return refuseRead('cpus', cpusField, `a whole number of cores from 1 to ${hostCpus}`)
+  }
+
   const memory = typeof memoryField === 'string' && memoryField !== '' ? memoryField : DEFAULT_MEMORY
 
-  const swapField = field('memorySwap')
   const memorySwap =
     typeof swapField === 'string' && swapField !== '' ? swapField : plusTwoGigabytes(memory)
 
-  const cpusField = field('cpus')
   const cpus =
     typeof cpusField === 'number' && Number.isInteger(cpusField) && cpusField >= 1
       ? cpusField
       : undefined
 
-  return { memory, memorySwap, cpus, usedDefaults: false }
+  return { limits: { memory, memorySwap, cpus, usedDefaults: false } }
 }
 
 function defaults(usedDefaults: boolean): Limits {
