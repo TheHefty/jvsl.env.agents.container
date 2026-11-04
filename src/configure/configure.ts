@@ -17,7 +17,7 @@ export interface ConfigureResult {
    *
    * **It is reported so it can be asserted**, because this is the value whose
    * being wrong costs the most: the questions write
-   * `.code-server.stack.json`, which is tracked and is the only record of what
+   * `.agent-container.stack.json`, which is tracked and is the only record of what
    * a project selected, so asking about the workspace instead of the folder
    * somebody chose rewrites it in a repository nobody asked about.
    */

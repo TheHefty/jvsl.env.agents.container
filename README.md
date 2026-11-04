@@ -57,7 +57,6 @@ Open the Command Palette and run one of:
 | **Agent Container: Configure Stacks and Limits** | Changes the project's stacks and resource limits |
 | **Agent Container: Show What Was Detected** | Reports what the extension read about the host and the project |
 | **Agent Container: Show the Work** | Opens the project's tracker as a board, read-only, when the manifest turns the tracker on |
-| **Agent Container: Migrate from legacy template** | Moves a project built on the old code-server template to this format, one step per run: the files, then a rebuild, then the planning into the tracker. Each step shows its plan and waits for Apply |
 
 The same entries are available from the **Agent Container** view in the Explorer.
 

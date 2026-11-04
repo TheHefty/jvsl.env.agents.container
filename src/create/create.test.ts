@@ -4,10 +4,10 @@ import assert from 'node:assert/strict'
 import { decideCreate, type CreateInput } from './create.ts'
 
 const plan = {
-  writes: [{ path: '.code-server.stack.json', contents: '{}\n' }],
+  writes: [{ path: '.agent-container.stack.json', contents: '{}\n' }],
   commit: true,
 }
-const base: CreateInput = { plan, applied: { written: ['.code-server.stack.json'], failed: [] } }
+const base: CreateInput = { plan, applied: { written: ['.agent-container.stack.json'], failed: [] } }
 
 test('a project that was written opens', () => {
   const d = decideCreate(base)
@@ -42,7 +42,7 @@ test('no commit is surfaced rather than swallowed, and still opens', () => {
   // unless this says so — but it is not a reason to withhold the project.
   const d = decideCreate({
     plan: { writes: plan.writes, commit: false, note: 'git has no identity configured here' },
-    applied: { written: ['.code-server.stack.json'], failed: [] },
+    applied: { written: ['.agent-container.stack.json'], failed: [] },
   })
   assert.equal(d.open, true)
   assert.match(d.message, /identity/)

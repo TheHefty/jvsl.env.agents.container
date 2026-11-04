@@ -447,21 +447,40 @@ operator named: `jvsl.monorepo.agents.fahrenheit404`, `jvsl.monorepo.agents.gosn
 `.code-server.stack.json`, `@.code-server/…` imports in `CLAUDE.md` and `docs/RULES.md`, and its
 planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30 debts.
 
-- **FR-122** — **One command migrates a project: Agent Container: Migrate from code-server.** It
+### Amended on 2026-11-04: the migration is removed
+
+**Decided by the operator on 2026-11-04: no project in the old format remains**, so the support for it
+goes whole (debt `dead-code-and-comments-and-documents-that-still-describe-the-template`, gh-332,
+task 4wl.3). The legacy manifest
+`.code-server.stack.json`, its adoption on opening, its activation event, the Migrate command, its
+view entry and `migrate-planning` in the image are gone, and the requirements that described them are
+struck below rather than deleted, so the record of what was built stays readable.
+
+**What stays.** FR-127 (`check-md-size` in the image) and FR-129 (where planning lives in a project
+with a tracker) stand on their own and are unchanged. FR-130 stands, without the adoption.
+
+**What it costs, said plainly.** A folder that still carries only `.code-server.stack.json` is now a
+folder with no manifest. Open's questions and Configure write a new one, which since #344 carries an
+id, so its container comes up on a new, empty `/config` volume with its state under the old name.
+That is accepted on the premise above. Restoring the state is removing the `"id"` field, which
+returns to the folder-named volume. **Released in 2.x, not as a major**, by the operator's decision:
+the command removed served projects that no longer exist.
+
+- ~~**FR-122** — **One command migrates a project: Agent Container: Migrate from code-server.** It
   shows the whole plan first, applies only on confirmation, and leaves every change uncommitted for
-  the operator to review.
-- **FR-123** — **The submodule goes, and the state stays.** `.code-server/` and its `.gitmodules`
+  the operator to review.~~ **Struck on 2026-11-04** (see the amendment above).
+- ~~**FR-123** — **The submodule goes, and the state stays.** `.code-server/` and its `.gitmodules`
   entry are removed; the manifest takes its current name with `"beads": true`. The project's data
-  volume keeps its name, so `/config` survives the move.
-- **FR-124** — **The instructions stop importing from the submodule.** `@.code-server/…` lines are
+  volume keeps its name, so `/config` survives the move.~~ **Struck on 2026-11-04** (see the amendment above).
+- ~~**FR-124** — **The instructions stop importing from the submodule.** `@.code-server/…` lines are
   removed from `CLAUDE.md`, `AGENTS.md` and `docs/RULES.md`; the inherited rules reach the project
   through the image, at `~/.claude/rules/`. Prose that still mentions the submodule is **listed, never
-  rewritten by guess**.
-- **FR-125** — **The planning and the debts move into the project's tracker, and their folders go.**
+  rewritten by guess**.~~ **Struck on 2026-11-04** (see the amendment above).
+- ~~**FR-125** — **The planning and the debts move into the project's tracker, and their folders go.**
   After every item is read back whole, `docs/PLANNING` and `docs/DEBTS` are deleted entirely. An item's
   state is read from its own document first (a task's `status:` front matter, a story's or epic's
   `**Status**` row), then from its parent's table; an epic closes when every story under it is closed.
-  Measured, the vocabulary maps as the operator decided:
+  Measured, the vocabulary maps as the operator decided:~~ **Struck on 2026-11-04** (see the amendment above).
 
   | The document says | The item becomes |
   |---|---|
@@ -473,9 +492,9 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   | nothing | the state of its story |
 
   A debt's kind is its Kind row: `hotfix` and `shortcut` stand; anything else is `defect`.
-- **FR-126** — **The migration runs where bd is.** bd exists only inside the project's container, so the
+- ~~**FR-126** — **The migration runs where bd is.** bd exists only inside the project's container, so the
   move of the planning runs there, after a boot has initialised the tracker; the migration script ships
-  in the image rather than in `scripts/`.
+  in the image rather than in `scripts/`.~~ **Struck on 2026-11-04** (see the amendment above).
 - **FR-127** — **The Markdown size check ships in the image.** `check-md-size` is installed on the
   image's `PATH`, and a migrated project's `.githooks/pre-commit` calls it from there, saying why if it
   is absent. Found while measuring: the pre-commit of `fahrenheit404` and `gosnip` runs
@@ -483,13 +502,13 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   window connected to the container, the editor's git runs inside it, where the image's `PATH` is.
   Decided by the operator on 2026-10-07, over a copy per project or no check at all. The normative
   rule that names `.code-server/scripts/check-md-size.sh` changes with it.
-- **FR-128** — **A planning migration that stopped part-way carries on from where it stopped.** Every
+- ~~**FR-128** — **A planning migration that stopped part-way carries on from where it stopped.** Every
   item records the document it came from as its external reference (`planning:<path>`), so a second run
   creates only what is missing, closes only what is still open, and reads every item back before the
   folders go. Items an earlier version created without that mark are recognised by type, title and
   parents, and marked; an item the plan cannot place stops the run before anything is written. Found on
   fahrenheit404 on 2026-10-07: the run stopped after 18 of 28 items, and the command then refused it for
-  good, since a rerun would have duplicated them.
+  good, since a rerun would have duplicated them.~~ **Struck on 2026-11-04** (see the amendment above).
 - **FR-129** — **The shipped rules say where planning lives in a project that has a tracker.** Epics,
   stories and tasks are items there, and docs/PLANNING is not used; a story's scenarios are its
   acceptance criteria; a `.feature` a runner executes lives beside the suite that runs it, and the story
@@ -498,7 +517,8 @@ planning as files: 9 stories and 16 tasks, 1 and 1, 85 and 151, with 1, 2 and 30
   chose the suite's side over one fixed folder in every project.
 - **FR-130** — **Opening a folder writes nothing to it.** The extension still activates — the panel
   and the older-copy notice need it — but only Open, Create, or the panel's "Open in container"
-  prepares a project: writes its configuration and instruction files and adopts an old manifest.
+  prepares a project: writes its configuration and instruction files. (It also adopted an old
+  manifest until 2026-11-04; see the FR-12x amendment above.)
   Open and Create hand the folder over to the window that opens it; that window prepares it only
   for a record naming its own folder from the last two minutes, and consumes the record either way.
   Found on 2026-10-15: `code <folder>` wrote `.devcontainer`, `CLAUDE.md` and `AGENTS.md` into

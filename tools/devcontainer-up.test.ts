@@ -89,7 +89,7 @@ test('a container brought up from our configuration got the machine the manifest
     sh('docker', ['build', '-q', '-f', dockerfile, '-t', IMAGE, parent])
 
     writeFileSync(
-      join(root, '.code-server.stack.json'),
+      join(root, '.agent-container.stack.json'),
       JSON.stringify({ limits: { memory: '512m', cpus: 1 } }),
     )
 
@@ -178,7 +178,7 @@ test('a container brought up from our configuration got the machine the manifest
     // `up --remove-existing-container`. Asserted on the running container, for
     // the reason this whole test exists.
     const raised = JSON.stringify({ limits: { memory: '768m', cpus: 1 } })
-    writeFileSync(join(root, '.code-server.stack.json'), raised)
+    writeFileSync(join(root, '.agent-container.stack.json'), raised)
     const configPath = join(root, '.devcontainer', 'devcontainer.json')
     const regenerated = regenerateConfiguration({
       projectRoot: root,

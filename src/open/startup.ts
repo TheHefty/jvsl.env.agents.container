@@ -1,18 +1,16 @@
-import { unlinkSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { hostProblems, sandboxWarnings } from '../build/build.ts'
 import { hostChecks, sandboxConditions } from '../host/checks.ts'
 import { describe, extensionVersion } from '../host/detected.ts'
-import { hostProject, readOrNull } from '../host/project.ts'
+import { hostProject } from '../host/project.ts'
 import { projectContainer } from '../build/command.ts'
 import { findGradleBuildsFor, gradleVersion } from '../build/gradle.ts'
 import { dockerFor } from '../host/docker.ts'
 import { prepare } from './command.ts'
 import { HANDOVER_KEY, handoverFolder, startupAction } from './handover.ts'
 import { olderCopyNotice } from './older-copy.ts'
-import { MANIFEST, LEGACY_MANIFEST, resolveManifest } from '../shared/stack-manifest.ts'
+import { MANIFEST } from '../shared/stack-manifest.ts'
 import { filesFor } from '../host/files.ts'
 import { CONFIG_PATH, REOPEN_COMMAND } from './open.ts'
 import { afterRegenerate, staleness } from './stale.ts'
@@ -64,8 +62,6 @@ export async function startup(
     return
   }
 
-  // **Before `prepare`, and that is the whole of "resolved once".** Adoption
-  // renames the file, so every read after this point finds one name on disk.
   // **Activation writes nothing unless Open or Create asked** (story
   // opening-a-folder-writes-nothing). `code <folder>` used to rename an old
   // manifest and write .devcontainer, CLAUDE.md and AGENTS.md here. The record
@@ -82,69 +78,15 @@ export async function startup(
     offerGradleNotice(context, write, project)
     return
   }
-  if (project.kind === 'host') adoptManifest(project.path, write)
-
   await prepare(context, channel, write, { handOver: true })
 }
 
-/**
- * Which manifest this project has, settled once, by renaming an older one.
- *
- * **The order is not negotiable and it is the task's first failure scenario.**
- * Write the new file, read it back, compare it against what was parsed, and only
- * then unlink. A half-completed rename can leave a project with *neither* name —
- * and the extension does not wake for such a project, so the damage and the
- * inability to report it would arrive together.
- *
- * The decision itself is `resolveManifest`, which is pure and tested without a
- * filesystem. Everything dangerous is here.
- */
-export function adoptManifest(root: string, write: (lines: string[]) => void): void {
-  const currentPath = join(root, MANIFEST)
-  const legacyPath = join(root, LEGACY_MANIFEST)
-  const resolution = resolveManifest({
-    current: readOrNull(currentPath),
-    legacy: readOrNull(legacyPath),
-  })
-
-  if (resolution.action === 'none' || resolution.action === 'use-current') return
-
-  if (resolution.action === 'keep-both' || resolution.action === 'leave-unreadable') {
-    write([`manifest: ${resolution.note}`])
-    void vscode.window.showWarningMessage(resolution.note)
-    return
-  }
-
-  try {
-    writeFileSync(currentPath, resolution.contents, 'utf8')
-    if (readOrNull(currentPath) !== resolution.contents) {
-      const cause =
-        `\`${MANIFEST}\` was written but did not read back identical, so \`${LEGACY_MANIFEST}\` ` +
-        `was left exactly where it is. Nothing was deleted.`
-      write([`manifest: ${cause}`])
-      void vscode.window.showWarningMessage(cause)
-      return
-    }
-    unlinkSync(legacyPath)
-  } catch (error) {
-    const cause =
-      `\`${LEGACY_MANIFEST}\` could not be adopted: ${String(error)}. Nothing was deleted.`
-    write([`manifest: ${cause}`])
-    void vscode.window.showWarningMessage(cause)
-    return
-  }
-
-  write([`manifest: ${resolution.note}`])
-  void vscode.window.showInformationMessage(resolution.note)
-}
-
 export function watchManifest(onChange: () => void): vscode.Disposable {
-  // **Both names, because the resolved one can stop being the answer.** The name
-  // is settled once at activation; a manifest created, renamed or removed by
-  // hand afterwards would otherwise leave every later read pointing at a path
-  // that no longer describes the project, and the symptom is silent defaults —
-  // limits nobody chose, applied with no error.
-  const watchers = [MANIFEST, LEGACY_MANIFEST].map((name) => {
+  // A manifest created, edited or removed by hand afterwards would otherwise
+  // leave every later read describing a project that is not there any more,
+  // and the symptom is silent defaults — limits nobody chose, applied with no
+  // error.
+  const watchers = [MANIFEST].map((name) => {
     const watcher = vscode.workspace.createFileSystemWatcher(`**/${name}`)
     watcher.onDidChange(onChange)
     watcher.onDidCreate(onChange)
