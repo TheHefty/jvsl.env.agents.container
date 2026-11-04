@@ -136,15 +136,15 @@ Não testes escritos ao lado, e não testes escritos depois e commitados numa or
 Nada num repo consumidor roda um teste por você. A disciplina que existir tem que ser carregada por
 quem abre a mudança.
 
-- **Mudanças sob `.code-server/` do template legado são verificadas pela CI do próprio template**, que constrói uma
-  imagem por stack. Faça as mudanças lá, no repositório do template, e consuma o resultado por um
-  bump.
+- **Mudanças na imagem — `core/` e `stacks/` — são verificadas pela CI da própria extensão**, em
+  `jvsl.env.agents.container`, que constrói uma imagem por stack. Faça as mudanças lá; um projeto as
+  recebe por uma atualização da extensão e um rebuild.
 - **Um repo consumidor não tem CI própria**, então um PR nele é mergeável no instante em que abre.
   Nada vai barrar uma mudança quebrada: a disciplina tem que vir de quem abre.
 - **Um teste aqui é um `*.test.sh` ao lado da coisa que ele exercita**, dirigindo o script real e
   não uma cópia da lógica dele, e saindo com código diferente de zero na falha.
   O `core/bin/check-md-size.test.sh`, o `scripts/every-test-has-a-runner.test.sh` e o
-  `core/cont-init/15-git-credential-helper.test.sh` do template são o formato a copiar, e são os que têm
+  `core/cont-init/15-git-credential-helper.test.sh` do repositório da extensão são o formato a copiar, e são os que têm
   um job de CI atrás.
 - **Um hook local não é CI.** É opt-in por clone e pulável com `--no-verify`, então trate como
   lembrete para quem escreve, nunca como um gate que o repositório impõe.
