@@ -43,6 +43,11 @@ home="$work/home"
 outbox="$home/journal-outbox/demo"
 configure() { mkdir -p "$home"; printf '%s' "$1" > "$home/journal.json"; }
 reset() { rm -rf "$home" "$GH_STORE" "$GH_CALLS" "$BD_CALLS"; mkdir -p "$home" "$GH_STORE"; : > "$GH_CALLS"; : > "$BD_CALLS"; unset GH_FAIL; export GH_PRIVATE=true; }
+# The filesystem the outbox is on, as journal-write measures it (debt
+# the-developer-global-journal-outbox-loses-the-entry-it-kept): every case below
+# keeps its entry on a disk, whatever /tmp is where the test runs, except the
+# cases that ask for a tmpfs. Injected the way JOURNAL_NOW injects the clock.
+export JOURNAL_HOME_FSTYPE=ext2/ext3
 write() {
     local code=0
     PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_PROJECT=demo \
@@ -125,6 +130,33 @@ body "x" "" > "$work/body.md"
 check "an empty Decided alone is refused, and says Nothing. is the answer" "$(write) $(grep -c 'Nothing\.' "$work/out")" "1 1"
 body | sed '/^## Went wrong$/,/^## Decided alone$/{/^## Decided alone$/!d}' > "$work/body.md"
 check "a missing section is refused, naming it" "$(write) $(grep -c 'Went wrong' "$work/out")" "1 1"
+
+# --- an outbox on a tmpfs is refused, not kept (fxn.1) ---------------------------
+#
+# Found on 2026-11-04: an entry written on 2026-11-02 never reached the disk. In
+# a Codex or OpenCode sandbox ai-jail mounts only that agent's own state, so
+# ~/.claude/agent-container is the sandbox's tmpfs, and "kept first" kept the
+# entry somewhere that died with the session. A copy that will not outlive the
+# session is not kept: it is refused, before anything is written or sent.
+body > "$work/body.md"
+reset; configure '{"repository": "TheHefty/journal"}'
+code="$(JOURNAL_HOME_FSTYPE=tmpfs write)"
+check "an outbox on a tmpfs is refused" "$code" "1"
+check "and says why, naming the sandbox" "$(grep -c 'tmpfs' "$work/out") $(grep -c 'sandbox' "$work/out")" "1 1"
+check "nothing is kept there" "$(ls "$outbox" 2>/dev/null | wc -l | tr -d ' ')" "0"
+check "and nothing is sent" "$(puts)" "0"
+
+# The real measurement, with nothing injected: /dev/shm is a tmpfs on every
+# Linux this runs on, so the check that decides is the one exercised here.
+if [ "$(stat -f -c %T /dev/shm 2>/dev/null)" = tmpfs ]; then
+    shm="$(mktemp -d /dev/shm/journal-test.XXXXXX)"
+    code=0; (unset JOURNAL_HOME_FSTYPE; PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$shm" JOURNAL_PROJECT=demo \
+        JOURNAL_TODAY=2026-10-29 bash "$HERE/journal-write" "$work/body.md") > "$work/out" 2>&1 || code=$?
+    check "measured, not only injected: a home on /dev/shm is refused" "$code $(find "$shm" -name '*.md' | wc -l | tr -d ' ')" "1 0"
+    rm -rf "$shm"
+else
+    check "/dev/shm is a tmpfs here, so the measured case runs" "$(stat -f -c %T /dev/shm 2>&1)" "tmpfs"
+fi
 
 if [ "$failures" -gt 0 ]; then
     echo "journal-write.test: $failures failure(s)"

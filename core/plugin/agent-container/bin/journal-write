@@ -58,6 +58,19 @@ blank "Decided alone" && refuse "\"Decided alone\" is empty: list what was chose
 project="$(bash "$HERE/journal-project")"
 box="$HOME_DIR/journal-outbox/$project"
 
+# **A copy on a tmpfs is not kept** (debt
+# the-developer-global-journal-outbox-loses-the-entry-it-kept, task fxn.1). The
+# 2026-11-02 entry was "kept" in a sandbox whose ~/.claude was the session's
+# tmpfs and died with it: ai-jail mounts only the running agent's own state, and
+# the wrappers now map this directory for every agent, but anything that leaves
+# it on a tmpfs again must not report the entry as safe. Measured where it would
+# be kept; JOURNAL_HOME_FSTYPE stands in for the measurement in the tests.
+probe="$HOME_DIR"; while [ ! -e "$probe" ] && [ "$probe" != / ]; do probe="$(dirname "$probe")"; done
+fstype="${JOURNAL_HOME_FSTYPE:-$(stat -f -c %T "$probe" 2>/dev/null || echo unknown)}"
+if [ "$fstype" = tmpfs ]; then
+    refuse "$HOME_DIR is on a tmpfs, which does not outlive this session, so a copy kept there could be lost with nothing sent. This happens in an agent's sandbox that does not mount ~/.claude/agent-container: rebuild the image so every agent's sandbox maps it, or write the retro from Claude Code, whose sandbox does. The body is still in $file."
+fi
+
 # Kept before anything is sent: no failure past this line can lose the entry.
 mkdir -p "$box" && cp -- "$file" "$box/$day.md" || {
     echo "journal-write: the entry for $day could not be kept in $box, so nothing was written. Check that $HOME_DIR is writable."
