@@ -1,7 +1,7 @@
 # Writing the architecture overview
 
-How to write and keep `docs/ARCHITECTURE/OVERVIEW.md` in a project built on this template. That
-file describes what the system is, right now: its parts, what each one owns, how they reach each
+How to write and keep `docs/ARCHITECTURE.md` in a project built with this extension. That file
+describes what the system is, right now: its parts, what each one owns, how they reach each
 other, and where it breaks — written so that someone arriving on their first day can find the seam
 they need without reading the code first.
 
@@ -10,22 +10,27 @@ purpose: a preamble explaining how to write a document is useful exactly once, a
 noise sitting on top of what the reader came for. Paths outside this folder are written as code
 rather than as links, for the reason given in [Rules](RULES.md).
 
+## When it is written
+
+**At initialization, after the charter and the SRS are agreed**, and before the first epic — but it
+is **not a gate**: nothing waits for it to be agreed. It starts nearly empty, from what the charter
+and the SRS already say, and grows with the system. See [Initialization](INITIALIZATION.md).
+
 ## What this is not
 
 - **Not the dev environment's architecture.** The container, the sandbox and the nested Docker
-  daemon belong to the template, and they are documented in
-  `.code-server/docs/overview/ (legacy template)`, which versions with the template rather than with the project.
-  Do not restate it there; link it.
+  daemon belong to the image this extension builds, and they are documented with it, in the
+  extension's own repository. Do not restate them here; link them.
 - **Not a decision log.** Why a shape was chosen, what was rejected, and what it cost live in the
-  project's tasks under `docs/PLANNING/`, and stay true after the code moves on. The architecture
-  file describes the present and is rewritten whenever the present changes.
-- **Not `docs/OVERVIEW.md`**, which is how to use the template as a consumer. Several files in a
-  project are called `OVERVIEW.md`; check which one you are editing.
+  project's tasks — in the tracker, when the project has one — and stay true after the code moves
+  on. The architecture file describes the present and is rewritten whenever the present changes.
+- **Not the charter or the SRS.** The charter says why the project exists and the SRS what it must
+  do; this says what it *is*. When one of them changes the shape, this changes with it.
 
 ## Keeping it true
 
 An architecture document that lags the system is worse than none, because it is believed. The rule
-that keeps it honest: **a task that changes the shape updates the architecture file in the same
+that keeps it honest: **a task that changes the shape updates `docs/ARCHITECTURE.md` in the same
 pull request.** The task says why it changed; the architecture file says what it is now. If they
 disagree, the architecture file is wrong.
 
