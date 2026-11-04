@@ -26,9 +26,9 @@ export const run = promisify(execFile)
  * `scripts/no-unbounded-docker-call.test.sh` now refuses any call that does not
  * come through here.
  *
- * It rejects on timeout rather than resolving, so callers keep the `catch` they
- * already had and a slow daemon reads as a daemon that did not answer — which
- * is what it is.
+ * It rejects on timeout rather than resolving, and ends the process it started,
+ * so callers keep the `catch` they already had and a slow daemon reads as a
+ * daemon that did not answer — which is what it is.
  */
 export async function dockerBounded(
   args: string[],
@@ -36,14 +36,25 @@ export async function dockerBounded(
   where: DockerHost = LOCAL,
 ): Promise<{ stdout: string; stderr: string }> {
   const { command, args: argv } = dockerArgv(where, args)
-  return Promise.race([
+  // **The bound is on the process, not on the wait** (gh-328, debt
+  // a-docker-call-that-times-out-keeps-running). This raced execFile against a
+  // timer: the call rejected and its docker kept running — against exactly the
+  // daemon that hangs, once per call — and the timer was never cleared.
+  // execFile's own timeout kills the child; SIGKILL, because a client stuck on
+  // an unreachable socket is not one to ask nicely. For a WSL project the child
+  // is wsl.exe, and whether killing it ends docker inside the distro is
+  // Windows' interop behaviour.
+  try {
     // 64 MiB of output: execFile's default is 1 MiB, and a whole tracker read
     // by the board can pass that, failing as "maxBuffer exceeded".
-    run(command, argv, { maxBuffer: 64 * 1024 * 1024 }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), ms),
-    ),
-  ])
+    return await run(command, argv, { maxBuffer: 64 * 1024 * 1024, timeout: ms, killSignal: 'SIGKILL' })
+  } catch (error) {
+    // Killed by the timeout: the same Error('timeout') every caller reads.
+    if (typeof error === 'object' && error !== null && (error as { killed?: boolean }).killed === true) {
+      throw new Error('timeout')
+    }
+    throw error
+  }
 }
 
 /**
