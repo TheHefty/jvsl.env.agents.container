@@ -1,7 +1,10 @@
 import * as vscode from 'vscode'
 
+import { availableParallelism } from 'node:os'
+
 import { build } from '../build/command.ts'
 import { carried } from '../build/template.ts'
+import { validateCpus, validateMemory } from '../build/limits.ts'
 import { OPEN } from '../commands.ts'
 import { configureOutcome, type ConfigureResult } from './configure.ts'
 import { decidePick } from './pick.ts'
@@ -278,8 +281,12 @@ export async function pick(
 }
 
 /** An input box whose undefined means escape, which the caller treats as abandon. */
-export async function ask(title: string, value: string): Promise<string | undefined> {
-  return vscode.window.showInputBox({ title, value })
+export async function ask(
+  title: string,
+  value: string,
+  validate?: (value: string) => string | undefined,
+): Promise<string | undefined> {
+  return vscode.window.showInputBox({ title, value, validateInput: validate })
 }
 
 /**
@@ -335,11 +342,16 @@ export async function askAnswers(
   // "the lowest version listed" have to agree with `setup`'s, and they were a
   // literal in this file and a literal in a shell script in another repository.
   const defaults = limitDefaults(current)
-  const memory = await ask('Memory the container may use', defaults.memory)
+  // The size form is checked as it is typed, naming the form; the bound on
+  // cores is availableParallelism, the default host probe's own source, so
+  // what typing accepts is what reading enforces on a plain Linux host. A
+  // WSL distro limited below the machine reads fewer cores at open, and the
+  // read side refuses with its own bound then (gh-326).
+  const memory = await ask('Memory the container may use', defaults.memory, validateMemory)
   if (memory === undefined) return undefined
-  const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap)
+  const swap = await ask('Memory plus swap, empty to derive memory + 2g', defaults.memorySwap, validateMemory)
   if (swap === undefined) return undefined
-  const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus)
+  const cpus = await ask("Cores to pin, empty for half the host's", defaults.cpus, validateCpus(availableParallelism()))
   if (cpus === undefined) return undefined
 
   // The project's switches, asked like the rest, starting where it is (story d27.1).

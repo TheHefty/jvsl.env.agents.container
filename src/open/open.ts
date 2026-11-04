@@ -1,6 +1,6 @@
 import { buildConfiguration, isOurs, projectNames, type Configuration } from '../build/devcontainer.ts'
 import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
-import { readLimits } from '../build/limits.ts'
+import { readLimits, type LimitsRead } from '../build/limits.ts'
 import { WSL_READY } from '../host/locate.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
@@ -151,17 +151,30 @@ export function decideOpen(context: OpenContext): Decision {
     }
   }
 
+  // A limit in a shape Docker would refuse far from its cause is refused
+  // here, naming the file, the field and the form (gh-326) — forwarding it
+  // fails at container creation inside Dev Containers, naming a flag.
+  const built = configurationFor(context)
+  const limits = built.limits
+  if (limits.refusal !== undefined) {
+    return {
+      action: 'refuse',
+      notes,
+      cause:
+        `the project manifest \`${MANIFEST}\` carries ${limits.refusal}. Fix the file, or run the ` +
+        `\`Agent Container: Configure Stacks and Limits\` command to rewrite it. Nothing was opened.`,
+    }
+  }
+
   // Not a refusal: a project whose manifest broke has better things to be told
   // than that its window will not open. But the launcher fell back to defaults
   // in silence, and opening with 6 GiB when the file asked for 8 without a word
   // is what turns this into an unexplained OOM hours later.
-  const built = configurationFor(context)
-  const limits = built.limits
-  if (limits.usedDefaults) {
+  if (limits.limits.usedDefaults) {
     notes.push(
       `the project manifest \`${MANIFEST}\` could not be read, so the default limits ` +
         `are being used ` +
-        `(${limits.memory} memory, half the host's cores). Fix the file, or run ` +
+        `(${limits.limits.memory} memory, half the host's cores). Fix the file, or run ` +
         `the \`Agent Container: Configure Stacks and Limits\` command to rewrite it.`,
     )
   }
@@ -298,11 +311,11 @@ export interface ConfigurationInputs {
  */
 export function configurationFor(inputs: ConfigurationInputs): {
   configuration: Configuration
-  limits: ReturnType<typeof readLimits>
+  limits: LimitsRead
   warnings: string[]
   log: string[]
 } {
-  const limits = readLimits(inputs.manifest ?? '{}')
+  const limits = readLimits(inputs.manifest ?? '{}', inputs.facts.cpuCount)
   const gradle = gradleVersion(inputs.gradleBuilds)
   return {
     limits,
@@ -312,7 +325,7 @@ export function configurationFor(inputs: ConfigurationInputs): {
       projectRoot: inputs.projectRoot,
       homeDir: inputs.homeDir,
       extensionVersion: inputs.extensionVersion,
-      limits,
+      limits: limits.limits,
       facts: inputs.facts,
       gradleVersion: gradle.version,
     }),
@@ -359,7 +372,15 @@ export function regenerateConfiguration(inputs: RegenerationInputs): Regeneratio
     return { action: 'keep', why: `there is no manifest \`${MANIFEST}\` to take the limits from.` }
   }
   const built = configurationFor(inputs)
-  if (built.limits.usedDefaults) {
+  if (built.limits.refusal !== undefined) {
+    return {
+      action: 'keep',
+      why:
+        `the manifest \`${MANIFEST}\` carries ${built.limits.refusal}, so \`${CONFIG_PATH}\` was ` +
+        `left as it is.`,
+    }
+  }
+  if (built.limits.limits.usedDefaults) {
     return {
       action: 'keep',
       why: `the manifest \`${MANIFEST}\` could not be read, so \`${CONFIG_PATH}\` was left as it is.`,
