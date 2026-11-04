@@ -62,21 +62,6 @@ export interface OpenContext {
   dockerHost?: DockerHost
   /** What measuring the machine had to say, such as a device probe that could not run. */
   factNotes?: string[]
-  /**
-   * `.code-server/version.txt`'s contents, or null when it could not be read.
-   *
-   * The string rather than a parsed version, deliberately: absent and
-   * unparseable are different refusals with different fixes, and a parsed
-   * version cannot tell them apart.
-   */
-  /**
-   * The minimum this extension works against, from `package.json`.
-   *
-   * **Passed in rather than declared here**, because a constant in this file
-   * would be a second place to keep in step with the manifest — which is
-   * exactly the defect this requirement exists to fix: that number was wrong
-   * for three releases and nothing read it.
-   */
 }
 
 export type Decision =

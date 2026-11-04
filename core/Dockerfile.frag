@@ -547,8 +547,8 @@ ENV CLAUDE_CONFIG_DIR=/config/.claude
 # than in a file this image copies: `workbench.iconTheme`, because the
 # `file-icons` extension the label declares is installed and invisible without
 # it. The rule is that a setting reaches the label only if something the label
-# installs needs it, which the other six did not satisfy — see
-# docs/PLANNING/the-image-stops-being-code-servers/.
+# installs needs it, which the other six did not satisfy — see the epic
+# the-image-stops-being-code-servers in the tracker.
 
 # 7. Installs ai-jail (akitaonrails/ai-jail), which reads the project's .ai-jail
 #
