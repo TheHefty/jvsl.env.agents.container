@@ -435,6 +435,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/report-check.test.sh
       - name: md-split-plan splits a file by its sections, keeping every byte and every link
         run: bash core/plugin/agent-container/bin/md-split-plan.test.sh
+      - name: the retro skill elaborates on the developer's line, grounded in the day, without changing it
+        run: bash core/plugin/agent-container/skills/retro-skill.test.sh
       - name: the report is kept out of git without changing a file of the project
         run: bash core/plugin/agent-container/bin/report-exclude.test.sh
       - name: a study topic is tracked once, and a rebuild never changes its status

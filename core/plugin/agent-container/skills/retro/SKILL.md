@@ -1,6 +1,6 @@
 ---
 name: retro
-description: The day's retrospective with the developer — report what was discovered, what surprised, what went wrong and what was decided without asking, take the developer's own "what I want to learn" line, and write the day's journal entry. Use after the review at the end of the day, or when the developer asks for the retro. Never skipped.
+description: The day's retrospective with the developer — report what was discovered, what surprised, what went wrong and what was decided without asking, take the developer's own "what I want to learn" line and elaborate on it, grounded in the day's work, and write the day's journal entry. Use after the review at the end of the day, or when the developer asks for the retro. Never skipped.
 ---
 
 # The retro
@@ -42,7 +42,18 @@ It lists the items touched today and the commits made today, both by the local d
 - **Blog candidates**: ask whether any discovery is worth writing about. Mark only the ones they choose.
 - **Left open**: ask what is left for tomorrow. Tomorrow's planning reads this section.
 
-## 5. Write the entry
+## 5. Elaborate on what the developer wants to learn
+
+Once their line is written or approved, elaborate on it, here in the conversation, before the entry is written. The line is where they are going; your part is to make the first step shorter.
+
+- Say **what the topic is, and why it matters in this project** — in this codebase's terms, not a textbook's.
+- Say where it showed up in today's work, **by file, commit or tracker item**: what retro-gather listed, the discoveries above, the code you touched. Name them so they can be opened.
+- Say **what to read or try next**: the file to read first, the experiment that would answer the question, the documentation worth the time.
+- **When nothing in today's work touches the topic, say so.** A connection invented to make the elaboration look grounded is worse than none: it reads as fact.
+
+**Never change their line.** You elaborate on it; the line in the entry is still exactly what they wrote or approved.
+
+## 6. Write the entry
 
 Write the body to a file, with these sections in this order:
 
@@ -68,7 +79,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/journal-write <file>
 
 It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
 
-## 6. Hand over
+## 7. Hand over
 
 Tell the developer where the entry is, from the last line `journal-write` printed:
 
