@@ -96,6 +96,21 @@ check "codex is handed the same one" \
 map_skills="$(bash -c 'set -euo pipefail; source "$1"; for ((i=0; i<${#JAIL_COMMON_ARGS[@]}; i++)); do if [[ "${JAIL_COMMON_ARGS[i]}" == --map && "${JAIL_COMMON_ARGS[i+1]:-}" == /config/.agents/skills ]]; then printf yes; fi; done' _ "$COMMON")"
 check "the shared image skills root is mapped read-only" "$map_skills" "yes"
 
+# **The journal's home is mapped for every agent** (debt
+# the-developer-global-journal-outbox-loses-the-entry-it-kept, task fxn.1).
+# ai-jail's --agent-state mounts only the running agent's own state, so under
+# Codex or OpenCode ~/.claude/agent-container was the sandbox's tmpfs, and the
+# retro's entry died with the session. Read-write, because journal-write keeps
+# the entry there and journal-flush removes it once sent.
+jhome="$work/journal-home"; mkdir -p "$jhome"
+for agent in claude codex opencode; do
+    check "$agent's sandbox maps the journal home read-write" \
+        "$(JOURNAL_HOME="$jhome" argv "$agent" -u RUSTUP_HOME | grep -A1 -x -- '--rw-map' | grep -cx -- "$jhome")" "1"
+done
+ln -s "$jhome" "$work/journal-link"
+check "a symlinked journal home is not mapped, and says so" \
+    "$(JOURNAL_HOME="$work/journal-link" argv codex -u RUSTUP_HOME 2>&1 | grep -cx -- "$work/journal-link") $(JOURNAL_HOME="$work/journal-link" argv codex -u RUSTUP_HOME 2>&1 | grep -c 'journal home .* symlink')" "0 1"
+
 # A symlink at either component would make this read-only map expose a path the
 # image did not create. Refuse to build any wrapper argv in that case.
 mkdir -p "$work/skills-outside"

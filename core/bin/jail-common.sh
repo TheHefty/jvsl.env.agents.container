@@ -108,6 +108,32 @@ GH_CONFIG_DIR="${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}"
 mkdir -p "$GH_CONFIG_DIR" 2>/dev/null || true
 [ -d "$GH_CONFIG_DIR" ] && JAIL_COMMON_ARGS+=(--map "$GH_CONFIG_DIR")
 
+# **The developer's journal home, read-write, for every agent** (debt
+# the-developer-global-journal-outbox-loses-the-entry-it-kept, task fxn.1).
+# The retro skill is installed for Claude Code, Codex and OpenCode alike, and
+# journal-write keeps the day's entry in ~/.claude/agent-container/journal-outbox
+# before sending it. --agent-state mounts only the running agent's own state, so
+# under Codex or OpenCode that directory was the sandbox's tmpfs: the 2026-11-02
+# entry was "kept" there and died with the session.
+#
+# **A widening, decided by the operator on 2026-11-04**, and a narrow one: this
+# directory alone, never the rest of ~/.claude, where Claude Code's credentials
+# are. What it exposes to Codex and OpenCode is the developer's own journal —
+# the outbox and journal.json, which names their private repository — and the
+# same agents already write that journal's entries. journal-write also refuses
+# to keep an entry on a tmpfs, so a sandbox that loses this map again says so.
+#
+# Created rather than checked for, as GH_CONFIG_DIR is; a symlink is refused
+# rather than followed, because a read-write map through one would expose
+# whatever it points at.
+JOURNAL_HOME="${JOURNAL_HOME:-/config/.claude/agent-container}"
+if [ -L "$JOURNAL_HOME" ]; then
+  echo "jail-common: the journal home $JOURNAL_HOME is a symlink, so it is not mapped; journal-write will refuse to keep an entry until it is a directory." >&2
+else
+  mkdir -p "$JOURNAL_HOME" 2>/dev/null || true
+  [ -d "$JOURNAL_HOME" ] && JAIL_COMMON_ARGS+=(--rw-map "$JOURNAL_HOME")
+fi
+
 # Codex and OpenCode discover shared skills from ~/.agents/skills. The image
 # owns this directory: 45-agent-state-dirs.sh creates its parent and
 # 46-agent-skills.sh populates it before any wrapper starts. --map is
