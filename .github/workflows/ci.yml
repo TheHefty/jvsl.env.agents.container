@@ -429,6 +429,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/report-guard.test.sh
       - name: every claim in the report cites a file that exists, and no implicit decision is given a motive
         run: bash core/plugin/agent-container/bin/report-check.test.sh
+      - name: md-split-plan splits a file by its sections, keeping every byte and every link
+        run: bash core/plugin/agent-container/bin/md-split-plan.test.sh
       - name: the report is kept out of git without changing a file of the project
         run: bash core/plugin/agent-container/bin/report-exclude.test.sh
       - name: a study topic is tracked once, and a rebuild never changes its status

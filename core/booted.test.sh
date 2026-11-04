@@ -398,7 +398,7 @@ bwrap's own; a mount-point error under /usr means a toolchain path the image nev
         cd /tmp
         codex="$(codex debug prompt-input 2>/dev/null)"
         opencode="$(XDG_CACHE_HOME=/tmp/opencode-cache opencode debug skill 2>/dev/null)"
-        for skill in planning review retro refine project-report study; do
+        for skill in planning review retro refine project-report study split-markdown; do
             printf "%s\n" "$codex" | grep -Eq "r[0-9]+/$skill/SKILL.md" \
                 || { echo "Codex did not discover $skill in ~/.agents/skills"; exit 1; }
             printf "%s\n" "$opencode" | grep -Fq "\"location\": \"/config/.agents/skills/$skill/SKILL.md\"" \

@@ -291,12 +291,12 @@ agent_skills="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -
     cd /tmp
     codex="$(s6-setuidgid abc env HOME=/config /usr/bin/codex debug prompt-input 2>/dev/null)"
     opencode="$(s6-setuidgid abc env HOME=/config XDG_CACHE_HOME=/tmp/opencode-cache /usr/bin/opencode debug skill 2>/dev/null)"
-    for skill in planning review retro refine project-report study; do
+    for skill in planning review retro refine project-report study split-markdown; do
         printf "codex_%s=%s\n" "$skill" "$(printf "%s" "$codex" | grep -Ec "r[0-9]+/$skill/SKILL.md" || true)"
         printf "opencode_%s=%s\n" "$skill" "$(printf "%s" "$opencode" | grep -Fc "\"location\": \"/config/.agents/skills/$skill/SKILL.md\"" || true)"
     done
 ' 2>/dev/null || true)"
-for skill in planning review retro refine project-report study; do
+for skill in planning review retro refine project-report study split-markdown; do
     [ "$(printf '%s' "$agent_skills" | sed -n "s/^codex_$skill=//p")" -ge 1 ] 2>/dev/null \
         || fail "Codex does not list $skill from the image's ~/.agents/skills root; output: $agent_skills"
     [ "$(printf '%s' "$agent_skills" | sed -n "s/^opencode_$skill=//p")" = "1" ] \
