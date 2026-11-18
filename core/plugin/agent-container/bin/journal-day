@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# journal-day: the day a retro held now belongs to, YYYY-MM-DD. journal-write
+# dates the entry by it and retro-gather gathers that day's work by it, so the
+# two cannot disagree about which day a retro closes.
+#
+# $JOURNAL_TODAY when set. Otherwise the local date of $JOURNAL_NOW (seconds),
+# or of now — **and before 04:00 local, the calendar day before** (gh-324): a
+# retro held after midnight closes the work of the day that just ended, and the
+# planning the same morning looks for its entry there. Wall-clock time decides:
+# the local hour, then the local date, then a day back, so neither the timezone
+# nor a clock change can move the line.
+set -uo pipefail
+
+if [ -n "${JOURNAL_TODAY:-}" ]; then echo "$JOURNAL_TODAY"; exit 0; fi
+now="${JOURNAL_NOW:-$(date +%s)}"
+day="$(date -d "@$now" +%F)"
+if [ "$((10#$(date -d "@$now" +%H)))" -lt 4 ]; then day="$(date -d "$day -1 day" +%F)"; fi
+echo "$day"

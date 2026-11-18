@@ -27,7 +27,7 @@ Run, from the project's repository:
 ${CLAUDE_PLUGIN_ROOT}/bin/retro-gather
 ```
 
-It lists the items touched today and the commits made today, both by the local date. Use it to remember the day, and as the start of the entry's Links.
+It lists the items touched today and the commits made today, both by the local date. Use it to remember the day, and as the start of the entry's Links. **Before 04:00 local time, "today" is the day before**: a retro after midnight closes the work of the day that just ended. Tell the developer which day it is gathering.
 
 ## 3. Report, under four headings
 
@@ -92,7 +92,7 @@ Then run:
 ${CLAUDE_PLUGIN_ROOT}/bin/journal-write <file>
 ```
 
-It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. The entry never goes to the tracker. It refuses an entry missing a section, an empty "On what I want to learn" or one that does not open with "Written by the agent.", an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
+It sends today's entry to the developer's private journal repository, as `<project>/<day>.md`, or rewrites it if the retro already ran today. Before 04:00 local time the entry carries the day before, and the script prints a line saying so: tell the developer which day the entry carries. The entry never goes to the tracker. It refuses an entry missing a section, an empty "On what I want to learn" or one that does not open with "Written by the agent.", an empty "What I want to learn" (an entry still written under the older "What I learned" heading is accepted as it was written), or an empty "Decided alone" (write "Nothing." when there was nothing). If it refuses, fix what it names. Never fill the developer's line yourself to get past it.
 
 ## 7. Hand over
 

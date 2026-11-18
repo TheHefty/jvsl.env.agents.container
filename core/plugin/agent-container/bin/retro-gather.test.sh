@@ -51,6 +51,12 @@ check "the journal itself is not work the retro reports" "$(under 'Items touched
 check "the commits made that day, by local date, late evening included" \
     "$(under Commits | sed 's/^- [0-9a-f]* //' | paste -sd'|' -)" "fix: late that evening|feat: the morning"
 
+# A retro held at 02:00 on the 28th closes the 27th (gh-324, task 95r.1): it
+# gathers the 27th's work, the day journal-write will date its entry.
+night="$(cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_NOW="$(date -d '2026-10-28 02:00' +%s)" bash "$HERE/retro-gather")"
+check "a retro before 04:00 gathers the day before, the day its entry carries" \
+    "$(printf '%s\n' "$night" | grep -c '^## Items touched on 2026-10-27$') $(printf '%s\n' "$night" | grep -c '^- t-today ')" "1 1"
+
 empty="$(cd "$repo" && TRACKER_EXPORT="$EXPORT" JOURNAL_TODAY=2026-10-20 bash "$HERE/retro-gather")"
 check "a day with nothing says so in both" "$(printf '%s\n' "$empty" | grep -c '^Nothing\.$')" "2"
 

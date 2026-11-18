@@ -80,6 +80,35 @@ code=0; PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOU
     bash "$HERE/journal-write" "$work/body.md" > "$work/out" 2>&1 || code=$?
 check "a retro at 22:00 in São Paulo is that day's, not tomorrow's in UTC" "$code $(ls "$GH_STORE/demo")" "0 2026-10-27.md"
 
+# --- a retro after midnight is the day it closes (gh-324, task 95r.1) -------------
+# A retro held before 04:00 local is the calendar day before's: the work it
+# closes is that day's, and the planning the same morning looks for it there.
+# Local wall-clock time decides, in São Paulo (-0300), never UTC.
+at() { # at "<local date and time>" -> exit code and the files in the repository
+    local now code=0
+    now="$(TZ=America/Sao_Paulo date -d "$1" +%s)"
+    env PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_PROJECT=demo \
+        TZ=America/Sao_Paulo JOURNAL_NOW="$now" ${2:+JOURNAL_TODAY="$2"} \
+        bash "$HERE/journal-write" "$work/body.md" > "$work/out" 2>&1 || code=$?
+    echo "$code $(ls "$GH_STORE/demo" 2>/dev/null | paste -sd' ' -)"
+}
+reset; configure '{"repository": "TheHefty/journal"}'
+check "a retro at 03:59 is the day before's" "$(at '2026-10-28 03:59')" "0 2026-10-27.md"
+reset; configure '{"repository": "TheHefty/journal"}'
+check "a retro at 04:00 is that day's" "$(at '2026-10-28 04:00')" "0 2026-10-28.md"
+reset; configure '{"repository": "TheHefty/journal"}'
+check "a retro at 01:00 local, already 04:00 in UTC, is still the day before's" "$(at '2026-10-28 01:00')" "0 2026-10-27.md"
+check "  and the retro is told which day the entry carries, and why" \
+    "$(grep -c 'dated 2026-10-27: held before 04:00' "$work/out")" "1"
+reset; configure '{"repository": "TheHefty/journal"}'
+body "the first pass" > "$work/body.md"; at '2026-10-28 01:00' > /dev/null
+body "the second pass, truer" > "$work/body.md"
+check "a second retro the same night rewrites the same day's file" "$(at '2026-10-28 03:00')" "0 2026-10-27.md"
+check "  with the second body" "$(grep -c 'the second pass, truer' "$GH_STORE/demo/2026-10-27.md")" "1"
+body > "$work/body.md"
+reset; configure '{"repository": "TheHefty/journal"}'
+check "JOURNAL_TODAY still decides, even at 02:00" "$(at '2026-10-28 02:00' 2026-10-28)" "0 2026-10-28.md"
+
 # --- never lost: kept in the outbox until GitHub confirms ------------------------
 for step in visibility get put; do
     reset; configure '{"repository": "TheHefty/journal"}'; export GH_FAIL=$step

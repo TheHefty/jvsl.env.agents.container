@@ -18,7 +18,7 @@
 #                         retro was skipped. When the repository cannot be
 #                         read, that is said instead, and no day is called
 #                         skipped. Days are local ($PLANNING_TODAY, or today),
-#                         so a late retro is the day it was held.
+#                         and a retro before 04:00 is dated the day before (journal-day).
 #
 # The same reading as planning-check: agreed is neither deferred nor labelled
 # `proposed`; a blocker counts until it is closed; a parent never blocks.
