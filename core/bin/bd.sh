@@ -47,6 +47,11 @@ done
 sub="${args[$i]:-}"
 rest=("${args[@]:$((i + 1))}")
 
+# Help closes nothing, whatever else is on the line.
+for a in "${rest[@]}"; do
+    case "$a" in -h|--help) exec "$REAL" "$@" ;; esac
+done
+
 ids=()
 case "$sub" in
     close|done)

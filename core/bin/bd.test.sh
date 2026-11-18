@@ -117,6 +117,14 @@ check "an argument with spaces and quotes survives" "$(run create 'a "quoted" ti
 check "  intact" "$(out)" "real bd ran: <create> <a \"quoted\" title> <--json>"
 check "an allowed close returns the real bd's exit code" "$(REAL_RC=4 run close t-accepted)" "4"
 
+# Help closes nothing: the image test asks `bd close --help` of every bd
+# command the rules name, and the first CI run of this wrapper refused it.
+for h in --help -h; do
+    check "close $h is bd's help, not a close with no id" "$(run close "$h")" "0"
+    check "  handed to the real bd as given" "$(out)" "real bd ran: <close> <$h>"
+done
+check "update $(printf %s '--help') with --status closed is help too" "$(run update --help --status closed)" "0"
+
 # --- failure 3: several ids close all or none ------------------------------------
 check "one refused id among several refuses the whole close" "$(run close t-accepted t-plain t-dropped)" "1"
 check "  and closes none of them" "$(closed)" "0"
