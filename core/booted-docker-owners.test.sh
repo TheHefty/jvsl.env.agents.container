@@ -40,8 +40,13 @@ docker image inspect "$IMAGE" >/dev/null 2>&1 \
 
 # The nested daemon stacks its storage on fuse-overlayfs or overlay2, and both
 # need what the dev container configuration passes when the host has it.
-[ -e /dev/fuse ] \
-    || fail "this host has no /dev/fuse, so the nested daemon cannot start and nothing here can be measured"
+# /dev/net/tun is slirp4netns's, the daemon's network: without it rootlesskit
+# fails "setting up tap tap0" and the daemon never answers. The extension passes
+# both when the host has them (src/build/devcontainer.ts), and so does this.
+for dev in /dev/fuse /dev/net/tun; do
+    [ -e "$dev" ] \
+        || fail "this host has no $dev, so the nested daemon cannot start and nothing here can be measured"
+done
 
 wait_for_boot() {
     local want="$1" deadline
@@ -91,6 +96,7 @@ owner_seen() {
 
 docker run -d --name "$NAME" \
     --device /dev/fuse \
+    --device /dev/net/tun \
     --cap-add=SYS_ADMIN \
     --security-opt seccomp=unconfined \
     --security-opt systempaths=unconfined \
