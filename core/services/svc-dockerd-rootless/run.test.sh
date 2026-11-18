@@ -107,6 +107,15 @@ check "the boot says the driver, and why overlay2 stands for the ownership" \
     "$(line 'storage driver: overlay2' >/dev/null && line 'by construction' >/dev/null && echo yes)" "yes"
 check "the choice is written for the next boot" "$(probecheck overlay2 && echo yes)" "yes"
 
+# gh-313's root cause: a recursive chown of the data-root rewrote every layer
+# in the store to abc, uid 0 in the user namespace, so an image's own owners
+# read 0:0 after every boot. The root is abc's; what is under it is the
+# daemon's, and the boot leaves it alone.
+check "the data-root itself is given to abc" \
+    "$(grep -cxF "chown abc:abc $work/data-root" "$work/mount-calls")" "1"
+check "and nothing under it is chowned, so the layers keep their owners" \
+    "$(grep '^chown -R' "$work/mount-calls" | grep -cF "$work/data-root")" "0"
+
 # A second boot with the choice intact does not rewrite it and says the driver.
 r="$(run ok)"
 check "a restart keeps overlay2" "$(driver_arg) $(probecheck overlay2 && echo yes)" "overlay2 yes"
