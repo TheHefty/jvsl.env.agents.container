@@ -50,6 +50,39 @@ check "and the words are kept verbatim in its notes" \
     "$(grep -c $'^update\tt1\t--append-notes\tAccepted in review on 2026-10-28, in the developer\'s words: It reads the PR state, and only MERGED closes; "open" waits.$' "$BD_CALLS")" "1"
 check "accepting does not close it: merging does" "$(grep -c '^close' "$BD_CALLS" || true)" "0"
 
+# --- accepted after it was closed (gh-363, task asi.3) ---------------------------
+# A task closed past the review and accepted afterwards must not read like one
+# accepted before it closed: the tracker's history has to stay true.
+check "an open task's acceptance reads as before" "$(run review-accept t1 'fine')" "0"
+check "  with no word of a close" "$(grep -c 'after it was closed' "$BD_CALLS" "$work/out" | awk -F: '{s += $2} END {print s}')" "0"
+check "  and still points at review-settle" "$(grep -c 'run review-settle t1' "$work/out")" "1"
+
+export TZ=UTC
+code="$(BD_SHOW='[{"status":"closed","closed_at":"2026-11-11T15:00:00Z","labels":null}]' run review-accept t1 'it was right')"
+check "a closed task can still be accepted" "$code" "0"
+check "  labelled accepted" "$(grep -c $'^label\tadd\tt1\taccepted$' "$BD_CALLS")" "1"
+check "  with a note that says the acceptance came after the close, and when it closed" \
+    "$(grep -c $'^update\tt1\t--append-notes\tAccepted in review on 2026-10-28, after it was closed on 2026-11-11, in the developer\'s words: it was right$' "$BD_CALLS")" "1"
+check "  and the output says it was already closed, not that it closes on a merge" \
+    "$(grep -c 'was already closed on 2026-11-11' "$work/out") $(grep -c 'review-settle' "$work/out" || true)" "1 0"
+code="$(BD_SHOW='[{"status":"closed","closed_at":"2026-11-11T15:00:00.123Z","labels":null}]' run review-accept t1)"
+check "an acceptance with no words after the close says so too" \
+    "$(grep -c $'^update\tt1\t--append-notes\tAccepted in review on 2026-10-28, after it was closed on 2026-11-11, on the developer\'s word\.$' "$BD_CALLS")" "1"
+
+# The note's truth depends on reading the task, so a tracker that cannot answer
+# is refused, never guessed at.
+cat > "$work/bin/bd-fail" <<'SH'
+#!/usr/bin/env bash
+(IFS=$'\t'; echo "$*") >> "$BD_CALLS"
+[ "$1" = show ] && { echo "Error: database is locked" >&2; exit 1; }
+exit 0
+SH
+chmod +x "$work/bin/bd-fail"
+: > "$BD_CALLS"; code=0
+REVIEW_BD="$work/bin/bd-fail" REVIEW_TODAY=2026-10-28 bash "$HERE/review-accept" t1 > "$work/out" 2>&1 || code=$?
+check "a task that cannot be read is not accepted" "$code $(grep -c '^label\|^update' "$BD_CALLS" || true)" "1 0"
+check "  saying why, in bd's words" "$(grep -c 'database is locked' "$work/out")" "1"
+
 for why in '' '  '; do
     check "a reopen with no reason ($(printf %q "$why")) is refused" "$(run review-reopen t1 "$why")" "1"
     check "and nothing is written" "$(calls)" "0"

@@ -29,7 +29,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/review-settle
 
 It closes every accepted task whose pull request has merged since, and says what the others are waiting for. Tell the developer what it closed.
 
-Its last section, **Closed without the review**, names every task closed since the last review without being accepted, dropped, rejected or published as a study. Read each one to the developer: it was closed past this gate. Walk it like any other task in step 4. Accept it with `review-accept` or reopen it with `review-reopen`, on the developer's word. "None." means nothing slipped past. Running it also records this review in the tracker, so the next one starts its window here. If it exits non-zero, say what it could not read (usually `gh` not logged in or no network) and carry on: nothing was closed by mistake.
+Its last section, **Closed without the review**, names every task closed since the last review without being accepted, dropped, rejected or published as a study. Read each one to the developer: it was closed past this gate. Walk it like any other task in step 4. Accept it with `review-accept`, which notes that the acceptance came after the close, or reopen it with `review-reopen`, on the developer's word. "None." means nothing slipped past. Running it also records this review in the tracker, so the next one starts its window here. If it exits non-zero, say what it could not read (usually `gh` not logged in or no network) and carry on: nothing was closed by mistake.
 
 ## 3. What to review
 

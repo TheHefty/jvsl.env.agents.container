@@ -15,11 +15,29 @@ if [ "$#" -lt 1 ] || [ -z "$1" ]; then
     exit 2
 fi
 id="$1"; words="${2:-}"
+
+# **An acceptance after the close says so** (gh-363, task asi.3). A task closed
+# past the review and accepted afterwards used to read exactly like one accepted
+# before it closed. The note's truth depends on reading the task, so a tracker
+# that cannot answer is refused rather than guessed at.
+err="$(mktemp)"; trap 'rm -f "$err"' EXIT
+if ! shown="$("$BD" show "$id" --json 2>"$err")"; then
+    echo "review-accept: $id was not accepted: it could not be read from the tracker. bd said: $(tail -n 1 "$err")"
+    exit 1
+fi
+closed_on="$(jq -r '(.[0] // .) | if .status == "closed" and .closed_at != null
+    then (.closed_at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601 | localtime | strftime("%F")) else "" end' <<<"$shown" 2>/dev/null)"
+after="${closed_on:+, after it was closed on $closed_on}"
+
 "$BD" label add "$id" accepted >/dev/null || exit 1
 if [ -n "${words//[[:space:]]/}" ]; then
-    note="Accepted in review on $TODAY, in the developer's words: $words"
+    note="Accepted in review on $TODAY$after, in the developer's words: $words"
 else
-    note="Accepted in review on $TODAY, on the developer's word."
+    note="Accepted in review on $TODAY$after, on the developer's word."
 fi
 "$BD" update "$id" --append-notes "$note" >/dev/null || exit 1
-echo "$id: accepted. It closes when its pull request merges — run review-settle $id."
+if [ -n "$closed_on" ]; then
+    echo "$id: accepted after the fact — it was already closed on $closed_on, past the review. The note says so."
+else
+    echo "$id: accepted. It closes when its pull request merges — run review-settle $id."
+fi

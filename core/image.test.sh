@@ -168,6 +168,10 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     "$B/review-accept" "$a" "it reads the export" >/dev/null 2>&1
     printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
     REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
+    # An acceptance after the close says so against the real bd (gh-363, asi.3):
+    # the task above is closed by now, and its closed_at is what the note reads.
+    "$B/review-accept" "$a" "after the fact" >/dev/null 2>&1
+    printf "late=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].notes // \"\"" | grep -c "after it was closed on [0-9]")"
     # A review with no ids keeps its window in the key-value store of the real bd
     # (gh-363, asi.4): what catches the command line of bd kv drifting from the stub.
     w="$(REVIEW_GH=/tmp/gh "$B/review-settle" 2>&1)"
@@ -277,6 +281,9 @@ read the entry waiting in the outbox, say it is not sent and why, and call no da
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
 every task with no pull request"
+[ "$(dfield late)" = "1" ] || fail "against the real bd, accepting a closed task did not say the \
+acceptance came after the close (late=$(dfield late)): the history would read as if it had been accepted \
+before it closed (gh-363, asi.3)"
 [ "$(dfield window)" = "1 1" ] || fail "against the real bd, a review did not say what closed past it or \
 did not record its window in bd kv (window=$(dfield window)): the next review could not tell what was \
 closed without it (gh-363, asi.4)"
