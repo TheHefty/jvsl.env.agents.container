@@ -79,7 +79,9 @@ the developer's, named once in `~/.claude/agent-container/journal.json` as
 `{"repository": "<owner>/<repo>"}`, as one file per day at `<project>/<day>.md`. A public repository
 is refused: the entry waits rather than going where anyone can read it. The day is the local date,
 so a retro held late in the evening belongs to that day, and a second retro on the same day rewrites
-that day's file.
+that day's file. **A retro held before 04:00 belongs to the day before**: it closes the work of the
+day that just ended, and the planning that morning looks for it there. `retro-gather` gathers that
+day's work and `journal-write` says which day the entry carries.
 
 Create, Configure and Open's configuration flow ask for this repository when the project uses Beads.
 The current repository is the input default; clear it to use the outbox. A GitHub URL or `owner/repo`

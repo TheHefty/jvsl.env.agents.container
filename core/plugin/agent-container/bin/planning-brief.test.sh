@@ -167,6 +167,16 @@ body x Nothing. no '- written by the retro' > "$work/entry.md"
     bash "$HERE/journal-write" "$work/entry.md" > /dev/null 2>&1)
 check "an entry journal-write sent is the one the planning reads" "$(left_open | grep -c '^- written by the retro$')" "1"
 
+# --- a retro held after midnight (gh-324, task 95r.1) ----------------------------------
+# The issue's reproduction, end to end: work on the 27th, the retro written by
+# journal-write at 02:00 on the 28th, and the planning that morning.
+rm -rf "$GH_STORE/demo"; mkdir -p "$GH_STORE"
+body x Nothing. no '- closed at two in the morning' > "$work/entry.md"
+(cd "$work/r" && PATH="$work/bin:$PATH" REVIEW_GH="$work/bin/gh" JOURNAL_HOME="$home" JOURNAL_HOME_FSTYPE=ext2/ext3 \
+    JOURNAL_NOW="$(date -d '2026-10-28 02:00' +%s)" bash "$HERE/journal-write" "$work/entry.md" > /dev/null 2>&1)
+check "a retro at 02:00 is not called skipped by that morning's planning" "$(left_open | grep -c 'skipped' || true)" "0"
+check "and its Left open is shown" "$(left_open | grep -c '^- closed at two in the morning$')" "1"
+
 # --- the agent's elaboration is not the developer's line (story 3kk.2) --------------
 rm -rf "$GH_STORE/demo"; mkdir -p "$GH_STORE/demo"
 body "how jq reads null" Nothing. no '- carried' "Written by the agent.

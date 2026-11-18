@@ -3,10 +3,11 @@
 # touched on the day, journal entries excluded, each with the pull request it
 # recorded, and the commits made that day in the current repository. Both by
 # the local date — $JOURNAL_TODAY, or today — so a late evening is the day it
-# was and not tomorrow in UTC.
+# was and not tomorrow in UTC, and a retro before 04:00 gathers the day before,
+# the day journal-write dates its entry (journal-day, gh-324).
 set -uo pipefail
 
-day="${JOURNAL_TODAY:-$(date +%F)}"
+day="$(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/journal-day")"
 if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
 
 echo "## Items touched on $day"

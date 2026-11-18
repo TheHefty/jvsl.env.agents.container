@@ -80,7 +80,9 @@ desenvolvedor, nomeado uma vez em `~/.claude/agent-container/journal.json` como
 `{"repository": "<owner>/<repo>"}`, como um arquivo por dia em `<project>/<day>.md`. Um repositório
 público é recusado: a entrada espera em vez de ir para onde qualquer um a lê. O dia é a data local,
 então uma retro feita tarde da noite pertence àquele dia, e uma segunda retro no mesmo dia reescreve
-o arquivo daquele dia.
+o arquivo daquele dia. **Uma retro feita antes das 04:00 pertence ao dia anterior**: ela fecha o
+trabalho do dia que acabou de terminar, e o planning daquela manhã a procura lá. O `retro-gather`
+junta o trabalho desse dia e o `journal-write` diz qual dia a entrada recebe.
 
 O fluxo de configuração de Create, Configure e Open pergunta por esse repositório quando o projeto
 usa Beads. O repositório atual aparece como valor inicial; limpe-o para usar a caixa de saída. Uma
