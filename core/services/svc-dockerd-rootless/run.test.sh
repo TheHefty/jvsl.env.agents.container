@@ -4,13 +4,12 @@
 # a copy of its logic.
 #
 # Debt the-nested-docker-daemon-loses-the-ownership-an-image-set-on-its-files
-# (gh-313): the 0:0 that opened it was measured on kotodori's older build and
-# did not reproduce on this image — image-set owners held when measured on
-# 2026-11-03, image directories and fresh named volumes, uids 999 to 2000.
-# Nothing here starts a daemon: what a script can hold is that the storage
-# driver is chosen by the kernel probe, that the choice is kept, that a driver
-# that changes re-homes the old data-root with one line, and that the
-# fallback says what was measured, with the date of the measurement.
+# (gh-313): the 0:0 that opened it was the boot's recursive chown of the
+# daemon's store, found on 2026-11-17. Nothing here starts a daemon — that is
+# core/booted-docker-owners.test.sh. What a script can hold is that the store is
+# chowned at its root only, that the storage driver is chosen by the kernel
+# probe, that the choice is kept, that a driver that changes re-homes the old
+# data-root with one line, and that the fallback names the real cause.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -124,8 +123,8 @@ check "and it names the driver once, not the change" "( $(line 'storage driver c
 # --- the kernel does not allow it ---------------------------------------------
 r="$(run fail)"
 check "with the probe refused, dockerd falls back to fuse-overlayfs" "$(driver_arg)" "fuse-overlayfs"
-check "the fallback line names the driver and what the measurement said, with its date" \
-    "$(line 'fuse-overlayfs (the probe could not mount' >/dev/null && line 'held when last measured' >/dev/null && line 'did not reproduce' >/dev/null && echo yes)" "yes"
+check "the fallback line names the driver and gh-313's real cause" \
+    "$(line 'fuse-overlayfs (the probe could not mount' >/dev/null && line 'recursive chown of the store' >/dev/null && echo yes)" "yes"
 check "the fallback is what is recorded" "$(probecheck fuse-overlayfs && echo yes)" "yes"
 
 # --- the driver changes under a data-root already written ---------------------

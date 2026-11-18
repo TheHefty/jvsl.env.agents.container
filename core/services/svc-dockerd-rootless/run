@@ -51,7 +51,16 @@ mkdir -p "$SOCKET_DIR" "$DATA_ROOT" "$XDG_RUNTIME_DIR"
 # /config/.docker/buildx: permission denied". Measured 2026-07-30: this was the
 # only child of /config not owned by abc.
 chown abc:abc "$CONFIG_DIR"
-chown -R abc:abc "$SOCKET_DIR" "$DATA_ROOT" "$XDG_RUNTIME_DIR"
+# **The data-root is chowned, never what is under it** — debt the-boots-
+# recursive-chown-of-the-docker-store-loses-the-owners-images-set (gh-313).
+# Under rootless Docker an image file owned by uid 1000 is stored as a subuid,
+# and a recursive chown rewrote every layer in the store to abc, uid 0 in the
+# user namespace: every image already there read 0:0 after the next boot,
+# which looked intermittent because anything pulled since was still right.
+# Measured in kotodori on 2026-11-17 and reproduced in CI by
+# core/booted-docker-owners.test.sh. The daemon owns what it writes under it.
+chown abc:abc "$DATA_ROOT"
+chown -R abc:abc "$SOCKET_DIR" "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 
 # /dev/fuse is what fuse-overlayfs needs, and `start` only passes it through
@@ -69,12 +78,10 @@ fi
 # says which one the daemon runs** — debt the-nested-docker-daemon-loses-the-
 # ownership-an-image-set-on-its-files (gh-313). Overlay2 keeps the owner an
 # image set by construction, and kernels from 5.11 (Ubuntu's flavour from 5.4)
-# let a user namespace mount it. fuse-overlayfs, the fallback, held every
-# image-set owner when measured on this image on 2026-11-03 — image
-# directories and fresh named volumes, uids 999 to 2000, the issue's own
-# temurin reproducer; the 0:0 that opened gh-313 was measured on kotodori's
-# older build and did not reproduce, so what differs there is not in this
-# repository, and the debt's record holds both measurements. The probe answer
+# let a user namespace mount it. fuse-overlayfs, the fallback, keeps them too:
+# the 0:0 that opened gh-313 was not the driver but the boot's recursive chown
+# of the store, above, found on 2026-11-17 — earlier measurements that held
+# were taken on stores no boot had rewritten yet. The probe answer
 # decides, riding whatever this container itself runs on: a mount probe,
 # lower over upper in the daemon's own directories.
 probe_overlay() {
@@ -95,7 +102,7 @@ if probe_overlay; then
     echo "dockerd storage driver: overlay2 (the kernel lets a user namespace mount it; it keeps an image's own file owners by construction)"
 else
     chosen="fuse-overlayfs"
-    echo "dockerd storage driver: fuse-overlayfs (the probe could not mount overlayfs in a user namespace; image-set owners held when last measured on this image, 2026-11-03 — gh-313's 0:0 was kotodori's older build and did not reproduce; overlay2 stays preferred because it needs no such measurement)"
+    echo "dockerd storage driver: fuse-overlayfs (the probe could not mount overlayfs in a user namespace; it keeps image-set owners; gh-313's 0:0 was the boot's recursive chown of the store, fixed, not the driver; overlay2 stays preferred because it keeps them by construction)"
 fi
 written="$(cat "$DRIVER_FILE" 2>/dev/null || true)"
 case "$written" in
