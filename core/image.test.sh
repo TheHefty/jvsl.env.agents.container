@@ -168,6 +168,10 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     "$B/review-accept" "$a" "it reads the export" >/dev/null 2>&1
     printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
     REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
+    # A review with no ids keeps its window in the key-value store of the real bd
+    # (gh-363, asi.4): what catches the command line of bd kv drifting from the stub.
+    w="$(REVIEW_GH=/tmp/gh "$B/review-settle" 2>&1)"
+    printf "window=%s\n" "$(printf "%s\n" "$w" | grep -c "^## Closed without the review$") $(bd kv get review.last 2>/dev/null | grep -cE "^[0-9]{4}-[0-9]{2}-[0-9]{2}T")"
     printf "settled=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].status")"
     # The close gate against the same real bd (debt gh-363): the wrapper is the
     # bd on PATH, the binary is where it hands off to, and a task nobody
@@ -273,6 +277,9 @@ read the entry waiting in the outbox, say it is not sent and why, and call no da
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
 every task with no pull request"
+[ "$(dfield window)" = "1 1" ] || fail "against the real bd, a review did not say what closed past it or \
+did not record its window in bd kv (window=$(dfield window)): the next review could not tell what was \
+closed without it (gh-363, asi.4)"
 [ "$(dfield gate)" = "1 open closed /usr/local/bin/bd real" ] || fail "against the real bd, the close \
 gate did not hold (gate=$(dfield gate), expected: refused, still open, closed by review-drop, the wrapper \
 on PATH, the binary behind it): a task nobody accepted could be closed with a plain bd close (gh-363)"

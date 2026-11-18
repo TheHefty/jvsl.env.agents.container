@@ -17,6 +17,15 @@ stubs() {
 # `show <id> --json` answers with $BD_SHOW: by default an item that is neither
 # deferred nor labelled, which is what a completed agreement leaves.
 [ "$1" = show ] && echo "${BD_SHOW:-[{\"status\":\"open\",\"labels\":[]}]}"
+# `kv get|set <key> [value]` keeps values as files under $BD_KV, and fails the
+# way bd does for a key never set; $BD_KV_FAIL makes every kv call fail.
+if [ "$1" = kv ]; then
+    [ -n "${BD_KV_FAIL:-}" ] && { echo "Error: $BD_KV_FAIL" >&2; exit 1; }
+    case "$2" in
+        get) [ -f "$BD_KV/$3" ] || { echo "Error: key '$3' not found" >&2; exit 1; }; cat "$BD_KV/$3" ;;
+        set) mkdir -p "$BD_KV"; printf '%s\n' "$4" > "$BD_KV/$3"; echo "Set $3 = $4" ;;
+    esac
+fi
 exit 0
 SH
     cat > "$1/gh" <<'SH'
