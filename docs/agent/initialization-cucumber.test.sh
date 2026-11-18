@@ -8,7 +8,7 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 EN="$HERE/en/INITIALIZATION.md"
 PT="$HERE/pt-BR/INITIALIZATION.md"
 FR="$ROOT/docs/SRS/functional-requirements.md"
-EPICS="$ROOT/docs/SRS/epics-and-stories.md"
+EPICS="$ROOT/docs/SRS/epics-and-stories/the-project-decides-at-initialization-whether-cucumber-runs-acceptance-features.md"
 
 failures=0
 

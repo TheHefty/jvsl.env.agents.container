@@ -47,6 +47,8 @@ installs this extension.
 - **A Windows editor, since the fourth amendment**: opening a project that lives in a WSL distro,
   with Docker in the distro or from Docker Desktop, and a project that lives on the Windows
   filesystem, through Docker Desktop.
+- **A container for shaping an idea before it is a project, since the sixth amendment**: a
+  `Brainstorm` command, and *Create project* starting from an idea that is ready.
 
 **Out of scope, deliberately.** Each of these is a thing a reader might reasonably assume is
 included:
@@ -192,6 +194,33 @@ claim that was actually doing the work — and the extensions are recorded as a 
 own. The alternative considered and rejected was declining the proprietary extensions to keep the
 original sentence true, which would have traded a working C# debugger for a property of a
 document.
+
+### Amendment, 2026-11-18 (sixth)
+
+**An idea is shaped in a container of its own before it is a project, and that container is in
+scope.** Everything this charter covers starts from a project: opening one, creating one, building
+its image. Ideas were shaped outside the extension, in a chat over several sessions, so the step
+that decides the most — the purpose, and often the stack — happened before the flow and reached the
+charter grilling as nothing (#364).
+
+**What comes in:** a `Brainstorm` command that opens a container which is not a project — `core`
+only, no stack, ideation rules instead of development rules, its own persistent `/config` volume,
+`ai-memory` always on — with ideas kept in the developer's scope at
+`~/.claude/agent-container/ideas/<slug>/IDEA.md`, the scope the journal already has. *Create
+project* can start from an idea marked `ready`.
+
+**What does not change:** agents run only inside a container. Memory stays one per container, so
+what crosses from an idea into its project is `IDEA.md`, never the brainstorm's memory. Development
+containers see the ideas folder read-only.
+
+**What it costs:** a second kind of container the extension stands up and has to keep isolated like
+a project; an `IDEATION.md` rule in both languages, held to parity; one more bind in the sandbox
+map, made read-only for every development container.
+
+**Still out:** a repository per idea, and ideation on the host.
+
+The epic it opens is
+[an idea is shaped in a container of its own before it becomes a project](SRS/epics-and-stories/an-idea-is-shaped-in-a-container-of-its-own-before-it-becomes-a-project.md).
 
 ### Amendment, 2026-11-03 (fifth)
 
