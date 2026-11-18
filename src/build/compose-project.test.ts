@@ -41,3 +41,42 @@ test('keys that are not stacks are never composed as one', () => {
 test('a manifest selecting nothing composes core alone', () => {
   assert.deepEqual(composed({ limits: { memory: '4g' } }).stacks, [])
 })
+
+/**
+ * gh-327, debt a-malformed-manifest-makes-the-build-throw-instead-of-refusing:
+ * composeForProject read a manifest that does not parse as {} and composed core
+ * alone, then the build handed the same text to compose(), whose JSON.parse
+ * threw a SyntaxError past its own refusals, so Build the Image failed as a
+ * generic command error. Driven the way buildInTerminal chains the two.
+ */
+function buildPath(text: string | null): ReturnType<typeof compose> {
+  const root = mkdtempSync(join(tmpdir(), 'malformed-'))
+  const plan = composeForProject(EXTENSION, root, text)
+  return compose({ root: plan.root, stacks: plan.stacks, manifestPath: plan.manifest, manifestText: text })
+}
+
+test('a manifest that is not valid JSON is refused, naming the file, with nothing built', () => {
+  let r: ReturnType<typeof compose> | undefined
+  assert.doesNotThrow(() => { r = buildPath('{') }, 'a SyntaxError must never escape the build')
+  assert.ok(r !== undefined && !r.ok, 'refused rather than composed')
+  if (r !== undefined && !r.ok) {
+    assert.match(r.message, /\.agent-container\.stack\.json/, 'names the file')
+    assert.match(r.message, /is not valid JSON/)
+    assert.match(r.message, /nothing was built/i)
+  }
+})
+
+test('a manifest read from disk that is not valid JSON is refused the same way', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'malformed-'))
+  const path = join(dir, 'm.json')
+  writeFileSync(path, '{"stacks": [')
+  let r: ReturnType<typeof compose> | undefined
+  assert.doesNotThrow(() => { r = compose({ root: EXTENSION, stacks: [], manifestPath: path }) })
+  assert.ok(r !== undefined && !r.ok)
+  if (r !== undefined && !r.ok) assert.ok(r.message.includes(path), r.message)
+})
+
+test('an absent manifest still builds core alone', () => {
+  const r = buildPath(null)
+  assert.ok(r.ok, 'core alone composes')
+})
