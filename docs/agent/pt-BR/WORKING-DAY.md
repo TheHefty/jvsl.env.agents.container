@@ -62,7 +62,9 @@ esse comentário literalmente nas notas da task. Quando pedir, o agente percorre
 **Aceitar não é fazer merge.** Uma task aceita fecha quando o seu pull request entra, o que o
 `review-settle` confere com o `gh`. Um pull request aberto, fechado sem merge, ou ausente deixa a task
 aberta, e o motivo é dito. Um `gh` que não consegue responder nunca é lido como merge. O
-`review-reopen` guarda o que falta.
+`review-reopen` guarda o que falta. Uma task que não vai ser feita é descartada com o sim do
+desenvolvedor pelo `review-drop`, que diz por quê; o próprio `bd` recusa fechar uma task que o
+review não deixou passar.
 
 ## O diário
 

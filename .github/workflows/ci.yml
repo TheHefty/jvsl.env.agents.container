@@ -391,6 +391,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: the sandbox is handed what it cannot inherit
         run: bash core/bin/jail-wrappers.test.sh
+      - name: bd closes a task only through the review, all or none, and is bd otherwise
+        run: bash core/bin/bd.test.sh
       # And nothing it should not be. A variable passed into the sandbox ends up
       # on the launcher's own command line, where `ps` reads it from anywhere
       # else in the container — so the set of names allowed to cross is a
@@ -414,6 +416,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/review-list.test.sh
       - name: nothing is accepted or reopened without the developer's words
         run: bash core/plugin/agent-container/bin/review-accept.test.sh
+      - name: a task is dropped only on a reason, labelled so the history says so
+        run: bash core/plugin/agent-container/bin/review-drop.test.sh
       - name: an accepted task closes when its pull request merges, and only then
         run: bash core/plugin/agent-container/bin/review-settle.test.sh
       - name: the journal goes to a private repository or waits in the outbox, one entry per local day, never in the tracker

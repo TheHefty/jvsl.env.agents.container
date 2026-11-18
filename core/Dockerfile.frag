@@ -728,8 +728,18 @@ RUN curl -fL --no-progress-meter --proto '=https' --tlsv1.2 \
     && echo "3219443a9734b89b93fb16ee8d65844759fa1b3cd3cf139c606b7353cfb0715c  /tmp/beads.tar.gz" | sha256sum -c - \
     && mkdir -p /tmp/beads-unpack \
     && tar -xzf /tmp/beads.tar.gz -C /tmp/beads-unpack \
-    && install -m 0755 "$(find /tmp/beads-unpack -name bd -type f | head -1)" /usr/local/bin/bd \
+    && install -D -m 0755 "$(find /tmp/beads-unpack -name bd -type f | head -1)" /usr/local/lib/jvsl/bd \
     && rm -rf /tmp/beads-unpack /tmp/beads.tar.gz
+
+# 7.3.0 `bd` on PATH is a wrapper; the binary above is off PATH, at
+# /usr/local/lib/jvsl/bd. Debt a-task-can-be-closed-without-the-reviews-
+# acceptance (gh-363): the agent closed twelve tasks nobody had accepted, with a
+# plain `bd close`, and nothing refused it. The wrapper refuses to close a task
+# that is not accepted, a rejected proposal, dropped or a study topic, and
+# hands every other command to the binary untouched — see core/bin/bd.sh.
+# Named bd.sh in the tree for the same reason claude.sh is.
+COPY core/bin/bd.sh /usr/local/bin/bd
+RUN chmod 0755 /usr/local/bin/bd
 
 COPY core/cont-init/45-beads.sh /custom-cont-init.d/45-beads.sh
 RUN chmod +x /custom-cont-init.d/45-beads.sh

@@ -268,6 +268,12 @@ maioria não tem. Para esses, nada mais nestas regras muda.
 - **Feche com o motivo.** Quando a mudança que termina um item for mergeada,
   `bd close <id> --reason "…"`, dizendo o que o terminou e onde. O bd aceita fechar sem motivo e
   grava só "Closed", então exigir o motivo é desta regra, não da ferramenta.
+- **Uma task fecha pelo review, e o `bd` recusa o contrário.** O `bd` no PATH da imagem é um wrapper
+  que não fecha uma task — por `close`, `done` ou `update --status closed`, forçado ou não — a não
+  ser que ela esteja `accepted` (o `review-settle` a fecha no merge), seja um rascunho `proposed`
+  recusado, `dropped` ou um tópico `study`. Uma task que não vai ser feita é descartada com o sim do
+  desenvolvedor, com `review-drop <id> "<por quê>"`. Uma recusa não é um obstáculo para contornar:
+  chamar o binário real pelo caminho é justamente o desvio que isto existe para fechar.
 - **Um problema encontrado no caminho só é registrado com um sim.** Pergunte antes, toda vez. Depois
   do sim, registre-o como dívida, `bd create --type bug --labels defect`, com as seções do template de
   dívida. Registrar não começa a correção. Este é o único item que você pode criar sem um gate

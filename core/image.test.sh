@@ -169,6 +169,16 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     printf "listed=%s\n" "$("$B/review-list" 2>/dev/null | grep -c "^pr: #7$")"
     REVIEW_GH=/tmp/gh "$B/review-settle" "$a" >/dev/null 2>&1
     printf "settled=%s\n" "$(bd show "$a" --json 2>/dev/null | jq -r ".[0].status")"
+    # The close gate against the same real bd (debt gh-363): the wrapper is the
+    # bd on PATH, the binary is where it hands off to, and a task nobody
+    # accepted stays open through a plain close, even forced, while
+    # review-drop closes it. This is what catches the wrapper reading a
+    # field the real bd does not print.
+    bd close "$b" --reason "merged" --force >/dev/null 2>&1; g1=$?
+    s1="$(bd show "$b" --json 2>/dev/null | jq -r ".[0].status")"
+    "$B/review-drop" "$b" "superseded" >/dev/null 2>&1
+    s2="$(bd show "$b" --json 2>/dev/null | jq -r ".[0].status")"
+    printf "gate=%s\n" "$g1 $s1 $s2 $(command -v bd) $([ -x /usr/local/lib/jvsl/bd ] && echo real)"
     # The journal on the tools of the image, offline and with no repository
     # named: the entry is kept in the outbox, the retro is told how to name
     # one, and the tracker gets nothing (story the-retro-writes-the-entry-to-
@@ -263,6 +273,9 @@ read the entry waiting in the outbox, say it is not sent and why, and call no da
 did not read back a task's pull request from its metadata or did not close it once accepted and merged \
 (listed=$(dfield listed) settled=$(dfield settled)): the review would leave finished work open, or show \
 every task with no pull request"
+[ "$(dfield gate)" = "1 open closed /usr/local/bin/bd real" ] || fail "against the real bd, the close \
+gate did not hold (gate=$(dfield gate), expected: refused, still open, closed by review-drop, the wrapper \
+on PATH, the binary behind it): a task nobody accepted could be closed with a plain bd close (gh-363)"
 [ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, planning-brief \
 or planning-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
 $(dfield init)): the export's shape no longer matches what the planning's scripts and their fixture expect, \
