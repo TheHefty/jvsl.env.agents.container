@@ -318,11 +318,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
     # The nested rootless daemon is what keeps the agent off the host's Docker
-    # socket; gh-313 records the ownership question around its storage driver:
-    # the 0:0 that opened it was kotodori's older build, and on this image the
-    # fallback held every image-set owner when measured on 2026-11-03. What
-    # the service can hold is that the driver is chosen by the kernel probe,
-    # kept, and that a change re-homes the data-root in one line.
+    # socket. gh-313's 0:0 was the boot's recursive chown of its store; the
+    # service holds that the store is chowned at its root only, that the
+    # driver is chosen by the kernel probe and kept, and that a change
+    # re-homes the data-root in one line. core-booted drives the symptom.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -648,6 +647,19 @@ jobs:
         run: >-
           SKIP_JAIL="GitHub runner: Bun aborts under Landlock; verified on the operator's host instead"
           bash core/booted.test.sh core-ci
+      # gh-313: the boot's recursive chown of the data-root rewrote every
+      # layer in the nested daemon's store to 0:0. Driven where it was found —
+      # an image in the store, a restart, the owner its user sees.
+      #
+      # The sysctl is the harness's, like apparmor=unconfined above: Ubuntu
+      # 24.04 runners refuse unprivileged user namespaces to unconfined
+      # processes, and rootlesskit needs one. Only where the knob exists.
+      - name: an image in the nested daemon's store keeps its owners across a restart
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bash core/booted-docker-owners.test.sh core-ci
 
   discover-stacks:
     needs: changes
