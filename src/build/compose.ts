@@ -119,7 +119,7 @@ function composeOrThrow(input: ComposeInput): string {
   if (unfilled !== '') refuse(`compose-dockerfile: nothing in ${coreVersions} fills ${unfilled} in ${coreFrag}.`)
 
   const manifest = input.manifestText !== undefined
-    ? input.manifestText === null ? undefined : { path: input.manifestPath ?? MANIFEST, value: JSON.parse(input.manifestText) as unknown }
+    ? input.manifestText === null ? undefined : { path: input.manifestPath ?? MANIFEST, value: parseManifest(input.manifestPath ?? MANIFEST, input.manifestText) }
     : readManifest(input.manifestPath)
   const packages: string[] = []
   if (manifest !== undefined && typeof manifest.value === 'object' && manifest.value !== null &&
@@ -219,7 +219,20 @@ function jqRaw(value: unknown): string {
 
 function readManifest(path: string | undefined): { path: string; value: unknown } | undefined {
   if (path === undefined || path === '' || !existsSync(path) || !statSync(path).isFile()) return undefined
-  return { path, value: JSON.parse(readFileSync(path, 'utf8')) as unknown }
+  return { path, value: parseManifest(path, readFileSync(path, 'utf8')) }
+}
+
+/**
+ * A manifest that does not parse is refused like the composer's other refusals
+ * (gh-327). It used to throw a SyntaxError past them, and Build the Image
+ * failed as a generic command error that named neither the file nor the cause.
+ */
+function parseManifest(path: string, text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown
+  } catch (error) {
+    refuse(`${path} is not valid JSON (${error instanceof Error ? error.message : String(error)}). Nothing was built: fix the file and build again.`)
+  }
 }
 
 /** `{{VERSION}}` filled in every string value, never in a key: jq's walk + gsub. */
