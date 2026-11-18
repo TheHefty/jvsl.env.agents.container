@@ -57,6 +57,11 @@ It lists the tasks in progress and the accepted ones still waiting for a merge. 
      ```bash
      ${CLAUDE_PLUGIN_ROOT}/bin/review-reopen <id> "<what is missing>"
      ```
+   - **Drop**, only when the developer says the task will not be done, with their reason:
+     ```bash
+     ${CLAUDE_PLUGIN_ROOT}/bin/review-drop <id> "<why>"
+     ```
+     `bd close` refuses a task that is not accepted, dropped or a rejected proposal. Never close one any other way.
 
 If a script refuses, tell the developer why, and do not work around it.
 

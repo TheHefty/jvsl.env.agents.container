@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# review-drop <id> <why>: the developer said yes to abandoning a task — obsolete,
+# superseded, no longer wanted. Debt a-task-can-be-closed-without-the-reviews-
+# acceptance (gh-363): the bd wrapper refuses to close a task nobody accepted,
+# and this is the honest way out of that, never a way around the review. Run
+# only on the developer's yes.
+#
+# Labelled `dropped` before it is closed, so the wrapper lets it through and the
+# history says it was dropped rather than done; closed with the reason, which is
+# what stops the same task coming back.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+TODAY="${REVIEW_TODAY:-$(date +%F)}"
+[ "$#" -ge 1 ] && [ -n "$1" ] || { echo "usage: review-drop <id> <why it is dropped>" >&2; exit 2; }
+id="$1"; why="${2:-}"
+if [ -z "${why//[[:space:]]/}" ]; then
+    echo "review-drop: $id was not dropped. Say why, so the same task does not come back."
+    exit 1
+fi
+"$BD" label add "$id" dropped >/dev/null || { echo "review-drop: $id was not dropped: labelling it failed."; exit 1; }
+if ! "$BD" close "$id" --reason "Dropped on $TODAY, with the developer's yes: $why" >/dev/null; then
+    echo "review-drop: $id is labelled dropped but is still open: closing it failed. Run review-drop again."
+    exit 1
+fi
+echo "$id: dropped — $why"

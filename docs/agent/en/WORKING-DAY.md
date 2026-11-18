@@ -61,7 +61,9 @@ task's notes. When they ask, the agent walks through the change with them.
 **Accepting is not merging.** An accepted task closes when its pull request merges, which
 `review-settle` checks with `gh`. A pull request that is open, closed without merging, or missing
 leaves the task open, and the reason is said. A `gh` that cannot answer is never read as merged.
-`review-reopen` keeps what is missing.
+`review-reopen` keeps what is missing. A task that will not be done is dropped on the developer's
+yes with `review-drop`, which says why; `bd` itself refuses to close a task the review has not let
+through.
 
 ## The journal
 

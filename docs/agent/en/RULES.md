@@ -266,6 +266,12 @@ Most do not. Everything else in these rules is unchanged for them.
 - **Close with the reason.** When the change that finishes an item is merged,
   `bd close <id> --reason "…"`, saying what finished it and where. bd accepts a close with no reason
   and records only "Closed", so the reason is this rule's to require, not the tool's.
+- **A task closes through the review, and `bd` refuses it otherwise.** The `bd` on the image's PATH
+  is a wrapper that will not close a task — by `close`, `done` or `update --status closed`, forced or
+  not — unless it is `accepted` (`review-settle` closes it on the merge), a rejected `proposed`
+  draft, `dropped` or a `study` topic. A task that will not be done is dropped on the developer's
+  yes, with `review-drop <id> "<why>"`. A refusal is not an obstacle to route around: calling the
+  real binary by its path is the bypass this exists to close.
 - **A problem found along the way is recorded only with a yes.** Ask first, every time. After a yes,
   record it as a debt, `bd create --type bug --labels defect`, with the debt template's sections.
   Recording it does not start the fix. This is the one item you may create without a gate of its
