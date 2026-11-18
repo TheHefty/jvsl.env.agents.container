@@ -420,6 +420,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/review-drop.test.sh
       - name: an accepted task closes when its pull request merges, and only then
         run: bash core/plugin/agent-container/bin/review-settle.test.sh
+      - name: the review names each task closed past it since the last one, once
+        run: bash core/plugin/agent-container/bin/review-bypass.test.sh
       - name: the journal goes to a private repository or waits in the outbox, one entry per local day, never in the tracker
         run: bash core/plugin/agent-container/bin/journal-write.test.sh
       - name: a tracker's journal entries move to the private repository, removed only once they are there

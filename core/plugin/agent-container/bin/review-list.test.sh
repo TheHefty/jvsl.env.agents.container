@@ -34,7 +34,9 @@ item s1 feature in_progress 2
 item t-proposal task deferred 2 '["proposed"]' "c"
 item j1 task in_progress 2 '["journal"]'
 
-out="$(TRACKER_EXPORT="$EXPORT" bash "$HERE/review-list")"
+# REVIEW_BD=false: no review window is recorded, whatever tracker the suite
+# runs beside; the window itself is review-bypass.test.sh's.
+out="$(TRACKER_EXPORT="$EXPORT" REVIEW_BD=false bash "$HERE/review-list")"
 ids() { printf '%s\n' "$out" | sed -n 's/^### \([^ ]*\) .*/\1/p' | paste -sd' ' -; }
 block() { printf '%s\n' "$out" | awk -v id="$1" '$1 == "###" {on = ($2 == id); next} on'; }
 

@@ -17,9 +17,12 @@ if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; el
 items="$(export_of | jq -c 'select(._type == "issue")' | jq -sc .)" || {
     echo "review-settle: could not read the tracker's export" >&2; exit 2; }
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+review=no
 if [ "$#" -gt 0 ]; then
     ids=("$@")
 else
+    review=yes
     mapfile -t ids < <(jq -r '.[] | select(.status != "closed" and ((.labels // []) | index("accepted"))) | .id' <<<"$items")
 fi
 
@@ -51,4 +54,24 @@ for id in "${ids[@]}"; do
         *) echo "$id: left open — #$pr is in a state this does not know: $state"; rc=1 ;;
     esac
 done
+# **A review also says what closed past it** (gh-363, task asi.4). Run with no
+# ids, this is the review: it names the tasks closed since the last review
+# without going through it, then moves the window, kept in the tracker's
+# key-value store so it travels with the tracker. review.since is the window's
+# start, which review-list, run next, reads; review.last is this review.
+if [ "$review" = yes ]; then
+    now="${REVIEW_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+    last="$("$BD" kv get review.last 2>/dev/null)" || last=""
+    echo
+    echo "## Closed without the review"
+    bash "$HERE/review-bypassed" "$last" || rc=1
+    err="$(mktemp)"
+    if { [ -z "$last" ] || "$BD" kv set review.since "$last" >/dev/null 2>"$err"; } \
+        && "$BD" kv set review.last "$now" >/dev/null 2>>"$err"; then :
+    else
+        echo "review-settle: this review's window could not be recorded in the tracker, so the next review would repeat what this one showed. bd said: $(tail -n 1 "$err")"
+        rc=1
+    fi
+    rm -f "$err"
+fi
 exit "$rc"

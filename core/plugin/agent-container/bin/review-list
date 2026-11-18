@@ -20,3 +20,9 @@ export_of | jq -c 'select(._type == "issue")' | jq -sr '
       "pr: \(if $pr == null then "no pull request recorded" else "#\($pr)" end)",
       "state: \(if (labels | index("accepted")) then (if $pr == null then "accepted, no pull request to wait for" else "accepted, waiting for #\($pr) to merge" end) else "in progress" end)",
       ""'
+
+# What closed past the review, in the window review-settle opened when the
+# review started (gh-363, task asi.4).
+BD="${REVIEW_BD:-bd}"
+echo "## Closed without the review"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/review-bypassed" "$("$BD" kv get review.since 2>/dev/null || true)"

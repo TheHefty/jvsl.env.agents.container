@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# review-bypassed [<since>]: the body of the review's "Closed without the
+# review" section (debt a-task-can-be-closed-without-the-reviews-acceptance,
+# gh-363, task asi.4). Tasks closed after <since> (ISO-8601, UTC) that carry
+# none of accepted, dropped, proposed or study — the labels a close through the
+# review, a drop, a rejection or a published study leaves. review-settle and
+# review-list both print it, so the two cannot disagree. With no <since>, no
+# earlier review is recorded, and it says so rather than listing every task
+# closed before the review existed. Stories and debts are task asi.2's.
+set -uo pipefail
+
+since="${1:-}"
+if [ -z "$since" ]; then
+    echo "No earlier review is recorded, so nothing is checked this time: the window starts at this review."
+    exit 0
+fi
+if [ -n "${TRACKER_EXPORT:-}" ]; then export_of() { cat "$TRACKER_EXPORT"; }; else export_of() { bd export; }; fi
+out="$(export_of | jq -c 'select(._type == "issue")' | jq -sr --arg since "$since" '
+    def norm: sub("\\.[0-9]+Z$"; "Z");
+    map(select(.issue_type == "task" and .status == "closed" and .closed_at != null
+               and ((.closed_at | norm) > ($since | norm))
+               and ((.labels // []) | map(select(. == "accepted" or . == "dropped" or . == "proposed" or . == "study")) | length) == 0))
+    | sort_by(.closed_at)
+    | .[]
+    | "- \(.id) \(.title) — closed \(.closed_at | norm) without the review"')" || {
+    echo "review-bypassed: could not read the tracker's export" >&2; exit 2; }
+if [ -z "$out" ]; then echo "None."; exit 0; fi
+printf '%s\n' "$out"
+echo "Each was closed past the review. Show it now: review-accept accepts it on the developer's word, review-reopen reopens it with what is missing."
