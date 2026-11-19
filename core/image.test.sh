@@ -232,6 +232,10 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     # The study contract runs on the node the image has: the example passes,
     # and the same validator the Study view bundles is what says so.
     printf "study=%s\n" "$("$B/study-validate" /opt/jvsl/plugins/agent-container/study/example/bd-labels-are-null >/dev/null 2>&1 && echo ok || echo failed)"
+    # The idea contract runs on the same node: an idea the contract accepts
+    # passes idea-check, and one it refuses is refused (story the-ideas-have-a-contract).
+    I=/opt/jvsl/plugins/agent-container/ideas/examples
+    printf "idea=%s\n" "$("$B/idea-check" "$I/ready-whole" >/dev/null 2>&1; echo $?) $("$B/idea-check" "$I/ready-without-a-stack" >/dev/null 2>&1; echo $?)"
     # The scripts of the project report, on the git and node of the image: writing only
     # the report passes the guard, and a well-formed report passes the check.
     R="$(mktemp -d)" && git init -q "$R" && printf "%s\n" "x" > "$R/a.txt" && git -C "$R" add -A \
@@ -273,6 +277,9 @@ then the topic made ready and published with its link as the close reason"
 left open (tracked=$(dfield tracked)): a rebuild would duplicate the topic or move the developer progress"
 [ "$(dfield report)" = "ok" ] || fail "the project report's scripts do not run in this image (report=$(dfield report)): \
 git or node is missing, or report-guard, report-exclude or report-check fails on a report that only writes itself"
+[ "$(dfield idea)" = "0 1" ] || fail "idea-check does not hold the contract's examples in this image \
+(idea=$(dfield idea), expected 0 for a whole idea and 1 for one missing a section): node is missing, or the \
+plugin's ideas folder did not arrive, so the ideation agent could not check an idea before ready"
 [ "$(dfield study)" = "ok" ] || fail "study-validate does not pass the contract's own example in this image \
 (study=$(dfield study)): node is missing, or the plugin's study folder did not arrive, so the study skill \
 would refuse every topic"

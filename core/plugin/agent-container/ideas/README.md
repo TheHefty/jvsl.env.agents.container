@@ -21,7 +21,13 @@ being shaped; a `ready` one has all four, each with something in it.
 
 ## One set of examples, both sides
 
+`contract.mjs` is the checker, and there is only one:
+
+- **The agent** runs it in the container through `bin/idea-check <IDEA.md or idea folder>`. That
+  prints one `<file>:<line>: <message>` line per problem (`<file>: <message>` when the problem is
+  something missing) and exits 1, or exits 0 in silence.
+- **The extension** bundles the same file (`src/ideas/contract.ts` re-exports it).
+
 `examples/<name>/` holds an `IDEA.md` and an `expect.json`: whether it is valid, and, when it is not,
-each problem with its line and a word the message must carry. The extension's checker
-(`src/ideas/contract.ts`) is tested against every one of them, and the plugin's own checker is held
-to the same files, so the two cannot disagree about what a valid idea is.
+each problem with its line and a word the message must carry. Both sides are tested against every
+one of them, so the two cannot disagree about what a valid idea is.

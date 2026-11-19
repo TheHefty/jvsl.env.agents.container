@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# idea-check <IDEA.md or idea folder>...: checks an idea against its contract
+# (story the-ideas-have-a-contract), with the same file the extension bundles.
+# See core/plugin/agent-container/ideas/contract.mjs.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$HERE/../ideas/cli.mjs" "$@"
