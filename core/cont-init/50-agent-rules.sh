@@ -31,6 +31,19 @@ RESIDENT=(MODES.md RULES.md)
 
 say() { echo "[50-agent-rules] $*"; }
 
+# **The ideation container is the same image with a mode** (task the-boot-
+# writes-the-ideation-rules-in-ideation-mode, gh-364; agreed 2026-11-18: one
+# image, a mode variable). The Brainstorm command's container is not a
+# project, and runs under IDEATION.md instead of the development rules: no code
+# is written there. Development, or no mode at all, is exactly the two above.
+# A mode this does not know is said once and treated as development, the
+# rules every project already runs under, rather than as no rules at all.
+case "${AGENT_CONTAINER_MODE:-}" in
+    ideation) RESIDENT=(IDEATION.md) ;;
+    ""|development) ;;
+    *) say "AGENT_CONTAINER_MODE=${AGENT_CONTAINER_MODE} is not a mode this boot knows (ideation, development); the development rules were installed." ;;
+esac
+
 if [ ! -d "$SOURCE" ]; then
     say "refused: the normative documents are not in the image at $SOURCE. Nothing was written."
     say "This means the image is incomplete rather than this project being unconfigured — the"

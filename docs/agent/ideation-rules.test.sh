@@ -17,6 +17,7 @@
 #     when it creates the project.
 #   - **it leaks into projects**: the boot installs MODES.md and RULES.md in
 #     every container, and a "no code is written" rule there would stop all work.
+#     It installs IDEATION.md only with AGENT_CONTAINER_MODE=ideation.
 #   - **the languages drift** — parity sees headings; this sees the words.
 set -euo pipefail
 
@@ -58,9 +59,16 @@ en|no code is written|one conversation for all ideas|which idea to continue|star
 pt-BR|nenhum código é escrito|uma conversa para todas as ideias|qual ideia continuar|começar outra|só na memória|só a extensão marca
 TABLE
 
-# The boot installs these in every container; IDEATION.md must not be one.
+# The boot installs the rules in every container; IDEATION.md only in the
+# ideation one (5kd.2.2). Driven rather than grepped: the real hook, the real
+# documents, no mode set, a target that is its own mount.
 boot="$ROOT/core/cont-init/50-agent-rules.sh"
-check "the boot that installs every project's rules does not install IDEATION.md" "$(grep -c 'IDEATION' "$boot" || true)" "0"
+b="$(mktemp -d)"; trap 'rm -rf "$b"' EXIT
+mkdir -p "$b/rules"; printf 'tmpfs %s/rules tmpfs rw 0 0\n' "$b" > "$b/mounts"
+env -u AGENT_CONTAINER_MODE AGENT_DOCS_DIR="$HERE/en" AGENT_RULES_DIR="$b/rules" AGENT_RULES_MOUNTS="$b/mounts" \
+    bash "$boot" >/dev/null 2>&1 || true
+check "the boot, with no mode, installs the development rules" "$(find "$b/rules" -name 'RULES.md' | wc -l | tr -d ' ')" "1"
+check "  and not IDEATION.md" "$(find "$b/rules" -name 'IDEATION.md' | wc -l | tr -d ' ')" "0"
 check "the index says what IDEATION.md is for" "$(yes_if "$(grep -c 'IDEATION.md' "$HERE/README.md" || true)")" "yes"
 
 if [ "$failures" -gt 0 ]; then

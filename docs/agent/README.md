@@ -25,8 +25,9 @@ session. `WORKFLOW.md`, `TASKS.md`, `TASK-TEMPLATE.md`, the `CHARTER-TEMPLATE.md
 
 **`IDEATION.md` is not a project's at all.** It is the rule set of the ideation container the
 `Brainstorm` command opens, which is not a project: there it takes the place of the development
-rules (no code is written, one folder per idea). The boot installs it only in that container, never
-beside `MODES.md` and `RULES.md` in a project's, where "no code is written" would stop all work.
+rules (no code is written, one folder per idea). The boot installs it only in that container, which
+runs with `AGENT_CONTAINER_MODE=ideation`, and there instead of `MODES.md` and `RULES.md`; never in a
+project's, where "no code is written" would stop all work.
 
 ## Languages
 
