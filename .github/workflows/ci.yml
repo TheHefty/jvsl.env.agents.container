@@ -158,6 +158,8 @@ jobs:
         run: bash docs/agent/initialization-cucumber.test.sh
       - name: the initialization writes docs/ARCHITECTURE.md and a change of shape keeps it true
         run: bash docs/agent/architecture-document.test.sh
+      - name: the ideation container's rules say no code, one folder per idea, consolidate before ready, and stay out of projects
+        run: bash docs/agent/ideation-rules.test.sh
       - name: the SRS template requires a Security section in three parts, each with its owner
         run: bash docs/agent/srs-security.test.sh
 
