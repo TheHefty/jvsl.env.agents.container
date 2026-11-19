@@ -42,6 +42,40 @@ controlador. **Se nenhum dado pessoal é processado, diga isso aqui** — é o r
 trabalho depois. Isto é andaime, não aconselhamento jurídico; o trabalho é tornar as decisões
 explícitas para alguém qualificado revisar.
 
+## Segurança
+
+Do que o sistema precisa ser protegido, e o que foi decidido sobre isso. **Obrigatória: o SRS não é
+oferecido para acordo enquanto faltar qualquer uma das três partes abaixo**, e o gate nomeia a parte
+que falta — ela é exigida antes de o SRS ser acordado, não preenchida depois que o código existe. Uma
+parte sem conteúdo diz isso numa frase ("nada é aceito como risco"), o que é uma decisão; um título
+vazio não é.
+
+### Modelo de ameaças
+
+**Escrito pelo usuário, nas palavras dele.** O agente pergunta; não responde por ele. Três
+perguntas, cada uma respondida concretamente para este sistema:
+
+- **O que tem valor** — os dados, o dinheiro, o acesso ou a reputação que alguém poderia levar ou
+  quebrar.
+- **Quem o quereria** — as pessoas ou programas com motivo para tentar, de um usuário curioso a um
+  scanner automatizado.
+- **Por qual entrada** — todo caminho de entrada: as interfaces que o sistema expõe, as dependências
+  que ele puxa, as pessoas e máquinas que guardam as suas credenciais.
+
+### Controles
+
+**Propostos pelo agente, como uma lista de opções, contra o modelo de ameaças acima;
+o usuário escolhe.** Para cada ameaça, o menu tem a forma que [Modos](MODES.md) dá a todo trade-off: o
+controle mais simples que pode funcionar está sempre nela, mesmo quando o agente não o recomendaria,
+e cada opção diz o seu custo e o que teria de ser verdade para ela ser a certa. Registre o que foi
+escolhido e por quê; o que não foi escolhido fica como uma linha, para que a escolha possa ser
+revista.
+
+### Riscos aceitos
+
+**Escrito pelo usuário.** O que os controles escolhidos deixam aberto, de propósito, e por que isso
+é aceitável por ora. Um risco que ninguém escreveu aqui não é aceito; é invisível.
+
 ## Épicos e estórias
 
 A decomposição. Uma subseção por épico — uma frase dizendo para que o épico serve, e a lista de

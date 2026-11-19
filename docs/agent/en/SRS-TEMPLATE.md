@@ -42,6 +42,39 @@ controller is. **If nothing personal is processed, say so here** — that is the
 the most work later. This is scaffolding, not legal advice; the job is to make the decisions
 explicit for someone qualified to review.
 
+## Security
+
+What the system has to be protected from, and what was decided about it. **Required: the SRS is not
+offered for agreement while any of the three parts below is missing**, and the gate names the part
+that is — it is required before the SRS is agreed, not filled in once the code exists. A part with
+nothing in it says so in a sentence ("nothing is accepted as a risk"), which is a decision; an
+empty heading is not.
+
+### Threat model
+
+**Written by the user, in their words.** The agent asks; it does not answer for them. Three
+questions, each answered concretely for this system:
+
+- **What has value** — the data, the money, the access or the reputation someone could take or
+  break.
+- **Who would want it** — the people or programs with a reason to try, from a curious user to an
+  automated scanner.
+- **Through which entry** — every way in: the interfaces the system exposes, the dependencies it
+  pulls, the people and machines that hold its credentials.
+
+### Controls
+
+**Proposed by the agent, as an options list, against the threat model above; the user chooses.**
+For each threat, the menu has the shape [Modes](MODES.md) gives every trade-off: the simplest
+control that could work is always on it, even when the agent would not recommend it, and each
+option states its cost and what would have to be true for it to be the right one. Record what was
+chosen and why; what was not chosen stays as one line, so the choice can be revisited.
+
+### Accepted risks
+
+**Written by the user.** What the chosen controls leave open, on purpose, and why that is
+acceptable for now. A risk nobody wrote down here is not accepted; it is unseen.
+
 ## Epics and stories
 
 The decomposition. One subsection per epic — a sentence saying what the epic is for, and the list
