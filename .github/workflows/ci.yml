@@ -446,6 +446,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/refine-candidates.test.sh
       - name: a study topic's guide is checked against its contract, one line per problem, never skipped
         run: bash core/plugin/agent-container/bin/study-validate.test.sh
+      - name: idea-check accepts and refuses the shared examples exactly as the extension does
+        run: bash core/plugin/agent-container/bin/idea-check.test.sh
       - name: writing the project report changes nothing but the report
         run: bash core/plugin/agent-container/bin/report-guard.test.sh
       - name: every claim in the report cites a file that exists, and no implicit decision is given a motive

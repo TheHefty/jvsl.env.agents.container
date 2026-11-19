@@ -23,4 +23,6 @@ refuses in one line, saying how to turn the tracker on, when the manifest does n
 | `project-report` | a read-only report on the project into `docs/REPORT.md`, which git ignores; every claim cites a file, and implicit decisions are given no invented reason (`bin/report-guard`, `bin/report-exclude`, `bin/report-check`). It does not need the tracker |
 | `study` | builds a topic's guide in `docs/study/<slug>/` from a blog candidate, a report topic or the developer's own, and tracks it as a `study` task; never writes the post (`bin/study-sources`, `bin/study-slug`, `bin/study-track`, `bin/study-validate`) |
 
+`bin/idea-check <IDEA.md or idea folder>` checks an idea against its contract (`ideas/README.md`), with the same file the extension bundles; the ideation container's agent runs it before an idea is marked `ready`.
+
 The extension's Study view moves a topic through the tracker with `bin/study-move <slug> started|ready|published [link]`, the one script it runs: ready is the developer's word, published only once ready and with an http(s) link, and never on anything but a `study` task.
