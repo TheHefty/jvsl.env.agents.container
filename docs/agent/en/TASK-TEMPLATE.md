@@ -86,8 +86,8 @@ money, and a change can be green on every check and carry all four.
 
 | # | Check | Where in the diff | Or "none", and what was looked at |
 |---|---|---|---|
-| 1 | Where outside data enters: its size limit, its validation, what unexpected input does | | |
-| 2 | Every query: filtered by owner, bounded, served by an index that exists | | |
+| 1 | Where outside data enters: its size limit, its validation, what unexpected input does; the threat in the SRS's Security section it relates to, or that it touches none | | |
+| 2 | Every query: filtered by owner, answered against who the threat model says would want the data; bounded; served by an index that exists | | |
 | 3 | Writes and deletes: what here cannot be undone | | |
 | 4 | Cost multipliers: a loop that calls an API or the database once per item | | |
 | 5 | Paths the tests did not touch: the branches this change created that nothing exercises | | |

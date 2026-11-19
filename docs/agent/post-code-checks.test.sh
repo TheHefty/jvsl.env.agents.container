@@ -33,6 +33,14 @@ declare -A WHEN=(
     [pt-BR]='Preenchida quando o código já existe'
 )
 
+# What checks 1 and 2 say about the threat model, per language: the threat
+# named, the "touches none" answer, and whose wanting the owner filter is
+# answered against. A language added without them fails here.
+declare -A THREAT=(
+    [en]='threat in the SRS|touches none|who the threat model says would want'
+    [pt-BR]='ameaça da SRS|não toca nenhuma|quem o modelo de ameaças diz que quereria'
+)
+
 # The body of the Nth level-2 section of a file.
 section() {
     awk -v n="$2" '/^## /{i++; next} i==n' "$1"
@@ -55,6 +63,19 @@ for dir in "$ROOT"/*/; do
         "$([ -n "$marker" ] && echo yes || echo no)" "yes"
     check "$lang: and the section's first paragraph carries it" \
         "$(awk 'NF{print; exit}' <<<"$body" | grep -cF -- "${marker:-<none>}" || true)" "1"
+
+    # Checks 1 and 2 answer against the SRS's threat model (story the-after-the-
+    # code-checks-answer-against-the-threat-model, kr7.3, gh-362): an entry for
+    # outside data names the threat it relates to, or says it touches none; a
+    # query's owner filter is answered against who the model says would want
+    # the data. Without that, both are checked against whatever the author
+    # imagined that day.
+    row1="$(grep -E '^\| *1 *\|' <<<"$body" || true)"
+    row2="$(grep -E '^\| *2 *\|' <<<"$body" || true)"
+    IFS='|' read -r threat none who <<<"${THREAT[$lang]:-||}"
+    check "$lang: check 1 names the threat in the SRS it relates to" "$(grep -ciF -- "${threat:-<none>}" <<<"$row1" || true)" "1"
+    check "$lang: or says it touches none" "$(grep -ciF -- "${none:-<none>}" <<<"$row1" || true)" "1"
+    check "$lang: check 2 answers against who the threat model says would want the data" "$(grep -ciF -- "${who:-<none>}" <<<"$row2" || true)" "1"
 
     wf="$dir/WORKFLOW.md"
     check "$lang: the tracker workflow records the checks with --append-notes" \
