@@ -29,6 +29,7 @@ import { hostProject } from '../host/project.ts'
 import { CONFIG_PATH, regenerateConfiguration } from '../open/open.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import { SelectionView } from '../view/selection-view.ts'
+import { stackItems } from '../ideas/offer.ts'
 
 /**
  * Asks the project questions and writes its manifest. When beads is on, the
@@ -316,13 +317,16 @@ export async function askAnswers(
   current: Record<string, unknown>,
   /** Where the project's switches are now, so each question starts there (story d27.1). */
   now: { beads: boolean; aiMemory: boolean } = { beads: current['beads'] === true, aiMemory: false },
+  /** Stacks to start the question with picked: those of the idea Create starts from (task 5kd.5.1). */
+  preselected: readonly string[] = [],
 ): Promise<Answers | undefined> {
-  const picked = await vscode.window.showQuickPick(available, {
+  const chosen = await vscode.window.showQuickPick(stackItems(available, preselected), {
     canPickMany: true,
     title: 'Which stacks does this project need?',
     placeHolder: 'Nothing selected builds the core image alone',
   })
-  if (picked === undefined) return undefined
+  if (chosen === undefined) return undefined
+  const picked = chosen.map((item) => item.label)
 
   const [missing] = missingDependencies(picked, stacksDir)
   if (missing) {
