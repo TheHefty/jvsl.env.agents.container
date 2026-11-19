@@ -82,6 +82,23 @@ release, quando esta estória fecha um épico — o épico a que pertence, um po
 os critérios de aceite em Gherkin — veja [Cenários](SCENARIOS.md) — acordados no gate da estória,
 antes de qualquer task sob ela ser escrita.
 
+**O gate da estória pergunta se o modelo de ameaças muda.** A estória acrescenta uma nova superfície
+(uma interface, uma porta, um comando, um arquivo lido de fora), um novo dado, ou um novo papel
+(alguém que pode fazer algo que ninguém podia antes)? Se acrescenta, a seção Segurança do SRS é
+emendada — o modelo de ameaças, os controles escolhidos contra ele, os riscos aceitos — no mesmo
+pull request da estória, antes de qualquer task sob ela ser escrita. Num caso ou no outro, a estória
+diz qual, numa linha própria, escrita literalmente e em inglês em toda língua para que um script
+possa lê-la:
+
+- `Threat model: unchanged`, com o porquê: o que a estória toca e por que nada disso é uma nova
+  superfície, um novo dado ou um novo papel;
+- `Threat model: amended in <ref>`, nomeando o pull request ou o commit que a emendou.
+
+**Um projeto cujo SRS não tem seção Segurança** — inicializado antes de a seção existir — não ganha
+uma por suposição. No próximo gate de estória, o agente para e pede ao usuário que escreva o
+modelo de ameaças antes, como o [modelo de SRS](SRS-TEMPLATE.md) o dispõe, e a estória espera por
+ele.
+
 ### Task
 
 O que era um RFC: o desenho detalhado de uma fatia de uma estória, escrito quando a estória está

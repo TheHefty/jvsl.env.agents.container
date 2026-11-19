@@ -20,6 +20,15 @@ the one that closes its epic, this sentence is the release's theme sentence.
 
 What makes this worth doing now, and which SRS requirements it delivers. Cite them by number.
 
+## Threat model
+
+Does this story add a new surface, new data or a new role? Answered at the story gate — see
+[Workflow](WORKFLOW.md) — with one of these lines, literally and in English:
+
+- `Threat model: unchanged`, with why: what the story touches, and why none of it is new;
+- `Threat model: amended in <ref>`, when the SRS's Security section was amended in the same pull
+  request as this story, before any task under it.
+
 ## Acceptance criteria
 
 The behaviour this story must exhibit lives in `<story>.feature` beside this file, in Gherkin — see
