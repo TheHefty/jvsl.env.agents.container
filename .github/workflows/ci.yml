@@ -115,6 +115,8 @@ jobs:
         run: bash scripts/no-fetch-runs-unverified.test.sh
       - name: every Go version the stack offers has a pinned digest
         run: bash stacks/golang/digests.test.sh
+      - name: the dotnet feed's failure names its real cause, and only a 404 is an unsupported distribution
+        run: bash stacks/dotnet/feed-config.test.sh
       - name: the extension never removes a container itself
         run: bash scripts/no-container-is-removed.test.sh
       - name: every source and test under src/ is read, wherever it sits
