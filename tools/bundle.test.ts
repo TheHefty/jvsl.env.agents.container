@@ -579,7 +579,7 @@ test('Create asks for the private journal when beads is on and stores it outside
       openDialog: [picked],
       quickPick: (items, options) => {
         const choices: unknown[] = Array.isArray(items) ? items : []
-        if (options?.canPickMany) return ['node']
+        if (options?.canPickMany) return choices.filter((c) => (c as { label?: string }).label === 'node')
         if (options?.title?.includes('work tracker')) return choices[1]
         return choices[0]
       },
@@ -600,6 +600,64 @@ test('Create asks for the private journal when beads is on and stores it outside
     assert.ok(!existsSync(join(project, '.claude/agent-container/journal.json')))
     assert.ok(inputTitles.some((title) => title.includes('journal')), inputTitles.join('\n'))
     assert.ok(calls.some((call) => call[0] === 'vscode.openFolder'), JSON.stringify(calls))
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME
+    else process.env.HOME = previousHome
+  }
+})
+
+// --- Create offers a ready idea and pre-selects its stacks (task 5kd.5.1, gh-364)
+//
+// Driven through the built bundle's Create command, with the developer's home
+// holding a ready idea, a raw one and a broken one: only the ready one is
+// offered, the broken one is named in the channel, and choosing the ready one
+// starts the stacks question with its stacks picked and its version first.
+
+test('Create offers a ready idea and starts the stacks question from its stacks', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'create-idea-project-'))
+  const home = mkdtempSync(join(tmpdir(), 'create-idea-home-'))
+  const examples = join(import.meta.dirname, '../core/plugin/agent-container/ideas/examples')
+  for (const slug of ['ready-whole', 'raw-just-started', 'an-unknown-key']) {
+    mkdirSync(join(home, '.claude/agent-container/ideas', slug), { recursive: true })
+    writeFileSync(join(home, '.claude/agent-container/ideas', slug, 'IDEA.md'), readFileSync(join(examples, slug, 'IDEA.md'), 'utf8'))
+  }
+  const previousHome = process.env.HOME
+  process.env.HOME = home
+  try {
+    const picked = { scheme: 'file', authority: '', path: project, fsPath: project, toString: () => `file://${project}` }
+    const registered = new Map<string, (...args: unknown[]) => unknown>()
+    const channel: string[] = []
+    const offered: string[] = []
+    let stacksPicked: string[] = []
+    await stubEditor(project, undefined, [], [], {
+      registered,
+      channel,
+      openDialog: [picked],
+      quickPick: (items, options) => {
+        const choices = (Array.isArray(items) ? items : []) as { label?: string; picked?: boolean }[]
+        if (options?.title?.includes('idea')) {
+          offered.push(...choices.map((c) => c.label ?? ''))
+          return choices.find((c) => c.label === 'ready-whole')
+        }
+        if (options?.canPickMany) {
+          stacksPicked = choices.filter((c) => c.picked === true).map((c) => c.label ?? '')
+          return choices.filter((c) => c.picked === true)
+        }
+        return choices[0]
+      },
+      inputBox: (options) => options?.value ?? '',
+    })
+
+    await registered.get('jvsl.agentContainer.create')!()
+
+    assert.deepEqual(offered, ['Start from nothing', 'ready-whole'])
+    assert.deepEqual(stacksPicked.sort(), ['node', 'python'])
+    const manifest = JSON.parse(readFileSync(join(project, '.agent-container.stack.json'), 'utf8')) as Record<string, unknown>
+    assert.equal(manifest.node, '22')
+    assert.ok(typeof manifest.python === 'string')
+    assert.ok(channel.some((l) => l.includes('starting from the idea ready-whole')), channel.join('\n'))
+    assert.ok(channel.some((l) => l.includes('idea not offered') && l.includes('an-unknown-key')), channel.join('\n'))
+    assert.ok(!channel.some((l) => l.includes('raw-just-started')), channel.join('\n'))
   } finally {
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
@@ -631,7 +689,7 @@ test('Open on an unconfigured folder asks for beads and the journal, then prepar
       openDialog: [picked],
       quickPick: (items, options) => {
         const choices: unknown[] = Array.isArray(items) ? items : []
-        if (options?.canPickMany) return ['node']
+        if (options?.canPickMany) return choices.filter((c) => (c as { label?: string }).label === 'node')
         if (options?.title?.includes('work tracker')) return choices[1]
         return choices[0]
       },

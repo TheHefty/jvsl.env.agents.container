@@ -2,7 +2,8 @@ import * as vscode from 'vscode'
 
 import { carried } from '../build/template.ts'
 import { askAnswers, askJournalRepository } from '../configure/command.ts'
-import { stacksAvailable } from '../configure/questions.ts'
+import { stacksAvailable, versionsOf } from '../configure/questions.ts'
+import { preselect, readIdeas } from '../ideas/offer.ts'
 import { filesFor } from '../host/files.ts'
 import { homeFor } from '../host/home.ts'
 import { pickedProject } from '../host/locate.ts'
@@ -63,14 +64,52 @@ export async function create(
   // it would write the manifest into the directory and then `scaffoldPlan`'s
   // empty check would refuse what it had just created.
   const stacksDir = carried(extensionPath, 'stacks')
-  let asked = await askAnswers(stacksDir, stacksAvailable(stacksDir), {})
+  const available = stacksAvailable(stacksDir)
+
+  // **A ready idea can be the starting point** (task 5kd.5.1, gh-364). Ideas are
+  // in the developer's home, the distro's on WSL, as the journal setting is; the
+  // home is read once here and reused for that. A home that cannot be read, or
+  // an idea that cannot, is said in this channel and Create goes on without it:
+  // nothing about ideas can stop a project being created.
+  const home = await homeFor(project)
+  let preselected: string[] = []
+  let current: Record<string, unknown> = {}
+  if (!home.ok) {
+    write([`create: no ideas were read — ${home.reason}`])
+  } else {
+    const { ready, unreadable } = readIdeas(journalFilesFor(project, home.home))
+    for (const line of unreadable) write([`create: idea not offered — ${line}`])
+    if (ready.length > 0) {
+      const NOTHING = 'Start from nothing'
+      const choice = await vscode.window.showQuickPick(
+        [{ label: NOTHING }, ...ready.map((r) => ({
+          label: r.slug,
+          description: Object.entries(r.idea.stacks).map(([s, v]) => `${s} ${v}`).join(', '),
+          detail: (r.idea.sections['Purpose and who it is for'] ?? '').split('\n')[0],
+        }))],
+        { title: 'Start from an idea that is ready?', placeHolder: 'Its stacks come pre-selected' },
+      )
+      if (choice === undefined) {
+        write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
+        return
+      }
+      const from = ready.find((r) => r.slug === choice.label)
+      if (from !== undefined) {
+        const p = preselect(from.idea, available, (stack) => versionsOf(stacksDir, stack))
+        preselected = p.stacks
+        current = p.versions
+        write([`create: starting from the idea ${from.slug}`, ...p.notes.map((n) => `create: ${n}`)])
+      }
+    }
+  }
+
+  let asked = await askAnswers(stacksDir, available, current, undefined, preselected)
   if (asked === undefined) {
     write([`create: ${decideCreate({ plan: undefined, applied: undefined }).message}`])
     return
   }
   let journalFiles: ReturnType<typeof journalFilesFor> | undefined
   if (asked.beads === true) {
-    const home = await homeFor(project)
     if (!home.ok) {
       write([`create: refused — the private journal repository could not be configured: ${home.reason}`])
       void vscode.window.showErrorMessage(
