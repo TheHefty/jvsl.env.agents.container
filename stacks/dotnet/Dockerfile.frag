@@ -13,13 +13,18 @@
 # PPAs. It is not a PPA, which is why the guard written for those two did not
 # see it: that test looked for `launchpad` while the story it belonged to
 # claimed something broader. The guard is wider now.
+#
+# **A failure to fetch it says which failure it was** — debt z1k. Every curl
+# failure used to print "Microsoft publishes no apt config", and on 2026-11-18
+# a 429 did, in CI. feed-config.sh retries, and only a 404 means the
+# distribution is not covered; a 429, a 5xx or no connection says the feed
+# refused or failed. The URL stays here, where no-ubuntu-only-sources reads it.
+COPY stacks/dotnet/feed-config.sh /tmp/dotnet-feed-config.sh
 RUN . /etc/os-release \
-    && config="https://packages.microsoft.com/config/${ID}/${VERSION_ID}/packages-microsoft-prod.deb" \
-    && if ! curl -fsSL "$config" -o /tmp/packages-microsoft-prod.deb; then \
-         echo "dotnet stack: Microsoft publishes no apt config for ${ID} ${VERSION_ID} at ${config}." >&2; \
-         echo "  The .NET SDK feed is per-distribution; this base is not one it covers." >&2; \
-         exit 1; \
-       fi \
+    && bash /tmp/dotnet-feed-config.sh \
+         "https://packages.microsoft.com/config/${ID}/${VERSION_ID}/packages-microsoft-prod.deb" \
+         /tmp/packages-microsoft-prod.deb "${ID} ${VERSION_ID}" \
+    && rm /tmp/dotnet-feed-config.sh \
     && dpkg -i /tmp/packages-microsoft-prod.deb \
     && rm /tmp/packages-microsoft-prod.deb \
     && apt-get update && apt-get install -y --no-install-recommends \
