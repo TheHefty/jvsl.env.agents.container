@@ -194,6 +194,17 @@ Uma vez que as oito perguntas estão resolvidas, prossiga no modo escolhido para
 [Fluxo de trabalho](WORKFLOW.md): o grilling do termo de abertura primeiro — completo para um
 projeto novo, os termos do engajamento para um de sustentação — depois a SRS, depois as estórias.
 
+**O grilling da SRS inclui a sua seção Segurança**, disposta no
+[modelo de SRS](SRS-TEMPLATE.md), e ela passa pelo grilling como o resto em vez de ser preenchida.
+Pergunte ao usuário, e anote as respostas nas palavras dele: o que tem valor neste sistema, quem o
+quereria, e por qual entrada viria buscá-lo. Depois ofereça controles como uma lista de opções
+contra esse modelo de ameaças — a forma que [Modos](MODES.md) dá a todo trade-off: o controle mais
+simples que pode funcionar está sempre nela, e cada opção diz o seu custo e o que teria de ser
+verdade para ela ser a certa — e o usuário escolhe. Por fim, pergunte o que é aceito: o que os
+controles escolhidos deixam aberto, de propósito, e por quê. A SRS não passa pelo seu gate enquanto
+faltar qualquer uma das três partes; o agente nomeia a parte que falta e não pede acordo até ela ser
+escrita, ou até o usuário dizer numa frase que ela não tem nada.
+
 **O `docs/ARCHITECTURE.md` é escrito quando o termo de abertura e a SRS estão acordados**, antes do
 primeiro épico, a partir da [instrução de arquitetura](ARCHITECTURE.md). **Ele não é um gate**:
 nada espera que ele seja acordado. Começa quase vazio — o que o termo de abertura e a SRS já dizem

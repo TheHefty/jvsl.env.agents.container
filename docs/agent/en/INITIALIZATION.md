@@ -188,6 +188,17 @@ Once the eight questions are settled, proceed under the chosen mode into the cha
 [Workflow](WORKFLOW.md): the charter grilling first — full for a new project, the engagement's
 terms for a sustaining one — then the SRS, then the stories.
 
+**The SRS grilling includes its Security section**, laid out in the
+[SRS template](SRS-TEMPLATE.md), and it is grilled like the rest rather than filled in. Ask the
+user, and write down their answers in their words: what has value in this system, who would want
+it, and through which entry they would come for it. Then offer controls as an options list against
+that threat model — the shape [Modes](MODES.md) gives every trade-off: the simplest control that
+could work is always on it, and each option states its cost and what would have to be true for it
+to be the right one — and the user chooses. Last, ask what is accepted: what the chosen controls
+leave open, on purpose, and why. The SRS does not pass its gate while any of the three parts is
+missing; the agent names the part that is missing and does not ask for agreement until it is
+written, or until the user says in a sentence that it has nothing in it.
+
 **`docs/ARCHITECTURE.md` is written once the charter and the SRS are agreed**, before the first
 epic, from [the architecture instruction](ARCHITECTURE.md). **It is not a gate**: nothing waits for
 it to be agreed. It starts nearly empty — what the charter and the SRS already say about the
