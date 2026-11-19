@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# refine-verify <id> <how it was verified>: the developer said this story or
+# debt was verified live, at the refine's "Awaiting verification". Labels it
+# verified and closes it with their words as the reason, in one step.
+#
+# Debt a-task-can-be-closed-without-the-reviews-acceptance (gh-363), task asi.2.
+# bd (core/bin/bd.sh) refuses to close a story or a debt without the verified
+# label, because on 2026-11-11 a debt was closed as soon as its last task
+# merged, with nobody having checked it. This is the way through, and it says
+# how the item was verified where the history keeps it.
+#
+# Refused, writing nothing: no words on how, an id the tracker does not have,
+# one that is closed, a task (the review closes those), an epic (bd close, once
+# its children are), a proposal (refine-reject), and an item with a child still
+# open. A close that fails takes the label back, so a half-done verification
+# does not leave the gate open for a plain bd close later.
+set -uo pipefail
+
+BD="${REVIEW_BD:-bd}"
+[ "$#" -ge 1 ] && [ -n "$1" ] || { echo "usage: refine-verify <id> <how it was verified>" >&2; exit 2; }
+id="$1"; how="${2:-}"
+if [ -z "${how//[[:space:]]/}" ]; then
+    echo "refine-verify: $id was not verified. Say how it was verified, in the developer's words: that is the close reason the history keeps."
+    exit 1
+fi
+
+err="$(mktemp)"; trap 'rm -f "$err"' EXIT
+if ! shown="$("$BD" show "$id" --json 2>"$err")"; then
+    echo "refine-verify: $id was not verified: the tracker could not read it. bd said: $(tail -n 1 "$err")"
+    exit 1
+fi
+read -r type status proposed < <(jq -r '(.[0] // .) as $it
+    | "\($it.issue_type // "-") \($it.status // "-") \(if (($it.labels // []) | index("proposed")) then "yes" else "no" end)"' <<<"$shown" 2>/dev/null) \
+    || { echo "refine-verify: $id was not verified: could not read its type and status from bd's answer."; exit 1; }
+
+case "$type" in
+    feature|bug) ;;
+    task) echo "refine-verify: $id is a task, and a task closes through the review: review-accept, then review-settle."; exit 1 ;;
+    epic) echo "refine-verify: $id is an epic, and an epic closes with bd close once none of its stories is open."; exit 1 ;;
+    *) echo "refine-verify: $id is a $type, not a story or a debt, so there is nothing to verify."; exit 1 ;;
+esac
+if [ "$status" = closed ]; then echo "refine-verify: $id is closed already, so there is nothing to verify."; exit 1; fi
+if [ "$proposed" = yes ]; then
+    echo "refine-verify: $id is a proposal, never agreed, so it is not verified: it is rejected, with refine-reject $id \"<why>\"."
+    exit 1
+fi
+
+if ! kids="$("$BD" list --parent "$id" --status all --json 2>"$err")"; then
+    echo "refine-verify: $id was not verified: the tracker could not list its children. bd said: $(tail -n 1 "$err")"
+    exit 1
+fi
+open="$(jq -r '[.[] | select(.status != "closed") | .id] | join(", ")' <<<"$kids" 2>/dev/null)" \
+    || { echo "refine-verify: $id was not verified: could not read its children from bd's answer."; exit 1; }
+if [ -n "$open" ]; then
+    echo "refine-verify: $id still has work open ($open), so it is not awaiting verification yet."
+    exit 1
+fi
+
+"$BD" label add "$id" verified >/dev/null 2>"$err" \
+    || { echo "refine-verify: $id was not verified: the label could not be added. bd said: $(tail -n 1 "$err")"; exit 1; }
+if ! "$BD" close "$id" --reason "Verified: $how" >/dev/null 2>"$err"; then
+    said="$(tail -n 1 "$err")"
+    if "$BD" label remove "$id" verified >/dev/null 2>&1; then
+        echo "refine-verify: $id was not closed, and the verified label was taken back. bd said: $said"
+    else
+        echo "refine-verify: $id was not closed, and the verified label could not be taken back: remove it with bd label remove $id verified, or a plain bd close will get past the gate. bd said: $said"
+    fi
+    exit 1
+fi
+echo "$id: verified and closed — $how"

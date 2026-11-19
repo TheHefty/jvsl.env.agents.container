@@ -432,6 +432,8 @@ jobs:
         run: bash core/plugin/agent-container/bin/refine-propose.test.sh
       - name: agreement is both halves or nothing, and a rejection is a close with its reason
         run: bash core/plugin/agent-container/bin/refine-agree.test.sh
+      - name: a story or a debt is verified and closed in one step, on the developer's words
+        run: bash core/plugin/agent-container/bin/refine-verify.test.sh
       - name: refinement's agenda shows what waits, what cannot reach a planning yet, and what is ready
         run: bash core/plugin/agent-container/bin/refine-candidates.test.sh
       - name: a study topic's guide is checked against its contract, one line per problem, never skipped

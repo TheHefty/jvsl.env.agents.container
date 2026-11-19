@@ -35,7 +35,7 @@ It lists:
 - tasks with no done criterion (the planning would refuse them);
 - what tomorrow's planning can already pick.
 
-**Awaiting verification is not work to plan.** For each one, ask the developer whether it was verified live. With a yes, close it with `bd close <id> --reason "…"`, saying how it was verified. Otherwise leave it as it is. Never propose a task for it to get it off the list.
+**Awaiting verification is not work to plan.** For each one, ask the developer whether it was verified live. With a yes, run `${CLAUDE_PLUGIN_ROOT}/bin/refine-verify <id> "<how it was verified>"`, in the developer's words: it labels the item verified and closes it with them as the reason. `bd close` refuses a story or a debt that is not verified, so do not reach for it here. Otherwise leave it as it is. Never propose a task for it to get it off the list.
 
 Ask the developer what to refine: something from the agenda, or a new idea of theirs.
 

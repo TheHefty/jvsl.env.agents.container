@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Shadows the beads CLI so that closing a task goes through the review. Installed
+# Shadows the beads CLI so that closing a task goes through the review, and a
+# story or a debt through its verification. Installed
 # at /usr/local/bin/bd; the real binary is at /usr/local/lib/jvsl/bd, off PATH.
 #
 # Debt a-task-can-be-closed-without-the-reviews-acceptance (gh-363). The rules
@@ -13,7 +14,13 @@
 #   proposed  — a draft the developer rejected; refine-reject closes it
 #   dropped   — abandoned with the developer's yes and a reason; review-drop
 #   study     — a study topic, done when its post is published; study-move
-# Anything else is refused, naming the task and the way through. Several ids
+# A story (feature) or a debt (bug) closes only if it carries one of:
+#   verified  — the developer said it was verified live; refine-verify (asi.2)
+#   proposed  — a draft the developer rejected; refine-reject closes it
+# On 2026-11-11 a debt was closed as soon as its last task merged, unverified.
+# An epic is outside the labels: it closes once none of its children is open,
+# as `bd list --parent <id> --status all` reads them.
+# Anything else is refused, naming the item and the way through. Several ids
 # close all or none. `--force` is bd's own flag for its own gates and does not
 # get past this one. A tracker that cannot be read refuses rather than lets
 # through: a gate that opens when it cannot see is not a gate.
@@ -96,13 +103,40 @@ for id in "${ids[@]}"; do
         rm -f "$err"; refused=1; continue
     fi
     rm -f "$err"
-    read -r type allowed < <(jq -r '(.[0] // .) as $it
-        | "\($it.issue_type // "-") \(if (($it.labels // []) | map(select(. == "accepted" or . == "proposed" or . == "dropped" or . == "study")) | length) > 0 then "yes" else "no" end)"' <<<"$shown" 2>/dev/null) \
+    read -r type allowed verified < <(jq -r '(.[0] // .) as $it | ($it.labels // []) as $l
+        | "\($it.issue_type // "-") \(if ($l | map(select(. == "accepted" or . == "proposed" or . == "dropped" or . == "study")) | length) > 0 then "yes" else "no" end) \(if ($l | map(select(. == "verified" or . == "proposed")) | length) > 0 then "yes" else "no" end)"' <<<"$shown" 2>/dev/null) \
         || { echo "bd: refused: could not read $id's type and labels from bd's answer, so nothing was closed." >&2; refused=1; continue; }
-    if [ "$type" = task ] && [ "$allowed" != yes ]; then
-        echo "bd: refused: $id is a task that was not accepted in review, so nothing was closed. A task closes when the developer accepts it at the review and its pull request merges: review-accept, then review-settle. To abandon it, with the developer's yes and a reason: review-drop $id \"<why>\"." >&2
-        refused=1
-    fi
+    case "$type" in
+        task)
+            if [ "$allowed" != yes ]; then
+                echo "bd: refused: $id is a task that was not accepted in review, so nothing was closed. A task closes when the developer accepts it at the review and its pull request merges: review-accept, then review-settle. To abandon it, with the developer's yes and a reason: review-drop $id \"<why>\"." >&2
+                refused=1
+            fi
+            ;;
+        feature|bug)
+            if [ "$verified" != yes ]; then
+                kind=story; [ "$type" = bug ] && kind=debt
+                echo "bd: refused: $id is a $kind that was not verified, so nothing was closed. A story or a debt closes when the developer says it was verified live, at the refine's \"Awaiting verification\": refine-verify $id \"<how it was verified>\" labels it verified and closes it." >&2
+                refused=1
+            fi
+            ;;
+        epic)
+            err="$(mktemp)"
+            if ! kids="$("$REAL" list --parent "$id" --status all --json 2>"$err")"; then
+                echo "bd: refused: could not read $id's children from the tracker, so nothing was closed. bd said: $(tail -n 1 "$err")" >&2
+                rm -f "$err"; refused=1; continue
+            fi
+            rm -f "$err"
+            if ! open="$(jq -r '[.[] | select(.status != "closed") | .id] | join(", ")' <<<"$kids" 2>/dev/null)"; then
+                echo "bd: refused: could not read $id's children from bd's answer, so nothing was closed." >&2
+                refused=1; continue
+            fi
+            if [ -n "$open" ]; then
+                echo "bd: refused: $id is an epic with children still open ($open), so nothing was closed. An epic closes once none of its stories is open." >&2
+                refused=1
+            fi
+            ;;
+    esac
 done
 [ "$refused" -eq 0 ] || exit 1
 exec "$REAL" "$@"
