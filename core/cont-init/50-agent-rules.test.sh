@@ -27,12 +27,13 @@ setup() {
     printf '# modes\n' > "$tmp/$n/src/MODES.md"
     printf '# rules\n' > "$tmp/$n/src/RULES.md"
     printf '# initialization, which must not travel\n' > "$tmp/$n/src/INITIALIZATION.md"
+    printf '# ideation, only in the ideation container\n' > "$tmp/$n/src/IDEATION.md"
     printf 'tmpfs %s/%s/target tmpfs rw 0 0\n' "$tmp" "$n" > "$tmp/$n/mounts"
 }
 
 run() {
     local n="$1"
-    AGENT_DOCS_DIR="$tmp/$n/src" AGENT_RULES_DIR="$tmp/$n/target" \
+    AGENT_CONTAINER_MODE="${MODE:-}" AGENT_DOCS_DIR="$tmp/$n/src" AGENT_RULES_DIR="$tmp/$n/target" \
         AGENT_RULES_MOUNTS="$tmp/$n/mounts" bash "$HOOK" 2>&1
 }
 
@@ -58,6 +59,34 @@ check "both governing documents are written" "MODES.md RULES.md" \
 check "it says nothing on the healthy path" "0" "$(printf '%s' "$out" | wc -c | tr -d ' ')"
 check "INITIALIZATION.md does not travel" "absent" \
     "$([ -e "$tmp/ok/target/INITIALIZATION.md" ] && echo present || echo absent)"
+check "nor does IDEATION.md: 'no code is written' in a project would stop all work" "absent" \
+    "$([ -e "$tmp/ok/target/IDEATION.md" ] && echo present || echo absent)"
+
+# --- the ideation container (task the-boot-writes-the-ideation-rules-in-
+# ideation-mode, gh-364): one image, a mode variable. With
+# AGENT_CONTAINER_MODE=ideation the rules are IDEATION.md instead of the
+# development ones; development, or no mode at all, is exactly the above.
+setup ideation
+out="$(MODE=ideation run ideation)"
+check "in ideation mode IDEATION.md is written, and not MODES.md or RULES.md" "IDEATION.md" \
+    "$(cd "$tmp/ideation/target" && ls | sort | tr '\n' ' ' | sed 's/ $//')"
+check "  and it says nothing" "0" "$(printf '%s' "$out" | wc -c | tr -d ' ')"
+setup dev
+out="$(MODE=development run dev)"
+check "development, said explicitly, is today's files" "MODES.md RULES.md" \
+    "$(cd "$tmp/dev/target" && ls | sort | tr '\n' ' ' | sed 's/ $//')"
+check "  and says nothing" "0" "$(printf '%s' "$out" | wc -c | tr -d ' ')"
+setup unknown
+out="$(MODE=brainstorm run unknown)"
+check "a mode it does not know is treated as development" "MODES.md RULES.md" \
+    "$(cd "$tmp/unknown/target" && ls | sort | tr '\n' ' ' | sed 's/ $//')"
+check "  and said once in the boot log, naming the value" "1" \
+    "$(printf '%s\n' "$out" | grep -c 'AGENT_CONTAINER_MODE=brainstorm')"
+setup noideation
+rm "$tmp/noideation/src/IDEATION.md"
+out="$(MODE=ideation run noideation || true)"
+check "in ideation mode with no IDEATION.md in the image, nothing is written" "0" "$(ls "$tmp/noideation/target" | wc -l | tr -d ' ')"
+check "  and the refusal names it" "1" "$(printf '%s\n' "$out" | grep -c 'IDEATION.md')"
 
 # --- the refusal that matters
 setup nomount
@@ -121,6 +150,22 @@ for f in "$tmp/real/target"/*.md; do
     done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$f" | sed -E 's/^\]\(//; s/\)$//')
 done
 check "every link in the real installed documents resolves" "" "${broken# }"
+
+# The same in ideation mode: IDEATION.md links MODES.md and RULES.md, which are
+# not installed beside it there.
+setup realideation
+AGENT_CONTAINER_MODE=ideation AGENT_DOCS_DIR="$real" AGENT_RULES_DIR="$tmp/realideation/target" \
+    AGENT_RULES_MOUNTS="$tmp/realideation/mounts" bash "$HOOK" >/dev/null 2>&1
+broken=""
+for f in "$tmp/realideation/target"/*.md; do
+    while IFS= read -r link; do
+        target="${link%%#*}"
+        case "$target" in /*) path="$target" ;; *) path="$tmp/realideation/target/$target" ;; esac
+        [ -e "$path" ] || broken="$broken $(basename "$f")->$link"
+    done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$f" | sed -E 's/^\]\(//; s/\)$//')
+done
+check "in ideation mode the real IDEATION.md is what is installed" "IDEATION.md" "$(ls "$tmp/realideation/target" | tr '\n' ' ' | sed 's/ $//')"
+check "  and every link in it resolves" "" "${broken# }"
 
 echo
 echo "50-agent-rules.test: $pass passed, $fail failed."
