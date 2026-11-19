@@ -87,8 +87,8 @@ irreversibilidade ou dinheiro, e uma mudança pode passar em todas as checagens 
 
 | # | Checagem | Onde no diff | Ou "nenhum", e o que foi olhado |
 |---|---|---|---|
-| 1 | Onde dado de fora entra: o limite de tamanho, a validação, o que uma entrada inesperada faz | | |
-| 2 | Cada query: filtrada por dono, limitada, servida por um índice que existe | | |
+| 1 | Onde dado de fora entra: o limite de tamanho, a validação, o que uma entrada inesperada faz; a ameaça da SRS, na seção Segurança, a que se relaciona, ou que não toca nenhuma | | |
+| 2 | Cada query: filtrada por dono, respondida contra quem o modelo de ameaças diz que quereria o dado; limitada; servida por um índice que existe | | |
 | 3 | Escritas e deleções: o que aqui não pode ser desfeito | | |
 | 4 | Multiplicadores de custo: um laço que chama uma API ou o banco uma vez por item | | |
 | 5 | Caminhos que os testes não tocaram: os ramos que esta mudança criou e que nada exercita | | |
