@@ -7,7 +7,8 @@
 # their pull requests merged, and none had been accepted at a review. The gate
 # was a sentence. This holds the wrapper to being one: a task closes only when
 # it is accepted, a rejected proposal, dropped with a reason, or a published
-# study topic — and the wrapper changes nothing else bd does.
+# study topic; a story or a debt only once verified live (asi.2); an epic only
+# when none of its children is open — and the wrapper changes nothing else bd does.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,6 +36,14 @@ mkdir -p "$work/items"
 cat > "$work/bd-real" <<'SH'
 #!/usr/bin/env bash
 (IFS=$'\t'; echo "$*") >> "$CALLS"
+# `list --parent <id> --status all --json` answers from items/<id>.children,
+# an empty array when there is none, or fails when the file says so.
+if [ "$1" = list ] && [ "${2:-}" = --parent ]; then
+    f="$ITEMS/$3.children"
+    [ -f "$f" ] || { echo '[]'; exit 0; }
+    if [ "$(head -c 5 "$f")" = "FAIL:" ]; then cut -c6- "$f" >&2; exit 1; fi
+    cat "$f"; exit 0
+fi
 if [ "$1" = show ]; then
     f="$ITEMS/$2"
     [ -f "$f" ] || { echo "Error: no issue found matching \"$2\"" >&2; exit 1; }
@@ -89,9 +98,41 @@ for id in t-accepted t-proposed t-dropped t-study; do
         "$(grep -cxF "$(printf 'close\t%s\t--reason\twhy' "$id")" "$work/calls")" "1"
 done
 
-# Stories, debts and epics are task asi.2's; this one gates tasks only.
-check "a debt is not this gate's" "$(run close b-debt --reason 'fixed')" "0"
-check "nor an epic" "$(run close e-epic)" "0"
+# --- stories and debts close once verified (asi.2) --------------------------------
+# On 2026-11-11 a debt was closed by the agent as soon as its last task merged,
+# with nobody having checked it live. refine-verify is the way through.
+item s-story feature
+item s-verified feature verified
+item s-proposed feature proposed
+item b-verified bug defect verified
+check "a debt nobody verified is refused" "$(run close b-debt --reason 'fixed')" "1"
+check "  naming it and refine-verify as the way" "$(out | grep -F 'b-debt' | grep -F 'verified' | grep -cF 'refine-verify')" "1"
+check "a story nobody verified is refused" "$(run close s-story)" "1"
+check "  through update --status closed too" "$(run update s-story --status closed)" "1"
+check "  and forced too" "$(run close s-story --force)" "1"
+check "  and none reached the real close" "$(closed)" "0"
+check "a verified story closes" "$(run close s-verified --reason 'Verified: x')" "0"
+check "a verified debt closes" "$(run close b-verified --reason 'Verified: x')" "0"
+check "a rejected story proposal still closes, as refine-reject does it" "$(run close s-proposed --reason 'Rejected')" "0"
+
+# --- an epic closes once none of its children is open --------------------------
+echo '[{"id":"e-epic.1","status":"closed"},{"id":"e-epic.2","status":"closed"}]' > "$work/items/e-epic.children"
+check "an epic whose children are all closed closes" "$(run close e-epic)" "0"
+check "  after asking the real bd for its children" "$(grep -cxF "$(printf 'list\t--parent\te-epic\t--status\tall\t--json')" "$work/calls")" "1"
+item e-none epic
+check "an epic with no children closes" "$(run close e-none)" "0"
+item e-open epic
+echo '[{"id":"e-open.1","status":"closed"},{"id":"e-open.2","status":"deferred"},{"id":"e-open.3","status":"in_progress"}]' > "$work/items/e-open.children"
+check "an epic with a child still open is refused" "$(run close e-open)" "1"
+check "  naming the children that are open" "$(out | grep -F 'e-open.2' | grep -cF 'e-open.3')" "1"
+check "  and not the closed one" "$(out | grep -cF 'e-open.1')" "0"
+check "  and nothing was closed" "$(closed)" "0"
+check "a verified label does not get an epic past an open child" \
+    "$(item e-open epic verified; run close e-open)" "1"
+item e-blind epic
+printf 'FAIL:Error: database is locked\n' > "$work/items/e-blind.children"
+check "an epic whose children cannot be read is refused" "$(run close e-blind)" "1"
+check "  quoting bd" "$(out | grep -cF 'database is locked')" "1"
 
 # --- failure 1: what is an id and what is a flag's value -------------------------
 item 'João' task
@@ -146,4 +187,4 @@ if [ "$failures" -gt 0 ]; then
     echo "bd.test: $failures failure(s)"
     exit 1
 fi
-echo "bd.test: a task closes only when accepted, proposed, dropped or a study topic, all or none, and every other bd call is untouched."
+echo "bd.test: a task closes only when accepted, proposed, dropped or a study topic; a story or a debt only when verified or proposed; an epic only with no child open; all or none, and every other bd call is untouched."

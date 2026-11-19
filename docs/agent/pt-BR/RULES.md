@@ -274,6 +274,12 @@ maioria não tem. Para esses, nada mais nestas regras muda.
   recusado, `dropped` ou um tópico `study`. Uma task que não vai ser feita é descartada com o sim do
   desenvolvedor, com `review-drop <id> "<por quê>"`. Uma recusa não é um obstáculo para contornar:
   chamar o binário real pelo caminho é justamente o desvio que isto existe para fechar.
+- **Uma story ou uma dívida fecha depois de verificada ao vivo, e o `bd` recusa o contrário.** O
+  mesmo wrapper não fecha uma `feature` ou um `bug` a não ser que esteja `verified` ou seja um
+  rascunho `proposed` recusado. No "Aguardando verificação" do refine, com o sim do desenvolvedor,
+  `refine-verify <id> "<como foi verificado>"` aplica a label e fecha com as palavras dele como
+  motivo. Um épico fecha com `bd close` quando nenhum dos seus filhos está aberto; o wrapper o recusa
+  enquanto algum estiver.
 - **Um problema encontrado no caminho só é registrado com um sim.** Pergunte antes, toda vez. Depois
   do sim, registre-o como dívida, `bd create --type bug --labels defect`, com as seções do template de
   dívida. Registrar não começa a correção. Este é o único item que você pode criar sem um gate

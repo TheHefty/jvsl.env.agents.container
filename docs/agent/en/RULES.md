@@ -272,6 +272,12 @@ Most do not. Everything else in these rules is unchanged for them.
   draft, `dropped` or a `study` topic. A task that will not be done is dropped on the developer's
   yes, with `review-drop <id> "<why>"`. A refusal is not an obstacle to route around: calling the
   real binary by its path is the bypass this exists to close.
+- **A story or a debt closes once verified live, and `bd` refuses it otherwise.** The same wrapper
+  will not close a `feature` or a `bug` unless it is `verified` or a rejected `proposed` draft. At
+  the refine's "Awaiting verification", on the developer's yes,
+  `refine-verify <id> "<how it was verified>"` labels it and closes it with their words as the
+  reason. An epic closes with `bd close` once none of its children is open; the wrapper refuses it
+  while one is.
 - **A problem found along the way is recorded only with a yes.** Ask first, every time. After a yes,
   record it as a debt, `bd create --type bug --labels defect`, with the debt template's sections.
   Recording it does not start the fix. This is the one item you may create without a gate of its

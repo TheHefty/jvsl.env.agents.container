@@ -187,6 +187,17 @@ planning="$(docker run --rm --network none --entrypoint /bin/bash "$IMAGE" -c '
     "$B/review-drop" "$b" "superseded" >/dev/null 2>&1
     s2="$(bd show "$b" --json 2>/dev/null | jq -r ".[0].status")"
     printf "gate=%s\n" "$g1 $s1 $s2 $(command -v bd) $([ -x /usr/local/lib/jvsl/bd ] && echo real)"
+    # Stories and epics against the same real bd (gh-363, asi.2): an epic with a
+    # story open is refused, the story is refused a plain close and closes
+    # through refine-verify, and then the epic closes. This is what catches the
+    # wrapper or refine-verify misreading bd list --parent.
+    ve="$(bd create an-epic -t epic --silent 2>/dev/null)"
+    vs="$(bd create a-story -t feature --acceptance "Scenario: x" --parent "$ve" --silent 2>/dev/null)"
+    bd close "$ve" --reason "done" >/dev/null 2>&1; v1=$?
+    bd close "$vs" --reason "done" >/dev/null 2>&1; v2=$?
+    "$B/refine-verify" "$vs" "seen live" >/dev/null 2>&1; v3=$?
+    bd close "$ve" --reason "done" >/dev/null 2>&1; v4=$?
+    printf "verified=%s\n" "$v1 $v2 $v3 $v4 $(bd show "$vs" --json 2>/dev/null | jq -r ".[0] | [.status, (.close_reason // \"-\")] | join(\" \")") $(bd show "$ve" --json 2>/dev/null | jq -r ".[0].status")"
     # The journal on the tools of the image, offline and with no repository
     # named: the entry is kept in the outbox, the retro is told how to name
     # one, and the tracker gets nothing (story the-retro-writes-the-entry-to-
@@ -290,6 +301,10 @@ closed without it (gh-363, asi.4)"
 [ "$(dfield gate)" = "1 open closed /usr/local/bin/bd real" ] || fail "against the real bd, the close \
 gate did not hold (gate=$(dfield gate), expected: refused, still open, closed by review-drop, the wrapper \
 on PATH, the binary behind it): a task nobody accepted could be closed with a plain bd close (gh-363)"
+[ "$(dfield verified)" = "1 1 0 0 closed Verified: seen live closed" ] || fail "against the real bd, a story \
+or an epic did not close as the gate promises (verified=$(dfield verified), expected: the epic refused with a story \
+open, the story refused a plain close, closed by refine-verify with its words, then the epic closed): a story or a \
+debt could close unverified, or an epic past an open story (gh-363, asi.2)"
 [ "$(dfield ready) $(dfield blocked) $(dfield check)" = "1 1 ok" ] || fail "against the real bd, planning-brief \
 or planning-check misread the tracker (ready=$(dfield ready) blocked=$(dfield blocked) check=$(dfield check) \
 $(dfield init)): the export's shape no longer matches what the planning's scripts and their fixture expect, \
