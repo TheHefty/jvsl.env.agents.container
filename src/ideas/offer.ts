@@ -19,7 +19,7 @@ import { parseIdea, type Idea } from './contract.ts'
  */
 export const IDEAS_PATH = '.claude/agent-container/ideas'
 
-export interface ReadyIdea { slug: string; idea: Idea }
+export interface ReadyIdea { slug: string; idea: Idea; /** IDEA.md as read, copied into a project created from it. */ text: string }
 
 export function readIdeas(files: Pick<ProjectFiles, 'list' | 'read'>): { ready: ReadyIdea[]; unreadable: string[] } {
   let entries: string[] | null
@@ -45,7 +45,7 @@ export function readIdeas(files: Pick<ProjectFiles, 'list' | 'read'>): { ready: 
       unreadable.push(`${slug}: ${problems.map((p) => (p.line === null ? p.message : `line ${p.line} ${p.message}`)).join('; ')}`)
       continue
     }
-    if (idea.state === 'ready') ready.push({ slug, idea })
+    if (idea.state === 'ready') ready.push({ slug, idea, text })
   }
   return { ready, unreadable }
 }
