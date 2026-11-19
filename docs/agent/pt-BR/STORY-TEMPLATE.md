@@ -21,6 +21,15 @@ esta estória é a que fecha o épico dela, esta frase é a frase do tema da rel
 O que torna isto digno de ser feito agora, e quais requisitos da SRS ele entrega. Cite-os por
 número.
 
+## Modelo de ameaças
+
+Esta estória acrescenta uma nova superfície, um novo dado ou um novo papel? Respondido no gate da
+estória — veja [Fluxo de trabalho](WORKFLOW.md) — com uma destas linhas, literalmente e em inglês:
+
+- `Threat model: unchanged`, com o porquê: o que a estória toca, e por que nada disso é novo;
+- `Threat model: amended in <ref>`, quando a seção Segurança do SRS foi emendada no mesmo pull
+  request desta estória, antes de qualquer task sob ela.
+
 ## Critérios de aceite
 
 O comportamento que esta estória precisa exibir mora no `<estoria>.feature` ao lado deste arquivo,

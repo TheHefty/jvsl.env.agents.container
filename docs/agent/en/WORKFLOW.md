@@ -79,6 +79,21 @@ file, and the ordered index of its tasks with their status. Its `<story>.feature
 criteria in Gherkin — see [Scenarios](SCENARIOS.md) — agreed at the story gate, before any task
 under it is written.
 
+**The story gate asks whether the threat model changes.** Does the story add a new surface (an
+interface, a port, a command, a file read from outside), new data, or a new role (someone who can do
+something nobody could before)? If it does, the SRS's Security section is amended — the threat
+model, the controls chosen against it, the risks accepted — in the same pull request as the story,
+before any task under it is written. Either way, the story says which, on a line of its own, written
+literally and in English in every language so a script can read it:
+
+- `Threat model: unchanged`, with why: what the story touches and why none of it is a new surface,
+  new data or a new role;
+- `Threat model: amended in <ref>`, naming the pull request or the commit that amended it.
+
+**A project whose SRS has no Security section** — one initialized before the section existed — is
+not given one by assumption. At its next story gate, the agent stops and asks the user to write the
+threat model first, as the [SRS template](SRS-TEMPLATE.md) lays it out, and the story waits for it.
+
 ### Task
 
 What used to be an RFC: the detailed design of one slice of a story, written when the story is
