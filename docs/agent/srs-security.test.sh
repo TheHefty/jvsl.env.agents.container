@@ -66,8 +66,29 @@ en|Security|Threat model|Controls|Accepted risks|written by the user|proposed by
 pt-BR|Segurança|Modelo de ameaças|Controles|Riscos aceitos|escrito pelo usuário|propostos pelo agente|antes de o SRS ser acordado|mais simples|custo|o que tem valor,quem o quereria,por qual entrada,o que teria de ser verdade|o usuário escolhe
 TABLE
 
+# --- the initialization grills it (task the-initialization-grills-the-threat-
+# model): the template having the section is not the same as anyone asking for
+# it. The SRS grilling asks the user the threat model's questions and what is
+# accepted, offers controls as an options list, and the gate refuses a section
+# missing a part, naming it. Line breaks folded: the prose wraps where it likes.
+flat() { tr '\n' ' ' < "$1" 2>/dev/null | tr -s ' ' || true; }
+# lang | value,who,entry,accepted | options list | simplest | refuses | names the missing part
+while IFS='|' read -r lang asks options simplest refuses names; do
+    t="$(flat "$HERE/$lang/INITIALIZATION.md")"
+    IFS=, read -r a1 a2 a3 a4 <<<"$asks"
+    check "$lang INITIALIZATION: asks what has value, who would want it, through which entry, what is accepted" \
+        "$(yes_if "$(has "$t" "$a1")") $(yes_if "$(has "$t" "$a2")") $(yes_if "$(has "$t" "$a3")") $(yes_if "$(has "$t" "$a4")")" "yes yes yes yes"
+    check "$lang INITIALIZATION: offers controls as an options list" "$(yes_if "$(has "$t" "$options")")" "yes"
+    check "$lang INITIALIZATION: with the simplest always on it" "$(yes_if "$(has "$t" "$simplest")")" "yes"
+    check "$lang INITIALIZATION: the SRS gate refuses a Security section missing a part" "$(yes_if "$(has "$t" "$refuses")")" "yes"
+    check "$lang INITIALIZATION: naming the missing part" "$(yes_if "$(has "$t" "$names")")" "yes"
+done <<'TABLE'
+en|what has value,who would want it,through which entry,what is accepted|controls as an options list|simplest|does not pass its gate|names the part that is missing
+pt-BR|o que tem valor,quem o quereria,por qual entrada,o que é aceito|controles como uma lista de opções|mais simples|não passa pelo seu gate|nomeia a parte que falta
+TABLE
+
 if [ "$failures" -gt 0 ]; then
     echo "srs-security.test: $failures failure(s)"
     exit 1
 fi
-echo "srs-security.test: the SRS template carries a required Security section in three parts, each with its owner, in both languages."
+echo "srs-security.test: the SRS template carries a required Security section in three parts, each with its owner, and the initialization grills it, in both languages."
