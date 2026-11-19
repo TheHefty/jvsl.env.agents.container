@@ -134,3 +134,57 @@ The boot rewrote the daemon's store (gh-313): look for a recursive chown of the 
 core/services/svc-dockerd-rootless/run"
 
 echo "booted-docker-owners.test: an image in the store keeps its owners ($WANT) across a restart of the nested daemon"
+
+# --- a store an older image damaged is pruned once, its volumes kept -----------
+# Task a-store-damaged-by-the-old-chown-is-pruned-once-keeping-volumes. A store
+# written by an image from before the fix carries no marker; this one is made
+# to look like it by removing the marker the first boot wrote. Then: a restart
+# removes the image and keeps the named volume's file, and the one after it
+# removes nothing.
+MARKER=/config/.local/share/docker/.pruned-after-gh-313
+VOLUME=gh-313-kept
+removed_lines() { logs | grep -c 'removed from the docker store' || true; }
+
+[ "$(removed_lines)" = "0" ] \
+    || fail "the first boot, over an empty store, said it removed something: $(logs | grep 'removed from the docker store')"
+docker exec "$NAME" test -f "$MARKER" \
+    || fail "the first boot left no marker at $MARKER, so every boot would prune the store"
+
+# shellcheck disable=SC2016 # expanded by the inner bash, on purpose
+as_user bash -c '
+    set -euo pipefail
+    docker volume create "$1" >/dev/null
+    echo "rows someone cares about" > "$(docker volume inspect -f "{{.Mountpoint}}" "$1")/table"
+' _ "$VOLUME" || fail "could not write a file into a named volume of the nested daemon"
+docker exec "$NAME" rm -f "$MARKER" || fail "could not remove the marker to stand for an older image's store"
+
+docker restart "$NAME" >/dev/null || fail "the container would not restart over the unmarked store"
+wait_for_boot 3
+wait_for_daemon "after the restart that prunes"
+
+as_user docker image inspect "$PROBE" >/dev/null 2>&1 \
+    && fail "the store had no marker and the probe image is still there: the boot did not prune it"
+# shellcheck disable=SC2016 # expanded by the inner bash, on purpose
+kept="$(as_user bash -c 'cat "$(docker volume inspect -f "{{.Mountpoint}}" "$1")/table"' _ "$VOLUME" 2>&1)" \
+    || fail "the named volume $VOLUME is gone after the prune: $kept"
+[ "$kept" = "rows someone cares about" ] || fail "the named volume's file changed across the prune: $kept"
+[ "$(removed_lines)" = "1" ] || fail "the boot that pruned did not say once what it removed; it said it $(removed_lines) time(s)"
+logs | grep 'named volumes were kept' | grep -q '0:0' \
+    || fail "the boot that pruned did not say the volumes were kept and may still hold 0:0 files"
+docker exec "$NAME" test -f "$MARKER" || fail "the prune left no marker, so the next boot would prune again"
+
+# shellcheck disable=SC2016 # expanded by the inner bash, on purpose
+as_user bash -c '
+    set -euo pipefail
+    d="$(mktemp -d)"; mkdir "$d/app"
+    tar --numeric-owner --owner=1000 --group=0 -C "$d" -cf - app | docker import - "$1" >/dev/null
+    rm -rf "$d"
+' _ "$PROBE" || fail "could not import the probe image again after the prune"
+docker restart "$NAME" >/dev/null || fail "the container would not restart over the marked store"
+wait_for_boot 4
+wait_for_daemon "after the restart over a marked store"
+as_user docker image inspect "$PROBE" >/dev/null 2>&1 \
+    || fail "the store carried the marker and the boot pruned it again: the probe image imported after the prune is gone"
+[ "$(removed_lines)" = "1" ] || fail "a boot over a marked store said it removed something"
+
+echo "booted-docker-owners.test: a store with no marker is pruned once, its named volume kept; the next boot prunes nothing"

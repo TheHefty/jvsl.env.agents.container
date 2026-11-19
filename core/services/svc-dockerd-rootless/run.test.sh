@@ -9,7 +9,8 @@
 # core/booted-docker-owners.test.sh. What a script can hold is that the store is
 # chowned at its root only, that the storage driver is chosen by the kernel
 # probe, that the choice is kept, that a driver that changes re-homes the old
-# data-root with one line, and that the fallback names the real cause.
+# data-root with one line, that the fallback names the real cause, and that a
+# store an older boot damaged is pruned once, keeping its named volumes.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -141,10 +142,65 @@ out="$(DOCKERD_CONFIG_DIR="$work/cfg" \
     MOUNT_ANSWER="$work/mount-answer" \
     bash "$SCRIPT" 2>&1)"
 check "a switch re-homes the old data-root instead of starting dockerd over it" \
-    "$([ -f "$work/data-root.fuse-overlayfs/dead/layer" ] && echo kept) $([ "$(find "$work/data-root" -mindepth 1 | wc -l | tr -d ' ')" = "0" ] && echo fresh)" "kept fresh"
+    "$([ -f "$work/data-root.fuse-overlayfs/dead/layer" ] && echo kept) $([ "$(find "$work/data-root" -mindepth 1 ! -name .pruned-after-gh-313 | wc -l | tr -d ' ')" = "0" ] && echo fresh)" "kept fresh"
 check "and one line says where the old one is" \
     "$(printf '%s\n' "$out" | grep -c 'storage driver changed from fuse-overlayfs to overlay2')" "1"
 check "with the new choice recorded" "$(probecheck overlay2 && echo yes)" "yes"
+
+# --- a store the old recursive chown damaged is pruned once, volumes kept -------
+# Task a-store-damaged-by-the-old-chown-is-pruned-once-keeping-volumes (gh-313).
+# Stopping the chown (usj.1) stops new damage; layers it already rewrote stay
+# 0:0 until they are gone, and a pull answering "Already exists" keeps them. So
+# a store from an older image, the one with no marker, loses everything but its
+# named volumes, once, before the daemon starts over it.
+MARKER_NAME=".pruned-after-gh-313"
+store_from_an_older_image() {
+    rm -rf "$work/data-root" "$work/data-root."*
+    mkdir -p "$work/data-root/image/overlay2" "$work/data-root/overlay2/abc/diff" \
+             "$work/data-root/containers/c1" "$work/data-root/buildkit" \
+             "$work/data-root/volumes/pgdata/_data"
+    echo "a layer the old chown made 0:0" > "$work/data-root/overlay2/abc/diff/app"
+    echo "rows someone cares about" > "$work/data-root/volumes/pgdata/_data/table"
+    : > "$work/data-root/volumes/metadata.db"
+    echo overlay2 > "$driverfile"
+}
+
+store_from_an_older_image
+r="$(run ok)"
+check "a store with no marker still boots its daemon" "$r" "0"
+check "its images, layers, containers and build cache are removed" \
+    "$(find "$work/data-root" -mindepth 1 -maxdepth 1 ! -name "$MARKER_NAME" -printf '%f ')" "volumes "
+check "its named volume keeps its file" \
+    "$(cat "$work/data-root/volumes/pgdata/_data/table" 2>/dev/null)" "rows someone cares about"
+check "and the volumes' own metadata" "$([ -f "$work/data-root/volumes/metadata.db" ] && echo kept)" "kept"
+check "the marker is written in the data-root" "$([ -f "$work/data-root/$MARKER_NAME" ] && echo yes)" "yes"
+check "the boot names what was removed" \
+    "$(line 'removed from the docker store:' | grep -c 'buildkit containers image overlay2')" "1"
+check "and why, by the chown and the issue" \
+    "$(line 'recursive chown' | grep -c 'gh-313')" "1"
+check "and that the volumes were kept but may still hold 0:0 files" \
+    "$(line 'named volumes were kept' | grep -c '0:0')" "1"
+
+mkdir -p "$work/data-root/image/overlay2"; echo "pulled since" > "$work/data-root/image/overlay2/repositories.json"
+r="$(run ok)"
+check "the next boot prunes nothing" \
+    "$(cat "$work/data-root/image/overlay2/repositories.json" 2>/dev/null)" "pulled since"
+check "and says nothing about removing" "$(grep -c 'removed from the docker store' "$work/out")" "0"
+
+rm -rf "$work/data-root"; mkdir -p "$work/data-root"
+r="$(run ok)"
+check "an empty store is marked" "$([ -f "$work/data-root/$MARKER_NAME" ] && echo yes)" "yes"
+check "without a word about removing anything" "$(grep -c 'removed from the docker store' "$work/out")" "0"
+
+# A driver switch moves the old store aside whole and starts an empty one: the
+# empty one is marked, and the one moved aside is not touched.
+store_from_an_older_image
+echo fuse-overlayfs > "$driverfile"
+r="$(run ok)"
+check "after a driver switch the fresh store is marked, not pruned" \
+    "$([ -f "$work/data-root/$MARKER_NAME" ] && echo marked) $(grep -c 'removed from the docker store' "$work/out")" "marked 0"
+check "and the store moved aside is left whole" \
+    "$([ -f "$work/data-root.fuse-overlayfs/overlay2/abc/diff/app" ] && echo whole)" "whole"
 
 # --- what a shepherd cannot see is named anyway --------------------------------
 rm -f "$work/fuse"
@@ -162,4 +218,4 @@ if [ "$failures" -gt 0 ]; then
     echo "svc-dockerd-rootless.test: $failures failure(s)"
     exit 1
 fi
-echo "svc-dockerd-rootless.test: the storage driver is chosen by the kernel probe, kept, and a change re-homes the data-root in one line."
+echo "svc-dockerd-rootless.test: the storage driver is chosen by the kernel probe, kept, and a change re-homes the data-root in one line; a store with no marker is pruned once, keeping its volumes."
