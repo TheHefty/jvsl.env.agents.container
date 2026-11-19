@@ -19,8 +19,8 @@ becomes a spike in the project, where a spike is allowed and thrown away.
 
 Every idea is a folder of its own: `ideas/<slug>/IDEA.md`, under the ideas folder in the developer's
 `~/.claude/agent-container/`. The slug is short, lower case, words joined by hyphens, and chosen
-with the developer when the idea starts. Nothing else goes in the ideas folder but these folders and
-the memory's marker.
+with the developer when the idea starts. Nothing else goes in the ideas folder but these folders, the
+memory's marker and the container's own `.devcontainer/`, which the `Brainstorm` command writes.
 
 `IDEA.md` follows the contract the extension checks, described in the plugin's `ideas/README.md`
 (`/opt/jvsl/plugins/agent-container/ideas/README.md` in the image):

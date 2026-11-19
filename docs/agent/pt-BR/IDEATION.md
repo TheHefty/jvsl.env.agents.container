@@ -20,7 +20,8 @@ spike no projeto, onde um spike é permitido e jogado fora.
 Toda ideia é uma pasta própria: `ideas/<slug>/IDEA.md`, sob a pasta de ideias no
 `~/.claude/agent-container/` do desenvolvedor. O slug é curto, em minúsculas, palavras unidas por
 hífens, e escolhido com o desenvolvedor quando a ideia começa. Nada mais vai na pasta de ideias além
-destas pastas e do marcador da memória.
+destas pastas, do marcador da memória e do `.devcontainer/` do próprio container, que o comando
+`Brainstorm` escreve.
 
 O `IDEA.md` segue o contrato que a extensão verifica, descrito no `ideas/README.md` do plugin
 (`/opt/jvsl/plugins/agent-container/ideas/README.md` na imagem):

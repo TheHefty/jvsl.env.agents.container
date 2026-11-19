@@ -212,3 +212,85 @@ test('a container brought up from our configuration got the machine the manifest
     rmSync(parent, { recursive: true, force: true })
   }
 })
+
+/**
+ * The Brainstorm container, brought up from the configuration Brainstorm
+ * writes (task 5kd.2.3, gh-364): its own names, the ideas folder as the
+ * workspace, the ideation mode — and a second run that reuses the same
+ * container rather than recreating it, which is what keeps the agent's session
+ * between days. Whether the real core image then installs IDEATION.md is
+ * core/booted-ideation-rules.test.sh's, on the image core-booted builds: split
+ * on 2026-11-19 so this stays seconds.
+ *
+ * **The names are fixed, so this would take a developer's real Brainstorm
+ * container and volume.** It refuses to run where either already exists, and
+ * removes only what it created.
+ */
+test('the Brainstorm container comes up on the ideas folder, in ideation mode, and a second run reuses it', async () => {
+  const { BRAINSTORM, BRAINSTORM_IMAGE, BRAINSTORM_VOLUME, brainstormConfiguration } = await import('../src/brainstorm/brainstorm.ts')
+  const { readLimits } = await import('../src/build/limits.ts')
+  const { serialise } = await import('../src/open/open.ts')
+  const exists = (args: string[]): boolean => { try { sh('docker', args); return true } catch { return false } }
+  if (exists(['container', 'inspect', BRAINSTORM]) || exists(['volume', 'inspect', BRAINSTORM_VOLUME])) {
+    assert.fail(`a Brainstorm container or volume already exists on this machine (${BRAINSTORM}, ${BRAINSTORM_VOLUME}); ` +
+      'this test would take it, and its session. It runs in CI, where there is none.')
+  }
+  const imageExisted = exists(['image', 'inspect', BRAINSTORM_IMAGE])
+  if (imageExisted) assert.fail(`an image ${BRAINSTORM_IMAGE} already exists here; this test builds a stand-in under that name and would replace it.`)
+
+  mkdirSync(TMP_ROOT, { recursive: true })
+  const parent = mkdtempSync(join(TMP_ROOT, 'brainstorm-'))
+  const ideas = join(parent, 'ideas')
+  mkdirSync(join(ideas, '.devcontainer'), { recursive: true })
+  let containerId = ''
+  try {
+    const dockerfile = join(parent, 'Dockerfile')
+    writeFileSync(dockerfile, 'FROM alpine:3.21\nRUN adduser -D -s /bin/sh abc\n' +
+      `LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'\nCMD ["/bin/sh","-c","while sleep 1000; do :; done"]\n`)
+    sh('docker', ['build', '-q', '-f', dockerfile, '-t', BRAINSTORM_IMAGE, parent])
+
+    const configuration = brainstormConfiguration({
+      ideasDir: ideas,
+      homeDir: homedir(),
+      extensionVersion: '0.0.0-test',
+      limits: readLimits('{}', 8).limits,
+      facts: { cpuCount: 8, devicesPresent: [], devicesAbsent: ['/dev/fuse', '/dev/kvm'] },
+    })
+    writeFileSync(join(ideas, '.devcontainer', 'devcontainer.json'), serialise(configuration))
+
+    const up = (): string => {
+      const out = sh('npx', ['--no-install', 'devcontainer', 'up', '--workspace-folder', ideas])
+      const r = JSON.parse(out.trim().split('\n').at(-1) ?? '{}') as { outcome?: string; containerId?: string }
+      assert.equal(r.outcome, 'success', out)
+      return r.containerId ?? ''
+    }
+    containerId = up()
+    assert.notEqual(containerId, '')
+
+    const inspected = JSON.parse(sh('docker', ['inspect', containerId])) as Array<{
+      Name: string
+      Config: { Env: string[]; Image: string }
+      Mounts: Array<{ Type: string; Name?: string; Source: string; Destination: string }>
+    }>
+    const c = inspected[0]!
+    assert.equal(c.Name, `/${BRAINSTORM}`)
+    // Dev Containers may layer the remote user's uid over the configured image
+    // (`vsc-<folder>-<hash>-uid`); either way it is built from BRAINSTORM_IMAGE.
+    assert.ok(c.Config.Image === BRAINSTORM_IMAGE || /^vsc-.*-uid$/.test(c.Config.Image), c.Config.Image)
+    assert.ok(c.Config.Env.includes('AGENT_CONTAINER_MODE=ideation'), c.Config.Env.join('\n'))
+    assert.ok(c.Mounts.some((m) => m.Type === 'volume' && m.Name === BRAINSTORM_VOLUME && m.Destination === '/config'), JSON.stringify(c.Mounts))
+    assert.ok(c.Mounts.some((m) => m.Type === 'bind' && m.Source === ideas && m.Destination === '/config/workspace'), JSON.stringify(c.Mounts))
+
+    // The next day: the same container and volume. **This does not catch a
+    // configuration that moves between runs**: the CLI finds the container by
+    // its folder and reuses it even then (measured with a timestamp in the
+    // environment), where the editor would offer to recreate it. That is held
+    // by src/brainstorm/brainstorm.test.ts, which requires the same bytes.
+    assert.equal(up(), containerId, 'a second Brainstorm run recreated the container, and the session with it')
+  } finally {
+    if (containerId !== '') { try { sh('docker', ['rm', '-f', containerId]) } catch { /* already gone */ } }
+    try { sh('docker', ['volume', 'rm', '-f', BRAINSTORM_VOLUME]) } catch { /* never created */ }
+    try { sh('docker', ['rmi', '-f', BRAINSTORM_IMAGE]) } catch { /* never built */ }
+    rmSync(parent, { recursive: true, force: true })
+  }
+})

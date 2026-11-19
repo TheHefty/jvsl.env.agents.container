@@ -16,6 +16,7 @@ import { CONFIG_PATH, REOPEN_COMMAND } from './open.ts'
 import { afterRegenerate, staleness } from './stale.ts'
 import { WAYLAND_SETTING, waylandWorkaround } from '../host/wayland.ts'
 import { SelectionView } from '../view/selection-view.ts'
+import { isBrainstorm } from '../brainstorm/brainstorm.ts'
 
 /**
  * Everything activation does after the commands exist, none of it awaited by
@@ -72,7 +73,16 @@ export async function startup(
   const handedOver = context.globalState.get(HANDOVER_KEY)
   if (handedOver !== undefined) await context.globalState.update(HANDOVER_KEY, undefined)
   const folder = handoverFolder(project)
-  if (startupAction(handedOver, folder, Date.now()) !== 'prepare') {
+  const action = startupAction(handedOver, folder, Date.now())
+  // **Brainstorm's window only reopens** (task 5kd.2.3): its folder is the
+  // ideas folder, not a project, and preparing it would ask a project's
+  // questions and write a project's files into the developer's ideas.
+  if (action === 'reopen') {
+    write(['brainstorm: reopening the ideas folder in the Brainstorm container'])
+    await vscode.commands.executeCommand(REOPEN_COMMAND)
+    return
+  }
+  if (action !== 'prepare') {
     write(['open flow: nothing written: this folder was opened, not asked to be prepared. Open in container, from the panel, prepares it.'])
     offerRegeneration(context, channel, write, project)
     offerGradleNotice(context, write, project)
@@ -207,7 +217,11 @@ function offerRegeneration(
 ): void {
   if (project.kind === 'none') return
   try {
-    const s = staleness(filesFor(project).read(CONFIG_PATH), extensionVersion(context))
+    const config = filesFor(project).read(CONFIG_PATH)
+    // Brainstorm's configuration is rewritten by Brainstorm on every run;
+    // regenerating it here would turn it into a project's (task 5kd.2.3).
+    if (isBrainstorm(config)) return
+    const s = staleness(config, extensionVersion(context))
     if (!s.stale) return
     write([`configuration: ${s.message}`])
     void vscode.window.showInformationMessage(s.message, 'Regenerate').then((choice) => {

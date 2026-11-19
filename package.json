@@ -37,6 +37,10 @@
         "title": "Agent Container: Create a Project…"
       },
       {
+        "command": "jvsl.agentContainer.brainstorm",
+        "title": "Agent Container: Brainstorm an Idea…"
+      },
+      {
         "command": "jvsl.agentContainer.open",
         "title": "Agent Container: Open a Project…"
       },

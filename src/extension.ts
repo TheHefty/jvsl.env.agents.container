@@ -2,7 +2,8 @@ import * as vscode from 'vscode'
 
 import { showWork } from './board/board.ts'
 import { build } from './build/command.ts'
-import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, PICK, CREATE, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
+import { SHOW_DETECTED, OPEN, CONFIGURE, BUILD, SHOW_WORK, PICK, CREATE, BRAINSTORM_COMMAND, VIEW, STUDY_VIEW, OPEN_TOPIC, REFRESH_STUDY } from './commands.ts'
+import { brainstorm } from './brainstorm/command.ts'
 import { StudyView } from './study/study-view.ts'
 import { openTopic } from './study/study-panel.ts'
 import { configure, pick } from './configure/command.ts'
@@ -56,6 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // without reloading. Same decision, and it also hands over.
     vscode.commands.registerCommand(OPEN, () => prepare(context, channel, write, { handOver: true })),
     vscode.commands.registerCommand(CREATE, () => create(write, context.extensionPath, handOver)),
+    vscode.commands.registerCommand(BRAINSTORM_COMMAND, () => brainstorm(write, context.extensionPath, extensionVersion(context), reopenIn)),
     vscode.commands.registerCommand(PICK, () => pick(write, view, context.extensionPath, extensionVersion(context), handOver)),
     vscode.commands.registerCommand(CONFIGURE, () => configure(write, view, context.extensionPath, extensionVersion(context))),
     vscode.commands.registerCommand(BUILD, () => build(write, view, context.extensionPath)),
@@ -75,6 +77,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // run, and none runs before activate() returns.
   const handOver = (folder: string): Thenable<void> =>
     context.globalState.update(HANDOVER_KEY, { folder, at: Date.now() })
+  // Brainstorm's window reopens its folder in the container and prepares
+  // nothing: the ideas folder is not a project (task 5kd.2.3).
+  const reopenIn = (folder: string): Thenable<void> =>
+    context.globalState.update(HANDOVER_KEY, { folder, at: Date.now(), then: 'reopen' })
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW, view),
