@@ -163,13 +163,19 @@ export async function buildInTerminal(
   project: Exclude<ProjectOnHost, { kind: 'none' }>,
   extensionPath: string,
   write: (lines: string[]) => void,
+  /**
+   * For a folder that is not a project (Brainstorm, task 5kd.2.3): no manifest
+   * is read, so core is composed alone, and the image takes this fixed name
+   * rather than one from the folder.
+   */
+  notAProject?: { image: string },
 ): Promise<'ok' | 'failed' | 'cancelled'> {
   const where: DockerHost = whereFor(project)
   // The manifest, read where the project lives: through the distro for a WSL
   // project (host/files.ts), whose files this machine may not reach by path.
   let manifestText: string | null
   try {
-    manifestText = filesFor(project).read(MANIFEST)
+    manifestText = notAProject === undefined ? filesFor(project).read(MANIFEST) : null
   } catch (error) {
     write([`build: refused — ${String(error)}`])
     void vscode.window.showErrorMessage(String(error))
@@ -182,7 +188,8 @@ export async function buildInTerminal(
     void vscode.window.showErrorMessage(id.message)
     return 'failed'
   }
-  const plan = composeForProject(extensionPath, mountPath(project), manifestText)
+  const composedFor = composeForProject(extensionPath, mountPath(project), manifestText)
+  const plan = notAProject === undefined ? composedFor : { ...composedFor, image: notAProject.image }
   const stacks = plan.stacks
   // Composed here, before any terminal opens: a refusal — a package name that
   // is not one, a stack the extension does not carry — is said where it can be

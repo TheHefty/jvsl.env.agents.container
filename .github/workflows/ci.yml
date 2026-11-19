@@ -678,6 +678,12 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           bash core/booted-docker-owners.test.sh core-ci
+      # The Brainstorm container is this image with AGENT_CONTAINER_MODE=ideation
+      # (gh-364): booted that way, rules/ holds IDEATION.md alone; booted with
+      # no mode, the development rules. Here rather than in integration, so CI
+      # builds no extra image.
+      - name: the core image installs the ideation rules only in ideation mode
+        run: bash core/booted-ideation-rules.test.sh core-ci
 
   discover-stacks:
     needs: changes

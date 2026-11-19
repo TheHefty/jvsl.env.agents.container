@@ -20,17 +20,23 @@ export const HANDOVER_MS = 2 * 60 * 1000
 export interface Handover {
   folder: string
   at: number
+  /**
+   * What the new window does with it: prepare it as a project (Open, Create),
+   * or only reopen it in its container (Brainstorm, task 5kd.2.3), whose
+   * folder is not a project and must not be asked a project's questions.
+   */
+  then?: 'prepare' | 'reopen'
 }
 
 const norm = (p: string) => p.replace(/\/+$/, '')
 
-export function startupAction(handover: unknown, folder: string | undefined, now: number): 'prepare' | 'nothing' {
+export function startupAction(handover: unknown, folder: string | undefined, now: number): 'prepare' | 'reopen' | 'nothing' {
   if (folder === undefined || typeof handover !== 'object' || handover === null) return 'nothing'
   const h = handover as Partial<Handover>
   if (typeof h.folder !== 'string' || typeof h.at !== 'number') return 'nothing'
   if (norm(h.folder) !== norm(folder)) return 'nothing'
   if (now - h.at > HANDOVER_MS || now < h.at) return 'nothing'
-  return 'prepare'
+  return h.then === 'reopen' ? 'reopen' : 'prepare'
 }
 
 /**
