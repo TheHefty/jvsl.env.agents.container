@@ -124,6 +124,27 @@ case "$written" in
         ;;
 esac
 
+# **A store the old recursive chown damaged is pruned once, keeping its named
+# volumes** — debt the-boots-recursive-chown-of-the-docker-store-loses-the-
+# owners-images-set (gh-313). Stopping the chown, above, stops new damage; the
+# layers it already rewrote read 0:0 until they are gone, and a pull answering
+# "Already exists" keeps them. So a store with no marker loses everything but
+# volumes/, on disk, before the daemon starts over it: a daemon finding only
+# its volumes behaves as a fresh one that kept them. The marker makes it once.
+# An empty store, or the fresh one a driver switch just made, is only marked.
+# This cannot be undone: the images go, and are pulled or built on next use.
+PRUNE_MARKER="$DATA_ROOT/.pruned-after-gh-313"
+if [[ ! -e $PRUNE_MARKER ]]; then
+    mapfile -t doomed < <(find "$DATA_ROOT" -mindepth 1 -maxdepth 1 ! -name volumes -printf '%f\n' | LC_ALL=C sort)
+    if (( ${#doomed[@]} > 0 )); then
+        for entry in "${doomed[@]}"; do rm -rf "${DATA_ROOT:?}/$entry"; done
+        echo "removed from the docker store: ${doomed[*]} (images, their containers and the build cache, once; the recursive chown older images ran at boot rewrote every layer's owner to 0:0, gh-313, and a layer pulled again as Already exists kept it)"
+        echo "named volumes were kept, in $DATA_ROOT/volumes; files an older boot rewrote in them may still read 0:0, and the image that owns them may need to chown them again"
+    fi
+    echo "store pruned after gh-313 on $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$PRUNE_MARKER"
+    chown abc:abc "$PRUNE_MARKER"
+fi
+
 export HOME=/config
 
 # --port-driver is what makes `docker run -p` mean anything. RootlessKit
