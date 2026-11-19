@@ -13,6 +13,8 @@ export interface ScaffoldInput {
   answers: Answers
   /** The person's own git identity, when git has one configured. */
   identity?: { name: string; email: string }
+  /** The ready idea the project starts from (task 5kd.5.2): copied to docs/IDEA.md. */
+  idea?: { text: string }
 }
 
 export interface ScaffoldWrite {
@@ -109,6 +111,13 @@ export function scaffoldPlan(input: ScaffoldInput): ScaffoldPlan {
   if (input.answers.aiMemory === true) {
     writes.push({ path: '.ai-memory.toml', contents: aiMemoryMarker() })
   }
+
+  // **The idea travels as raw material** (story a-project-is-created-from-a-
+  // ready-idea, gh-364): a versioned copy, in the first commit, for the
+  // initialization interview and the charter grilling to start from. The
+  // brainstorm's memory does not follow it into the project; this file is
+  // what crosses over.
+  if (input.idea !== undefined) writes.push({ path: 'docs/IDEA.md', contents: input.idea.text })
 
   if (input.identity === undefined) {
     return {

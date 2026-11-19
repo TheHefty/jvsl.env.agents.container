@@ -3,7 +3,8 @@ import * as vscode from 'vscode'
 import { carried } from '../build/template.ts'
 import { askAnswers, askJournalRepository } from '../configure/command.ts'
 import { stacksAvailable, versionsOf } from '../configure/questions.ts'
-import { preselect, readIdeas } from '../ideas/offer.ts'
+import { preselect, readIdeas, type ReadyIdea } from '../ideas/offer.ts'
+import { markIdea } from '../ideas/mark.ts'
 import { filesFor } from '../host/files.ts'
 import { homeFor } from '../host/home.ts'
 import { pickedProject } from '../host/locate.ts'
@@ -74,6 +75,7 @@ export async function create(
   const home = await homeFor(project)
   let preselected: string[] = []
   let current: Record<string, unknown> = {}
+  let startedFrom: ReadyIdea | undefined
   if (!home.ok) {
     write([`create: no ideas were read — ${home.reason}`])
   } else {
@@ -98,6 +100,7 @@ export async function create(
         const p = preselect(from.idea, available, (stack) => versionsOf(stacksDir, stack))
         preselected = p.stacks
         current = p.versions
+        startedFrom = from
         write([`create: starting from the idea ${from.slug}`, ...p.notes.map((n) => `create: ${n}`)])
       }
     }
@@ -136,7 +139,12 @@ export async function create(
     asked = { ...asked, journalRepository }
   }
   const answers = { ...asked, location: root }
-  const plan = scaffoldPlan({ root, assetsDir: carried(extensionPath, 'assets', 'project'), answers })
+  const plan = scaffoldPlan({
+    root,
+    assetsDir: carried(extensionPath, 'assets', 'project'),
+    answers,
+    ...(startedFrom !== undefined ? { idea: { text: startedFrom.text } } : {}),
+  })
   const applied = plan.refused === undefined ? apply(files, plan.writes, write) : undefined
   const decision = decideCreate({ plan, applied })
 
@@ -144,6 +152,20 @@ export async function create(
   if (!decision.open) {
     void vscode.window.showWarningMessage(decision.message)
     return
+  }
+  // **The original is marked once the project exists** (task 5kd.5.2): not
+  // before, so a Create that fails leaves the idea ready to start from again.
+  // A mark that cannot be written is said, and the project stays created: the
+  // idea is the developer's, and Create's job was the project.
+  if (startedFrom !== undefined && home.ok) {
+    const name = root.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? root
+    const marked = markIdea(journalFilesFor(project, home.home), startedFrom.slug, name)
+    if ('ok' in marked) {
+      write([`create: marked the idea ${startedFrom.slug}: became project: ${name}`])
+    } else {
+      write([`create: ${marked.error}. The project was created; set its state to "became project: ${name}" by hand.`])
+      void vscode.window.showWarningMessage(`Create: ${marked.error}. The project was created.`)
+    }
   }
   if (journalFiles !== undefined && answers.journalRepository !== undefined) {
     try {

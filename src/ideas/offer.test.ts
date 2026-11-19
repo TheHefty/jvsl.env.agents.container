@@ -47,6 +47,7 @@ test('an ideas folder that does not exist offers nothing and says nothing', () =
 test('a ready idea is offered; the other states are not, and are not named', () => {
   const { ready, unreadable } = readIdeas(home())
   assert.deepEqual(ready.map((r) => r.slug), ['ready-whole'])
+  assert.equal(ready[0]?.text, readFileSync(join(EXAMPLES, 'ready-whole/IDEA.md'), 'utf8'))
   assert.ok(!unreadable.some((u) => /raw-just-started|became-a-project/.test(u)))
 })
 

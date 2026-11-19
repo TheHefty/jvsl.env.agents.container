@@ -118,3 +118,14 @@ test('a created project carries the Markdown size hook (story qws.1)', () => {
   assert.ok(hook, JSON.stringify(plan.writes.map((w) => w.path)))
   assert.match(hook.contents, /check-md-size/)
 })
+
+// --- a project from an idea carries it (task 5kd.5.2, gh-364) ---------------
+test('a project created from an idea gets the idea as docs/IDEA.md, in the first commit', () => {
+  const text = '---\nstate: ready\n---\n\n## Purpose and who it is for\n\nX.\n'
+  const plan = scaffoldPlan({ ...base, idea: { text } })
+  assert.equal(plan.writes.find((w) => w.path === 'docs/IDEA.md')?.contents, text)
+})
+
+test('a project created from nothing has no docs/IDEA.md', () => {
+  assert.equal(scaffoldPlan(base).writes.some((w) => w.path === 'docs/IDEA.md'), false)
+})

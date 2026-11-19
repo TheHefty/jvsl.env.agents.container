@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import Module from 'node:module'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 /**
  * Loads the built bundle for real, with `vscode` stubbed.
@@ -658,6 +658,12 @@ test('Create offers a ready idea and starts the stacks question from its stacks'
     assert.ok(channel.some((l) => l.includes('starting from the idea ready-whole')), channel.join('\n'))
     assert.ok(channel.some((l) => l.includes('idea not offered') && l.includes('an-unknown-key')), channel.join('\n'))
     assert.ok(!channel.some((l) => l.includes('raw-just-started')), channel.join('\n'))
+    // The idea travels and the original is marked (task 5kd.5.2).
+    const original = readFileSync(join(examples, 'ready-whole', 'IDEA.md'), 'utf8')
+    assert.equal(readFileSync(join(project, 'docs', 'IDEA.md'), 'utf8'), original)
+    const marked = readFileSync(join(home, '.claude/agent-container/ideas/ready-whole/IDEA.md'), 'utf8')
+    assert.match(marked, new RegExp(`^state: became project: ${basename(project)}$`, 'm'))
+    assert.equal(marked.replace(/^state: .*$/m, 'state: ready'), original)
   } finally {
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
