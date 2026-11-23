@@ -59,3 +59,6 @@ the stack, and the questions still open. Read the memory for the idea, write wha
 show the developer what was added before asking for the state to change.
 
 An idea whose four sections are not all filled is not `ready`, and the contract refuses it.
+**The state changes through `idea-check --set <state> <idea>`, never by editing the file**: it
+checks the idea in the new state and writes the `state:` line only if the contract accepts it, so an
+idea it refuses keeps the state it had. The plugin's `ideation` skill is the ready step, in order.

@@ -26,6 +26,9 @@ being shaped; a `ready` one has all four, each with something in it.
 - **The agent** runs it in the container through `bin/idea-check <IDEA.md or idea folder>`. That
   prints one `<file>:<line>: <message>` line per problem (`<file>: <message>` when the problem is
   something missing) and exits 1, or exits 0 in silence.
+- **The agent changes an idea's state** through `bin/idea-check --set <state> <idea>`: it checks the
+  idea in the new state and rewrites only the `state:` line, and only if the contract accepts it;
+  refused, the file is left as it was. `became project` is never written by it.
 - **The extension** bundles the same file (`src/ideas/contract.ts` re-exports it).
 
 `examples/<name>/` holds an `IDEA.md` and an `expect.json`: whether it is valid, and, when it is not,

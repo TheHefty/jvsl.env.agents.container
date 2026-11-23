@@ -60,3 +60,6 @@ stack, e as perguntas ainda em aberto. Leia a memória da ideia, escreva o que f
 desenvolvedor o que foi acrescentado antes de pedir a mudança de estado.
 
 Uma ideia cujas quatro seções não estão todas preenchidas não está `ready`, e o contrato a recusa.
+**O estado muda por `idea-check --set <estado> <ideia>`, nunca editando o arquivo**: ele confere a
+ideia no estado novo e só escreve a linha `state:` se o contrato a aceitar, então uma ideia que ele
+recusa fica no estado que tinha. A skill `ideation` do plugin é o passo do ready, na ordem.
