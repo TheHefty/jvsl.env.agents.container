@@ -1,6 +1,3 @@
-import { mkdirSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 import { handsOver } from '../build/build.ts'
@@ -11,15 +8,17 @@ import { MEMORY_MARKER } from '../configure/switches.ts'
 import { filesFor } from '../host/files.ts'
 import { dockerFor } from '../host/docker.ts'
 import { factsFor } from '../host/host.ts'
-import { IDEAS_PATH } from '../ideas/offer.ts'
+import { mountPath } from '../host/locate.ts'
 import { imageState } from '../open/command.ts'
 import { CONFIG_PATH } from '../open/open.ts'
 import { BRAINSTORM_IMAGE, brainstormConfiguration, planBrainstorm } from './brainstorm.ts'
+import { brainstormPlace, openTarget } from './place.ts'
 
 /**
  * Brainstorm: open the ideation container on the developer's ideas folder
  * (story the-brainstorm-command-opens-the-ideation-container, gh-364; task
- * 5kd.2.3). Linux here; WSL is 5kd.2.4, and is refused rather than guessed at.
+ * 5kd.2.3). On Windows, in the default WSL distro (task 5kd.2.4); where is
+ * brainstormPlace's to decide, and a distro that does not answer is refused.
  *
  * It writes the configuration and the memory marker into the ideas folder
  * (planBrainstorm decides what), builds core alone under the Brainstorm
@@ -38,15 +37,16 @@ export async function brainstorm(
     write([`brainstorm: refused — ${why}`])
     void vscode.window.showErrorMessage(`Brainstorm: ${why}`)
   }
-  if (process.platform === 'win32') {
-    refuse('Brainstorm opens on a Linux host for now; on Windows it is to run in the default WSL distro, which is not built yet.')
+  const place = await brainstormPlace()
+  if (!place.ok) {
+    refuse(place.reason)
     return
   }
-  const home = homedir()
-  const ideasDir = join(home, IDEAS_PATH)
-  const project = { kind: 'host' as const, path: ideasDir }
+  const { project, home } = place
+  const ideasDir = project.path
+  const files = filesFor(project)
   try {
-    mkdirSync(ideasDir, { recursive: true })
+    files.mkdirAbsolute(mountPath(project))
   } catch (error) {
     refuse(`the ideas folder ${ideasDir} could not be created: ${String(error)}`)
     return
@@ -59,7 +59,7 @@ export async function brainstorm(
   })
   write(measured.notes.map((n) => `brainstorm: facts: ${n}`))
   const configuration = brainstormConfiguration({
-    ideasDir: dockerPath(ideasDir),
+    ideasDir: dockerPath(mountPath(project)),
     homeDir: home,
     extensionVersion,
     // No manifest: the defaults every new project starts with.
@@ -67,7 +67,6 @@ export async function brainstorm(
     facts: measured.facts,
   })
 
-  const files = filesFor(project)
   let plan: ReturnType<typeof planBrainstorm>
   try {
     plan = planBrainstorm({ configuration, existingConfig: files.read(CONFIG_PATH), markerPresent: files.exists(MEMORY_MARKER) })
@@ -101,7 +100,7 @@ export async function brainstorm(
   }
 
   await handOver(ideasDir)
-  await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(ideasDir), {
+  await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.from(openTarget(project)), {
     forceNewWindow: vscode.workspace.workspaceFolders !== undefined,
   })
 }
