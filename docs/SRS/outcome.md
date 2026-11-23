@@ -26,6 +26,15 @@ What the grilling changed, against what went in:
 The sections above are as written at the gate and were not edited afterwards, except where an
 amendment below says otherwise.
 
+## Amendment, 2026-11-23 (eighth)
+
+**This SRS gains the Security section the template now requires.** The epic
+`a-project-is-built-against-a-threat-model-its-developer-wrote` made it mandatory at the SRS gate,
+and a project agreed before that writes it at its next story gate. [Security](security.md) was
+written in an interview with João Lima: the threat model and the accepted risks are the developer's, the
+controls were chosen from the agent's options. No requirement above changes; every control chosen
+already existed, and what they leave open is written down as accepted rather than left unseen.
+
 ## Amendment, 2026-10-02 (seventh)
 
 **The template stops being something a project consumes.** Follows the charter's third amendment;
