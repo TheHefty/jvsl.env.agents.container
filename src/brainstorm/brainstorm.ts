@@ -1,3 +1,4 @@
+import { IDEAS_PATH } from '../ideas/offer.ts'
 import { buildConfiguration, isOurs, type BuildInput, type Configuration } from '../build/devcontainer.ts'
 import { aiMemoryMarker } from '../create/location.ts'
 import { MEMORY_MARKER } from '../configure/switches.ts'
@@ -40,7 +41,12 @@ export function brainstormConfiguration(input: BrainstormInput): Configuration {
     name: BRAINSTORM,
     image: BRAINSTORM_IMAGE,
     // The project's volume is always the first mount (buildConfiguration).
-    mounts: [`source=${BRAINSTORM_VOLUME},target=/config,type=volume`, ...base.mounts.slice(1)],
+    // And without the read-only bind of the ideas every project carries
+    // (5kd.3.1): writing them is what this container is for.
+    mounts: [
+      `source=${BRAINSTORM_VOLUME},target=/config,type=volume`,
+      ...base.mounts.slice(1).filter((m) => !m.includes(`target=/config/${IDEAS_PATH},`)),
+    ],
     containerEnv: { ...base.containerEnv, AGENT_CONTAINER_MODE: 'ideation' },
     runArgs: [...base.runArgs, '--name', BRAINSTORM],
   }

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { IMPORT_SETTING } from './gradle.ts'
 import { cpusetRange, type Limits } from './limits.ts'
 import type { HostFacts } from '../host/host.ts'
+import { IDEAS_PATH } from '../ideas/offer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 
 /**
@@ -27,12 +28,12 @@ export const GENERATED_BY = 'x-jvsl-generated'
  * upgrade that changes it — TZ was the first — never reached anyone. Opening a
  * project compares this number and offers to regenerate, writing nothing until
  * asked. A file with no number predates them and counts as 1; 2 is the first
- * with TZ. The fingerprint in devcontainer.test.ts fails until it is raised.
+ * with TZ; 3 the first with the ideas bound read-only (task 5kd.3.1). The fingerprint in devcontainer.test.ts fails until it is raised.
  *
  * The same on every open, so it moves the configuration's hash only when the
  * output really changed.
  */
-export const CONFIG_GENERATION = 2
+export const CONFIG_GENERATION = 3
 
 export interface Configuration {
   name: string
@@ -207,6 +208,12 @@ export function buildConfiguration(input: BuildInput): Configuration {
       // until somebody wonders why a rule they deleted still applies. The
       // charter said volume; this is the measurement that changed it.
       `target=/config/.claude/rules,type=tmpfs`,
+      // **The ideas read-only, over the writable bind above** (story
+      // development-containers-mount-the-ideas-read-only, gh-364): a project's
+      // agent reads the developer's ideas — Create carries one into a project —
+      // and never edits them; only the Brainstorm container writes there, and
+      // it removes this line. After the bind it sits inside, or that one wins.
+      `source=${homeDir}/${IDEAS_PATH},target=/config/${IDEAS_PATH},type=bind,readonly`,
     ],
     // Deliberate, not hardening to tighten back: the nested rootless daemon
     // needs these, and the reason is in SECURITY.md ("What the container is

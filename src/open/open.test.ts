@@ -32,7 +32,7 @@ test('the host directories the mounts need are named for the caller to create', 
   const d = decideOpen(base)
   assert.equal(d.action, 'open')
   if (d.action === 'open') {
-    assert.deepEqual(d.ensureHostDirs, ['/home/me/.claude'])
+    assert.deepEqual(d.ensureHostDirs, ['/home/me/.claude', '/home/me/.claude/agent-container/ideas'])
   }
 })
 
@@ -311,6 +311,17 @@ test('Configure writes the limits it was just given into the configuration', () 
   }
 })
 
+test('Configure names the directories the regenerated mounts need, as Open does', () => {
+  // Configure, then Rebuild Container, never passes through Open: a project
+  // opened before the ideas bind existed would get a bind whose source is not
+  // there, and the rebuild would die on a mount error naming a path.
+  const r = regen()
+  assert.equal(r.action, 'write')
+  if (r.action === 'write') {
+    assert.deepEqual(r.ensureHostDirs, ['/home/me/.claude', '/home/me/.claude/agent-container/ideas'])
+  }
+})
+
 test('a configuration this extension did not write is kept, and the reason is given', () => {
   // Gitignored, so there is no history to recover a hand-written one from.
   const r = regen({ existingConfig: '{"image": "mine"}' })
@@ -364,7 +375,10 @@ test('the credentials directory is created where this machine reaches it, and bo
   const d = decideOpen({ ...base, homeDir: '/home/jv', localHome: '\\\\wsl.localhost\\Ubuntu\\home\\jv' })
   assert.equal(d.action, 'open')
   if (d.action === 'open') {
-    assert.deepEqual(d.ensureHostDirs, ['\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude'])
+    assert.deepEqual(d.ensureHostDirs, [
+      '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude',
+      '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude\\agent-container\\ideas',
+    ])
     assert.ok(d.configuration.mounts.some((m) => m.startsWith('source=/home/jv/.claude,')), d.configuration.mounts.join('\n'))
   }
 })
