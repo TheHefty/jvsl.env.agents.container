@@ -113,6 +113,8 @@ jobs:
         run: bash scripts/board-only-reads.test.sh
       - name: no image fragment runs code it downloaded without verifying it
         run: bash scripts/no-fetch-runs-unverified.test.sh
+      - name: every download in core/ and stacks/ retries, and the guard catches one that does not
+        run: bash scripts/every-fetch-retries.test.sh
       - name: every Go version the stack offers has a pinned digest
         run: bash stacks/golang/digests.test.sh
       - name: the dotnet feed's failure names its real cause, and only a 404 is an unsupported distribution
