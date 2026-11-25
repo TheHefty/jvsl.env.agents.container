@@ -45,6 +45,14 @@ item d-prop bug deferred 2 '["defect","proposed"]'
 item d-closed bug closed 2 '["defect"]'
 item b-plain bug open 2
 printf 'What it is for.\n' > "$work/body"
+printf 'What it is for.\n\nThreat model: unchanged — it reads what the tracker already holds.\n' > "$work/story"
+# The project refinement runs in: a git repository whose SRS carries a
+# Security section, split into a folder as this repository's is.
+project="$work/project"
+mkdir -p "$project/docs/SRS" "$project/src/deep"
+git -C "$project" init -q
+printf '# Software Requirements Specification\n' > "$project/docs/SRS/README.md"
+printf '# Security\n\n## Threat model\n' > "$project/docs/SRS/security.md"
 printf 'Done when the planning lists it.\n' > "$work/crit"
 printf 'Feature: f\n  Scenario: it happens\n    Then it is so\n' > "$work/scen"
 : > "$work/empty"
@@ -52,7 +60,7 @@ printf 'Feature: f\n  Scenario: it happens\n    Then it is so\n' > "$work/scen"
 run() {
     local code=0
     : > "$BD_CALLS"
-    TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/refine-propose" "$@" > "$work/out" 2>&1 || code=$?
+    (cd "${IN:-$project}" && TRACKER_EXPORT="$EXPORT" REVIEW_BD="$work/bin/bd" bash "$HERE/refine-propose" "$@") > "$work/out" 2>&1 || code=$?
     echo "$code"
 }
 calls() { wc -l < "$BD_CALLS" | tr -d ' '; }
@@ -64,7 +72,7 @@ check "carrying both halves of a proposal" "$(created | grep -c -- $'--labels\tp
 check "with its criterion as its acceptance" "$(created | grep -c -- $'--acceptance\tDone when the planning lists it.')" "1"
 check "printing its id" "$(tail -n 1 "$work/out")" "n-1"
 
-check "a story under an agreed epic, with a scenario, is proposed" "$(run story e1 'a story' "$work/body" "$work/scen")" "0"
+check "a story under an agreed epic, with a scenario, is proposed" "$(run story e1 'a story' "$work/story" "$work/scen")" "0"
 check "as a feature, which is what stories are here" "$(created | grep -c $'\t-t\tfeature\t.*--parent\te1\t')" "1"
 
 check "what a new task waits on is a blocks dependency" "$(run task s1 'second' "$work/body" "$work/crit" t1)" "0"
@@ -76,11 +84,11 @@ refused() {
 }
 check "a task with no criterion is refused, writing nothing" "$(refused task s1 t "$work/body" "$work/empty")" "1 0"
 check "saying the criterion is what the planning needs" "$(grep -c 'done criterion' "$work/out")" "1"
-check "a story with no scenario is refused" "$(refused story e1 s "$work/body" "$work/crit")" "1 0"
+check "a story with no scenario is refused" "$(refused story e1 s "$work/story" "$work/crit")" "1 0"
 check "a task under an epic is refused" "$(refused task e1 t "$work/body" "$work/crit")" "1 0"
-check "a story under a story is refused" "$(refused story s1 s "$work/body" "$work/scen")" "1 0"
+check "a story under a story is refused" "$(refused story s1 s "$work/story" "$work/scen")" "1 0"
 check "a child under a proposal is refused: it is not agreed yet" "$(refused task s-prop t "$work/body" "$work/crit")" "1 0"
-check "a child under a proposed epic too" "$(refused story e-prop s "$work/body" "$work/scen")" "1 0"
+check "a child under a proposed epic too" "$(refused story e-prop s "$work/story" "$work/scen")" "1 0"
 check "a child under a closed item is refused" "$(refused task s-closed t "$work/body" "$work/crit")" "1 0"
 check "a parent the tracker does not have is refused" "$(refused task s-ghost t "$work/body" "$work/crit")" "1 0"
 check "an empty title is refused" "$(refused task s1 '  ' "$work/body" "$work/crit")" "1 0"
@@ -92,8 +100,42 @@ check "a bug that is not a debt is refused as a parent" "$(refused task b-plain 
 check "saying it is to be recorded as a debt" "$(grep -c 'not a debt' "$work/out")" "1"
 check "a debt that is itself a proposal is refused" "$(refused task d-prop t "$work/body" "$work/crit")" "1 0"
 check "a closed debt is refused" "$(refused task d-closed t "$work/body" "$work/crit")" "1 0"
-check "a story under a debt is refused: a debt holds tasks" "$(refused story d1 s "$work/body" "$work/scen")" "1 0"
+check "a story under a debt is refused: a debt holds tasks" "$(refused story d1 s "$work/story" "$work/scen")" "1 0"
 check "an epic is not refinement's to propose" "$(refused epic e1 t "$work/body" "$work/crit")" "2 0"
+
+# --- a story says whether it changes the threat model (story the-trackers-
+# story-gate-asks-about-the-threat-model, gh-362; task refine-propose-requires-
+# the-threat-model-line). The ways it fails:
+#   1. a story with no answer is proposed, or is refused after something was
+#      written;
+#   2. a project's SRS that has the section is not seen — split into a folder,
+#      as this repository's is — and refinement stops where it should not;
+#   3. run from below the project's root, the SRS is not found at all.
+check "1: a story with no Threat model line is refused, writing nothing" "$(refused story e1 s "$work/body" "$work/scen")" "1 0"
+check "1:   naming the line it needs, both forms" \
+    "$(grep -c 'Threat model: unchanged' "$work/out") $(grep -c 'Threat model: amended in' "$work/out")" "1 1"
+printf 'Threat model: maybe\n' > "$work/vague"
+check "1: an answer that is neither form is refused too" "$(refused story e1 s "$work/vague" "$work/scen")" "1 0"
+printf 'What it is for.\n\nThreat model: amended in #362\n' > "$work/amended"
+check "1: amended in <ref> is an answer" "$(run story e1 'a story' "$work/amended" "$work/scen")" "0"
+check "a task needs no Threat model line: the story answered it" "$(run task s1 't' "$work/body" "$work/crit")" "0"
+
+single="$work/single"
+mkdir -p "$single/docs"
+git -C "$single" init -q
+printf '# SRS\n\n## Data and legal\n\nNothing.\n' > "$single/docs/SRS.md"
+check "a project whose SRS has no Security section is refused, writing nothing" \
+    "$(IN="$single" refused story e1 s "$work/story" "$work/scen")" "1 0"
+check "  saying to write it first" "$(grep -c 'Security section' "$work/out")" "1"
+printf '\n## Security\n\n### Threat model\n' >> "$single/docs/SRS.md"
+check "2: a single docs/SRS.md with ## Security is seen" "$(IN="$single" run story e1 'a story' "$work/story" "$work/scen")" "0"
+check "2: a split docs/SRS/ with # Security is seen" "$(run story e1 'a story' "$work/story" "$work/scen")" "0"
+none="$work/none"
+mkdir -p "$none"
+git -C "$none" init -q
+check "a project with no SRS at all is refused" "$(IN="$none" refused story e1 s "$work/story" "$work/scen")" "1 0"
+check "3: run from below the root, the SRS is still found" "$(IN="$project/src/deep" run story e1 'a story' "$work/story" "$work/scen")" "0"
+check "a task is never refused for the SRS: stories carry the question" "$(IN="$none" run task s1 't' "$work/body" "$work/crit")" "0"
 
 if [ "$failures" -gt 0 ]; then
     echo "refine-propose.test: $failures failure(s)"

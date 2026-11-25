@@ -48,6 +48,9 @@ For each item, before writing anything, ask about:
 - **risks**;
 - **what is out of scope**;
 - **how it will be known to be done**. For a task, this becomes its done criterion. For a story, its scenarios.
+- **the threat model**, for a story: does it add a new surface, new data, or a new role? If it does, the SRS's Security section is amended in the same pull request as the story, before any task under it. If it does not, say why: what it touches, and why none of it is new. The answer is the developer's; ask it, never fill it in.
+
+If the project's SRS has no Security section, there is no threat model to answer against. Stop, and ask the developer to write it first, as the SRS template lays it out; tasks under stories already agreed can still be refined.
 
 **Ask instead of assuming.** Where a requirement is unclear, ask the developer. Never fill the gap yourself.
 
@@ -63,11 +66,12 @@ ${CLAUDE_PLUGIN_ROOT}/bin/refine-propose task <story-or-debt-id> "<title>" <body
 ```
 
 - A story's acceptance is its scenarios, in Gherkin (`Scenario:` / `Given` / `When` / `Then`), in the project's documentation language.
+- A story's body carries the developer's answer, as one line: `Threat model: unchanged`, with why, or `Threat model: amended in <ref>`, naming the pull request or commit that amended the Security section.
 - A task's acceptance is its done criterion.
 
 **A debt is like a story**: its fix is proposed as tasks under it, the debt's regression scenario playing the part a story's scenarios play.
 
-The script refuses a story outside an agreed epic, a task outside an agreed story or debt, a task with no criterion, and a story with no scenario. Fix what it names.
+The script refuses a story outside an agreed epic, a task outside an agreed story or debt, a task with no criterion, a story with no scenario, a story whose body does not say whether it changes the threat model, and a story in a project whose SRS has no Security section. Fix what it names; a missing answer goes back to the developer.
 
 ## 5. The developer's word
 

@@ -36,6 +36,20 @@ if [ "$kind" = task ]; then
     [ -n "$(tr -d '[:space:]' < "$acc")" ] || refuse "A task needs a done criterion, which is what the planning checks before starting it."
 else
     grep -q 'Scenario' "$acc" || refuse "A story's acceptance is its scenarios, and this one has no Scenario."
+    # The story gate's question (story the-trackers-story-gate-asks-about-the-
+    # threat-model, gh-362): a new surface, new data, a new role? The answer is
+    # one of two lines in the body; anything else is not an answer.
+    grep -qE 'Threat model: (unchanged|amended in [^[:space:]]+)' "$body" ||
+        refuse "Its body does not say whether it changes the threat model: add \"Threat model: unchanged\", with why, or \"Threat model: amended in <ref>\", naming the pull request or commit that amended the SRS's Security section."
+    # And there has to be a threat model to answer against. Found from the
+    # project's root, wherever this runs from, in either layout: docs/SRS.md
+    # with a "## Security" section, or docs/SRS/ split with one file "# Security".
+    root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    srs=()
+    [ -f "$root/docs/SRS.md" ] && srs+=("$root/docs/SRS.md")
+    [ -d "$root/docs/SRS" ] && while IFS= read -r f; do srs+=("$f"); done < <(find "$root/docs/SRS" -name '*.md' -type f)
+    { [ "${#srs[@]}" -gt 0 ] && grep -qE '^#{1,2} Security[[:space:]]*$' "${srs[@]}"; } ||
+        refuse "This project's SRS (docs/SRS.md or docs/SRS/, under $root) has no Security section, so there is no threat model for the story to answer against. Write it first, with the developer, as the SRS template lays it out."
 fi
 
 state="$(export_of | jq -L "$HERE" -r --arg id "$parent" 'include "work"; select(._type == "issue" and .id == $id)
