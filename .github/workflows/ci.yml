@@ -458,6 +458,8 @@ jobs:
         run: bash core/plugin/agent-container/skills/retro-skill.test.sh
       - name: the ideation skill consolidates into IDEA.md, shows it, and sets ready only through idea-check on the developer's word
         run: bash core/plugin/agent-container/skills/ideation-skill.test.sh
+      - name: the refine skill asks whether a story changes the threat model, and the answer is the developer's
+        run: bash core/plugin/agent-container/skills/refine-skill.test.sh
       - name: the report is kept out of git without changing a file of the project
         run: bash core/plugin/agent-container/bin/report-exclude.test.sh
       - name: a study topic is tracked once, and a rebuild never changes its status
