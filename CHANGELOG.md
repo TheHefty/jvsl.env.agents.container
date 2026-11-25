@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.3.0](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.2.1...v2.3.0) (2026-11-25)
+
+
+### Features
+
+* a project created from an idea carries it as docs/IDEA.md and marks the original ([#386](https://github.com/TheHefty/jvsl.env.agents.container/issues/386)) ([97fcdcf](https://github.com/TheHefty/jvsl.env.agents.container/commit/97fcdcff9e7a06be5d321f1e8a3504175f37c5ab))
+* an idea is consolidated into IDEA.md before it is marked ready ([#390](https://github.com/TheHefty/jvsl.env.agents.container/issues/390)) ([3d5e001](https://github.com/TheHefty/jvsl.env.agents.container/commit/3d5e0019cb10dd4192450614cf28e1b558f2f0d1))
+* Brainstorm on Windows opens in the default WSL distro ([#388](https://github.com/TheHefty/jvsl.env.agents.container/issues/388)) ([52474cc](https://github.com/TheHefty/jvsl.env.agents.container/commit/52474ccda4ec0e7420fbc5e1c76f9e56e81e4a28))
+* Create offers to start from a ready idea, its stacks pre-selected ([#382](https://github.com/TheHefty/jvsl.env.agents.container/issues/382)) ([0389a78](https://github.com/TheHefty/jvsl.env.agents.container/commit/0389a789346d7ece822625b5a17411be45e29575))
+* development containers mount the ideas read-only ([#389](https://github.com/TheHefty/jvsl.env.agents.container/issues/389)) ([7807a1a](https://github.com/TheHefty/jvsl.env.agents.container/commit/7807a1ab933aae44aaf131832f1a486795076589))
+* refine-propose refuses a story that does not answer the threat-model question ([#394](https://github.com/TheHefty/jvsl.env.agents.container/issues/394)) ([bb1b51f](https://github.com/TheHefty/jvsl.env.agents.container/commit/bb1b51f47d3dec3fc2915090af4a5e63784436e2))
+* the After the code checks answer against the SRS's threat model ([#384](https://github.com/TheHefty/jvsl.env.agents.container/issues/384)) ([63de7ac](https://github.com/TheHefty/jvsl.env.agents.container/commit/63de7ac92a78a192967ce043543ae8640f87cde4))
+* the boot writes the ideation rules, and only them, in ideation mode ([#381](https://github.com/TheHefty/jvsl.env.agents.container/issues/381)) ([ecdeffb](https://github.com/TheHefty/jvsl.env.agents.container/commit/ecdeffb5f973cd3f54e2ec583a1e6f081342fd38))
+* the Brainstorm command opens the ideation container on the ideas folder ([#385](https://github.com/TheHefty/jvsl.env.agents.container/issues/385)) ([9bc1a67](https://github.com/TheHefty/jvsl.env.agents.container/commit/9bc1a671dccfd51fdcdb209c4732a1897a7d0261))
+* the idea contract is held on the host, with examples the plugin reads too ([#377](https://github.com/TheHefty/jvsl.env.agents.container/issues/377)) ([85f3610](https://github.com/TheHefty/jvsl.env.agents.container/commit/85f36108264167264aac19b57f0842c7c26dd167))
+* the ideation container's rules are written, in both languages ([#378](https://github.com/TheHefty/jvsl.env.agents.container/issues/378)) ([d1fe0bd](https://github.com/TheHefty/jvsl.env.agents.container/commit/d1fe0bdd820605f85e01e57355a518f0fde4ba1e))
+* the initialization grills the threat model with the SRS ([#383](https://github.com/TheHefty/jvsl.env.agents.container/issues/383)) ([5f72ab8](https://github.com/TheHefty/jvsl.env.agents.container/commit/5f72ab82d0d354050c25e84af1a08ee8cb265349))
+* the plugin checks an idea against the same contract the extension holds ([#380](https://github.com/TheHefty/jvsl.env.agents.container/issues/380)) ([767dfa6](https://github.com/TheHefty/jvsl.env.agents.container/commit/767dfa65cfb57853009f60429fe9df2c0ce343bc))
+* the SRS template requires a Security section, the threat model the user's own ([#375](https://github.com/TheHefty/jvsl.env.agents.container/issues/375)) ([f4bcfd5](https://github.com/TheHefty/jvsl.env.agents.container/commit/f4bcfd53c7104087a548df462bd5a86e3fc6467b))
+* the story gate asks whether the threat model changes, and amends it before any task ([#379](https://github.com/TheHefty/jvsl.env.agents.container/issues/379)) ([0db07f0](https://github.com/TheHefty/jvsl.env.agents.container/commit/0db07f020209b1d4a50ccbad3b599df6260e479e))
+
+
+### Bug Fixes
+
+* a docker store the old recursive chown damaged is pruned once at boot, keeping its volumes ([#373](https://github.com/TheHefty/jvsl.env.agents.container/issues/373)) ([07ad406](https://github.com/TheHefty/jvsl.env.agents.container/commit/07ad40673e39e785b1ec43b414112e7535145881))
+* a malformed manifest is refused by the build, naming the file ([#368](https://github.com/TheHefty/jvsl.env.agents.container/issues/368)) ([af35558](https://github.com/TheHefty/jvsl.env.agents.container/commit/af35558078f6f5ca0beda13faea361d275107163))
+* a retro held before 04:00 is dated the day before ([#369](https://github.com/TheHefty/jvsl.env.agents.container/issues/369)) ([a68ddaf](https://github.com/TheHefty/jvsl.env.agents.container/commit/a68ddafb0f9c00c00e36b84d5e14adfd3b64e07a))
+* a story or a debt closes only once verified, and an epic only with no child open ([#374](https://github.com/TheHefty/jvsl.env.agents.container/issues/374)) ([6418e18](https://github.com/TheHefty/jvsl.env.agents.container/commit/6418e18fc8649b7ccce72b871f4e07f00da0689a))
+* an acceptance after the close says so ([#371](https://github.com/TheHefty/jvsl.env.agents.container/issues/371)) ([c35ebbe](https://github.com/TheHefty/jvsl.env.agents.container/commit/c35ebbee32219970b5e8759f7b8c279ef4ae3ce1))
+* bd closes a task only through the review ([#366](https://github.com/TheHefty/jvsl.env.agents.container/issues/366)) ([63897b7](https://github.com/TheHefty/jvsl.env.agents.container/commit/63897b7d74c87a40edfcecc916aeed0d78e17bfe))
+* every fetch in the image retries ([#395](https://github.com/TheHefty/jvsl.env.agents.container/issues/395)) ([66e4ef2](https://github.com/TheHefty/jvsl.env.agents.container/commit/66e4ef2c0607aaaacec5a33284a4b9e4f57221df))
+* the boot no longer rewrites the owners of images in the nested Docker store ([#365](https://github.com/TheHefty/jvsl.env.agents.container/issues/365)) ([c38ce22](https://github.com/TheHefty/jvsl.env.agents.container/commit/c38ce22aef7a0d8008b6648a8e000fc118e20746))
+* the dotnet stack names a feed failure for what it is, and only a 404 is an unsupported distribution ([#376](https://github.com/TheHefty/jvsl.env.agents.container/issues/376)) ([d93bd56](https://github.com/TheHefty/jvsl.env.agents.container/commit/d93bd56f58bb9c0d5efe5d328dd1f44b8868f453))
+* the review names each task closed past it since the last review ([#370](https://github.com/TheHefty/jvsl.env.agents.container/issues/370)) ([8510c5a](https://github.com/TheHefty/jvsl.env.agents.container/commit/8510c5a505133243e3df785fdb487b6bf0c331b6))
+
 ## [2.2.1](https://github.com/TheHefty/jvsl.env.agents.container/compare/v2.2.0...v2.2.1) (2026-11-04)
 
 
