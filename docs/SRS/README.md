@@ -30,4 +30,4 @@ requirement outlives its reason.
 | [Security](security.md) | the threat model and the accepted risks, written by the developer, and the controls chosen from the agent's options. Added 2026-11-23, after this SRS was agreed |
 | [Epics and stories](epics-and-stories/README.md) | the epics, their stories, and the order each is fixed in |
 | [Alternatives considered](alternatives-considered.md) | what was weighed and rejected, with the reason — including the two reversed later |
-| [Outcome](outcome.md) | acceptance, and the seven amendments. The record of every requirement that changed and why |
+| [Outcome](outcome.md) | acceptance, and the eight amendments. The record of every requirement that changed and why |
