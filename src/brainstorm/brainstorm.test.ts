@@ -50,6 +50,13 @@ test('the ideas folder is the workspace, and the ideation mode is set', () => {
   assert.equal(c.containerEnv['AGENT_CONTAINER_MODE'], 'ideation')
 })
 
+test('the Brainstorm container keeps the ideas folder writable', () => {
+  // Every project's container binds the ideas read-only (5kd.3); the one
+  // container whose work is writing them must not inherit that.
+  const c = brainstormConfiguration(input)
+  assert.ok(!c.mounts.some((m) => m.includes('agent-container/ideas') && /readonly/.test(m)), c.mounts.join('\n'))
+})
+
 test("it keeps what every project's container needs: ~/.claude, the rules tmpfs, the image's own command", () => {
   const c = brainstormConfiguration(input)
   assert.ok(c.mounts.includes('source=/home/dev/.claude,target=/config/.claude,type=bind'))

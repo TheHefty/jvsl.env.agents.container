@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -226,6 +226,80 @@ test('a container brought up from our configuration got the machine the manifest
  * container and volume.** It refuses to run where either already exists, and
  * removes only what it created.
  */
+/**
+ * **A project's container reads the ideas and cannot change them** (story
+ * development-containers-mount-the-ideas-read-only, gh-364; task 5kd.3.1). The
+ * ideas folder is under the writable ~/.claude bind, so only a read-only bind
+ * over it, declared after that one, keeps a project's agent from editing them;
+ * asserted on the running container, because a mount option the tooling
+ * ignores reads the same in the file. The home is a fixture with no ideas
+ * folder, as on a machine that never ran Brainstorm: the folder exists only
+ * because the open named it, or the bind fails.
+ */
+test("a project's container reads the ideas folder and cannot write to it", () => {
+  const project = 'ideasro'
+  const image = `${project}-dev`
+  mkdirSync(TMP_ROOT, { recursive: true })
+  const parent = mkdtempSync(join(TMP_ROOT, 'ideas-'))
+  const root = join(parent, project)
+  const home = join(parent, 'home')
+  mkdirSync(root)
+  mkdirSync(home)
+  let containerId = ''
+  try {
+    const dockerfile = join(parent, 'Dockerfile')
+    writeFileSync(dockerfile, 'FROM alpine:3.21\nRUN adduser -D -s /bin/sh abc\n' +
+      `LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'\nCMD ["/bin/sh","-c","while sleep 1000; do :; done"]\n`)
+    sh('docker', ['build', '-q', '-f', dockerfile, '-t', image, parent])
+
+    const manifest = JSON.stringify({ limits: { memory: '512m', cpus: 1 } })
+    writeFileSync(join(root, '.agent-container.stack.json'), manifest)
+    const decision = decideOpen({
+      projectRoot: root,
+      homeDir: home,
+      extensionVersion: '0.0.0-test',
+      facts: { cpuCount: 8, devicesPresent: [], devicesAbsent: ['/dev/fuse', '/dev/kvm'] },
+      manifest,
+      existingConfig: null,
+      runningContainers: [],
+      reopenCommandAvailable: true,
+      image: 'present' as const,
+      gitignore: '.devcontainer/\n',
+      gradleBuilds: [],
+    })
+    assert.equal(decision.action, 'open')
+    if (decision.action !== 'open') return
+    for (const dir of decision.ensureHostDirs) mkdirSync(dir, { recursive: true })
+    // Open to everyone, so that only the read-only bind can be what refuses a
+    // write: the fixture's owner is not the container's user.
+    const ideasHost = join(home, '.claude', 'agent-container', 'ideas')
+    writeFileSync(join(ideasHost, 'IDEA.md'), 'an idea\n')
+    chmodSync(ideasHost, 0o777)
+    chmodSync(join(home, '.claude'), 0o777)
+    chmodSync(join(ideasHost, 'IDEA.md'), 0o666)
+    mkdirSync(join(root, '.devcontainer'))
+    writeFileSync(join(root, '.devcontainer', 'devcontainer.json'), `${JSON.stringify(decision.configuration, null, 2)}\n`)
+
+    const up = sh('npx', ['--no-install', 'devcontainer', 'up', '--workspace-folder', root])
+    const result = JSON.parse(up.trim().split('\n').at(-1) ?? '{}') as { outcome?: string; containerId?: string }
+    assert.equal(result.outcome, 'success', up)
+    containerId = result.containerId ?? ''
+
+    const ideas = '/config/.claude/agent-container/ideas'
+    assert.equal(sh('docker', ['exec', '-u', 'abc', containerId, 'cat', `${ideas}/IDEA.md`]), 'an idea\n')
+    for (const attempt of [`touch ${ideas}/new.md`, `echo x >> ${ideas}/IDEA.md`, `rm ${ideas}/IDEA.md`]) {
+      assert.throws(() => sh('docker', ['exec', '-u', 'abc', containerId, 'sh', '-c', attempt]), /Read-only file system/, attempt)
+    }
+    // The rest of ~/.claude stays writable: the agent's own state lives there.
+    sh('docker', ['exec', '-u', 'abc', containerId, 'sh', '-c', 'touch /config/.claude/still-writable'])
+  } finally {
+    if (containerId !== '') { try { sh('docker', ['rm', '-f', containerId]) } catch { /* already gone */ } }
+    try { sh('docker', ['volume', 'rm', '-f', `${project}-code-server-data`]) } catch { /* never created */ }
+    try { sh('docker', ['rmi', '-f', image]) } catch { /* never built */ }
+    rmSync(parent, { recursive: true, force: true })
+  }
+})
+
 test('the Brainstorm container comes up on the ideas folder, in ideation mode, and a second run reuses it', async () => {
   const { BRAINSTORM, BRAINSTORM_IMAGE, BRAINSTORM_VOLUME, brainstormConfiguration } = await import('../src/brainstorm/brainstorm.ts')
   const { readLimits } = await import('../src/build/limits.ts')

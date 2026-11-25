@@ -3,6 +3,7 @@ import { gradleVersion, type GradleBuild } from '../build/gradle.ts'
 import { readLimits, type LimitsRead } from '../build/limits.ts'
 import { wslDockerProblem, type DockerHost } from '../host/docker.ts'
 import { isFolderOf, WSL_READY } from '../host/locate.ts'
+import { IDEAS_PATH } from '../ideas/offer.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
 
@@ -271,7 +272,7 @@ export function decideOpen(context: OpenContext): Decision {
   const payload = {
     notes,
     log: built.log,
-    ensureHostDirs: [credentialsDir(context.localHome ?? context.homeDir)],
+    ensureHostDirs: hostDirs(context.localHome ?? context.homeDir),
     configuration: built.configuration,
   }
 
@@ -378,7 +379,14 @@ export interface RegenerationInputs extends ConfigurationInputs {
 }
 
 export type Regeneration =
-  | { action: 'write'; serialised: string; notes: string[]; log: string[] }
+  | {
+      action: 'write'
+      serialised: string
+      notes: string[]
+      log: string[]
+      /** As Decision.ensureHostDirs: Configure, then Rebuild Container, never passes through Open. */
+      ensureHostDirs: string[]
+    }
   | { action: 'keep'; why: string }
 
 /**
@@ -422,12 +430,25 @@ export function regenerateConfiguration(inputs: RegenerationInputs): Regeneratio
       why: `the manifest \`${MANIFEST}\` could not be read, so \`${CONFIG_PATH}\` was left as it is.`,
     }
   }
-  return { action: 'write', serialised: serialise(built.configuration), notes: built.warnings, log: built.log }
+  return {
+    action: 'write',
+    serialised: serialise(built.configuration),
+    notes: built.warnings,
+    log: built.log,
+    ensureHostDirs: hostDirs(inputs.homeDir),
+  }
 }
 
-/** The credentials directory under a home, in that home's own separator. */
-function credentialsDir(home: string): string {
-  return home.startsWith('\\\\') ? `${home}\\.claude` : `${home}/.claude`
+/**
+ * The host directories every configuration's binds need, under a home, in that
+ * home's own separator: the credentials directory, and the ideas folder bound
+ * read-only inside it (task 5kd.3.1), which a machine that never ran
+ * Brainstorm does not have.
+ */
+function hostDirs(home: string): string[] {
+  const sep = home.startsWith('\\\\') ? '\\' : '/'
+  const claude = `${home}${sep}.claude`
+  return [claude, [home, ...IDEAS_PATH.split('/')].join(sep)]
 }
 
 /**

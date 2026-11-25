@@ -23,6 +23,19 @@ test('an older generation is stale', () => {
   assert.equal(staleness(ours({ extension: '1.8.0', generation: CONFIG_GENERATION - 1 }), '1.9.0').stale, true)
 })
 
+test('the notice names what the container is missing since the generation that wrote it', () => {
+  // A generation-2 file already has the timezone; telling its owner that is
+  // what they lack sends them looking for a difference that is not there.
+  const two = staleness(ours({ extension: '2.2.1', generation: 2 }), '2.3.0')
+  assert.ok(two.stale)
+  assert.match(two.message, /ideas folder read-only/)
+  assert.doesNotMatch(two.message, /timezone/)
+  const one = staleness(ours({ extension: '1.3.2' }), '2.3.0')
+  assert.ok(one.stale)
+  assert.match(one.message, /timezone/)
+  assert.match(one.message, /ideas folder read-only/)
+})
+
 test('the same generation says nothing, whatever version wrote it', () => {
   // Every release changes the version in the marker; only the generator's
   // output is worth a notice, or it fires on every upgrade and is ignored.

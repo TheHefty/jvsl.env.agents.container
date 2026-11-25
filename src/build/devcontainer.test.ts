@@ -160,6 +160,21 @@ test('the user and group ids are still declared, because they are the base image
   assert.equal(config.containerEnv.PGID, '1000')
 })
 
+test('the ideas folder is bound read-only over the writable ~/.claude', () => {
+  // Story 5kd.3 (gh-364): a project's agent reads the developer's ideas and
+  // never edits them; only the Brainstorm container writes there. The bind is
+  // inside the writable ~/.claude one, so it has to come after it, or that one
+  // wins and the ideas are writable again with nothing saying so.
+  const c = buildConfiguration(input).mounts
+  const ideas = c.filter((m) => m.includes('/config/.claude/agent-container/ideas'))
+  assert.deepEqual(ideas, [
+    'source=/home/me/.claude/agent-container/ideas,target=/config/.claude/agent-container/ideas,type=bind,readonly',
+  ])
+  const bind = c.findIndex((m) => m.includes('target=/config/.claude,'))
+  const inner = c.indexOf(ideas[0]!)
+  assert.ok(bind < inner, `the bind must be declared before the mount inside it:\n${c.join('\n')}`)
+})
+
 test('the rules directory is a tmpfs of its own, not part of the host bind', () => {
   const c = buildConfiguration(input).mounts
   const rules = c.filter((m) => m.includes('/config/.claude/rules'))
@@ -194,15 +209,16 @@ test('the rules directory is a tmpfs of its own, not part of the host bind', () 
  * attaches, after every boot hook. A test named "no agent socket reaches the
  * container" would be false. This one is about what the configuration adds.
  */
-test('the generated configuration forwards nothing of the host but the two paths it must', () => {
+test('the generated configuration forwards nothing of the host but the three paths it must', () => {
   const config = buildConfiguration(input)
   const serialised = JSON.stringify(config)
 
   // Every host path the configuration is allowed to name. The workspace, so the
   // project is editable; and ~/.claude, so an agent's own credentials and
   // history survive a rebuild — which is the one piece of host state this
-  // arrangement deliberately keeps.
-  const allowedHostPaths = [input.projectRoot, `${input.homeDir}/.claude`]
+  // arrangement deliberately keeps. And the ideas folder inside it, bound again
+  // read-only so a project reads the developer's ideas and cannot edit them.
+  const allowedHostPaths = [input.projectRoot, `${input.homeDir}/.claude`, `${input.homeDir}/.claude/agent-container/ideas`]
 
   const hostPaths = [config.workspaceMount, ...config.mounts]
     .flatMap((m) => m.split(',').filter((part) => part.startsWith('source=')))
@@ -229,9 +245,9 @@ test('the generated configuration forwards nothing of the host but the two paths
     )
   }
 
-  // The floor. If the configuration ever stops carrying the two paths it must,
+  // The floor. If the configuration ever stops carrying the three paths it must,
   // every assertion above passes over nothing.
-  assert.equal(hostPaths.length, 2, serialised)
+  assert.equal(hostPaths.length, 3, serialised)
 })
 
 test('a Gradle version, when there is one, reaches the editor as the import version', () => {
@@ -330,7 +346,7 @@ test('the same host gives the same configuration, byte for byte, so opening agai
 // output for an input that reaches every branch — devices, Gradle, the timezone
 // — with the version pinned. Change the output and this fails until the
 // generation is raised and the new fingerprint recorded with it.
-const RECORDED = { generation: 2, sha256: '405868811a8c7547aa3bef7ed40f13322198201cf97e330b541694f50f226dcf' }
+const RECORDED = { generation: 3, sha256: 'b2ba248dacd417b8e327fb4fba5c8ec97210a8416cc9a479aa7d224f61057521' }
 
 test('the generator cannot change its output without raising the generation', () => {
   const everyBranch = buildConfiguration({

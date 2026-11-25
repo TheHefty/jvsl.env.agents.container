@@ -468,6 +468,9 @@ async function regenerate(
     return
   }
   try {
+    // Before the file, as Open does: a bind source that does not exist fails
+    // the rebuild's mount (Regeneration.ensureHostDirs).
+    for (const dir of r.ensureHostDirs) files.mkdirAbsolute(dir)
     files.write(CONFIG_PATH, r.serialised)
   } catch (error) {
     const cause = `could not write ${CONFIG_PATH}: ${String(error)}`
