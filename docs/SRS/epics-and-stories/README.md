@@ -36,6 +36,10 @@ as "the epic above", it now links to it by name, because "above" stopped meaning
 | [the project decides at initialization whether Cucumber runs acceptance features](the-project-decides-at-initialization-whether-cucumber-runs-acceptance-features.md) |
 | [a project is built against a threat model its developer wrote](a-project-is-built-against-a-threat-model-its-developer-wrote.md) |
 | [an idea is shaped in a container of its own before it becomes a project](an-idea-is-shaped-in-a-container-of-its-own-before-it-becomes-a-project.md) |
+| [an epic reaches master whole](an-epic-reaches-master-whole.md) |
+| [what a release changed is verified in each project by the agent there](what-a-release-changed-is-verified-in-each-project-by-the-agent-there.md) |
+| [the container says what its boot hooks decided where the developer looks](the-container-says-what-its-boot-hooks-decided-where-the-developer-looks.md) |
+| [the agent can measure the editor's processes and state](the-agent-can-measure-the-editors-processes-and-state.md) |
 
 [Epics named but not decomposed](epics-named-but-not-decomposed.md) — the list kept so the first
 release did not close the door on them, now closed out.
