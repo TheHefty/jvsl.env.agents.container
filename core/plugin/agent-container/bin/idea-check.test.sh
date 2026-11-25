@@ -58,6 +58,45 @@ check "an idea's folder is read as its IDEA.md" "$(run "$EXAMPLES/ready-whole")"
 check "a folder with no IDEA.md is refused, saying so" "$(run "$work") $(grep -c 'no IDEA.md' "$work/out")" "1 1"
 check "no argument is a usage error" "$(run)" "2"
 
+# --- idea-check --set <state> (story an-idea-is-consolidated-before-it-is-
+# ready, gh-364; task the-ideation-skill-consolidates-before-ready) ---------
+#
+# The ready step changes the state through idea-check, so the check and the
+# write are one step. The ways it fails:
+#   1. the state is written and the check runs after: an incomplete idea is
+#      left ready, which Create project then starts from;
+#   2. the write reformats the file: stacks, comments or the body change under
+#      a state change the developer agreed to;
+#   3. the agent writes `became project`, which only the extension marks.
+idea="$work/an-idea"
+mkdir -p "$idea"
+sed 's/^state: ready$/state: exploring/' "$EXAMPLES/ready-whole/IDEA.md" > "$idea/IDEA.md"
+cp "$idea/IDEA.md" "$work/before.md"
+
+sed -i 's/^- Which OCR model.*$//' "$idea/IDEA.md"
+cp "$idea/IDEA.md" "$work/incomplete.md"
+check "1: an idea with an empty section is refused ready" "$(run --set ready "$idea")" "1"
+check "1:   naming the section" "$(grep -c 'Open questions' "$work/out")" "1"
+check "1:   and the file is left byte for byte as it was" "$(cmp -s "$idea/IDEA.md" "$work/incomplete.md" && echo same || echo changed)" "same"
+
+cp "$work/before.md" "$idea/IDEA.md"
+check "a whole idea is set ready" "$(run --set ready "$idea")" "0"
+check "  and says which file moved from which state" "$(grep -c 'exploring -> ready' "$work/out")" "1"
+check "  it is ready by the contract now" "$(run "$idea")" "0"
+check "2: only the state line changed" \
+    "$(diff "$work/before.md" "$idea/IDEA.md" | grep -E '^[<>]' | tr '\n' '|')" "< state: exploring|> state: ready|"
+
+cp "$work/before.md" "$idea/IDEA.md"
+check "an idea can be set back to exploring, or discarded" "$(run --set discarded "$idea"; run --set exploring "$idea")" "0
+0"
+check "3: became project is refused: only the extension marks it" "$(run --set 'became project: x' "$idea") $(grep -c 'extension' "$work/out")" "2 1"
+check "3:   and the file is left as it was" "$(cmp -s "$idea/IDEA.md" "$work/before.md" && echo same || echo changed)" "same"
+check "a state outside the list is a usage error" "$(run --set finished "$idea")" "2"
+check "--set with no idea is a usage error" "$(run --set ready)" "2"
+printf -- '---\nstate: exploring\nfoo: bar\n---\n' > "$work/broken.md"
+cp "$work/broken.md" "$work/broken-before.md"
+check "an idea the contract refuses already is not written" "$(run --set discarded "$work/broken.md") $(cmp -s "$work/broken.md" "$work/broken-before.md" && echo same || echo changed)" "1 same"
+
 if [ "$failures" -gt 0 ]; then
     echo "idea-check.test: $failures failure(s)"
     exit 1
