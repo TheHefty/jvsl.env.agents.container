@@ -60,7 +60,7 @@ RUN set -eu \
        esac \
     && asset="cpython-${full}+${release}-${triple}-install_only_stripped.tar.gz" \
     && url="https://github.com/astral-sh/python-build-standalone/releases/download/${release}/${asset}" \
-    && curl -fsSL -o /tmp/cpython.tar.gz "$url" \
+    && curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 -o /tmp/cpython.tar.gz "$url" \
     && echo "${want_sha}  /tmp/cpython.tar.gz" | sha256sum -c - \
     && mkdir -p "/opt/python/${PY_VERSION}" \
     && tar -xzf /tmp/cpython.tar.gz -C "/opt/python/${PY_VERSION}" --strip-components=1 \

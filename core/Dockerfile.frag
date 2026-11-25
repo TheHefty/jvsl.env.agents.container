@@ -570,7 +570,8 @@ ENV CLAUDE_CONFIG_DIR=/config/.claude
 # is a moving target — assets can be replaced without the URL changing. Bump the
 # two together, and read the release notes on the way: this dependency's minor
 # versions are where its threat model changes.
-RUN curl -fsSL https://github.com/akitaonrails/ai-jail/releases/download/v2.6.4/ai-jail-linux-x86_64.tar.gz -o /tmp/ai-jail.tar.gz \
+RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 \
+    https://github.com/akitaonrails/ai-jail/releases/download/v2.6.4/ai-jail-linux-x86_64.tar.gz -o /tmp/ai-jail.tar.gz \
     && echo "7749b73435686b783567bf0427f7cdf4faf7783ac31b1d590d0454048b243d4b  /tmp/ai-jail.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/ai-jail.tar.gz -C /usr/local/bin \
     && rm /tmp/ai-jail.tar.gz \
@@ -623,7 +624,8 @@ RUN rm -f /opt/jvsl/plugins/agent-container/bin/*.test.sh /opt/jvsl/plugins/agen
 # the two things this image needs are installed. /usr/local/share/ai-memory is
 # not an arbitrary choice — it is where `install-hooks` looks for those sources
 # by default.
-RUN curl -fsSL https://github.com/akitaonrails/ai-memory/releases/download/v2.0.1/ai-memory-linux-x86_64.tar.gz -o /tmp/ai-memory.tar.gz \
+RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 \
+    https://github.com/akitaonrails/ai-memory/releases/download/v2.0.1/ai-memory-linux-x86_64.tar.gz -o /tmp/ai-memory.tar.gz \
     && echo "3fe40014a43f635f487d453c31ab1d1d2827451f7d1c2c2b685def617f48275c  /tmp/ai-memory.tar.gz" | sha256sum -c - \
     && mkdir -p /tmp/ai-memory-unpack /usr/local/share/ai-memory \
     && tar -xzf /tmp/ai-memory.tar.gz -C /tmp/ai-memory-unpack \
