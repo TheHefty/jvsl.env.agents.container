@@ -32,7 +32,12 @@ test('the host directories the mounts need are named for the caller to create', 
   const d = decideOpen(base)
   assert.equal(d.action, 'open')
   if (d.action === 'open') {
-    assert.deepEqual(d.ensureHostDirs, ['/home/me/.claude', '/home/me/.claude/agent-container/ideas'])
+    assert.deepEqual(d.ensureHostDirs, [
+      '/home/me/.claude',
+      '/home/me/.claude/agent-container/ideas',
+      '/home/me/.claude/agent-container/verifications/requests',
+      '/home/me/.claude/agent-container/verifications/reports',
+    ])
   }
 })
 
@@ -318,7 +323,12 @@ test('Configure names the directories the regenerated mounts need, as Open does'
   const r = regen()
   assert.equal(r.action, 'write')
   if (r.action === 'write') {
-    assert.deepEqual(r.ensureHostDirs, ['/home/me/.claude', '/home/me/.claude/agent-container/ideas'])
+    assert.deepEqual(r.ensureHostDirs, [
+      '/home/me/.claude',
+      '/home/me/.claude/agent-container/ideas',
+      '/home/me/.claude/agent-container/verifications/requests',
+      '/home/me/.claude/agent-container/verifications/reports',
+    ])
   }
 })
 
@@ -378,6 +388,8 @@ test('the credentials directory is created where this machine reaches it, and bo
     assert.deepEqual(d.ensureHostDirs, [
       '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude',
       '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude\\agent-container\\ideas',
+      '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude\\agent-container\\verifications\\requests',
+      '\\\\wsl.localhost\\Ubuntu\\home\\jv\\.claude\\agent-container\\verifications\\reports',
     ])
     assert.ok(d.configuration.mounts.some((m) => m.startsWith('source=/home/jv/.claude,')), d.configuration.mounts.join('\n'))
   }
