@@ -36,6 +36,17 @@ done
 # Where the ceremony's name is read: the plugin, the normative documents, the
 # image's assertions and CI's step names. The SRS keeps the word in the dated
 # amendment that records the rename, and the CHANGELOG is history.
+# gh-392: a skill gives report-guard's start and end the same allowed set. The
+# study skill gave start none and end its topic folder, and every run over a
+# folder that already held a guide reported the guide as disappeared.
+for skill in "$HERE"/skills/*/SKILL.md; do
+    name="$(basename "$(dirname "$skill")")"
+    grep -q 'bin/report-guard start' "$skill" || continue
+    start="$(grep -oE 'bin/report-guard start.*' "$skill" | sed 's|bin/report-guard start *||' | sort -u)"
+    end="$(grep -oE 'bin/report-guard end.*' "$skill" | sed 's|bin/report-guard end *||' | sort -u)"
+    check "$name gives report-guard start and end the same allowed set" "start: [$start]" "start: [$end]"
+done
+
 left="$(cd "$ROOT" && grep -rniE '\bdaily' core/plugin docs/agent core/image.test.sh .github/workflows/ci.yml \
     --exclude=plugin-references.test.sh || true)"
 check "nothing still calls the planning a daily" "$left" ""

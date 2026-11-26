@@ -33,10 +33,10 @@ ${CLAUDE_PLUGIN_ROOT}/bin/study-slug "<title>"
 
 ## 3. Before writing anything
 
-Run:
+Run, with the topic's folder — the same set step 8 gives `end`, or `end` refuses:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/report-guard start
+${CLAUDE_PLUGIN_ROOT}/bin/report-guard start docs/study/<slug>/
 ```
 
 ## 4. Research
