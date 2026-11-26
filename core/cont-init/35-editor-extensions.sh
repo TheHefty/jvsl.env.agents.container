@@ -33,7 +33,19 @@ MACHINE="${EDITOR_MACHINE_DIR:-/config/.vscode-server/data/Machine}"
 RECORD="$MACHINE/.jvsl-extensions"
 MARKER="$MACHINE/.installExtensionsMarker"
 
-say() { echo "[35-editor-extensions] $*"; }
+# The decisions log (task djy.1.1): every line this says is also a decision,
+# kept in /config/.local/state/jvsl/decisions.log as abc, so the reaper, which
+# runs as abc, can append to the same file. Without the helper, said once and
+# the boot goes on.
+DECISIONS_LIB="${DECISIONS_LIB:-/usr/local/lib/jvsl/decisions.sh}"
+# shellcheck disable=SC2034 # read by decisions.sh, sourced below
+DECISIONS_WRITE_AS="s6-setuidgid abc"
+# shellcheck source=../decisions/decisions.sh
+if ! . "$DECISIONS_LIB" 2>/dev/null; then
+    echo "[35-editor-extensions] $DECISIONS_LIB is missing, so what this decides goes to docker logs only. Rebuild the image." >&2
+    decision() { :; }
+fi
+say() { echo "[35-editor-extensions] $*"; decision 35-editor-extensions "$*"; }
 as_abc() { s6-setuidgid abc "$@"; }
 
 if [ ! -f "$METADATA" ]; then
@@ -47,9 +59,16 @@ recorded="$(cat "$RECORD" 2>/dev/null || true)"
 [ "$wanted" = "$recorded" ] && exit 0
 
 as_abc mkdir -p "$MACHINE"
+# Sorted both, so comm compares them; empty lines dropped, so a first boot's
+# empty record is not a removal.
+added="$(comm -13 <(printf '%s\n' "$recorded" | sed '/^$/d') <(printf '%s\n' "$wanted" | sed '/^$/d') | paste -sd' ')"
+removed="$(comm -23 <(printf '%s\n' "$recorded" | sed '/^$/d') <(printf '%s\n' "$wanted" | sed '/^$/d') | paste -sd' ')"
 if [ -e "$MARKER" ]; then
-    added="$(comm -13 <(printf '%s\n' "$recorded") <(printf '%s\n' "$wanted") | tr '\n' ' ')"
     as_abc rm -f "$MARKER"
-    say "the image's extensions changed (new: ${added:-none}); the editor will install what is missing on its next attach."
+    say "the image's extensions changed (added: ${added:-none}; removed: ${removed:-none}); the editor will install what is missing on its next attach."
+else
+    # No marker: the editor has not installed anything yet, and will install
+    # the whole list on its attach. Recorded in the log, not said.
+    decision 35-editor-extensions "recorded the image's extensions (added: ${added:-none}; removed: ${removed:-none}); no install marker yet, so the editor installs them on its attach."
 fi
 printf '%s\n' "$wanted" | as_abc tee "$RECORD" >/dev/null

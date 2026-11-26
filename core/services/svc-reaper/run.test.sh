@@ -40,7 +40,10 @@ SH
 chmod +x "$work/bin/s6-setuidgid"
 
 kinds="$work/kinds"
-log="$work/state/reaper.log"
+# The reaper writes to the decisions log the boot hooks share (task djy.1.1),
+# in place of a reaper.log of its own.
+log="$work/state/decisions.log"
+DECISIONS_LIB="${DECISIONS_LIB:-$HERE/../../decisions/decisions.sh}"
 manifest="$work/manifest.json"
 
 # A kind that reaps one thing per call, and records that it was called.
@@ -78,8 +81,8 @@ SH
 run_passes() {
     local code=0
     REAPER_TEST_USER="$work/user" PATH="$work/bin:$PATH" \
-        REAPER_KINDS_DIR="$kinds" REAPER_LOG="$log" REAPER_MANIFEST="$manifest" \
-        REAPER_INTERVAL=0 REAPER_PASSES="$1" REAPER_LOG_MAX="${LOG_MAX:-262144}" \
+        REAPER_KINDS_DIR="$kinds" DECISIONS_LIB="$DECISIONS_LIB" DECISIONS_LOG="$log" REAPER_MANIFEST="$manifest" \
+        REAPER_INTERVAL=0 REAPER_PASSES="$1" DECISIONS_LOG_MAX="${LOG_MAX:-262144}" \
         timeout 60 bash "$SCRIPT" > "$work/out" 2>&1 || code=$?
     echo "$code" > "$work/rc"
 }
@@ -97,6 +100,8 @@ check "a reap is one line in the log file" "$(lines "$log")" "1"
 check "the line names the kind, what, and why" \
     "$(grep -c 'testcontainers: reaped postgres:18-alpine container 3f2a (exited 39h, session gone)' "$log")" "1"
 check "the line carries a timestamp" "$(grep -cE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+' "$log")" "1"
+check "and says the reaper decided it" "$(grep -c ' reaper: testcontainers: reaped ' "$log")" "1"
+check "no reaper.log is written any more" "$([ -e "$work/state/reaper.log" ] && echo written || echo absent)" "absent"
 check "and the same line goes to stdout, for docker logs" \
     "$(grep -c 'testcontainers: reaped postgres' "$work/out")" "1"
 
@@ -117,7 +122,7 @@ check "the log file stays under its bound" \
     "$([ "$(stat -c %s "$log")" -le 2048 ] && echo yes || echo "no: $(stat -c %s "$log")")" "yes"
 check "one rotated file is kept, and it is bounded too" \
     "$([ "$(stat -c %s "$log.1")" -le 2048 ] && echo yes || echo no)" "yes"
-check "and there is never a second one" "$(ls "$work/state" | sort | tr '\n' ' ')" "reaper.log reaper.log.1 "
+check "and there is never a second one" "$(ls "$work/state" | sort | tr '\n' ' ')" "decisions.log decisions.log.1 "
 
 # --- a failing kind is said once, the loop survives, recovery is said once --------
 

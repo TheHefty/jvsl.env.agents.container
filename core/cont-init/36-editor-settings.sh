@@ -40,7 +40,19 @@ MACHINE="${EDITOR_MACHINE_DIR:-/config/.vscode-server/data/Machine}"
 SETTINGS="$MACHINE/settings.json"
 RECORD="$MACHINE/.jvsl-settings.json"
 
-say() { echo "[36-editor-settings] $*"; }
+# The decisions log (task djy.1.1): every line this says is also a decision,
+# kept in /config/.local/state/jvsl/decisions.log as abc, so the reaper, which
+# runs as abc, can append to the same file. Without the helper, said once and
+# the boot goes on.
+DECISIONS_LIB="${DECISIONS_LIB:-/usr/local/lib/jvsl/decisions.sh}"
+# shellcheck disable=SC2034 # read by decisions.sh, sourced below
+DECISIONS_WRITE_AS="s6-setuidgid abc"
+# shellcheck source=../decisions/decisions.sh
+if ! . "$DECISIONS_LIB" 2>/dev/null; then
+    echo "[36-editor-settings] $DECISIONS_LIB is missing, so what this decides goes to docker logs only. Rebuild the image." >&2
+    decision() { :; }
+fi
+say() { echo "[36-editor-settings] $*"; decision 36-editor-settings "$*"; }
 as_abc() { s6-setuidgid abc "$@"; }
 # Written as abc through a file beside the target, then moved over it.
 put() {
