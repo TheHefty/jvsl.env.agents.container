@@ -46,9 +46,13 @@ metadata() {
 }
 
 machine="$work/Machine"
+# The decisions log (task djy.1.1): a changed list, naming what was added and removed.
+DECISIONS_LIB="${DECISIONS_LIB:-$HERE/../decisions/decisions.sh}"
+decisions="$work/state/decisions.log"
 boot() {
     : > "$CALLS"
     EXTENSIONS_METADATA="$work/metadata.json" EDITOR_MACHINE_DIR="$machine" PATH="$work/bin:$PATH" \
+        DECISIONS_LIB="$DECISIONS_LIB" DECISIONS_LOG="$decisions" \
         bash "$HOOK" > "$work/out" 2>&1
     echo $? > "$work/rc"
 }
@@ -80,6 +84,9 @@ boot
 assert "a stack's extension added later removes the marker" "$(marker)" "absent"
 assert "and records the new list" "$(grep -c vscode-clangd "$machine/.jvsl-extensions" 2>/dev/null)" "1"
 assert "and says which extensions changed" "$(grep -c 'llvm-vs-code-extensions.vscode-clangd' "$work/out")" "1"
+assert "the decisions log names the extension added, and who" \
+    "$(grep -c ' 35-editor-extensions: .*added: llvm-vs-code-extensions.vscode-clangd' "$decisions" 2>/dev/null)" "1"
+assert "the log written as abc, so the reaper can append to it" "$(grep -c "^as abc: tee -a $decisions$" "$CALLS")" "1"
 assert "the removal ran as abc too" "$(grep -c '^as abc:' "$CALLS")" "$(grep -c . "$CALLS")"
 
 touch "$machine/.installExtensionsMarker"
@@ -90,6 +97,14 @@ assert "the next boot, with the same list, leaves the new marker" "$(marker)" "p
 metadata cweijan.vscode-database-client2 llvm-vs-code-extensions.vscode-clangd file-icons.file-icons
 boot
 assert "the same extensions in another order are not a change" "$(marker)" "present"
+
+# --- a stack removed: the log names what went -----------------------------------
+
+metadata file-icons.file-icons llvm-vs-code-extensions.vscode-clangd
+boot
+assert "the decisions log names the extension removed" \
+    "$(grep -c ' 35-editor-extensions: .*removed: cweijan.vscode-database-client2' "$decisions" 2>/dev/null)" "1"
+touch "$machine/.installExtensionsMarker"
 
 # --- the image without the file: said once, nothing touched --------------------
 
