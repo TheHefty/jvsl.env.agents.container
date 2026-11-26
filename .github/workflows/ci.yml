@@ -15,7 +15,10 @@ name: CI
 #
 # `pull_request` carries no branch filter, deliberately. The template's does,
 # and that is why a pull request stacked on another one there receives no CI at
-# all and sits BLOCKED: retargeting fires no event.
+# all and sits BLOCKED: retargeting fires no event. It is also what runs CI on
+# a pull request into epic/** and story/** as into master (epic
+# an-epic-reaches-master-whole); scripts/ci-runs-on-epic-and-story-bases.test.sh
+# fails if a filter ever drops either.
 on:
   push:
     branches: [master]
@@ -40,17 +43,13 @@ jobs:
             push)         base='${{ github.event.before }}' ;;
             *)            base='' ;;
           esac
-          # No usable base: an event this does not know, or the all-zero sha a
-          # branch's first push carries. An undetermined scope is a reason to
-          # build, not a reason to skip.
-          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
-            echo "no usable base ref for event ${{ github.event_name }}: scope is full"
-            echo "scope=full" >> "$GITHUB_OUTPUT"
-            echo "extensions=yes" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if ! paths="$(git diff --name-only "$base" HEAD)"; then
-            echo "git diff against $base failed: scope is full"
+          # The pull request's own base — master, epic/<epic> or
+          # story/<epic>/<story> — read by scripts/changed-paths.sh, which says
+          # why and exits non-zero when it cannot be used (an event this does not
+          # know, the all-zero sha of a first push, a sha the clone lacks). An
+          # undetermined scope is a reason to build, not a reason to skip.
+          if ! paths="$(bash scripts/changed-paths.sh "$base")"; then
+            echo "event ${{ github.event_name }}: scope is full"
             echo "scope=full" >> "$GITHUB_OUTPUT"
             echo "extensions=yes" >> "$GITHUB_OUTPUT"
             exit 0
@@ -83,6 +82,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: the scope decision can be wrong in both directions
         run: bash scripts/changed-scope.test.sh
+      - name: the changed paths are read against the pull request's own base, master, epic or story, and an unusable base is undetermined
+        run: bash scripts/changed-paths.test.sh
+      - name: CI runs on pull requests into master, epic/** and story/**, and a branch filter that drops one fails
+        run: bash scripts/ci-runs-on-epic-and-story-bases.test.sh
       - name: ci-green can still fail
         run: bash scripts/ci-green.test.sh
       - name: nothing builds or runs the launcher
