@@ -3,7 +3,8 @@
 # the-project-report). `start` records every file git can see — tracked, and
 # untracked but not ignored — with its mode and content hash; `end` compares,
 # and fails naming each path that changed, appeared or disappeared, other than
-# what it allows: docs/REPORT.md unless told otherwise. Before and after, not against HEAD: uncommitted work already
+# what it allows: docs/REPORT.md unless told otherwise, and the same set to
+# both calls. Before and after, not against HEAD: uncommitted work already
 # in the tree is the developer's, not the report's. Ignored files are not
 # watched — a build writing into them is the skill's instructions' to forbid.
 set -uo pipefail
@@ -17,6 +18,15 @@ allowed=("$@"); [ "${#allowed[@]}" -gt 0 ] || allowed=(docs/REPORT.md)
 top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "report-guard: not in a git repository" >&2; exit 2; }
 snap="$(git rev-parse --git-path report-guard.snapshot)"
 case "$snap" in /*) ;; *) snap="$top/$snap" ;; esac
+# **One allowed set for both calls** (gh-392). start records the set it was
+# given beside its snapshot, and end refuses a different one, naming both: with
+# two sets, what start's snapshot holds and end's leaves out reads as a file
+# that disappeared, and what end allows beyond start's hides a change. Kept on a
+# refusal, so end with start's set still compares.
+recorded="$(git rev-parse --git-path report-guard.allowed)"
+case "$recorded" in /*) ;; *) recorded="$top/$recorded" ;; esac
+# Sorted, one per line, so the order the paths were given in is not a difference.
+allowed_set() { printf '%s\n' "${allowed[@]}" | sort -u; }
 
 snapshot() {
     cd "$top" || exit 2
@@ -34,9 +44,18 @@ snapshot() {
 
 if [ "$mode" = start ]; then
     snapshot > "$snap"
+    allowed_set > "$recorded"
     exit 0
 fi
 [ -f "$snap" ] || { echo "report-guard: no snapshot to compare with — run report-guard start before writing the report" >&2; exit 2; }
+if [ ! -f "$recorded" ]; then
+    echo "report-guard: the snapshot records no allowed set, so it cannot be compared with this one ($(allowed_set | paste -sd' ')). Run report-guard start again, with the paths end is given, before writing." >&2
+    exit 2
+fi
+if [ "$(allowed_set)" != "$(cat "$recorded")" ]; then
+    echo "report-guard: start was given $(paste -sd' ' "$recorded") and end $(allowed_set | paste -sd' '). They must be the same set: a file one allows and the other does not would be reported as appeared or disappeared, or a change hidden. Run end with start's set, or start again with end's." >&2
+    exit 2
+fi
 after="$(mktemp)"; snapshot > "$after"
 changes="$(awk -F'\t' '
     NR == FNR { before[$1] = $2 "\t" $3; next }
@@ -52,7 +71,7 @@ changes="$(awk -F'\t' '
         }
         for (f in before) { split(before[f], b, "\t"); if (!(f in now) && b[1] != "missing") print "disappeared: " f }
     }' "$snap" "$after" | sort)"
-rm -f "$after" "$snap"
+rm -f "$after" "$snap" "$recorded"
 if [ -n "$changes" ]; then
     echo "report-guard: writing the report changed the project, which it must not:"
     printf '%s\n' "$changes"

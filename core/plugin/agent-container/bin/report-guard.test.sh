@@ -57,21 +57,52 @@ check "a changed mode fails" "$(guard end) $(grep -c 'changed: src/app.js' "$wor
 # the-study-skill-builds-a-topic): the material may be written there, the post
 # nowhere.
 endwith() { local code=0; (cd "$r" && bash "$HERE/report-guard" end "$@") > "$work/out" 2>&1 || code=$?; echo "$code"; }
-fresh; guard start > /dev/null
+startwith() { (cd "$r" && bash "$HERE/report-guard" start "$@") > /dev/null 2>&1; }
+fresh; startwith docs/study/x/ docs/study/.gitignore
 mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'i\n' > "$r/docs/study/.gitignore"
 check "with a folder allowed, writing inside it passes" "$(endwith docs/study/x/ docs/study/.gitignore)" "0"
-fresh; guard start > /dev/null
+fresh; startwith docs/study/x/
 mkdir -p "$r/docs/study/x" "$r/docs/posts"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'p\n' > "$r/docs/posts/x.md"
 check "a post written beside it fails, named" "$(endwith docs/study/x/) $(grep -c 'appeared: docs/posts/x.md' "$work/out")" "1 1"
-fresh; guard start > /dev/null
+fresh; startwith docs/study/x/
 mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"; printf 'more\n' >> "$r/README.md"
 check "an edited project file fails too" "$(endwith docs/study/x/) $(grep -c 'changed: README.md' "$work/out")" "1 1"
 fresh; guard start > /dev/null
 mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"
 check "with nothing allowed, only the report may change, as before" "$(guard end) $(grep -c 'appeared: docs/study/x/guide.md' "$work/out")" "1 1"
-fresh; guard start > /dev/null
+fresh; startwith docs/study/x/
 mkdir -p "$r/docs/study/xy"; printf 'g\n' > "$r/docs/study/xy/guide.md"
 check "an allowed folder is a folder, not a prefix of another" "$(endwith docs/study/x/) $(grep -c 'docs/study/xy/guide.md' "$work/out")" "1 1"
+
+# --- gh-392: one allowed set for start and end ----------------------------------
+#
+# kotodori, 2026-11-24: the study skill ran start with no paths and end with the
+# topic folder, which already held a guide.md. start's snapshot held the guide;
+# end's left it out; the guide, untouched, was reported as disappeared.
+with_guide() { fresh; mkdir -p "$r/docs/study/x"; printf 'g\n' > "$r/docs/study/x/guide.md"; git -C "$r" add -A; git -C "$r" -c user.name=t -c user.email=t@t commit -qm guide; }
+
+with_guide; guard start > /dev/null
+code="$(endwith docs/study/x/)"
+check "start with nothing and end with the folder is refused, not a pass" "$code" "2"
+check "and no untouched file is reported as disappeared" "$(grep -c 'disappeared: ' "$work/out")" "0"
+check "the refusal names the set start was given" "$(grep -c 'docs/REPORT.md' "$work/out")" "1"
+check "and the set end was given" "$(grep -c 'docs/study/x/' "$work/out")" "1"
+check "the snapshot is kept, so end with start's set still compares" "$(guard end)" "0"
+
+with_guide; startwith docs/study/x/
+check "the study skill's pair over a folder that already holds a guide passes" "$(endwith docs/study/x/) $(cat "$work/out")" "0 "
+
+with_guide; startwith docs/study/x/
+printf 'more\n' >> "$r/README.md"
+check "an end that allows more than start did is refused, not used to hide a change" \
+    "$(endwith docs/study/x/ README.md) $(grep -c 'changed: README.md' "$work/out")" "2 0"
+
+# A snapshot from a start that recorded no set (an older report-guard): compared
+# blindly it would report the same false disappeared, so it is refused.
+with_guide; startwith docs/study/x/
+rm -f "$(cd "$r" && git rev-parse --absolute-git-dir)/report-guard.allowed"
+check "a snapshot with no recorded set is refused, saying to run start again" \
+    "$(endwith docs/study/x/) $(grep -c 'report-guard start' "$work/out")" "2 1"
 
 fresh
 check "end without start is refused, not a pass" "$(guard end)" "2"
