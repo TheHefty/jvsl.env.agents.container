@@ -172,12 +172,23 @@ not unplan what was already agreed.
 release-please runs only when the developer dispatches it on `master`; ordinary merges do not start
 it. The first dispatch opens or updates the release PR; after that PR merges, dispatch it again to
 publish the tag and GitHub release. See "Versioning and releases" in the template's own overview for
-the mechanics. The epic does not hold a release: it is the *planning* unit and the changelog's
-sentence, not a merge gate. The only mechanical gate on a merge is CI — a red build blocks it and
-nothing else does.
+the mechanics.
 
-The release that finishes an epic is the one worth naming: it is the point where the epic's
-sentence became true, and everything before it in that epic is an increment toward it.
+**The epic is the merge gate for `master`.** A task's branch is cut from its story's
+`story/<epic>/<story>`, a story's from its epic's `epic/<epic>`, and the epic's from `master`; each
+reaches the next by a pull request, and CI gates every one of them. A task squashes into its story,
+and a story into its epic under its own conventional title. The epic merges into `master` once,
+when every task under it is accepted — a merge, not a squash, with an empty body and a title that is
+not conventional, so release-please counts each story once.
+
+A fix does not wait for an epic: a debt's or a hotfix's branch goes straight to `master`, and the
+open epic branches take `master` in. `epic/*` and `story/*` need the protection `master` has — a
+pull request, CI, no force-push, no deletion — and the developer configures it; the extension sets
+none. Why, and what happens to an epic already half-merged when a project adopts this, is in "Work
+has a theme" in [Rules](RULES.md).
+
+The release that carries an epic's merge is the one worth naming: it is the point where the epic's
+sentence became true.
 
 ## Debts
 
