@@ -117,6 +117,7 @@ every project.
 | **Long-term memory** | [`ai-memory`](https://github.com/akitaonrails/ai-memory), enabled per project by an `.ai-memory.toml` file |
 | **Work tracker** | [`beads`](https://github.com/steveyegge/beads), enabled per project with `"beads": true` in the manifest |
 | **Reaper** | A service that every five minutes removes what dead runs left behind, each kind of leftover being an executable in `/usr/local/lib/jvsl/reapers.d`. Every image has one for what a dead browser-test run leaves (Chrome, chromedriver, the runner, Vite, and unused profiles in `/tmp`), and the java stack adds two: Testcontainers containers that no live JVM could still own, and Kotlin daemons or Java language servers whose owner is gone. Every removal is one line in `docker logs` and in `/config/.local/state/jvsl/reaper.log`. Switched off per project with `"reaper": false` in the manifest |
+| **Editor measures** | A service that publishes, for the agent to read without seeing a process, the resident memory of the Java language server, the Gradle daemon and the VS Code server with only each JVM's `-X`/`-XX` arguments (every 30 seconds), and the size of `~/.gradle`, `~/.vscode-server` and their first-level folders (every ten minutes), to `/config/.local/state/jvsl/measures/editor.json` |
 | **Working agreements** | The normative documents in [`docs/agent/`](docs/agent/), in English and Portuguese, installed where the agents read them |
 
 Tools downloaded from release pages (`ai-jail`, `ai-memory`, `beads` and `shellcheck`) are pinned to

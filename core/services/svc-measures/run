@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# s6 longrun: publishes a fixed set of the editor's measures to one file, for
+# the agent to read without seeing a process (epic
+# the-agent-can-measure-the-editors-processes-and-state, task 8u9.1.1).
+#
+# **Why it exists.** ai-jail gives the agent its own PID namespace and a private
+# home, so it sees neither the editor's processes nor its state: during rjj
+# every measure of jdt.ls, ~/.gradle and ~/.vscode-server was run by the
+# developer and pasted back. Sharing the PID namespace was refused — it reopens
+# a token read from another process's command line with `ps` — so this runs
+# outside the jail and publishes only what is listed here.
+#
+# **What it publishes, and nothing else.** For the Java language server, the
+# Gradle daemon and the VS Code server: each instance's pid, resident memory and,
+# for a JVM, its -X and -XX arguments — never the rest of a command line, never
+# an environment. A listed process that is not running is published as not
+# running. And the size of ~/.gradle, ~/.vscode-server and their first-level
+# folders, a folder that is not there as absent.
+#
+# **Two cadences.** The processes every MEASURES_INTERVAL (30 s); the folders on
+# the first pass and every MEASURES_FOLDER_PASSES-th (20, so every ten minutes),
+# because a `du` of a ~/.gradle of several gigabytes is not run twice a minute.
+# Between, the last folder measures are published again with their own time.
+#
+# **Replaced whole, by a rename,** from a file beside it, so a reader never sees
+# half of one. Story 2 maps the folder, not the file, into the jail for that
+# reason: a map of a file keeps the one the rename replaced.
+#
+# **Never by exiting.** A process that ends between the scan and the read, a
+# folder that is not there, a write that fails: each is skipped or said, once,
+# and the loop goes on. s6 restarts a longrun that exits, and the restarts would
+# bury the line that explains them.
+set -uo pipefail
+
+# The measures are of abc's processes and abc's home, and the file is read by
+# the agent, which runs as abc.
+if [ "${MEASURES_AS_ABC:-}" != 1 ]; then
+    MEASURES_AS_ABC=1 exec s6-setuidgid abc bash "$0"
+fi
+
+PROC="${MEASURES_PROC:-/proc}"
+HOME_DIR="${MEASURES_HOME:-/config}"
+OUT="${MEASURES_OUT:-/config/.local/state/jvsl/measures/editor.json}"
+INTERVAL="${MEASURES_INTERVAL:-30}"
+FOLDER_PASSES="${MEASURES_FOLDER_PASSES:-20}"
+PASSES="${MEASURES_PASSES:-}"
+
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# Which listed process an argv (one argument per line) is, or nothing. The
+# language server's pattern is the jvms reaper's, so both name the same thing.
+which_process() {
+    if grep -qx 'org.gradle.launcher.daemon.bootstrap.GradleDaemon' <<<"$1"; then
+        echo gradle-daemon
+    elif grep -q 'org\.eclipse\.equinox\.launcher' <<<"$1" && grep -qE 'jdt\.ls|redhat\.java' <<<"$1"; then
+        echo java-language-server
+    elif grep -q '/out/server-main\.js$' <<<"$1"; then
+        echo vscode-server
+    fi
+}
+
+# One JSON object per listed instance: {name, pid, rssKiB, jvmArgs}. Only
+# arguments starting with -X leave this function; a JVM's -XX ones start so too.
+scan_processes() {
+    local dir pid argv name rss
+    for dir in "$PROC"/[0-9]*; do
+        pid="${dir##*/}"
+        argv="$(tr '\0' '\n' < "$dir/cmdline" 2>/dev/null)" || continue
+        name="$(which_process "$argv")"
+        [ -n "$name" ] || continue
+        # Gone since the cmdline was read: not running any more, so not listed.
+        rss="$(awk '/^VmRSS:/ {print $2}' "$dir/status" 2>/dev/null)" || continue
+        [ -n "$rss" ] || continue
+        grep -E '^-X' <<<"$argv" | jq -R . | jq -sc --arg name "$name" --argjson pid "$pid" --argjson rss "$rss" \
+            '{name: $name, pid: $pid, rssKiB: $rss, jvmArgs: (if $name == "vscode-server" then [] else . end)}'
+    done
+}
+
+processes_json() {
+    local at
+    at="$(now)"
+    scan_processes | jq -sc --arg at "$at" '
+        . as $found
+        | ["java-language-server", "gradle-daemon", "vscode-server"]
+        | map(. as $n | [$found[] | select(.name == $n) | del(.name)] as $i
+              | {name: $n, running: ($i | length > 0), measuredAt: $at,
+                 instances: ($i | map(if $n == "vscode-server" then del(.jvmArgs) else . end))})'
+}
+
+# The folders and their first-level folders, as {path, kib} or {path, absent}.
+# Paths are published from ~, never from where the home is mounted.
+folders_json() {
+    local at top dirs=() line
+    at="$(now)"
+    {
+        for top in .gradle .vscode-server; do
+            if [ -d "$HOME_DIR/$top" ]; then
+                dirs+=("$HOME_DIR/$top")
+                while IFS= read -r line; do dirs+=("$line"); done \
+                    < <(find "$HOME_DIR/$top" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+            else
+                # shellcheck disable=SC2088 # a literal ~: published from the home, never from where it is mounted
+                jq -nc --arg p "~/$top" '{path: $p, absent: true}'
+            fi
+        done
+        if [ "${#dirs[@]}" -gt 0 ]; then
+            # A folder written to while it is read makes du exit non-zero with
+            # the sizes it did read; those are still the measure.
+            nice -n 19 du -sk "${dirs[@]}" 2>/dev/null \
+                | while IFS=$'\t' read -r kib path; do
+                    jq -nc --arg p "~${path#"$HOME_DIR"}" --argjson k "$kib" '{path: $p, kib: $k}'
+                done
+        fi
+    } | jq -sc --arg at "$at" '{measuredAt: $at, sizes: .}'
+}
+
+folders='{"measuredAt": null, "sizes": []}'
+failing=""
+
+publish() {
+    local tmp="$OUT.tmp.$$" procs
+    procs="$(processes_json)" || procs='[]'
+    if ! { mkdir -p "$(dirname "$OUT")" \
+        && jq -n --argjson p "$procs" --argjson f "$folders" '{processes: $p, folders: $f}' > "$tmp" \
+        && mv -f "$tmp" "$OUT"; } 2>/dev/null; then
+        rm -f "$tmp" 2>/dev/null
+        if [ -z "$failing" ]; then
+            echo "$(now) measures: could not write $OUT; the agent reads the last whole one until this recovers." >&2
+            failing=1
+        fi
+        return
+    fi
+    if [ -n "$failing" ]; then
+        echo "$(now) measures: writing $OUT again."
+        failing=""
+    fi
+}
+
+pass=0
+while :; do
+    if [ $((pass % FOLDER_PASSES)) -eq 0 ]; then
+        folders="$(folders_json)" || true
+    fi
+    publish
+    pass=$((pass + 1))
+    if [ -n "$PASSES" ] && [ "$pass" -ge "$PASSES" ]; then
+        exit 0
+    fi
+    sleep "$INTERVAL"
+done

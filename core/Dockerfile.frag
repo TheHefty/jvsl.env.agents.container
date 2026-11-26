@@ -666,6 +666,17 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-reaper/run \
     && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-reaper \
     && mkdir -p /usr/local/lib/jvsl/reapers.d
 
+# The editor's measures (task 8u9.1.1): every 30 s, as abc, the resident memory
+# of the Java language server, the Gradle daemon and the VS Code server and only
+# each JVM's -X/-XX arguments; every ten minutes the size of ~/.gradle and
+# ~/.vscode-server. Written by rename to /config/.local/state/jvsl/measures/,
+# outside the jail, so the agent reads a file instead of the processes. The
+# .test.sh beside it is not copied. See its run script.
+COPY core/services/svc-measures/run core/services/svc-measures/type /etc/s6-overlay/s6-rc.d/svc-measures/
+COPY core/services/svc-measures/dependencies.d /etc/s6-overlay/s6-rc.d/svc-measures/dependencies.d
+RUN chmod +x /etc/s6-overlay/s6-rc.d/svc-measures/run \
+    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-measures
+
 # The reaper's browser-tests kind, in core because browser tests are not one
 # stack's: a dead WebdriverIO run's Chrome, chromedriver, runner and Vite server,
 # found by their process group, and the Chrome profiles in /tmp nothing holds.

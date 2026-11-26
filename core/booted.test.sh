@@ -358,6 +358,29 @@ else
     echo "booted.test: SKIPPED the reaper check, not passed: $IMAGE has no svc-reaper (the stand-in has no s6)"
 fi
 
+# --- the editor's measures are published, as the person -----------------------
+#
+# Task 8u9.1.1. Up, as the reaper is asked, and the file written whole: on a
+# boot with no editor attached every listed process is "not running", which is
+# still a whole file. The stand-in has no s6, so there it is skipped, saying so.
+if docker exec "$NAME" test -d /etc/s6-overlay/s6-rc.d/svc-measures; then
+    state="$(docker exec "$NAME" /command/s6-svstat -o up,pid /run/service/svc-measures 2>&1 || true)"
+    owner="$(docker exec "$NAME" sh -c "stat -c %U /proc/${state#* }" 2>/dev/null || true)"
+    [ "${state%% *}" = true ] && [ "$owner" = "$USER_NAME" ] \
+        || fail "the measures service is registered but not up as $USER_NAME after boot (s6-svstat: \
+'$state', owner: '${owner:-none}'). Its output is in docker logs"
+    measures=/config/.local/state/jvsl/measures/editor.json
+    deadline=$(( $(date +%s) + 60 ))
+    until docker exec "$NAME" jq -e '.processes | length == 3' "$measures" >/dev/null 2>&1; do
+        [ "$(date +%s)" -lt "$deadline" ] \
+            || fail "the measures service is up but $measures is not a whole file with the three listed processes after 60s"
+        sleep 2
+    done
+    echo "booted.test: the measures service runs as $USER_NAME and publishes $measures"
+else
+    echo "booted.test: SKIPPED the measures check, not passed: $IMAGE has no svc-measures (the stand-in has no s6)"
+fi
+
 # --- the agent sandboxes actually open and discover their skills ------------
 #
 # **The image can build, boot and pass every check above while an agent cannot

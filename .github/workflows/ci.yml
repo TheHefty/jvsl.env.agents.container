@@ -338,6 +338,18 @@ jobs:
       - name: the storage driver is chosen by the kernel probe, and a change says itself
         run: bash core/services/svc-dockerd-rootless/run.test.sh
 
+  measures:
+    needs: changes
+    if: needs.changes.outputs.scope != 'docs-only'
+    # The service that publishes the editor's measures for the agent, outside
+    # the jail. Its failures are a command line leaking past -X/-XX, a du of
+    # ~/.gradle on every pass, and a vanished process that stops the loop.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: the editor's measures publish only resident memory and -X/-XX, the folders every tenth minute, always as a whole file
+        run: bash core/services/svc-measures/run.test.sh
+
   reaper:
     needs: changes
     if: needs.changes.outputs.scope != 'docs-only'
@@ -977,7 +989,7 @@ jobs:
   # The one check branch protection requires. Named so it never changes.
   ci-green:
     if: always()
-    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, reaper, nested-docker, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, image-fields, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
+    needs: [changes, ci-scripts, agent-rules, agent-docs, bash-syntax, git-credential-helper, state-ownership, editor-leftovers, editor-extensions, editor-settings, ai-memory, measures, reaper, nested-docker, beads, gradle-defaults, jail-wrappers, agent-state-dirs, agent-skills, compose-versions, image-fields, php-keyring, devcontainer-metadata, md-size, core-build, core-booted, discover-stacks, stack-build, declared-extensions, lint, typecheck, unit, package, integration, the-move, guard-is-sound, nothing-was-dropped]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
