@@ -181,12 +181,24 @@ que já foi acordado.
 O release-please só roda quando o desenvolvedor o dispara em `master`; merges comuns não o iniciam.
 O primeiro disparo abre ou atualiza o PR de release; depois que esse PR é mesclado, dispare-o outra
 vez para publicar a tag e a release do GitHub. Veja "Versionamento e releases" no panorama do
-próprio template para a mecânica. O épico não segura uma release: ele é a unidade de *planejamento*
-e a frase do changelog, não um gate de merge. O único gate mecânico num merge é a CI — um build
-vermelho barra e nada mais barra.
+próprio template para a mecânica.
 
-A release que termina um épico é a que vale nomear: é o ponto em que a frase do épico virou verdade,
-e tudo antes dela naquele épico é um incremento em direção a isso.
+**O épico é o gate de merge para `master`.** O branch de uma task é cortado do
+`story/<epic>/<story>` da sua estória, o de uma estória do `epic/<epic>` do seu épico, e o do épico
+de `master`; cada um chega ao seguinte por um pull request, e a CI é gate de todos eles. Uma task
+entra por squash na sua estória, e uma estória no seu épico com o próprio título convencional. O
+épico é mesclado em `master` uma vez, quando toda task sob ele foi aceita — um merge, não um squash,
+com o corpo vazio e um título que não é convencional, para que o release-please conte cada estória
+uma vez.
+
+Um fix não espera um épico: o branch de uma dívida ou de um hotfix vai direto para `master`, e os
+branches de épico abertos incorporam `master`. `epic/*` e `story/*` precisam da proteção que
+`master` tem — pull request, CI, sem force-push, sem exclusão — e o desenvolvedor configura; a
+extensão não configura nenhuma. O porquê, e o que acontece com um épico já mesclado pela metade
+quando um projeto adota isto, está em "Trabalho tem um tema" em [Regras](RULES.md).
+
+A release que leva o merge de um épico é a que vale nomear: é o ponto em que a frase do épico virou
+verdade.
 
 ## Dívidas
 

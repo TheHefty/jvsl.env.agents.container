@@ -154,6 +154,8 @@ jobs:
         run: bash docs/agent/pre-code-shape.test.sh
       - name: a round of work is planned whole before any of it is built, in every place that states the gates
         run: bash docs/agent/plan-whole-before-code.test.sh
+      - name: an epic reaches master whole, in RULES and WORKFLOW of every language, and the old rule is gone
+        run: bash docs/agent/epic-is-the-merge-gate.test.sh
       - name: a project's own rules have a home, and nothing points at the import that is gone
         run: bash docs/agent/project-rules.test.sh
       - name: initialization records whether Cucumber runs acceptance features
