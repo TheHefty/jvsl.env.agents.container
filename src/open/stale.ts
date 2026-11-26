@@ -24,6 +24,7 @@ import { CONFIG_PATH } from './open.ts'
 const ADDED_IN: Record<number, string> = {
   2: "the host's timezone",
   3: 'the ideas folder read-only',
+  4: 'the verification requests read-only and the reports writable',
 }
 
 export type Staleness = { stale: false } | { stale: true; message: string; wroteWith: string; generation: number }

@@ -53,10 +53,14 @@ metadata() {
 }
 
 machine="$work/Machine"
+# The decisions log (task djy.1.1): what this hook decided, by key, never by value.
+DECISIONS_LIB="${DECISIONS_LIB:-$HERE/../decisions/decisions.sh}"
+decisions="$work/state/decisions.log"
 settings="$machine/settings.json"
 boot() {
     : > "$CALLS"
     EDITOR_METADATA="$work/metadata.json" EDITOR_MACHINE_DIR="$machine" PATH="$work/bin:$PATH" \
+        DECISIONS_LIB="$DECISIONS_LIB" DECISIONS_LOG="$decisions" \
         bash "$HOOK" > "$work/out" 2>&1
     echo $? > "$work/rc"
 }
@@ -73,6 +77,10 @@ assert "every one of them, arrays included" "$(key java.configuration.runtimes |
 assert "core's own setting too" "$(key files.trimTrailingWhitespace)" "true"
 assert "writing as abc, never as root" "$(grep -c '^as abc:' "$CALLS")" "$(grep -c . "$CALLS")"
 assert "and says what it wrote" "$(grep -c '^\[36-editor-settings\] wrote java.jdt.ls.vmargs' "$work/out")" "1"
+assert "the decisions log says what it wrote, and who" "$(grep -c ' 36-editor-settings: wrote java.jdt.ls.vmargs' "$decisions" 2>/dev/null)" "1"
+assert "by key and never by value" "$(grep -c 'Xmx1536m' "$decisions" 2>/dev/null)" "0"
+assert "every line of the log written as abc, so the reaper can append to it" \
+    "$(grep -c "^as abc: tee -a $decisions$" "$CALLS")" "$(wc -l < "$decisions" | tr -d ' ')"
 
 boot
 assert "a boot that changes nothing writes nothing" "$(cat "$work/out")" ""
@@ -95,6 +103,21 @@ assert "and said, with how to take the image's value" \
 metadata "-Xmx2g"
 boot
 assert "still kept when the image changes its own value" "$(key java.jdt.ls.vmargs)" '"-Xmx4g"'
+assert "the decisions log says the key was kept as the developer's" \
+    "$(grep -c ' 36-editor-settings: kept java.jdt.ls.vmargs' "$decisions" 2>/dev/null)" "1"
+assert "and the developer's value does not appear in it" "$(grep -c 'Xmx4g' "$decisions" 2>/dev/null)" "0"
+
+# --- the log cannot be written: the settings are, all the same --------------------------
+#
+# The hook runs under set -e at boot; a log line nobody would have read must not
+# cost the editor its settings.
+rm -rf "$machine"; metadata "-Xmx1536m"
+touch "$work/not-a-folder"
+saved="$decisions"; decisions="$work/not-a-folder/decisions.log"
+boot
+decisions="$saved"
+assert "a log that cannot be written still lets the boot go on" "$(cat "$work/rc")" "0"
+assert "and the settings are written" "$(key java.jdt.ls.vmargs)" '"-Xmx1536m"'
 
 # --- 3. a stack's later change arrives ---------------------------------------------------
 

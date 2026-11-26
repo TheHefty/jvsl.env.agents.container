@@ -57,6 +57,21 @@ test('the Brainstorm container keeps the ideas folder writable', () => {
   assert.ok(!c.mounts.some((m) => m.includes('agent-container/ideas') && /readonly/.test(m)), c.mounts.join('\n'))
 })
 
+test('the Brainstorm container cannot write a verification request either', () => {
+  // Task fo3.1.1: every generated configuration binds the requests read-only,
+  // this one too. It is the one container that drops a read-only bind (the
+  // ideas'), so a filter widened by a character would drop this one with it,
+  // and the Brainstorm would be a container that can make every other
+  // project's agent run what it wrote.
+  const c = brainstormConfiguration(input)
+  assert.ok(
+    c.mounts.includes(
+      'source=/home/dev/.claude/agent-container/verifications/requests,target=/config/.claude/agent-container/verifications/requests,type=bind,readonly',
+    ),
+    c.mounts.join('\n'),
+  )
+})
+
 test("it keeps what every project's container needs: ~/.claude, the rules tmpfs, the image's own command", () => {
   const c = brainstormConfiguration(input)
   assert.ok(c.mounts.includes('source=/home/dev/.claude,target=/config/.claude,type=bind'))

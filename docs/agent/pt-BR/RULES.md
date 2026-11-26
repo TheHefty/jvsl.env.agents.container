@@ -232,10 +232,29 @@ pessoa depurando às três da manhã descobre por que parou.
   épico que o pedido do usuário gera, e toda estória de cada um com seus cenários, é acordado antes
   da primeira task de qualquer um deles. Trabalho encontrado no caminho também é planejado inteiro,
   antes do próprio código.
-- **O épico não segura uma release.** O release-please corta releases incrementalmente a partir dos
-  commits quando o desenvolvedor pede que rode; o épico é a frase do changelog e a unidade de
-  planejamento, não um gate de merge. O único gate mecânico num merge é a CI. A release que torna a
-  frase de um épico verdadeira é a que vale nomear.
+- **Um épico chega inteiro a `master`.** O trabalho dele espera nos próprios branches até toda task
+  sob ele ser aceita, então uma release nunca leva meio épico. Isto substituiu uma regra que deixava
+  cada estória ser mesclada direto em `master`, onde o release-please, cortando do que tivesse
+  chegado, estava a um disparo de publicar metade de um — a release de um projeto quase publicou. A
+  release que leva o merge de um épico é a que torna a frase dele verdadeira.
+- **Três níveis de branch, cada um alcançado por um pull request.** O branch de uma task é cortado
+  do `story/<epic>/<story>` da sua estória, o de uma estória do `epic/<epic>` do seu épico, e o do
+  épico de `master`. Os prefixos diferem porque o git não comporta um branch e outro aninhado sob o
+  nome dele. Uma task entra por squash na sua estória, e uma estória entra por squash no seu épico
+  com o próprio título convencional, então o épico guarda um `feat` ou `fix` por estória.
+- **O épico é mesclado em `master` uma vez, quando toda task sob ele foi aceita.** A verificação ao
+  vivo continua depois da release, como antes. Um merge, não um squash, para que o commit de cada
+  estória chegue ao release-please — com o corpo vazio e um título que não é convencional, porque o
+  release-please lê o corpo do commit de merge e contaria o trabalho duas vezes.
+- **Um fix não espera um épico.** O branch de uma dívida ou de um hotfix vai direto para `master`, e
+  os branches de épico abertos incorporam `master`.
+- **`epic/*` e `story/*` precisam do que `master` tem, e o desenvolvedor configura:** pull request
+  obrigatório, CI obrigatória, sem force-push, sem exclusão. A extensão não configura proteção em
+  nenhum projeto. Sem proteção, um merge num branch de épico ou de estória é um caminho sem revisão
+  até `master`.
+- **Um épico já mesclado pela metade em `master` quando um projeto adota isto termina no fluxo
+  antigo.** As estórias que faltam vão para `master` como antes; o próximo épico começa no próprio
+  branch.
 
 ### O rastreador de trabalho
 

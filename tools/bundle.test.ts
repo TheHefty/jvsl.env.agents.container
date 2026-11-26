@@ -239,7 +239,7 @@ test('a configuration of the current generation says nothing', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'current-config-'))
   writeFileSync(join(dir, '.agent-container.stack.json'), '{"stacks":[]}\n')
   mkdirSync(join(dir, '.devcontainer'))
-  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), JSON.stringify({ image: 'x-dev', 'x-jvsl-generated': { extension: '0.0.1', generation: 3 } }))
+  writeFileSync(join(dir, '.devcontainer', 'devcontainer.json'), JSON.stringify({ image: 'x-dev', 'x-jvsl-generated': { extension: '0.0.1', generation: 4 } }))
   const messages: string[] = []
   await stubEditor(dir, undefined, [], messages)
   await settle()

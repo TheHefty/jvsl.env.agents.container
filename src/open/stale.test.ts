@@ -36,6 +36,14 @@ test('the notice names what the container is missing since the generation that w
   assert.match(one.message, /ideas folder read-only/)
 })
 
+test('a generation-3 file is told it lacks the verification queue, and only that', () => {
+  // Task fo3.1.1 raised the generation to 4 for the queue's two binds.
+  const three = staleness(ours({ extension: '2.3.0', generation: 3 }), '2.4.0')
+  assert.ok(three.stale)
+  assert.match(three.message, /verification requests read-only/)
+  assert.doesNotMatch(three.message, /ideas folder/)
+})
+
 test('the same generation says nothing, whatever version wrote it', () => {
   // Every release changes the version in the marker; only the generator's
   // output is worth a notice, or it fires on every upgrade and is ignored.

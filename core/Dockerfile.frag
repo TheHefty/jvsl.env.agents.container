@@ -449,6 +449,10 @@ RUN chmod +x /custom-cont-init.d/30-editor-leftovers.sh
 # volume, and this removes that mark when the image's list changes. It reads
 # /opt/jvsl/devcontainer-metadata.json, which the composer writes beside the
 # label. Debt a-stack-added-later-never-brings-its-extension.
+# The decisions log's helper (task djy.1.1), sourced by 35-editor-extensions,
+# 36-editor-settings and the reaper, so what each decided is one line in
+# /config/.local/state/jvsl/decisions.log, bounded to it and one .1.
+COPY core/decisions/decisions.sh /usr/local/lib/jvsl/decisions.sh
 COPY core/cont-init/35-editor-extensions.sh /custom-cont-init.d/35-editor-extensions.sh
 RUN chmod +x /custom-cont-init.d/35-editor-extensions.sh
 
@@ -658,7 +662,7 @@ RUN chmod +x /custom-cont-init.d/40-ai-memory.sh
 
 # The reaper (#186): every five minutes, as abc, it runs each kind in
 # /usr/local/lib/jvsl/reapers.d and logs what each reaped, to docker logs and
-# to /config/.local/state/jvsl/reaper.log. The kinds come with their own
+# to /config/.local/state/jvsl/decisions.log (task djy.1.1). The kinds come with their own
 # stories; the directory exists from the start so a kind is one COPY. A project
 # switches it off with "reaper": false in its manifest. See its run script.
 COPY core/services/svc-reaper /etc/s6-overlay/s6-rc.d/svc-reaper

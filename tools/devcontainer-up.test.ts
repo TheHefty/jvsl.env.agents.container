@@ -300,6 +300,79 @@ test("a project's container reads the ideas folder and cannot write to it", () =
   }
 })
 
+/**
+ * **A project's container cannot write a verification request, and can write a
+ * report** (story fo3.1, scenario "no container can write a request"; task
+ * fo3.1.1). A request is an instruction another project's agent runs; both
+ * folders are under the writable ~/.claude bind, so only a read-only bind over
+ * requests, declared after that one, refuses the write. Asserted on the running
+ * container, as the ideas are. The home has no verifications folder, as on any
+ * machine before this: both exist only because the open named them.
+ */
+test("a project's container cannot write a verification request, and can write a report", () => {
+  const project = 'verifyq'
+  const image = `${project}-dev`
+  mkdirSync(TMP_ROOT, { recursive: true })
+  const parent = mkdtempSync(join(TMP_ROOT, 'verify-'))
+  const root = join(parent, project)
+  const home = join(parent, 'home')
+  mkdirSync(root)
+  mkdirSync(home)
+  let containerId = ''
+  try {
+    const dockerfile = join(parent, 'Dockerfile')
+    writeFileSync(dockerfile, 'FROM alpine:3.21\nRUN adduser -D -s /bin/sh abc\n' +
+      `LABEL devcontainer.metadata='[{"remoteUser":"abc"}]'\nCMD ["/bin/sh","-c","while sleep 1000; do :; done"]\n`)
+    sh('docker', ['build', '-q', '-f', dockerfile, '-t', image, parent])
+
+    const manifest = JSON.stringify({ limits: { memory: '512m', cpus: 1 } })
+    writeFileSync(join(root, '.agent-container.stack.json'), manifest)
+    const decision = decideOpen({
+      projectRoot: root,
+      homeDir: home,
+      extensionVersion: '0.0.0-test',
+      facts: { cpuCount: 8, devicesPresent: [], devicesAbsent: ['/dev/fuse', '/dev/kvm'] },
+      manifest,
+      existingConfig: null,
+      runningContainers: [],
+      reopenCommandAvailable: true,
+      image: 'present' as const,
+      gitignore: '.devcontainer/\n',
+      gradleBuilds: [],
+    })
+    assert.equal(decision.action, 'open')
+    if (decision.action !== 'open') return
+    for (const dir of decision.ensureHostDirs) mkdirSync(dir, { recursive: true })
+    // Open to everyone, so that only the read-only bind can be what refuses a
+    // write: the fixture's owner is not the container's user.
+    const queue = join(home, '.claude', 'agent-container', 'verifications')
+    writeFileSync(join(queue, 'requests', 'REQUEST.md'), 'a request\n')
+    for (const dir of [join(home, '.claude'), join(queue, 'requests'), join(queue, 'reports')]) chmodSync(dir, 0o777)
+    chmodSync(join(queue, 'requests', 'REQUEST.md'), 0o666)
+    mkdirSync(join(root, '.devcontainer'))
+    writeFileSync(join(root, '.devcontainer', 'devcontainer.json'), `${JSON.stringify(decision.configuration, null, 2)}\n`)
+
+    const up = sh('npx', ['--no-install', 'devcontainer', 'up', '--workspace-folder', root])
+    const result = JSON.parse(up.trim().split('\n').at(-1) ?? '{}') as { outcome?: string; containerId?: string }
+    assert.equal(result.outcome, 'success', up)
+    containerId = result.containerId ?? ''
+
+    const requests = '/config/.claude/agent-container/verifications/requests'
+    assert.equal(sh('docker', ['exec', '-u', 'abc', containerId, 'cat', `${requests}/REQUEST.md`]), 'a request\n')
+    for (const attempt of [`touch ${requests}/forged.md`, `echo x >> ${requests}/REQUEST.md`, `rm ${requests}/REQUEST.md`]) {
+      assert.throws(() => sh('docker', ['exec', '-u', 'abc', containerId, 'sh', '-c', attempt]), /Read-only file system/, attempt)
+    }
+    // The report the agent writes reaches the host, where refinement reads it.
+    sh('docker', ['exec', '-u', 'abc', containerId, 'sh', '-c', 'echo passed > /config/.claude/agent-container/verifications/reports/REPORT.md'])
+    assert.equal(readFileSync(join(queue, 'reports', 'REPORT.md'), 'utf8'), 'passed\n')
+  } finally {
+    if (containerId !== '') { try { sh('docker', ['rm', '-f', containerId]) } catch { /* already gone */ } }
+    try { sh('docker', ['volume', 'rm', '-f', `${project}-code-server-data`]) } catch { /* never created */ }
+    try { sh('docker', ['rmi', '-f', image]) } catch { /* never built */ }
+    rmSync(parent, { recursive: true, force: true })
+  }
+})
+
 test('the Brainstorm container comes up on the ideas folder, in ideation mode, and a second run reuses it', async () => {
   const { BRAINSTORM, BRAINSTORM_IMAGE, BRAINSTORM_VOLUME, brainstormConfiguration } = await import('../src/brainstorm/brainstorm.ts')
   const { readLimits } = await import('../src/build/limits.ts')

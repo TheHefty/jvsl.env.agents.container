@@ -358,6 +358,26 @@ else
     echo "booted.test: SKIPPED the reaper check, not passed: $IMAGE has no svc-reaper (the stand-in has no s6)"
 fi
 
+# --- the boot hooks wrote their decisions, as the person ---------------------
+#
+# Task djy.1.1. The hooks run as root; a log they created as root is one the
+# reaper, running as abc, can no longer append to, and its lines would vanish
+# with nothing saying so. Only a real boot shows who owns the file. The
+# stand-in carries neither hook, so there it is skipped, saying so.
+if docker exec "$NAME" test -f /custom-cont-init.d/35-editor-extensions.sh; then
+    decisions=/config/.local/state/jvsl/decisions.log
+    owner="$(docker exec "$NAME" stat -c %U "$decisions" 2>/dev/null || true)"
+    [ "$owner" = "$USER_NAME" ] \
+        || fail "after a boot, $decisions is owned by '${owner:-nobody: it is missing}', not $USER_NAME. \
+The boot hooks write it through /usr/local/lib/jvsl/decisions.sh as $USER_NAME, so the reaper can append to it"
+    docker exec "$NAME" grep -q ' 35-editor-extensions: ' "$decisions" \
+        || fail "after a first boot, $decisions has no line from 35-editor-extensions, which decides on every \
+first boot. It holds: $(docker exec "$NAME" cat "$decisions" 2>&1 | head -5)"
+    echo "booted.test: the boot hooks wrote their decisions to $decisions, as $USER_NAME"
+else
+    echo "booted.test: SKIPPED the decisions log check, not passed: $IMAGE has no 35-editor-extensions (the stand-in carries no editor hooks)"
+fi
+
 # --- the editor's measures are published, as the person -----------------------
 #
 # Task 8u9.1.1. Up, as the reaper is asked, and the file written whole: on a

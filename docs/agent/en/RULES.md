@@ -230,10 +230,28 @@ person debugging it at three in the morning finds out why it stopped.
 - **A round of work is planned whole before any of it is built.** Every epic the user's request
   gives rise to, and every story under each with its scenarios, is agreed before the first task of
   any of them. Work found along the way is planned whole too, before its own code.
-- **The epic does not hold a release.** release-please cuts incrementally from the commits when the
-  developer asks it to run; the epic is the changelog's sentence and the planning unit, not a merge
-  gate. The only mechanical gate on a merge is CI. The release that makes an epic's sentence true is
-  the one worth naming.
+- **An epic reaches `master` whole.** Its work waits on its own branches until every task under it
+  is accepted, so a release never carries half an epic. This replaced a rule that let every story
+  merge straight into `master`, where release-please, cutting from whatever had landed, was one
+  dispatch away from shipping half of one — a project's release nearly did. The release that carries
+  an epic's merge is the one that makes its sentence true.
+- **Three levels of branch, each reached by a pull request.** A task's branch is cut from its
+  story's `story/<epic>/<story>`, a story's from its epic's `epic/<epic>`, and the epic's from
+  `master`. The prefixes differ because git cannot hold a branch and another nested under its name.
+  A task squashes into its story, and a story squashes into its epic under its own conventional
+  title, so the epic holds one `feat` or `fix` per story.
+- **The epic merges into `master` once, when every task under it is accepted.** Live verification
+  stays after the release, as before. A merge, not a squash, so each story's commit reaches
+  release-please — with an empty body and a title that is not conventional, because release-please
+  reads the merge commit's body and would count the work twice.
+- **A fix does not wait for an epic.** A debt's or a hotfix's branch goes straight to `master`, and
+  the open epic branches take `master` in.
+- **`epic/*` and `story/*` need what `master` has, and the developer configures it:** a pull request
+  required, CI required, no force-push, no deletion. The extension sets no protection in any
+  project. Left unprotected, a merge into an epic or a story branch is an unreviewed path into
+  `master`.
+- **An epic already half-merged into `master` when a project adopts this finishes under the old
+  flow.** Its remaining stories go to `master` as before; the next epic starts on its own branch.
 
 ### The work tracker
 
