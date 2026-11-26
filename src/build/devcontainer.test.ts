@@ -175,6 +175,24 @@ test('the ideas folder is bound read-only over the writable ~/.claude', () => {
   assert.ok(bind < inner, `the bind must be declared before the mount inside it:\n${c.join('\n')}`)
 })
 
+test('the verification requests are bound read-only and the reports writable, both over ~/.claude', () => {
+  // Story fo3.1 (task fo3.1.1): a request is an instruction another project's
+  // agent runs, so no container may write one; a report is what each project's
+  // agent writes back. Both sit inside the writable ~/.claude bind, so each has
+  // to come after it, or that one wins and the requests are writable with
+  // nothing saying so.
+  const c = buildConfiguration(input).mounts
+  const queue = c.filter((m) => m.includes('/config/.claude/agent-container/verifications'))
+  assert.deepEqual(queue, [
+    'source=/home/me/.claude/agent-container/verifications/requests,target=/config/.claude/agent-container/verifications/requests,type=bind,readonly',
+    'source=/home/me/.claude/agent-container/verifications/reports,target=/config/.claude/agent-container/verifications/reports,type=bind',
+  ])
+  const bind = c.findIndex((m) => m.includes('target=/config/.claude,'))
+  for (const m of queue) {
+    assert.ok(bind < c.indexOf(m), `the bind must be declared before the mount inside it:\n${c.join('\n')}`)
+  }
+})
+
 test('the rules directory is a tmpfs of its own, not part of the host bind', () => {
   const c = buildConfiguration(input).mounts
   const rules = c.filter((m) => m.includes('/config/.claude/rules'))
@@ -209,7 +227,7 @@ test('the rules directory is a tmpfs of its own, not part of the host bind', () 
  * attaches, after every boot hook. A test named "no agent socket reaches the
  * container" would be false. This one is about what the configuration adds.
  */
-test('the generated configuration forwards nothing of the host but the three paths it must', () => {
+test('the generated configuration forwards nothing of the host but the five paths it must', () => {
   const config = buildConfiguration(input)
   const serialised = JSON.stringify(config)
 
@@ -217,8 +235,15 @@ test('the generated configuration forwards nothing of the host but the three pat
   // project is editable; and ~/.claude, so an agent's own credentials and
   // history survive a rebuild — which is the one piece of host state this
   // arrangement deliberately keeps. And the ideas folder inside it, bound again
-  // read-only so a project reads the developer's ideas and cannot edit them.
-  const allowedHostPaths = [input.projectRoot, `${input.homeDir}/.claude`, `${input.homeDir}/.claude/agent-container/ideas`]
+  // read-only so a project reads the developer's ideas and cannot edit them;
+  // and the verification queue (fo3.1.1), requests read-only, reports writable.
+  const allowedHostPaths = [
+    input.projectRoot,
+    `${input.homeDir}/.claude`,
+    `${input.homeDir}/.claude/agent-container/ideas`,
+    `${input.homeDir}/.claude/agent-container/verifications/requests`,
+    `${input.homeDir}/.claude/agent-container/verifications/reports`,
+  ]
 
   const hostPaths = [config.workspaceMount, ...config.mounts]
     .flatMap((m) => m.split(',').filter((part) => part.startsWith('source=')))
@@ -245,9 +270,9 @@ test('the generated configuration forwards nothing of the host but the three pat
     )
   }
 
-  // The floor. If the configuration ever stops carrying the three paths it must,
+  // The floor. If the configuration ever stops carrying the five paths it must,
   // every assertion above passes over nothing.
-  assert.equal(hostPaths.length, 3, serialised)
+  assert.equal(hostPaths.length, 5, serialised)
 })
 
 test('a Gradle version, when there is one, reaches the editor as the import version', () => {
@@ -346,7 +371,7 @@ test('the same host gives the same configuration, byte for byte, so opening agai
 // output for an input that reaches every branch — devices, Gradle, the timezone
 // — with the version pinned. Change the output and this fails until the
 // generation is raised and the new fingerprint recorded with it.
-const RECORDED = { generation: 3, sha256: 'b2ba248dacd417b8e327fb4fba5c8ec97210a8416cc9a479aa7d224f61057521' }
+const RECORDED = { generation: 4, sha256: '003e320a7132aa6af0ae39b83c3cae5f31cefb64be8cabf66d2e20b2d11150ab' }
 
 test('the generator cannot change its output without raising the generation', () => {
   const everyBranch = buildConfiguration({

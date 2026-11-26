@@ -4,6 +4,7 @@ import { readLimits, type LimitsRead } from '../build/limits.ts'
 import { wslDockerProblem, type DockerHost } from '../host/docker.ts'
 import { isFolderOf, WSL_READY } from '../host/locate.ts'
 import { IDEAS_PATH } from '../ideas/offer.ts'
+import { REPORTS_PATH, REQUESTS_PATH } from '../verifications/paths.ts'
 import { MANIFEST } from '../shared/stack-manifest.ts'
 import type { HostFacts } from '../host/host.ts'
 
@@ -443,12 +444,13 @@ export function regenerateConfiguration(inputs: RegenerationInputs): Regeneratio
  * The host directories every configuration's binds need, under a home, in that
  * home's own separator: the credentials directory, and the ideas folder bound
  * read-only inside it (task 5kd.3.1), which a machine that never ran
- * Brainstorm does not have.
+ * Brainstorm does not have; and the verification queue's two folders (task
+ * fo3.1.1), which no machine had before it.
  */
 function hostDirs(home: string): string[] {
   const sep = home.startsWith('\\\\') ? '\\' : '/'
-  const claude = `${home}${sep}.claude`
-  return [claude, [home, ...IDEAS_PATH.split('/')].join(sep)]
+  const under = (path: string) => [home, ...path.split('/')].join(sep)
+  return [`${home}${sep}.claude`, under(IDEAS_PATH), under(REQUESTS_PATH), under(REPORTS_PATH)]
 }
 
 /**
